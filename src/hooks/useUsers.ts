@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, Enums } from '@/integrations/supabase/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type Profile = Tables<'profiles'>;
 export type UserRole = Tables<'user_roles'>;
@@ -30,6 +31,7 @@ export const ROLE_COLORS: Record<AppRole, string> = {
 export function useUsers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ['users'],
@@ -42,12 +44,10 @@ export function useUsers() {
       
       if (profilesError) throw profilesError;
 
-      // Get all roles
-      const { data: roles, error: rolesError } = await supabase
+      // Get all roles (may fail if user doesn't have permission)
+      const { data: roles } = await supabase
         .from('user_roles')
         .select('*');
-      
-      if (rolesError) throw rolesError;
 
       // Merge profiles with their roles
       const usersWithRoles: UserWithRole[] = (profiles || []).map(profile => {
@@ -62,6 +62,38 @@ export function useUsers() {
     },
   });
 
+  // Check if current user has admin/gestor role
+  const { data: currentUserRole } = useQuery({
+    queryKey: ['currentUserRole', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return data?.role || null;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Check if any admin exists
+  const { data: hasAdmin } = useQuery({
+    queryKey: ['hasAdmin'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('role', 'admin')
+        .limit(1);
+      
+      if (error) return false;
+      return data && data.length > 0;
+    },
+  });
+
+  const canManageRoles = currentUserRole === 'admin' || currentUserRole === 'gestor' || !hasAdmin;
+
   const updateUserRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
       // Check if user already has a role
@@ -69,7 +101,7 @@ export function useUsers() {
         .from('user_roles')
         .select('id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (existingRole) {
         // Update existing role
@@ -90,6 +122,8 @@ export function useUsers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUserRole'] });
+      queryClient.invalidateQueries({ queryKey: ['hasAdmin'] });
       toast({ title: 'Role atualizada com sucesso!' });
     },
     onError: (error) => {
@@ -139,6 +173,9 @@ export function useUsers() {
     error,
     updateUserRole,
     updateProfile,
+    currentUserRole,
+    canManageRoles,
+    hasAdmin,
     stats: {
       total: users.length,
       byRole: roleStats,

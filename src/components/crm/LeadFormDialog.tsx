@@ -5,25 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useLeads, type Lead, type LeadInsert, type LeadStatus } from '@/hooks/useLeads';
+import { useLeads, type Lead, type LeadInsert, type LeadStatus, LEAD_SOURCES } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useUsers } from '@/hooks/useUsers';
 
 interface LeadFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead?: Lead | null;
 }
-
-const SOURCES = [
-  'Indicação',
-  'Site',
-  'Telefone',
-  'WhatsApp',
-  'Google',
-  'Redes Sociais',
-  'Parceiro',
-  'Outro',
-];
 
 const STATUSES: { value: LeadStatus; label: string }[] = [
   { value: 'lead', label: 'Lead' },
@@ -36,6 +26,7 @@ const STATUSES: { value: LeadStatus; label: string }[] = [
 export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps) {
   const { createLead, updateLead } = useLeads();
   const { customers } = useCustomers();
+  const { users } = useUsers();
   const isEditing = !!lead;
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
@@ -46,6 +37,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     source: '',
     status: 'lead',
     expected_close_date: null,
+    assigned_to: null,
     notes: '',
   });
 
@@ -59,6 +51,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         source: lead.source || '',
         status: lead.status,
         expected_close_date: lead.expected_close_date,
+        assigned_to: lead.assigned_to,
         notes: lead.notes || '',
       });
     } else {
@@ -70,6 +63,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         source: '',
         status: 'lead',
         expected_close_date: null,
+        assigned_to: null,
         notes: '',
       });
     }
@@ -116,13 +110,14 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             <div className="space-y-2">
               <Label htmlFor="customer_id">Cliente</Label>
               <Select
-                value={formData.customer_id || ''}
-                onValueChange={(value) => handleChange('customer_id', value || null)}
+                value={formData.customer_id || 'none'}
+                onValueChange={(value) => handleChange('customer_id', value === 'none' ? null : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um cliente (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">Nenhum cliente</SelectItem>
                   {customers.map(customer => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
@@ -133,17 +128,57 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="assigned_to">Vendedor Responsável</Label>
+              <Select
+                value={formData.assigned_to || 'none'}
+                onValueChange={(value) => handleChange('assigned_to', value === 'none' ? null : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Atribuir a vendedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não atribuído</SelectItem>
+                  {users.map(user => (
+                    <SelectItem key={user.user_id} value={user.user_id}>
+                      {user.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
               <Label htmlFor="source">Origem</Label>
               <Select
-                value={formData.source || ''}
-                onValueChange={(value) => handleChange('source', value)}
+                value={formData.source || 'none'}
+                onValueChange={(value) => handleChange('source', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="De onde veio?" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SOURCES.map(src => (
+                  <SelectItem value="none">Não informado</SelectItem>
+                  {LEAD_SOURCES.map(src => (
                     <SelectItem key={src} value={src}>{src}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status || 'lead'}
+                onValueChange={(value) => handleChange('status', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map(s => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -176,31 +211,14 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status || 'lead'}
-                onValueChange={(value) => handleChange('status', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="expected_close_date">Previsão Fechamento</Label>
+              <Input
+                id="expected_close_date"
+                type="date"
+                value={formData.expected_close_date || ''}
+                onChange={(e) => handleChange('expected_close_date', e.target.value || null)}
+              />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="expected_close_date">Previsão de Fechamento</Label>
-            <Input
-              id="expected_close_date"
-              type="date"
-              value={formData.expected_close_date || ''}
-              onChange={(e) => handleChange('expected_close_date', e.target.value || null)}
-            />
           </div>
 
           <div className="space-y-2">
