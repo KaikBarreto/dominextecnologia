@@ -1,0 +1,193 @@
+// Tipos do sistema Glacial Cold Brasil
+
+export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro';
+
+export type OsStatus = 'pendente' | 'em_andamento' | 'concluida' | 'cancelada';
+
+export type OsType = 'manutencao_preventiva' | 'manutencao_corretiva' | 'instalacao' | 'visita_tecnica';
+
+export type CustomerType = 'pf' | 'pj';
+
+export type TransactionType = 'entrada' | 'saida';
+
+export type LeadStatus = 'lead' | 'proposta' | 'negociacao' | 'fechado_ganho' | 'fechado_perdido';
+
+export interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone?: string;
+  avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRole {
+  id: string;
+  user_id: string;
+  role: AppRole;
+  created_at: string;
+}
+
+export interface Customer {
+  id: string;
+  customer_type: CustomerType;
+  name: string;
+  document?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Equipment {
+  id: string;
+  customer_id: string;
+  name: string;
+  brand?: string;
+  model?: string;
+  serial_number?: string;
+  capacity?: string;
+  location?: string;
+  install_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceOrder {
+  id: string;
+  order_number: number;
+  customer_id: string;
+  equipment_id?: string;
+  technician_id?: string;
+  os_type: OsType;
+  status: OsStatus;
+  scheduled_date?: string;
+  scheduled_time?: string;
+  description?: string;
+  diagnosis?: string;
+  solution?: string;
+  parts_used?: any[];
+  labor_hours?: number;
+  labor_value?: number;
+  parts_value?: number;
+  total_value?: number;
+  check_in_time?: string;
+  check_in_location?: { lat: number; lng: number };
+  check_out_time?: string;
+  check_out_location?: { lat: number; lng: number };
+  client_signature?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  customer?: Customer;
+  equipment?: Equipment;
+  technician?: Profile;
+}
+
+export interface InventoryItem {
+  id: string;
+  sku?: string;
+  name: string;
+  description?: string;
+  category?: string;
+  unit: string;
+  quantity: number;
+  min_quantity: number;
+  cost_price?: number;
+  sale_price?: number;
+  supplier?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  transaction_type: TransactionType;
+  category?: string;
+  description: string;
+  amount: number;
+  transaction_date: string;
+  due_date?: string;
+  paid_date?: string;
+  is_paid: boolean;
+  customer_id?: string;
+  service_order_id?: string;
+  receipt_url?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Lead {
+  id: string;
+  customer_id?: string;
+  title: string;
+  status: LeadStatus;
+  value?: number;
+  probability: number;
+  expected_close_date?: string;
+  source?: string;
+  assigned_to?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  customer?: Customer;
+}
+
+export interface PmocContract {
+  id: string;
+  customer_id: string;
+  contract_number?: string;
+  start_date: string;
+  end_date: string;
+  monthly_value?: number;
+  maintenance_frequency?: string;
+  notes?: string;
+  is_active: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  customer?: Customer;
+}
+
+// Status labels em português
+export const osStatusLabels: Record<OsStatus, string> = {
+  pendente: 'Pendente',
+  em_andamento: 'Em Andamento',
+  concluida: 'Concluída',
+  cancelada: 'Cancelada',
+};
+
+export const osTypeLabels: Record<OsType, string> = {
+  manutencao_preventiva: 'Manutenção Preventiva',
+  manutencao_corretiva: 'Manutenção Corretiva',
+  instalacao: 'Instalação',
+  visita_tecnica: 'Visita Técnica',
+};
+
+export const leadStatusLabels: Record<LeadStatus, string> = {
+  lead: 'Lead',
+  proposta: 'Proposta',
+  negociacao: 'Negociação',
+  fechado_ganho: 'Fechado (Ganho)',
+  fechado_perdido: 'Fechado (Perdido)',
+};
+
+export const roleLabels: Record<AppRole, string> = {
+  admin: 'Administrador',
+  gestor: 'Gestor',
+  tecnico: 'Técnico',
+  comercial: 'Comercial',
+  financeiro: 'Financeiro',
+};
