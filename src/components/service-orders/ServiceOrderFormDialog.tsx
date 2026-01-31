@@ -26,10 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileText } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
+import { useFormTemplates } from '@/hooks/useFormTemplates';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { osTypeLabels } from '@/types/database';
 
@@ -42,6 +43,7 @@ const serviceOrderSchema = z.object({
   scheduled_time: z.string().optional(),
   description: z.string().optional(),
   notes: z.string().optional(),
+  form_template_id: z.string().optional(),
 });
 
 type ServiceOrderFormData = z.infer<typeof serviceOrderSchema>;
@@ -63,6 +65,7 @@ export function ServiceOrderFormDialog({
 }: ServiceOrderFormDialogProps) {
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
+  const { templates } = useFormTemplates();
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(
     serviceOrder?.customer_id
   );
@@ -79,6 +82,7 @@ export function ServiceOrderFormDialog({
       scheduled_time: serviceOrder?.scheduled_time ?? '',
       description: serviceOrder?.description ?? '',
       notes: serviceOrder?.notes ?? '',
+      form_template_id: serviceOrder?.form_template_id ?? '',
     },
   });
 
@@ -90,6 +94,7 @@ export function ServiceOrderFormDialog({
       technician_id: data.technician_id || undefined,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
+      form_template_id: data.form_template_id || undefined,
     };
     await onSubmit(cleanedData);
     form.reset();
@@ -206,6 +211,35 @@ export function ServiceOrderFormDialog({
                         {Object.entries(osTypeLabels).map(([value, label]) => (
                           <SelectItem key={value} value={value}>
                             {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="form_template_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1">
+                      <FileText className="h-3.5 w-3.5" />
+                      Template de Formulário
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sem formulário" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Sem formulário</SelectItem>
+                        {templates.filter(t => t.is_active).map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name} ({template.questions?.length || 0} perguntas)
                           </SelectItem>
                         ))}
                       </SelectContent>

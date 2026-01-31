@@ -220,6 +220,125 @@ export type Database = {
           },
         ]
       }
+      form_questions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_required: boolean
+          options: Json | null
+          position: number
+          question: string
+          question_type: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+          position?: number
+          question: string
+          question_type?: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+          position?: number
+          question?: string
+          question_type?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_questions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_responses: {
+        Row: {
+          id: string
+          question_id: string
+          responded_at: string
+          responded_by: string | null
+          response_photo_url: string | null
+          response_value: string | null
+          service_order_id: string
+        }
+        Insert: {
+          id?: string
+          question_id: string
+          responded_at?: string
+          responded_by?: string | null
+          response_photo_url?: string | null
+          response_value?: string | null
+          service_order_id: string
+        }
+        Update: {
+          id?: string
+          question_id?: string
+          responded_at?: string
+          responded_by?: string | null
+          response_photo_url?: string | null
+          response_value?: string | null
+          service_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "form_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_responses_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           category: string | null
@@ -609,6 +728,7 @@ export type Database = {
           description: string | null
           diagnosis: string | null
           equipment_id: string | null
+          form_template_id: string | null
           id: string
           labor_hours: number | null
           labor_value: number | null
@@ -637,6 +757,7 @@ export type Database = {
           description?: string | null
           diagnosis?: string | null
           equipment_id?: string | null
+          form_template_id?: string | null
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
@@ -665,6 +786,7 @@ export type Database = {
           description?: string | null
           diagnosis?: string | null
           equipment_id?: string | null
+          form_template_id?: string | null
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
@@ -694,6 +816,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
             referencedColumns: ["id"]
           },
         ]

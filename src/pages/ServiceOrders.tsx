@@ -12,6 +12,7 @@ import {
   Calendar,
   User,
   ExternalLink,
+  Settings2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -128,10 +130,17 @@ export default function ServiceOrders() {
             {serviceOrders.length} OS cadastrada{serviceOrders.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova OS
-        </Button>
+        <div className="flex gap-2">
+          <FormTemplateManagerDialog>
+            <Button variant="outline" size="icon" title="Gerenciar Templates de Formulário">
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </FormTemplateManagerDialog>
+          <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova OS
+          </Button>
+        </div>
       </div>
 
       {/* Status Summary Cards */}
@@ -287,11 +296,10 @@ export default function ServiceOrders() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              title="Link do Técnico"
+                              title="Abrir Formulário do Técnico"
                               onClick={() => {
                                 const url = `${window.location.origin}/os-tecnico/${os.id}`;
-                                navigator.clipboard.writeText(url);
-                                toast({ title: 'Link copiado!', description: 'Envie para o técnico acessar a OS.' });
+                                window.open(url, '_blank');
                               }}
                             >
                               <ExternalLink className="h-4 w-4 text-primary" />
