@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { TrendingUp, Plus, DollarSign, Filter, Search, X, Users, Target } from 'lucide-react';
+import { TrendingUp, Plus, DollarSign, Filter, Search, X, Users, Target, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,18 +11,16 @@ import { Label } from '@/components/ui/label';
 import { 
   useLeads, 
   type Lead, 
-  type LeadStatus, 
-  LEAD_STATUS_LABELS, 
-  LEAD_STATUS_COLORS,
   LEAD_SOURCES 
 } from '@/hooks/useLeads';
 import { useUsers } from '@/hooks/useUsers';
+import { useCrmStages, type CrmStage } from '@/hooks/useCrmStages';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
+import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-const PIPELINE_STAGES: LeadStatus[] = ['lead', 'proposta', 'negociacao', 'fechado_ganho', 'fechado_perdido'];
+import { cn } from '@/lib/utils';
 
 interface Filters {
   search: string;
@@ -35,6 +33,7 @@ interface Filters {
 export default function CRM() {
   const { leads, isLoading, updateLead, stats } = useLeads();
   const { users } = useUsers();
+  const { stages, isLoading: stagesLoading, getStageColorClass } = useCrmStages();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -75,23 +74,23 @@ export default function CRM() {
     });
   }, [leads, filters]);
 
-  // Group filtered leads by status
-  const leadsByStatus = useMemo(() => {
+  // Group filtered leads by stage_id
+  const leadsByStage = useMemo(() => {
     return filteredLeads.reduce((acc, lead) => {
-      const status = lead.status;
-      if (!acc[status]) acc[status] = [];
-      acc[status].push(lead);
+      const stageId = lead.stage_id || 'unassigned';
+      if (!acc[stageId]) acc[stageId] = [];
+      acc[stageId].push(lead);
       return acc;
-    }, {} as Record<LeadStatus, Lead[]>);
+    }, {} as Record<string, Lead[]>);
   }, [filteredLeads]);
 
-  // Calculate value by status
-  const valueByStatus = useMemo(() => {
-    return Object.entries(leadsByStatus).reduce((acc, [status, statusLeads]) => {
-      acc[status as LeadStatus] = statusLeads.reduce((sum, lead) => sum + (lead.value || 0), 0);
+  // Calculate value by stage
+  const valueByStage = useMemo(() => {
+    return Object.entries(leadsByStage).reduce((acc, [stageId, stageLeads]) => {
+      acc[stageId] = stageLeads.reduce((sum, lead) => sum + (lead.value || 0), 0);
       return acc;
-    }, {} as Record<LeadStatus, number>);
-  }, [leadsByStatus]);
+    }, {} as Record<string, number>);
+  }, [leadsByStage]);
 
   const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
 
@@ -137,35 +136,38 @@ export default function CRM() {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = async (e: React.DragEvent, newStatus: LeadStatus) => {
+  const handleDrop = async (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('leadId');
     if (leadId) {
-      await updateLead.mutateAsync({ id: leadId, status: newStatus });
+      await updateLead.mutateAsync({ id: leadId, stage_id: stageId });
     }
   };
 
-  const getStageColor = (status: LeadStatus) => {
-    switch (status) {
-      case 'lead': return 'from-muted/50 to-muted/30';
-      case 'proposta': return 'from-info/15 to-info/5';
-      case 'negociacao': return 'from-warning/15 to-warning/5';
-      case 'fechado_ganho': return 'from-success/15 to-success/5';
-      case 'fechado_perdido': return 'from-destructive/15 to-destructive/5';
+  const getStageGradient = (color: string) => {
+    switch (color) {
+      case 'muted': return 'from-muted/50 to-muted/30';
+      case 'info': return 'from-info/15 to-info/5';
+      case 'warning': return 'from-warning/15 to-warning/5';
+      case 'success': return 'from-success/15 to-success/5';
+      case 'destructive': return 'from-destructive/15 to-destructive/5';
+      case 'primary': return 'from-primary/15 to-primary/5';
       default: return 'from-muted/50 to-muted/30';
     }
   };
 
-  const getStageHeaderColor = (status: LeadStatus) => {
-    switch (status) {
-      case 'lead': return 'border-muted-foreground/30';
-      case 'proposta': return 'border-info/50';
-      case 'negociacao': return 'border-warning/50';
-      case 'fechado_ganho': return 'border-success/50';
-      case 'fechado_perdido': return 'border-destructive/50';
+  const getStageHeaderBorder = (color: string) => {
+    switch (color) {
+      case 'muted': return 'border-muted-foreground/30';
+      case 'info': return 'border-info/50';
+      case 'warning': return 'border-warning/50';
+      case 'success': return 'border-success/50';
+      case 'destructive': return 'border-destructive/50';
+      case 'primary': return 'border-primary/50';
       default: return 'border-muted-foreground/30';
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -175,10 +177,17 @@ export default function CRM() {
           <h1 className="text-2xl font-bold">CRM</h1>
           <p className="text-muted-foreground">Gerencie oportunidades e leads</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Oportunidade
-        </Button>
+        <div className="flex gap-2">
+          <StageManagerDialog>
+            <Button variant="outline" size="icon" title="Gerenciar Estágios">
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </StageManagerDialog>
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Oportunidade
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -219,45 +228,53 @@ export default function CRM() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-warning/5 border-warning/20">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Em Negociação</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-24 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold text-warning">
-                    {formatCurrency(valueByStatus['negociacao'] || 0)}
-                  </p>
-                )}
+        {/* Dynamic stats based on stages */}
+        {stages.filter(s => s.is_won).slice(0, 1).map(wonStage => (
+          <Card key={wonStage.id} className="bg-gradient-to-br from-card to-success/5 border-success/20">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{wonStage.name}</p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-24 mt-1" />
+                  ) : (
+                    <p className="text-2xl font-bold text-success">
+                      {formatCurrency(valueByStage[wonStage.id] || 0)}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-full bg-success/10 p-3">
+                  <TrendingUp className="h-6 w-6 text-success" />
+                </div>
               </div>
-              <div className="rounded-full bg-warning/10 p-3">
-                <TrendingUp className="h-6 w-6 text-warning" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
 
-        <Card className="bg-gradient-to-br from-card to-info/5 border-info/20">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Propostas</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-24 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold text-info">
-                    {formatCurrency(valueByStatus['proposta'] || 0)}
-                  </p>
-                )}
+        {stages.filter(s => !s.is_won && !s.is_lost).slice(0, 2).map((stage, index) => (
+          <Card key={stage.id} className={cn(
+            "bg-gradient-to-br from-card",
+            index === 0 ? "to-warning/5 border-warning/20" : "to-info/5 border-info/20"
+          )}>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{stage.name}</p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-24 mt-1" />
+                  ) : (
+                    <p className={cn("text-2xl font-bold", index === 0 ? "text-warning" : "text-info")}>
+                      {formatCurrency(valueByStage[stage.id] || 0)}
+                    </p>
+                  )}
+                </div>
+                <div className={cn("rounded-full p-3", index === 0 ? "bg-warning/10" : "bg-info/10")}>
+                  {index === 0 ? <TrendingUp className="h-6 w-6 text-warning" /> : <Users className="h-6 w-6 text-info" />}
+                </div>
               </div>
-              <div className="rounded-full bg-info/10 p-3">
-                <Users className="h-6 w-6 text-info" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Search and Filters */}
@@ -422,9 +439,9 @@ export default function CRM() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
+          {(isLoading || stagesLoading) ? (
             <div className="flex gap-4 overflow-x-auto p-4">
-              {PIPELINE_STAGES.slice(0, 4).map((_, i) => (
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="min-w-[280px] flex-shrink-0">
                   <Skeleton className="h-8 w-full mb-4" />
                   <div className="space-y-3">
@@ -433,6 +450,14 @@ export default function CRM() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : stages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Settings2 className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Nenhum estágio configurado</h3>
+              <p className="text-muted-foreground max-w-sm">
+                Clique no botão de configurações para criar estágios do pipeline
+              </p>
             </div>
           ) : filteredLeads.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -448,28 +473,28 @@ export default function CRM() {
             </div>
           ) : (
             <div className="flex gap-4 overflow-x-auto p-4 pb-6">
-              {PIPELINE_STAGES.map((status) => (
+              {stages.map((stage) => (
                 <div
-                  key={status}
+                  key={stage.id}
                   className="min-w-[300px] max-w-[300px] flex-shrink-0"
                   onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, status)}
+                  onDrop={(e) => handleDrop(e, stage.id)}
                 >
                   {/* Column Header */}
-                  <div className={`rounded-t-lg bg-gradient-to-r ${getStageColor(status)} border-b-2 ${getStageHeaderColor(status)} p-3`}>
+                  <div className={`rounded-t-lg bg-gradient-to-r ${getStageGradient(stage.color)} border-b-2 ${getStageHeaderBorder(stage.color)} p-3`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge className={`${LEAD_STATUS_COLORS[status]} font-semibold`}>
-                          {LEAD_STATUS_LABELS[status]}
+                        <Badge className={cn(getStageColorClass(stage.color), 'font-semibold')}>
+                          {stage.name}
                         </Badge>
                         <span className="text-xs font-medium bg-background/80 px-2 py-0.5 rounded-full">
-                          {leadsByStatus[status]?.length || 0}
+                          {leadsByStage[stage.id]?.length || 0}
                         </span>
                       </div>
                     </div>
-                    {(valueByStatus[status] || 0) > 0 && (
+                    {(valueByStage[stage.id] || 0) > 0 && (
                       <p className="text-sm font-semibold mt-2 text-foreground">
-                        {formatCurrency(valueByStatus[status] || 0)}
+                        {formatCurrency(valueByStage[stage.id] || 0)}
                       </p>
                     )}
                   </div>
@@ -477,7 +502,7 @@ export default function CRM() {
                   {/* Cards */}
                   <ScrollArea className="h-[450px] rounded-b-lg border border-t-0 bg-muted/20">
                     <div className="space-y-3 p-3">
-                      {(leadsByStatus[status] || []).map((lead) => (
+                      {(leadsByStage[stage.id] || []).map((lead) => (
                         <div
                           key={lead.id}
                           draggable
@@ -490,7 +515,7 @@ export default function CRM() {
                           />
                         </div>
                       ))}
-                      {(leadsByStatus[status]?.length || 0) === 0 && (
+                      {(leadsByStage[stage.id]?.length || 0) === 0 && (
                         <div className="text-center py-8 text-muted-foreground text-sm">
                           Arraste leads para cá
                         </div>

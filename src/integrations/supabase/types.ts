@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      crm_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -335,6 +368,7 @@ export type Database = {
           notes: string | null
           probability: number | null
           source: string | null
+          stage_id: string | null
           status: Database["public"]["Enums"]["lead_status"]
           title: string
           updated_at: string
@@ -350,6 +384,7 @@ export type Database = {
           notes?: string | null
           probability?: number | null
           source?: string | null
+          stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           title: string
           updated_at?: string
@@ -365,6 +400,7 @@ export type Database = {
           notes?: string | null
           probability?: number | null
           source?: string | null
+          stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           title?: string
           updated_at?: string
@@ -376,6 +412,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
             referencedColumns: ["id"]
           },
         ]

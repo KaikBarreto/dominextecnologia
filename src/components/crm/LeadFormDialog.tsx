@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useLeads, type Lead, type LeadInsert, type LeadStatus, LEAD_SOURCES } from '@/hooks/useLeads';
+import { useLeads, type Lead, type LeadInsert, LEAD_SOURCES } from '@/hooks/useLeads';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
+import { useCrmStages } from '@/hooks/useCrmStages';
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -15,18 +16,11 @@ interface LeadFormDialogProps {
   lead?: Lead | null;
 }
 
-const STATUSES: { value: LeadStatus; label: string }[] = [
-  { value: 'lead', label: 'Lead' },
-  { value: 'proposta', label: 'Proposta' },
-  { value: 'negociacao', label: 'Negociação' },
-  { value: 'fechado_ganho', label: 'Fechado (Ganho)' },
-  { value: 'fechado_perdido', label: 'Fechado (Perdido)' },
-];
-
 export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps) {
   const { createLead, updateLead } = useLeads();
   const { customers } = useCustomers();
   const { users } = useUsers();
+  const { stages } = useCrmStages();
   const isEditing = !!lead;
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
@@ -35,7 +29,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     value: 0,
     probability: 50,
     source: '',
-    status: 'lead',
+    stage_id: null,
     expected_close_date: null,
     assigned_to: null,
     notes: '',
@@ -49,25 +43,27 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         value: lead.value || 0,
         probability: lead.probability || 50,
         source: lead.source || '',
-        status: lead.status,
+        stage_id: lead.stage_id,
         expected_close_date: lead.expected_close_date,
         assigned_to: lead.assigned_to,
         notes: lead.notes || '',
       });
     } else {
+      // Set default stage to first stage if available
+      const defaultStageId = stages.length > 0 ? stages[0].id : null;
       setFormData({
         title: '',
         customer_id: null,
         value: 0,
         probability: 50,
         source: '',
-        status: 'lead',
+        stage_id: defaultStageId,
         expected_close_date: null,
         assigned_to: null,
         notes: '',
       });
     }
-  }, [lead, open]);
+  }, [lead, open, stages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,17 +164,18 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="stage_id">Estágio</Label>
               <Select
-                value={formData.status || 'lead'}
-                onValueChange={(value) => handleChange('status', value)}
+                value={formData.stage_id || 'none'}
+                onValueChange={(value) => handleChange('stage_id', value === 'none' ? null : value)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione o estágio" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUSES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  <SelectItem value="none">Não atribuído</SelectItem>
+                  {stages.map(stage => (
+                    <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
