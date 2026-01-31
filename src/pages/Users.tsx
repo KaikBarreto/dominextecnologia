@@ -1,27 +1,97 @@
-import { UserCircle, Plus, Search } from 'lucide-react';
+import { useState } from 'react';
+import { UserCircle, Search, Mail, Phone, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useUsers, type UserWithRole, ROLE_LABELS, ROLE_COLORS, type AppRole } from '@/hooks/useUsers';
+
+const ROLES: AppRole[] = ['admin', 'gestor', 'tecnico', 'comercial', 'financeiro'];
 
 export default function Users() {
+  const { users, isLoading, stats, updateUserRole } = useUsers();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredUsers = users.filter(user =>
+    user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleRoleChange = async (userId: string, role: AppRole) => {
+    await updateUserRole.mutateAsync({ userId, role });
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Usuários</h1>
           <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Usuário
-        </Button>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Card className="bg-gradient-to-br from-card to-muted/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                {isLoading ? (
+                  <Skeleton className="h-6 w-8 mt-1" />
+                ) : (
+                  <p className="text-xl font-bold">{stats.total}</p>
+                )}
+              </div>
+              <UserCircle className="h-6 w-6 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {ROLES.slice(0, 4).map(role => (
+          <Card key={role} className="bg-gradient-to-br from-card to-muted/10">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</p>
+                  {isLoading ? (
+                    <Skeleton className="h-6 w-8 mt-1" />
+                  ) : (
+                    <p className="text-xl font-bold">{stats.byRole[role] || 0}</p>
+                  )}
+                </div>
+                <Shield className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar usuário..." className="pl-10" />
+        <Input 
+          placeholder="Buscar usuário..." 
+          className="pl-10"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
+      {/* Users List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -30,13 +100,82 @@ export default function Users() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <UserCircle className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">Nenhum usuário cadastrado</h3>
-            <p className="text-muted-foreground">
-              Clique em "Novo Usuário" para adicionar membros à equipe
-            </p>
-          </div>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-9 w-32" />
+                </div>
+              ))}
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <UserCircle className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="text-lg font-medium">
+                {searchQuery ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
+              </h3>
+              <p className="text-muted-foreground">
+                {searchQuery ? 'Tente buscar por outro termo' : 'Os usuários aparecerão aqui após o cadastro'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg border bg-card hover:shadow-card-hover transition-shadow"
+                >
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={user.avatar_url || undefined} alt={user.full_name} />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {getInitials(user.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium truncate">{user.full_name}</h4>
+                    <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
+                      {user.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3.5 w-3.5" />
+                          {user.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {user.role && (
+                      <Badge variant="secondary" className={ROLE_COLORS[user.role]}>
+                        {ROLE_LABELS[user.role]}
+                      </Badge>
+                    )}
+                    
+                    <Select
+                      value={user.role || ''}
+                      onValueChange={(value) => handleRoleChange(user.user_id, value as AppRole)}
+                    >
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Selecionar role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map(role => (
+                          <SelectItem key={role} value={role}>
+                            {ROLE_LABELS[role]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
