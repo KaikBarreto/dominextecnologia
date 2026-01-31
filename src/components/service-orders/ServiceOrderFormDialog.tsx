@@ -99,14 +99,14 @@ export function ServiceOrderFormDialog({
   });
 
   const handleSubmit = async (data: ServiceOrderFormData) => {
-    // Clean empty strings
+    // Clean empty strings and placeholder values
     const cleanedData = {
       ...data,
       equipment_id: data.equipment_id || undefined,
       technician_id: data.technician_id || undefined,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
-      form_template_id: data.form_template_id || undefined,
+      form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
     };
     await onSubmit(cleanedData);
     form.reset();
@@ -248,7 +248,7 @@ export function ServiceOrderFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sem formulário</SelectItem>
+                        <SelectItem value="none">Sem formulário</SelectItem>
                         {templates.filter(t => t.is_active).map((template) => (
                           <SelectItem key={template.id} value={template.id}>
                             {template.name} ({template.questions?.length || 0} perguntas)
