@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Settings2, Pencil, Trash2, FileText, ChevronRight, GripVertical, X, Check } from 'lucide-react';
 import {
   Dialog,
@@ -54,6 +54,7 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     createQuestion,
     updateQuestion,
     deleteQuestion,
+    reorderQuestions,
   } = useFormTemplates();
   
   const [open, setOpen] = useState(false);
@@ -61,6 +62,8 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
   const [newTemplateName, setNewTemplateName] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
+  const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);
 
   // New question form
   const [newQuestion, setNewQuestion] = useState<Partial<FormQuestionInsert>>({
@@ -68,6 +71,16 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     question_type: 'boolean',
     is_required: true,
   });
+
+  // Keep selectedTemplate in sync with templates
+  useEffect(() => {
+    if (selectedTemplate) {
+      const updated = templates.find(t => t.id === selectedTemplate.id);
+      if (updated) {
+        setSelectedTemplate(updated as FormTemplate & { questions: FormQuestion[] });
+      }
+    }
+  }, [templates]);
 
   const handleCreateTemplate = () => {
     if (!newTemplateName.trim()) return;
@@ -103,11 +116,57 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     }, {
       onSuccess: () => {
         setNewQuestion({ question: '', question_type: 'boolean', is_required: true });
-        // Refresh selected template
-        const updated = templates.find(t => t.id === selectedTemplate.id);
-        if (updated) setSelectedTemplate(updated as FormTemplate & { questions: FormQuestion[] });
       },
     });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, questionId: string) => {
+    setDraggedQuestionId(questionId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, questionId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (questionId !== draggedQuestionId) {
+      setDragOverQuestionId(questionId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverQuestionId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetQuestionId: string) => {
+    e.preventDefault();
+    if (!draggedQuestionId || !selectedTemplate || draggedQuestionId === targetQuestionId) {
+      setDraggedQuestionId(null);
+      setDragOverQuestionId(null);
+      return;
+    }
+
+    const questions = [...(selectedTemplate.questions || [])].sort((a, b) => a.position - b.position);
+    const draggedIndex = questions.findIndex(q => q.id === draggedQuestionId);
+    const targetIndex = questions.findIndex(q => q.id === targetQuestionId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Reorder
+    const [draggedItem] = questions.splice(draggedIndex, 1);
+    questions.splice(targetIndex, 0, draggedItem);
+
+    // Get new order of IDs
+    const orderedIds = questions.map(q => q.id);
+    reorderQuestions.mutate(orderedIds);
+
+    setDraggedQuestionId(null);
+    setDragOverQuestionId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedQuestionId(null);
+    setDragOverQuestionId(null);
   };
 
   const handleDeleteQuestion = (questionId: string) => {
@@ -178,8 +237,20 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     }
 
     return (
-      <div className="flex items-start gap-2 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors group">
-        <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab" />
+      <div 
+        className={cn(
+          "flex items-start gap-2 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors group",
+          draggedQuestionId === question.id && "opacity-50",
+          dragOverQuestionId === question.id && "border-primary border-2"
+        )}
+        draggable
+        onDragStart={(e) => handleDragStart(e, question.id)}
+        onDragOver={(e) => handleDragOver(e, question.id)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, question.id)}
+        onDragEnd={handleDragEnd}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab active:cursor-grabbing" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium leading-tight">{question.question}</p>
           <div className="flex items-center gap-2 mt-1">
