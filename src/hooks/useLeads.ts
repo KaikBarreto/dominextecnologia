@@ -66,12 +66,13 @@ export function useLeads() {
         .from('leads')
         .select(`
           *,
-          customers (id, name, phone, email)
+          customers (id, name, phone, email),
+          crm_stages (id, name, color)
         `)
         .order('updated_at', { ascending: false });
       
       if (error) throw error;
-      return data as Lead[];
+      return data as (Lead & { crm_stages?: { id: string; name: string; color: string } | null })[];
     },
   });
 
