@@ -25,11 +25,11 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
-  lead: 'bg-muted text-muted-foreground',
-  proposta: 'bg-info/20 text-info',
-  negociacao: 'bg-warning/20 text-warning',
-  fechado_ganho: 'bg-success/20 text-success',
-  fechado_perdido: 'bg-destructive/20 text-destructive',
+  lead: 'bg-muted-foreground text-white',
+  proposta: 'bg-info text-white',
+  negociacao: 'bg-warning text-white',
+  fechado_ganho: 'bg-success text-white',
+  fechado_perdido: 'bg-destructive text-white',
 };
 
 export const INTERACTION_TYPES = [

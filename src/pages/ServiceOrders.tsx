@@ -54,23 +54,23 @@ import { ptBR } from 'date-fns/locale';
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
   pendente: {
     icon: Clock,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
+    color: 'text-white',
+    bgColor: 'bg-warning',
   },
   em_andamento: {
     icon: AlertCircle,
-    color: 'text-info',
-    bgColor: 'bg-info/10',
+    color: 'text-white',
+    bgColor: 'bg-info',
   },
   concluida: {
     icon: CheckCircle2,
-    color: 'text-success',
-    bgColor: 'bg-success/10',
+    color: 'text-white',
+    bgColor: 'bg-success',
   },
   cancelada: {
     icon: XCircle,
-    color: 'text-destructive',
-    bgColor: 'bg-destructive/10',
+    color: 'text-white',
+    bgColor: 'bg-destructive',
   },
 };
 

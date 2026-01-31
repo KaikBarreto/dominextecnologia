@@ -220,7 +220,7 @@ export default function PMOC() {
                             {contract.monthly_value ? formatCurrency(contract.monthly_value) : '-'}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={contract.is_active ? 'default' : 'outline'} className={contract.is_active ? 'bg-success/20 text-success' : ''}>
+                            <Badge variant={contract.is_active ? 'success' : 'outline'}>
                               {contract.is_active ? 'Ativo' : 'Inativo'}
                             </Badge>
                           </TableCell>
