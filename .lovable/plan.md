@@ -1,214 +1,166 @@
 
+# Plano de Modernizacao do Sistema Glacial Cold Brasil
 
-# Sistema de Gestão Glacial Cold Brasil
+## Resumo
 
-## Visão Geral
-Sistema completo de gestão para empresa de refrigeração, inspirado no AUVO, com foco em operações de campo, controle financeiro e gestão de clientes.
-
----
-
-## 🔐 Módulo 1: Autenticação e Controle de Acesso
-
-### Perfis de Usuário
-- **Administrador**: Acesso total ao sistema
-- **Gestor**: Visualização de relatórios e gestão de equipes
-- **Técnico de Campo**: Acesso mobile às OS atribuídas
-- **Comercial**: Acesso ao CRM e orçamentos
-- **Financeiro**: Controle de finanças e relatórios
-
-### Funcionalidades
-- Login seguro com email/senha
-- Tela de primeiro acesso para técnicos
-- Recuperação de senha
-- Controle de sessões ativas
+Este plano cobre a implementacao das telas faltantes do sistema e a modernizacao visual baseada no site glacialcoldbrasil.com.br, com foco em:
+- Fonte Product Sans (alternativa ao Google Sans, que e proprietario)
+- Paleta de cores preto e dourado premium
+- Cards com glassmorphism e sombras modernas
+- Animacoes sutis e micro-interacoes
 
 ---
 
-## 📋 Módulo 2: Ordens de Serviço (OS)
+## 1. Atualizacao do Design System
 
-### Para Gestores
-- Criar e atribuir OS para técnicos
-- Visualizar status em tempo real (Pendente, Em andamento, Concluída)
-- Histórico completo de serviços por cliente
-- Anexar documentos e fotos
+### 1.1 Tipografia
+- Adicionar fonte **Inter** como principal (ja instalada) com fallback para Product Sans via CDN
+- Alternativa: usar "Plus Jakarta Sans" do Google Fonts (muito similar ao Google Sans)
+- Atualizar `index.html` com link para a fonte escolhida
+- Atualizar `tailwind.config.ts` e `index.css` com a nova configuracao
 
-### Para Técnicos (Mobile-First)
-- Lista de OS do dia com navegação GPS
-- Check-in/Check-out com geolocalização
-- Formulários dinâmicos preenchíveis:
-  - Diagnóstico do equipamento
-  - Peças utilizadas (integrado ao estoque)
-  - Tempo de execução
-  - Fotos antes/depois
-- Assinatura digital do cliente
-- Geração automática de relatório PDF
+### 1.2 Paleta de Cores Modernizada
+Baseado no site da Glacial Cold:
+- **Dourado Principal**: `hsl(43 74% 49%)` (ja configurado)
+- **Preto Premium**: `hsl(0 0% 5%)`
+- **Glassmorphism**: backgrounds com blur e transparencia
 
-### Tipos de OS
-- Manutenção preventiva
-- Manutenção corretiva
-- Instalação
-- Visita técnica/Orçamento
+### 1.3 Componentes Modernizados
+- Cards com bordas sutis e sombras mais pronunciadas
+- Botoes com gradientes dourados
+- Inputs com bordas arredondadas e focus states modernos
+- Efeito de hover com escala e sombra
 
 ---
 
-## 📅 Módulo 3: Agenda e Demandas
+## 2. Telas a Implementar/Melhorar
 
-### Calendário Integrado
-- Visualização por dia/semana/mês
-- Agenda por técnico ou geral
-- Cores por tipo de serviço
-- Integração com Google Agenda
+### 2.1 Estoque (Inventory) - CRUD Completo
+**Arquivo**: `src/pages/Inventory.tsx`
 
-### Agendamento Inteligente
-- Disponibilidade de técnicos
-- Proximidade geográfica
-- Tempo estimado por tipo de serviço
-- Notificações automáticas
+Funcionalidades:
+- Listagem de itens com busca e filtros
+- Formulario de cadastro/edicao de itens
+- Alertas de estoque baixo
+- Historico de movimentacoes
+- Cards de resumo (total itens, valor total, itens em baixa)
 
----
+**Novo componente**: `src/components/inventory/InventoryFormDialog.tsx`
 
-## 💰 Módulo 4: Gestão Financeira
+### 2.2 PMOC - Gestao de Contratos
+**Arquivo**: `src/pages/PMOC.tsx`
 
-### Controle de Caixa
-- Lançamento de entradas (recebimentos, vendas)
-- Lançamento de saídas (despesas, fornecedores)
-- Categorização automática
-- Anexo de comprovantes
+Funcionalidades:
+- Listagem de contratos PMOC
+- Formulario de novo contrato vinculado a cliente
+- Cronograma de manutencoes (calendario)
+- Geracao de relatorios
+- Status do contrato (ativo/inativo)
 
-### Relatórios Financeiros
-- Fluxo de caixa diário/mensal
-- DRE (Demonstrativo de Resultado)
-- Contas a pagar e receber
-- Rentabilidade por cliente/serviço
+**Novos componentes**:
+- `src/components/pmoc/PmocContractFormDialog.tsx`
+- `src/components/pmoc/PmocScheduleView.tsx`
 
-### Faturamento
-- Geração de orçamentos
-- Conversão orçamento → OS → Fatura
-- Controle de pagamentos
+### 2.3 CRM - Pipeline de Vendas
+**Arquivo**: `src/pages/CRM.tsx`
 
----
+Funcionalidades:
+- Kanban de leads/oportunidades
+- Cadastro de novos leads
+- Arraste e solte entre estagios
+- Historico de interacoes
+- Valor total por estagio
 
-## 👥 Módulo 5: CRM Comercial
+**Novos componentes**:
+- `src/components/crm/LeadFormDialog.tsx`
+- `src/components/crm/LeadCard.tsx`
+- `src/components/crm/PipelineColumn.tsx`
 
-### Gestão de Clientes
-- Cadastro completo (PJ/PF)
-- Histórico de interações
-- Equipamentos vinculados
-- Contratos ativos
+### 2.4 Usuarios - Gestao de Equipe
+**Arquivo**: `src/pages/Users.tsx`
 
-### Pipeline de Vendas
-- Funil de oportunidades (Lead → Proposta → Fechado)
-- Follow-ups automáticos
-- Metas comerciais
-- Relatórios de conversão
+Funcionalidades:
+- Listagem de usuarios do sistema
+- Atribuicao de roles (admin, gestor, tecnico, etc)
+- Perfil com avatar
+- Ativacao/desativacao de usuarios
 
-### Comunicação
-- Registro de contatos (ligações, emails, visitas)
-- Lembretes de follow-up
-- Templates de propostas
+**Novo componente**: `src/components/users/UserFormDialog.tsx`
 
----
+### 2.5 Configuracoes - Melhorias
+**Arquivo**: `src/pages/Settings.tsx`
 
-## 📦 Módulo 6: Estoque
-
-### Controle de Materiais
-- Cadastro de peças e insumos
-- Entrada e saída de estoque
-- Estoque mínimo com alertas
-- Código de barras/SKU
-
-### Integração com OS
-- Baixa automática ao usar em OS
-- Solicitação de peças pelo técnico
-- Histórico de uso por equipamento
-
-### Fornecedores
-- Cadastro de fornecedores
-- Histórico de compras
-- Comparativo de preços
+Funcionalidades:
+- Salvar dados da empresa no banco
+- Configuracoes de notificacao funcionais
+- Troca de tema (claro/escuro)
+- Logo da empresa personalizavel
 
 ---
 
-## 🔧 Módulo 7: Gestão de PMOC
+## 3. Componentes de UI Modernizados
 
-### Planos de Manutenção
-- Cadastro de equipamentos por cliente
-- Cronograma de manutenções preventivas
-- Geração automática de OS recorrentes
-- Checklist específico por tipo de equipamento
+### 3.1 Novo Card Premium
+Criar variante de card com:
+- Glassmorphism effect
+- Borda com gradiente dourado sutil
+- Hover com elevacao
 
-### Documentação Legal
-- Geração de relatórios PMOC
-- Histórico de manutenções
-- Laudos técnicos
-- ART (Anotação de Responsabilidade Técnica)
+### 3.2 Stats Card Component
+Componente reutilizavel para KPIs com:
+- Icone
+- Valor principal
+- Label
+- Indicador de variacao (up/down)
 
-### Contratos
-- Gestão de contratos de manutenção
-- Alertas de renovação
-- Faturamento recorrente
-
----
-
-## 📊 Módulo 8: Dashboard e Relatórios
-
-### Painel Gerencial
-- KPIs em tempo real
-- OS por status
-- Faturamento do período
-- Produtividade por técnico
-- Clientes ativos
-
-### Relatórios Avançados
-- Exportação para Excel/PDF
-- Filtros personalizados
-- Análise de tendências
-- Ranking de técnicos
+### 3.3 Page Header Component
+Componente para cabecalho de paginas com:
+- Titulo
+- Descricao
+- Acoes (botoes)
+- Breadcrumbs (opcional)
 
 ---
 
-## 📱 Experiência Mobile (Técnicos)
+## 4. Ordem de Implementacao
 
-### Design Responsivo
-- Interface otimizada para smartphones
-- Funcionamento offline básico
-- Sincronização automática
-- Navegação simplificada
-
-### Funcionalidades de Campo
-- GPS para navegação até cliente
-- Câmera integrada para fotos
-- Leitor de código de barras
-- Notificações push
-
----
-
-## 🎨 Design e Interface
-
-### Identidade Visual
-- Cores baseadas na marca Glacial Cold Brasil
-- Tons de azul (frio/refrigeração)
-- Interface limpa e profissional
-- Ícones intuitivos
-
-### Navegação
-- Menu lateral (desktop)
-- Barra inferior (mobile)
-- Busca global
-- Atalhos rápidos
+| Fase | Tarefa | Arquivos |
+|------|--------|----------|
+| 1 | Atualizar Design System (fonte + cores) | `index.html`, `index.css`, `tailwind.config.ts` |
+| 2 | Criar componentes UI modernos | `src/components/ui/` |
+| 3 | Implementar Estoque completo | `Inventory.tsx`, `InventoryFormDialog.tsx` |
+| 4 | Implementar PMOC completo | `PMOC.tsx`, `PmocContractFormDialog.tsx` |
+| 5 | Implementar CRM com Kanban | `CRM.tsx`, componentes de CRM |
+| 6 | Implementar Usuarios | `Users.tsx`, `UserFormDialog.tsx` |
+| 7 | Modernizar telas existentes | Dashboard, Clientes, OS, Financeiro |
+| 8 | Melhorar tela de Auth | `Auth.tsx` |
 
 ---
 
-## 🗄️ Infraestrutura (Backend)
+## 5. Detalhes Tecnicos
 
-### Banco de Dados (Supabase)
-- Autenticação segura
-- Armazenamento de arquivos (fotos, documentos)
-- Políticas de segurança por perfil
-- Backup automático
+### 5.1 Hooks a Criar
+- `useInventory.ts` - CRUD de itens de estoque
+- `usePmocContracts.ts` - CRUD de contratos PMOC
+- `useLeads.ts` - CRUD de leads/oportunidades
 
-### Integrações Futuras
-- Google Agenda
-- WhatsApp Business (notificações)
-- Sistemas de pagamento
+### 5.2 Tabelas do Banco (ja existentes)
+As tabelas `inventory`, `leads`, `lead_interactions`, `pmoc_contracts` e `pmoc_schedules` ja existem no schema.
+
+### 5.3 Fonte Recomendada
+Como o Google Sans nao e publico, usaremos **Plus Jakarta Sans** que tem aparencia muito similar:
+```html
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+```
+
+---
+
+## 6. Resultado Esperado
+
+Apos a implementacao:
+- Sistema com visual moderno alinhado ao site glacialcoldbrasil.com.br
+- Todas as telas funcionais com CRUD completo
+- Fonte elegante e profissional
+- Cards com efeitos de hover e sombras modernas
+- Experiencia de usuario premium
 
