@@ -88,7 +88,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
       },
       boxShadow: {
         "gold-glow": "0 0 20px -5px hsl(43 74% 49% / 0.3)",
