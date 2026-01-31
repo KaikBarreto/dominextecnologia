@@ -8,7 +8,6 @@ import {
   FileText,
   Settings,
   LogOut,
-  Snowflake,
   UserCircle,
   TrendingUp,
 } from 'lucide-react';
@@ -26,7 +25,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
+import logoWhite from '@/assets/logo-white.png';
 
 const mainMenuItems = [
   {
@@ -111,18 +110,12 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-3 px-4 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Snowflake className="h-6 w-6 text-sidebar-primary-foreground" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-sidebar-foreground">
-              Glacial Cold
-            </span>
-            <span className="text-xs text-sidebar-foreground/70">
-              Brasil
-            </span>
-          </div>
+        <div className="flex items-center justify-center px-4 py-4">
+          <img 
+            src={logoWhite} 
+            alt="Glacial Cold Brasil" 
+            className="h-10 w-auto"
+          />
         </div>
       </SidebarHeader>
 
