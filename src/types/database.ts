@@ -79,18 +79,53 @@ export interface ServiceOrder {
   parts_value?: number;
   total_value?: number;
   check_in_time?: string;
-  check_in_location?: { lat: number; lng: number };
+  check_in_location?: { lat: number; lng: number } | null;
   check_out_time?: string;
-  check_out_location?: { lat: number; lng: number };
+  check_out_location?: { lat: number; lng: number } | null;
   client_signature?: string;
   notes?: string;
   created_by?: string;
+  form_template_id?: string;
   created_at: string;
   updated_at: string;
   // Relations
   customer?: Customer;
   equipment?: Equipment;
   technician?: Profile;
+  form_template?: FormTemplate;
+}
+
+export interface FormTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  questions?: FormQuestion[];
+}
+
+export interface FormQuestion {
+  id: string;
+  template_id: string;
+  question: string;
+  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select';
+  options?: string[];
+  is_required: boolean;
+  position: number;
+  description?: string;
+  created_at: string;
+}
+
+export interface FormResponse {
+  id: string;
+  service_order_id: string;
+  question_id: string;
+  response_value?: string;
+  response_photo_url?: string;
+  responded_at: string;
+  responded_by?: string;
 }
 
 export interface InventoryItem {

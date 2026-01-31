@@ -14,6 +14,7 @@ export interface ServiceOrderInput {
   scheduled_time?: string;
   description?: string;
   notes?: string;
+  form_template_id?: string;
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
@@ -45,12 +46,13 @@ export function useServiceOrders() {
         .select(`
           *,
           customer:customers(id, name, phone, address, city),
-          equipment:equipment(id, name, brand, model)
+          equipment:equipment(id, name, brand, model),
+          form_template:form_templates(id, name)
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as (ServiceOrder & { customer: any; equipment: any })[];
+      return data as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any })[];
     },
   });
 
