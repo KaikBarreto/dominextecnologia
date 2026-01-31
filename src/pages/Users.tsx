@@ -1,18 +1,21 @@
 import { useState } from 'react';
-import { UserCircle, Search, Mail, Phone, Shield } from 'lucide-react';
+import { UserCircle, Search, Phone, Shield, AlertCircle, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useUsers, type UserWithRole, ROLE_LABELS, ROLE_COLORS, type AppRole } from '@/hooks/useUsers';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ROLES: AppRole[] = ['admin', 'gestor', 'tecnico', 'comercial', 'financeiro'];
 
 export default function Users() {
-  const { users, isLoading, stats, updateUserRole } = useUsers();
+  const { users, isLoading, stats, updateUserRole, canManageRoles, hasAdmin, currentUserRole } = useUsers();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredUsers = users.filter(user =>
@@ -33,6 +36,8 @@ export default function Users() {
     await updateUserRole.mutateAsync({ userId, role });
   };
 
+  const isCurrentUser = (profile: UserWithRole) => profile.user_id === user?.id;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -42,6 +47,17 @@ export default function Users() {
           <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
         </div>
       </div>
+
+      {/* Bootstrap Admin Alert */}
+      {!hasAdmin && (
+        <Alert className="border-warning bg-warning/10">
+          <AlertCircle className="h-4 w-4 text-warning" />
+          <AlertTitle className="text-warning">Configuração Inicial</AlertTitle>
+          <AlertDescription>
+            Nenhum administrador foi definido ainda. Selecione uma role "Administrador" para seu usuário para poder gerenciar a equipe.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -98,6 +114,11 @@ export default function Users() {
             <UserCircle className="h-5 w-5" />
             Lista de Usuários
           </CardTitle>
+          <CardDescription>
+            {canManageRoles 
+              ? 'Você pode gerenciar as roles dos usuários' 
+              : 'Apenas administradores e gestores podem alterar roles'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -125,52 +146,66 @@ export default function Users() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredUsers.map((user) => (
+              {filteredUsers.map((userProfile) => (
                 <div
-                  key={user.id}
-                  className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg border bg-card hover:shadow-card-hover transition-shadow"
+                  key={userProfile.id}
+                  className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg border bg-card hover:shadow-card-hover transition-shadow ${
+                    isCurrentUser(userProfile) ? 'ring-2 ring-primary/20' : ''
+                  }`}
                 >
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.avatar_url || undefined} alt={user.full_name} />
+                    <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name} />
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {getInitials(user.full_name)}
+                      {getInitials(userProfile.full_name)}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium truncate">{user.full_name}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium truncate">{userProfile.full_name}</h4>
+                      {isCurrentUser(userProfile) && (
+                        <Badge variant="outline" className="text-xs">Você</Badge>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
-                      {user.phone && (
+                      {userProfile.phone && (
                         <span className="flex items-center gap-1">
                           <Phone className="h-3.5 w-3.5" />
-                          {user.phone}
+                          {userProfile.phone}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {user.role && (
-                      <Badge variant="secondary" className={ROLE_COLORS[user.role]}>
-                        {ROLE_LABELS[user.role]}
+                    {userProfile.role && (
+                      <Badge variant="secondary" className={ROLE_COLORS[userProfile.role]}>
+                        {ROLE_LABELS[userProfile.role]}
                       </Badge>
                     )}
                     
-                    <Select
-                      value={user.role || ''}
-                      onValueChange={(value) => handleRoleChange(user.user_id, value as AppRole)}
-                    >
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Selecionar role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map(role => (
-                          <SelectItem key={role} value={role}>
-                            {ROLE_LABELS[role]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {(canManageRoles || (!hasAdmin && isCurrentUser(userProfile))) && (
+                      <Select
+                        value={userProfile.role || 'none'}
+                        onValueChange={(value) => {
+                          if (value !== 'none') {
+                            handleRoleChange(userProfile.user_id, value as AppRole);
+                          }
+                        }}
+                        disabled={updateUserRole.isPending}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue placeholder="Selecionar role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map(role => (
+                            <SelectItem key={role} value={role}>
+                              {ROLE_LABELS[role]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
               ))}

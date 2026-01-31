@@ -5,10 +5,16 @@ import type { Tables, TablesInsert, TablesUpdate, Enums } from '@/integrations/s
 
 export type Lead = Tables<'leads'> & {
   customers?: Tables<'customers'> | null;
+  assigned_profile?: { full_name: string } | null;
 };
 export type LeadInsert = TablesInsert<'leads'>;
 export type LeadUpdate = TablesUpdate<'leads'>;
 export type LeadStatus = Enums<'lead_status'>;
+
+export type LeadInteraction = Tables<'lead_interactions'> & {
+  created_by_profile?: { full_name: string } | null;
+};
+export type LeadInteractionInsert = TablesInsert<'lead_interactions'>;
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   lead: 'Lead',
@@ -26,6 +32,29 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   fechado_perdido: 'bg-destructive/20 text-destructive',
 };
 
+export const INTERACTION_TYPES = [
+  { value: 'ligacao', label: 'Ligação', icon: '📞' },
+  { value: 'email', label: 'E-mail', icon: '📧' },
+  { value: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+  { value: 'reuniao', label: 'Reunião', icon: '🤝' },
+  { value: 'visita', label: 'Visita', icon: '🏢' },
+  { value: 'proposta', label: 'Proposta Enviada', icon: '📄' },
+  { value: 'outro', label: 'Outro', icon: '📝' },
+];
+
+export const LEAD_SOURCES = [
+  'Indicação',
+  'Site',
+  'Telefone',
+  'WhatsApp',
+  'Google',
+  'Instagram',
+  'Facebook',
+  'Parceiro',
+  'Feira/Evento',
+  'Outro',
+];
+
 export function useLeads() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,7 +68,7 @@ export function useLeads() {
           *,
           customers (id, name, phone, email)
         `)
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
       
       if (error) throw error;
       return data as Lead[];
@@ -48,9 +77,10 @@ export function useLeads() {
 
   const createLead = useMutation({
     mutationFn: async (lead: LeadInsert) => {
+      const { data: userData } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('leads')
-        .insert(lead)
+        .insert({ ...lead, created_by: userData.user?.id })
         .select()
         .single();
       
@@ -146,5 +176,59 @@ export function useLeads() {
       total: leads.length,
       totalValue,
     },
+  };
+}
+
+export function useLeadInteractions(leadId: string | null) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: interactions = [], isLoading } = useQuery({
+    queryKey: ['lead_interactions', leadId],
+    queryFn: async () => {
+      if (!leadId) return [];
+      
+      const { data, error } = await supabase
+        .from('lead_interactions')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as LeadInteraction[];
+    },
+    enabled: !!leadId,
+  });
+
+  const createInteraction = useMutation({
+    mutationFn: async (interaction: LeadInteractionInsert) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from('lead_interactions')
+        .insert({ ...interaction, created_by: userData.user?.id })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead_interactions', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({ title: 'Interação registrada!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Erro ao registrar interação', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  return {
+    interactions,
+    isLoading,
+    createInteraction,
   };
 }
