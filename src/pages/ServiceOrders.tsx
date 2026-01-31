@@ -11,7 +11,9 @@ import {
   XCircle,
   Calendar,
   User,
+  ExternalLink,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,6 +75,7 @@ const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string
 };
 
 export default function ServiceOrders() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
@@ -280,7 +283,19 @@ export default function ServiceOrders() {
                           </Select>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Link do Técnico"
+                              onClick={() => {
+                                const url = `${window.location.origin}/os-tecnico/${os.id}`;
+                                navigator.clipboard.writeText(url);
+                                toast({ title: 'Link copiado!', description: 'Envie para o técnico acessar a OS.' });
+                              }}
+                            >
+                              <ExternalLink className="h-4 w-4 text-primary" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"

@@ -18,6 +18,7 @@ import PMOC from "./pages/PMOC";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import MobileMenu from "./pages/MobileMenu";
+import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
 
 // Layout
@@ -75,6 +76,9 @@ const AppRoutes = () => (
         </PublicRoute>
       }
     />
+    
+    {/* Technician OS - Public route with OS ID */}
+    <Route path="/os-tecnico/:id" element={<TechnicianOS />} />
 
     {/* Protected Routes */}
     <Route
