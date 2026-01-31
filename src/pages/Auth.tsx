@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Snowflake, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,6 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import logoDark from '@/assets/logo-dark.png';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -150,10 +151,11 @@ export default function Auth() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">
-            <Snowflake className="h-10 w-10 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Glacial Cold Brasil</h1>
+          <img 
+            src={logoDark} 
+            alt="Glacial Cold Brasil" 
+            className="h-16 w-auto mb-2"
+          />
           <p className="text-muted-foreground">Sistema de Gestão</p>
         </div>
 
