@@ -72,6 +72,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* YouTube Video */}
+      <div className="overflow-hidden rounded-2xl border-4 border-black shadow-lg">
+        <div className="aspect-video w-full">
+          <iframe
+            width="100%"
+            height="100%"
+            src="https://www.youtube.com/embed/85YXjCU0pmc"
+            title="Glacial Cold Brasil"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="border-0"
+          />
+        </div>
+      </div>
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground md:text-3xl">
