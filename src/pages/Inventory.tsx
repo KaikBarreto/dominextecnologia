@@ -178,7 +178,7 @@ export default function Inventory() {
                         <div className="flex items-center gap-2">
                           {item.name}
                           {isLowStock(item) && (
-                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
+                            <Badge variant="warning">
                               <AlertTriangle className="mr-1 h-3 w-3" />
                               Baixo
                             </Badge>

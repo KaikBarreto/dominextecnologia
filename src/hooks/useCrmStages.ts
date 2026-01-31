@@ -31,12 +31,12 @@ export interface CrmStageUpdate {
 }
 
 export const STAGE_COLORS = [
-  { value: 'muted', label: 'Cinza', class: 'bg-muted text-muted-foreground' },
-  { value: 'info', label: 'Azul', class: 'bg-info/20 text-info' },
-  { value: 'warning', label: 'Amarelo', class: 'bg-warning/20 text-warning' },
-  { value: 'success', label: 'Verde', class: 'bg-success/20 text-success' },
-  { value: 'destructive', label: 'Vermelho', class: 'bg-destructive/20 text-destructive' },
-  { value: 'primary', label: 'Primária', class: 'bg-primary/20 text-primary' },
+  { value: 'muted', label: 'Cinza', class: 'bg-muted-foreground text-white' },
+  { value: 'info', label: 'Azul', class: 'bg-info text-white' },
+  { value: 'warning', label: 'Amarelo', class: 'bg-warning text-white' },
+  { value: 'success', label: 'Verde', class: 'bg-success text-white' },
+  { value: 'destructive', label: 'Vermelho', class: 'bg-destructive text-white' },
+  { value: 'primary', label: 'Dourado', class: 'bg-primary text-white' },
 ];
 
 export function useCrmStages() {

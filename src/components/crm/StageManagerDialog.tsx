@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Plus, GripVertical, Pencil, Trash2, Check, X, Trophy, XCircle } from 'lucide-react';
 import {
   Dialog,
@@ -37,11 +37,16 @@ interface StageManagerDialogProps {
 }
 
 export function StageManagerDialog({ children }: StageManagerDialogProps) {
-  const { stages, createStage, updateStage, deleteStage, getStageColorClass } = useCrmStages();
+  const { stages, createStage, updateStage, deleteStage, reorderStages, getStageColorClass } = useCrmStages();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newStage, setNewStage] = useState({ name: '', color: 'muted', is_won: false, is_lost: false });
+  
+  // Drag and drop state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragNodeRef = useRef<HTMLDivElement | null>(null);
 
   const handleCreateStage = () => {
     if (!newStage.name.trim()) return;
@@ -62,6 +67,56 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
     }
   };
 
+  // Drag handlers
+  const handleDragStart = (e: React.DragEvent, stageId: string) => {
+    setDraggedId(stageId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', stageId);
+    if (dragNodeRef.current) {
+      dragNodeRef.current.style.opacity = '0.5';
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+    if (dragNodeRef.current) {
+      dragNodeRef.current.style.opacity = '1';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    if (draggedId && draggedId !== stageId) {
+      setDragOverId(stageId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) return;
+
+    const draggedIndex = stages.findIndex(s => s.id === draggedId);
+    const targetIndex = stages.findIndex(s => s.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Create new order
+    const newOrder = [...stages];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, removed);
+
+    // Update positions
+    reorderStages.mutate(newOrder.map(s => s.id));
+
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   const EditableRow = ({ stage }: { stage: CrmStage }) => {
     const [name, setName] = useState(stage.name);
     const [color, setColor] = useState(stage.color);
@@ -69,6 +124,8 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
     const [isLost, setIsLost] = useState(stage.is_lost);
 
     const isEditing = editingId === stage.id;
+    const isDragging = draggedId === stage.id;
+    const isDragOver = dragOverId === stage.id;
 
     const handleSave = () => {
       handleUpdateStage(stage, { name, color, is_won: isWon, is_lost: isLost });
@@ -157,8 +214,22 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
     }
 
     return (
-      <div className="flex items-center gap-2 p-2 rounded-lg border bg-card hover:bg-muted/30 transition-colors group">
-        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+      <div
+        ref={isDragging ? dragNodeRef : null}
+        draggable={!isEditing}
+        onDragStart={(e) => handleDragStart(e, stage.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, stage.id)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, stage.id)}
+        className={cn(
+          "flex items-center gap-2 p-2 rounded-lg border bg-card transition-all group",
+          isDragging && "opacity-50",
+          isDragOver && "border-primary border-2 bg-primary/5",
+          !isDragging && !isDragOver && "hover:bg-muted/30"
+        )}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
         <Badge className={cn(getStageColorClass(stage.color), 'font-medium')}>
           {stage.name}
         </Badge>
@@ -240,8 +311,11 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
               </div>
             </div>
 
-            {/* Stages List */}
+            {/* Stages List with Drag & Drop */}
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              <p className="text-xs text-muted-foreground mb-2">
+                Arraste para reordenar os estágios
+              </p>
               {stages.map((stage) => (
                 <EditableRow key={stage.id} stage={stage} />
               ))}
@@ -263,7 +337,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteStage}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-white hover:bg-destructive/90"
             >
               Remover
             </AlertDialogAction>
