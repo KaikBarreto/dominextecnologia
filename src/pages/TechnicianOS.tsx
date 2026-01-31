@@ -27,7 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { DynamicFormQuestions } from '@/components/technician/DynamicFormQuestions';
+import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -63,6 +63,9 @@ export default function TechnicianOS() {
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkInLocation, setCheckInLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [checkOutLocation, setCheckOutLocation] = useState<{ lat: number; lng: number } | null>(null);
+  
+  // Form validation state
+  const [formValidation, setFormValidation] = useState<FormValidationResult>({ isValid: true, missingQuestions: [] });
 
   useEffect(() => {
     if (id) {
@@ -175,6 +178,16 @@ export default function TechnicianOS() {
   };
 
   const handleCheckOut = async () => {
+    // Validate required form fields before checkout
+    if (serviceOrder?.form_template_id && !formValidation.isValid) {
+      toast({
+        variant: 'destructive',
+        title: 'Campos obrigatórios pendentes',
+        description: `Preencha os campos: ${formValidation.missingQuestions.slice(0, 3).join(', ')}${formValidation.missingQuestions.length > 3 ? '...' : ''}`,
+      });
+      return;
+    }
+
     try {
       const location = await getCurrentLocation();
       const now = new Date().toISOString();
@@ -512,6 +525,11 @@ export default function TechnicianOS() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <ClipboardCheck className="h-4 w-4" />
                 Formulário: {(serviceOrder as any).form_template?.name || 'Checklist'}
+                {!formValidation.isValid && (
+                  <Badge variant="destructive" className="ml-2 text-xs">
+                    {formValidation.missingQuestions.length} pendente{formValidation.missingQuestions.length > 1 ? 's' : ''}
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
                 Responda as perguntas do formulário de inspeção
@@ -521,6 +539,7 @@ export default function TechnicianOS() {
               <DynamicFormQuestions 
                 serviceOrderId={id!}
                 templateId={serviceOrder.form_template_id}
+                onValidationChange={setFormValidation}
               />
             </CardContent>
           </Card>

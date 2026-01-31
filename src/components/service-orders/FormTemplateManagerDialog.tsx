@@ -424,6 +424,18 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="new-question-required"
+                          checked={newQuestion.is_required ?? true}
+                          onCheckedChange={(checked) => setNewQuestion({ ...newQuestion, is_required: checked })}
+                        />
+                        <Label htmlFor="new-question-required" className="text-sm cursor-pointer">
+                          Campo obrigatório
+                        </Label>
+                      </div>
                       <Button
                         onClick={handleAddQuestion}
                         disabled={!newQuestion.question?.trim() || createQuestion.isPending}

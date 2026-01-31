@@ -23,18 +23,45 @@ interface FormResponse {
   response_photo_url: string | null;
 }
 
+export interface FormValidationResult {
+  isValid: boolean;
+  missingQuestions: string[];
+}
+
 interface DynamicFormQuestionsProps {
   serviceOrderId: string;
   templateId: string;
+  onValidationChange?: (result: FormValidationResult) => void;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationChange }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+
+  // Validation effect - notify parent about required field status
+  useEffect(() => {
+    if (onValidationChange && questions.length > 0) {
+      const requiredQuestions = questions.filter(q => q.is_required);
+      const missingQuestions: string[] = [];
+      
+      requiredQuestions.forEach(q => {
+        const response = responses[q.id];
+        const hasValue = response?.response_value?.trim() || response?.response_photo_url;
+        if (!hasValue) {
+          missingQuestions.push(q.question);
+        }
+      });
+
+      onValidationChange({
+        isValid: missingQuestions.length === 0,
+        missingQuestions,
+      });
+    }
+  }, [questions, responses, onValidationChange]);
 
   useEffect(() => {
     fetchQuestions();
