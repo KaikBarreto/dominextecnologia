@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { format } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,17 @@ export function ServiceOrderFormDialog({
   );
   const { equipment } = useEquipment(selectedCustomerId);
 
+  // Default to current date/time for new OS
+  const defaultDate = useMemo(() => {
+    if (serviceOrder?.scheduled_date) return serviceOrder.scheduled_date;
+    return format(new Date(), 'yyyy-MM-dd');
+  }, [serviceOrder?.scheduled_date]);
+
+  const defaultTime = useMemo(() => {
+    if (serviceOrder?.scheduled_time) return serviceOrder.scheduled_time;
+    return format(new Date(), 'HH:mm');
+  }, [serviceOrder?.scheduled_time]);
+
   const form = useForm<ServiceOrderFormData>({
     resolver: zodResolver(serviceOrderSchema),
     defaultValues: {
@@ -78,8 +90,8 @@ export function ServiceOrderFormDialog({
       equipment_id: serviceOrder?.equipment_id ?? '',
       technician_id: serviceOrder?.technician_id ?? '',
       os_type: (serviceOrder?.os_type as OsType) ?? 'manutencao_corretiva',
-      scheduled_date: serviceOrder?.scheduled_date ?? '',
-      scheduled_time: serviceOrder?.scheduled_time ?? '',
+      scheduled_date: defaultDate,
+      scheduled_time: defaultTime,
       description: serviceOrder?.description ?? '',
       notes: serviceOrder?.notes ?? '',
       form_template_id: serviceOrder?.form_template_id ?? '',
