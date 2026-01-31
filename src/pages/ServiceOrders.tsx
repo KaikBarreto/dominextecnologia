@@ -13,6 +13,7 @@ import {
   User,
   ExternalLink,
   Settings2,
+  Eye,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
+import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -84,6 +86,8 @@ export default function ServiceOrders() {
   const [editingOS, setEditingOS] = useState<ServiceOrder | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [osToDelete, setOsToDelete] = useState<ServiceOrder | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingOsId, setViewingOsId] = useState<string | null>(null);
 
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
 
@@ -296,6 +300,17 @@ export default function ServiceOrders() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              title="Visualizar OS"
+                              onClick={() => {
+                                setViewingOsId(os.id);
+                                setViewDialogOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               title="Abrir Formulário do Técnico"
                               onClick={() => {
                                 const url = `${window.location.origin}/os-tecnico/${os.id}`;
@@ -362,6 +377,12 @@ export default function ServiceOrders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ServiceOrderViewDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        serviceOrderId={viewingOsId}
+      />
     </div>
   );
 }
