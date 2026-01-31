@@ -14,7 +14,8 @@ import {
   X,
   Play,
   Square,
-  FileSignature
+  FileSignature,
+  ClipboardCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { DynamicFormQuestions } from '@/components/technician/DynamicFormQuestions';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -76,7 +78,8 @@ export default function TechnicianOS() {
         .select(`
           *,
           customer:customers(id, name, phone, address, city, state),
-          equipment:equipment(id, name, brand, model, serial_number, location)
+          equipment:equipment(id, name, brand, model, serial_number, location),
+          form_template:form_templates(id, name)
         `)
         .eq('id', id)
         .single();
@@ -501,6 +504,27 @@ export default function TechnicianOS() {
             ))}
           </CardContent>
         </Card>
+
+        {/* Dynamic Form Questions */}
+        {serviceOrder.form_template_id && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ClipboardCheck className="h-4 w-4" />
+                Formulário: {(serviceOrder as any).form_template?.name || 'Checklist'}
+              </CardTitle>
+              <CardDescription>
+                Responda as perguntas do formulário de inspeção
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DynamicFormQuestions 
+                serviceOrderId={id!}
+                templateId={serviceOrder.form_template_id}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Service Details Form */}
         <Card>
