@@ -24,7 +24,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import logoDark from '@/assets/logo-dark.png';
+import logoWhite from '@/assets/logo-white.png';
+import loginBg from '@/assets/login-bg.jpg';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -147,31 +148,49 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-glacial-100 via-background to-glacial-50 p-4">
+    <div 
+      className="flex min-h-screen items-center justify-center p-4"
+      style={{
+        backgroundImage: `url(${loginBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
           <img 
-            src={logoDark} 
+            src={logoWhite} 
             alt="Glacial Cold Brasil" 
             className="h-16 w-auto mb-2"
           />
-          <p className="text-muted-foreground">Sistema de Gestão</p>
+          <p className="text-white/80">Sistema de Gestão</p>
         </div>
 
-        <Card className="border-0 shadow-xl">
+        <Card className="border-0 bg-black/60 backdrop-blur-md shadow-2xl">
           <Tabs defaultValue="login" className="w-full">
             <CardHeader className="pb-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Entrar</TabsTrigger>
-                <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-white/10">
+                <TabsTrigger 
+                  value="login" 
+                  className="text-white data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Entrar
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="signup"
+                  className="text-white data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Cadastrar
+                </TabsTrigger>
               </TabsList>
             </CardHeader>
 
             <CardContent>
               <TabsContent value="login" className="mt-0">
-                <CardTitle className="mb-2 text-lg">Bem-vindo de volta</CardTitle>
-                <CardDescription className="mb-6">
+                <CardTitle className="mb-2 text-lg text-white">Bem-vindo de volta</CardTitle>
+                <CardDescription className="mb-6 text-white/70">
                   Entre com suas credenciais para acessar o sistema
                 </CardDescription>
 
@@ -182,13 +201,13 @@ export default function Auth() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel className="text-white">Email</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 placeholder="seu@email.com"
-                                className="pl-10"
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
                               />
                             </div>
@@ -203,14 +222,14 @@ export default function Auth() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Senha</FormLabel>
+                          <FormLabel className="text-white">Senha</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 type="password"
                                 placeholder="••••••••"
-                                className="pl-10"
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
                               />
                             </div>
@@ -235,8 +254,8 @@ export default function Auth() {
               </TabsContent>
 
               <TabsContent value="signup" className="mt-0">
-                <CardTitle className="mb-2 text-lg">Criar conta</CardTitle>
-                <CardDescription className="mb-6">
+                <CardTitle className="mb-2 text-lg text-white">Criar conta</CardTitle>
+                <CardDescription className="mb-6 text-white/70">
                   Preencha os dados para criar sua conta
                 </CardDescription>
 
@@ -247,13 +266,13 @@ export default function Auth() {
                       name="fullName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nome completo</FormLabel>
+                          <FormLabel className="text-white">Nome completo</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 placeholder="Seu nome"
-                                className="pl-10"
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
                               />
                             </div>
@@ -268,13 +287,13 @@ export default function Auth() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel className="text-white">Email</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 placeholder="seu@email.com"
-                                className="pl-10"
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
                               />
                             </div>
@@ -289,14 +308,14 @@ export default function Auth() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Senha</FormLabel>
+                          <FormLabel className="text-white">Senha</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 type="password"
                                 placeholder="••••••••"
-                                className="pl-10"
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
                               />
                             </div>
@@ -311,14 +330,14 @@ export default function Auth() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirmar senha</FormLabel>
+                          <FormLabel className="text-white">Confirmar senha</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
                                 type="password"
                                 placeholder="••••••••"
-                                className="pl-10"
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
                               />
                             </div>
@@ -345,7 +364,7 @@ export default function Auth() {
           </Tabs>
         </Card>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-white/60">
           © 2024 Glacial Cold Brasil. Todos os direitos reservados.
         </p>
       </div>
