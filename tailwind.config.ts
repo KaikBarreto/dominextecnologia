@@ -69,17 +69,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        gold: {
-          50: "hsl(43 60% 97%)",
-          100: "hsl(43 60% 92%)",
-          200: "hsl(43 65% 82%)",
-          300: "hsl(43 70% 68%)",
-          400: "hsl(43 74% 55%)",
-          500: "hsl(43 74% 49%)",
-          600: "hsl(43 80% 42%)",
-          700: "hsl(43 85% 35%)",
-          800: "hsl(43 80% 28%)",
-          900: "hsl(43 75% 20%)",
+        brand: {
+          50: "hsl(33 60% 97%)",
+          100: "hsl(33 60% 92%)",
+          200: "hsl(33 65% 82%)",
+          300: "hsl(33 70% 75%)",
+          400: "hsl(33 77% 68%)",
+          500: "hsl(33 77% 60%)",
+          600: "hsl(33 80% 52%)",
+          700: "hsl(33 85% 45%)",
+          800: "hsl(33 80% 38%)",
+          900: "hsl(33 75% 30%)",
         },
       },
       borderRadius: {
@@ -88,10 +88,10 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
+        sans: ["Lufga", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        "gold-glow": "0 0 20px -5px hsl(43 74% 49% / 0.3)",
+        "brand-glow": "0 0 20px -5px hsl(33 77% 68% / 0.3)",
         "card-hover": "0 10px 40px -10px hsl(0 0% 0% / 0.1)",
       },
       keyframes: {
