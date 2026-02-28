@@ -40,15 +40,231 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
-    version: '1.0.0',
+    version: '1.0.15',
     date: '28 de fevereiro de 2026',
-    type: 'major',
+    type: 'patch',
     changes: [
       {
-        title: 'Lançamento do Sistema',
-        description: 'Versão inicial com módulos de OS, Clientes, CRM, Estoque, Financeiro, PMOC e Agenda.',
+        title: 'Contraste de cores em eventos sobrepostos',
+        description: 'Eventos do mesmo tipo de serviço sobrepostos na visão semanal agora exibem tons levemente diferentes para melhor diferenciação visual.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cascata vertical ampliada na visão semanal',
+        description: 'Aumento do deslocamento vertical entre eventos sobrepostos na visão semanal para melhor legibilidade.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ocultar descrição e detalhes em OS concluída',
+        description: 'O relatório de OS finalizada não exibe mais "Descrição do Chamado" e "Detalhes do Serviço", que são visíveis apenas durante o preenchimento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.0.14',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Drag & Drop sobre eventos sobrepostos',
+        description: 'O reagendamento via arraste agora funciona mesmo ao soltar sobre outro card, calculando o horário pela posição vertical do mouse.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.0.13',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Eventos lado a lado na visão diária',
+        description: 'Quando duas ou mais OS se sobrepõem no horário, elas são exibidas em colunas lado a lado na visão diária da agenda.',
         category: 'recurso',
       },
+    ],
+  },
+  {
+    version: '1.0.12',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cascata vertical na visão semanal',
+        description: 'Eventos sobrepostos na visão semanal são exibidos em cascata vertical com deslocamento progressivo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Drag & Drop na visão semanal',
+        description: 'Suporte completo a drag & drop para reagendamento de OS na visão semanal, incluindo sobre cards sobrepostos.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.11',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Duração proporcional nos calendários',
+        description: 'Eventos nas visões diária e semanal agora ocupam espaço proporcional à duração configurada da OS.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Layout do resumo lateral corrigido',
+        description: 'Correção de overflow no painel de resumo da OS na agenda, evitando que textos longos ultrapassem a largura.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.0.10',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tipo de serviço no relatório',
+        description: 'O nome do tipo de serviço agora aparece na seção "Descrição do Chamado" do relatório da OS.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Múltiplos questionários no relatório',
+        description: 'O relatório de OS concluída agora exibe respostas de todos os questionários vinculados, não apenas o primeiro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.0.9',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Auto-preenchimento de cliente em equipamento',
+        description: 'Ao criar equipamento pela aba de um cliente, o campo de cliente é preenchido automaticamente.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.0.8',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório profissional de OS',
+        description: 'Relatório completo com layout profissional para OS concluídas, incluindo cabeçalho da empresa, fotos, checklist e assinaturas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Exportação para PDF',
+        description: 'Download do relatório de OS em PDF formatado para A4 com alta qualidade de impressão.',
+        category: 'recurso',
+      },
+      {
+        title: 'Link de compartilhamento',
+        description: 'Botão para copiar o link direto do relatório da OS para compartilhamento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.7',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Execução de OS pelo técnico',
+        description: 'Fluxo completo de execução: check-in com geolocalização, preenchimento de formulário dinâmico, fotos antes/durante/depois e check-out.',
+        category: 'recurso',
+      },
+      {
+        title: 'Assinatura digital',
+        description: 'Captura de assinatura do técnico e do cliente diretamente na tela de execução da OS.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.6',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Formulários dinâmicos (Questionários)',
+        description: 'Criação de templates de formulário com perguntas de múltiplos tipos: texto, número, booleano, seleção, foto e assinatura.',
+        category: 'recurso',
+      },
+      {
+        title: 'Vinculação de formulários a tipos de serviço',
+        description: 'Templates de formulário podem ser associados a tipos de serviço para aplicação automática nas OS.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.5',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PMOC — Planos e Contratos',
+        description: 'Gestão de contratos PMOC com frequência configurável e geração automática de OS de manutenção preventiva.',
+        category: 'recurso',
+      },
+      {
+        title: 'Geração automática de OS via PMOC',
+        description: 'Edge function para criação automática de ordens de serviço com base nos planos PMOC ativos.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.4',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Módulo Financeiro',
+        description: 'Controle de entradas e saídas financeiras vinculadas a clientes e OS, com filtros por período e categoria.',
+        category: 'recurso',
+      },
+      {
+        title: 'Módulo de Estoque',
+        description: 'Gestão de inventário com controle de quantidade mínima, movimentações e vínculo com OS.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.3',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'CRM — Pipeline de Vendas',
+        description: 'Kanban de leads com estágios personalizáveis, registro de interações e conversão para cliente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Categorias de Equipamento',
+        description: 'Organização de equipamentos por categorias com cores personalizáveis.',
+        category: 'recurso',
+      },
+      {
+        title: 'Campos customizados em equipamentos',
+        description: 'Configuração de campos adicionais dinâmicos para fichas de equipamento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.2',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
       {
         title: 'Agenda Técnica Inteligente',
         description: 'Calendário com visões Mês, Semana e Dia, filtros por técnico/cliente/status, drag & drop e Quick Action.',
@@ -59,15 +275,64 @@ const changelog: ChangelogEntry[] = [
         description: 'Cadastro de tipos de serviço com cores personalizáveis e vinculação com formulários.',
         category: 'recurso',
       },
+    ],
+  },
+  {
+    version: '1.0.1',
+    date: '28 de fevereiro de 2026',
+    type: 'patch',
+    changes: [
       {
-        title: 'Sistema de Versionamento',
-        description: 'Histórico de versões com changelog filtrável por categoria.',
+        title: 'Sistema de Versionamento e Changelog',
+        description: 'Histórico de versões com changelog filtrável por categoria, acessível pelo rodapé do sistema.',
         category: 'melhoria',
       },
       {
-        title: 'Background Animado no Login',
+        title: 'Background animado no Login',
         description: 'Substituição de imagem estática por animação WebGL DarkVeil nas telas de autenticação.',
         category: 'melhoria',
+      },
+      {
+        title: 'Gestão de Usuários e Perfis',
+        description: 'Cadastro de usuários com papéis (admin, gestor, técnico, comercial, financeiro) e gerenciamento de acessos.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.0.0',
+    date: '28 de fevereiro de 2026',
+    type: 'major',
+    changes: [
+      {
+        title: 'Lançamento do Sistema',
+        description: 'Versão inicial com estrutura base, autenticação, layout responsivo e navegação principal.',
+        category: 'recurso',
+      },
+      {
+        title: 'Módulo de Clientes',
+        description: 'Cadastro completo de clientes PF/PJ com endereço, documentos, e detalhamento individual.',
+        category: 'recurso',
+      },
+      {
+        title: 'Módulo de Equipamentos',
+        description: 'Registro de equipamentos vinculados a clientes com dados técnicos, fotos e anexos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ordens de Serviço',
+        description: 'Criação e gestão de OS com tipos (preventiva, corretiva, instalação, visita), status configuráveis e vínculo com clientes e equipamentos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configurações da Empresa',
+        description: 'Painel de configuração com dados da empresa, logo e informações de contato exibidas nos relatórios.',
+        category: 'recurso',
+      },
+      {
+        title: 'Autenticação e Segurança',
+        description: 'Login seguro com confirmação de e-mail, recuperação de senha e controle de acesso baseado em papéis (RLS).',
+        category: 'seguranca',
       },
     ],
   },
