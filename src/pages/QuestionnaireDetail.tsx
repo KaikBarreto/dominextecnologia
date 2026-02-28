@@ -570,3 +570,47 @@ function QuestionRow({
     </div>
   );
 }
+
+// Inline editable option component
+function EditableOption({ value, onChange, onRemove }: { value: string; onChange: (v: string) => void; onRemove: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value);
+
+  useEffect(() => { setText(value); }, [value]);
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2 rounded border px-2 py-1 text-xs bg-background">
+        <Input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="h-6 text-xs flex-1 border-0 p-0 focus-visible:ring-0"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); onChange(text); setEditing(false); }
+            if (e.key === 'Escape') { setText(value); setEditing(false); }
+          }}
+          onBlur={() => { onChange(text); setEditing(false); }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded border px-2 py-1 text-xs bg-background group/opt">
+      <span
+        className="flex-1 cursor-pointer hover:text-primary"
+        onClick={() => setEditing(true)}
+        title="Clique para editar"
+      >
+        {value}
+      </span>
+      <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/opt:opacity-100" onClick={() => setEditing(true)}>
+        <Pencil className="h-2.5 w-2.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover/opt:opacity-100" onClick={onRemove}>
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}

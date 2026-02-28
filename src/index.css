@@ -141,6 +141,14 @@ Design Premium com Azul da Marca #1565C0
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-brand);
   }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* Destructive buttons (excluir, cancelar, sair) - vermelho com texto branco */
