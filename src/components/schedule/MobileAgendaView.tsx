@@ -11,7 +11,6 @@ interface MobileAgendaViewProps {
   currentDate: Date;
   orders: (ServiceOrder & { customer: any; equipment: any })[];
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
-  onNewOrder: () => void;
 }
 
 export function MobileAgendaView({ currentDate, orders, onOrderSelect, onNewOrder }: MobileAgendaViewProps) {
