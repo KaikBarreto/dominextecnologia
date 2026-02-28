@@ -16,6 +16,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
