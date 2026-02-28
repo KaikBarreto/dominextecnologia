@@ -30,7 +30,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-5 p-1">
+      <div className="space-y-5 p-1 overflow-hidden">
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={cn('text-xs', statusBadge.className)}>{statusBadge.label}</Badge>
@@ -62,9 +62,9 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
             </div>
           )}
           {order.customer?.address && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              <span className="truncate">
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span className="break-words min-w-0">
                 {order.customer.address}
                 {order.customer.city && `, ${order.customer.city}`}
               </span>
@@ -74,9 +74,9 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
         {/* Equipment */}
         {order.equipment && (
-          <div className="flex items-center gap-2 text-sm">
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-            <span>
+          <div className="flex items-start gap-2 text-sm">
+            <Wrench className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <span className="break-words min-w-0">
               {order.equipment.name}
               {order.equipment.brand && ` - ${order.equipment.brand}`}
               {order.equipment.model && ` ${order.equipment.model}`}

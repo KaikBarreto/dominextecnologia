@@ -51,9 +51,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
   useEffect(() => {
     fetchCompany();
-    if (serviceOrder.form_template_id) {
-      fetchResponses();
-    }
+    fetchAllResponses();
   }, [serviceOrder.id]);
 
   const fetchCompany = async () => {
@@ -61,7 +59,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (data) setCompany(data);
   };
 
-  const fetchResponses = async () => {
+  const fetchAllResponses = async () => {
+    // Fetch all responses for this service order (covers all templates/equipment)
     const { data } = await supabase
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, question:form_questions(*)')
@@ -251,10 +250,15 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           </div>
 
           {/* Description */}
-          {serviceOrder.description && (
+          {(serviceOrder.description || (serviceOrder as any).service_type) && (
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição do Chamado</h3>
-              <p className="text-sm text-slate-700">{serviceOrder.description}</p>
+              {(serviceOrder as any).service_type && (
+                <p className="text-sm font-semibold text-slate-800 mb-1">{(serviceOrder as any).service_type.name}</p>
+              )}
+              {serviceOrder.description && (
+                <p className="text-sm text-slate-700">{serviceOrder.description}</p>
+              )}
             </div>
           )}
 

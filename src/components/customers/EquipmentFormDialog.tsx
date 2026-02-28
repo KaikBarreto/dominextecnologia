@@ -81,8 +81,10 @@ export function EquipmentFormDialog({
 
   useEffect(() => {
     if (open) {
+      // When only one customer is passed and no equipment, auto-select that customer
+      const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
       form.reset({
-        customer_id: equipment?.customer_id ?? '',
+        customer_id: defaultCustomerId,
         name: equipment?.name ?? '',
         category_id: equipment?.category_id ?? '',
         identifier: equipment?.identifier ?? autoIdentifier,
@@ -97,7 +99,7 @@ export function EquipmentFormDialog({
       setPhotoFile(null);
       setPhotoPreview(equipment?.photo_url ?? null);
     }
-  }, [open, equipment, autoIdentifier]);
+  }, [open, equipment, autoIdentifier, customers]);
 
   const uploadPhoto = async (): Promise<string | undefined> => {
     if (!photoFile) return undefined;

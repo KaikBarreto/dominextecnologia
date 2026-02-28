@@ -6,6 +6,7 @@ import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
 interface EventCardProps {
   order: ServiceOrder & { customer: any; equipment: any };
   compact?: boolean;
+  fillHeight?: boolean;
   onClick?: () => void;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
@@ -35,7 +36,7 @@ export function getStatusBadgeClass(status: OsStatus, scheduledDate?: string | n
   return statusConfig[status];
 }
 
-export function EventCard({ order, compact = false, onClick, draggable, onDragStart }: EventCardProps) {
+export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart }: EventCardProps) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
 
   const serviceTypeColor = (order as any).service_type?.color;
@@ -47,7 +48,8 @@ export function EventCard({ order, compact = false, onClick, draggable, onDragSt
         draggable={draggable}
         onDragStart={onDragStart}
         className={cn(
-          'group flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02]',
+          'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
+          fillHeight && 'h-full',
           !serviceTypeColor && statusBadge.className
         )}
         style={serviceTypeColor ? { backgroundColor: serviceTypeColor, color: 'white' } : undefined}
@@ -67,7 +69,10 @@ export function EventCard({ order, compact = false, onClick, draggable, onDragSt
       onClick={onClick}
       draggable={draggable}
       onDragStart={onDragStart}
-      className="p-3 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md hover:border-primary/30 space-y-1.5"
+      className={cn(
+        'p-3 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md hover:border-primary/30 space-y-1.5 overflow-hidden',
+        fillHeight && 'h-full'
+      )}
       style={serviceTypeColor ? { borderLeftWidth: 4, borderLeftColor: serviceTypeColor } : undefined}
     >
       <div className="flex items-center justify-between gap-2">
