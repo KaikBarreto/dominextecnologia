@@ -55,7 +55,7 @@ export function ScheduleHeader({
   onStatusFilterChange,
 }: ScheduleHeaderProps) {
   const hasActiveFilters = technicianFilter !== 'all' || customerFilter !== 'all' || statusFilter !== 'all';
-
+  const { serviceTypes } = useServiceTypes();
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
