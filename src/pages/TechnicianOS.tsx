@@ -36,6 +36,13 @@ interface OSPhoto {
   created_at: string;
 }
 
+interface EquipmentItem {
+  equipment_id: string;
+  form_template_id: string | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
+  form_template: { id: string; name: string } | null;
+}
+
 export default function TechnicianOS() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
