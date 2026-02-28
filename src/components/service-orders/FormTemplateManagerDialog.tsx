@@ -229,11 +229,14 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {QUESTION_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.icon} {t.label}
-                  </SelectItem>
-                ))}
+                {QUESTION_TYPES.map((t) => {
+                  const TIcon = t.icon;
+                  return (
+                    <SelectItem key={t.value} value={t.value}>
+                      <span className="flex items-center gap-2"><TIcon className="h-4 w-4" />{t.label}</span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
