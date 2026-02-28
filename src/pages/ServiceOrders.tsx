@@ -12,37 +12,22 @@ import {
   Calendar,
   Eye,
   ExternalLink,
-  Settings2,
   Wrench,
+  FileText,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,26 +43,10 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
-  pendente: {
-    icon: Clock,
-    color: 'text-white',
-    bgColor: 'bg-warning',
-  },
-  em_andamento: {
-    icon: AlertCircle,
-    color: 'text-white',
-    bgColor: 'bg-info',
-  },
-  concluida: {
-    icon: CheckCircle2,
-    color: 'text-white',
-    bgColor: 'bg-success',
-  },
-  cancelada: {
-    icon: XCircle,
-    color: 'text-white',
-    bgColor: 'bg-destructive',
-  },
+  pendente: { icon: Clock, color: 'text-white', bgColor: 'bg-warning' },
+  em_andamento: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-info' },
+  concluida: { icon: CheckCircle2, color: 'text-white', bgColor: 'bg-success' },
+  cancelada: { icon: XCircle, color: 'text-white', bgColor: 'bg-destructive' },
 };
 
 export default function ServiceOrders() {
@@ -133,7 +102,7 @@ export default function ServiceOrders() {
       <div>
         <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
         <p className="text-muted-foreground">
-          Gerencie suas ordens de serviço e tipos de serviço
+          Gerencie suas ordens de serviço, tipos e questionários
         </p>
       </div>
 
@@ -144,6 +113,7 @@ export default function ServiceOrders() {
             {[
               { key: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
               { key: 'services', label: 'Serviços', icon: Wrench },
+              { key: 'questionnaires', label: 'Questionários', icon: FileText },
             ].map((item) => {
               const isActive = activeTab === item.key;
               return (
@@ -151,7 +121,7 @@ export default function ServiceOrders() {
                   key={item.key}
                   onClick={() => setActiveTab(item.key)}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left w-full',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-left w-full',
                     isActive
                       ? 'bg-primary text-white'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -195,17 +165,10 @@ export default function ServiceOrders() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex gap-2">
-                  <FormTemplateManagerDialog>
-                    <Button variant="outline" size="icon" title="Gerenciar Templates de Formulário">
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </FormTemplateManagerDialog>
-                  <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nova OS
-                  </Button>
-                </div>
+                <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nova OS
+                </Button>
               </div>
 
               {/* Status Summary Cards */}
@@ -297,7 +260,14 @@ export default function ServiceOrders() {
                                   </div>
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">
-                                  <span className="text-sm">{osTypeLabels[os.os_type]}</span>
+                                  {os.service_type ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                      <span className="text-sm">{os.service_type.name}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm">{osTypeLabels[os.os_type]}</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell">
                                   {os.scheduled_date ? (
@@ -347,7 +317,7 @@ export default function ServiceOrders() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      title="Abrir Formulário do Técnico"
+                                      title="Abrir Questionário do Técnico"
                                       onClick={() => {
                                         const url = `${window.location.origin}/os-tecnico/${os.id}`;
                                         window.open(url, '_blank');
@@ -387,8 +357,10 @@ export default function ServiceOrders() {
             </>
           )}
 
-          {activeTab === 'services' && (
-            <ServiceTypesPanel />
+          {activeTab === 'services' && <ServiceTypesPanel />}
+
+          {activeTab === 'questionnaires' && (
+            <FormTemplateManagerDialog />
           )}
         </div>
       </div>
