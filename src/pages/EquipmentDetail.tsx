@@ -131,6 +131,14 @@ export default function EquipmentDetail() {
             </Badge>
           </p>
         </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setEditEquipOpen(true)}>
+            <Edit className="h-4 w-4 mr-1" /> Editar
+          </Button>
+          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteEquipOpen(true)}>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-1 border-b">
