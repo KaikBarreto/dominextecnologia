@@ -34,6 +34,7 @@ export default function CustomerDetail() {
   const { serviceOrders, createServiceOrder } = useServiceOrders();
   const { transactions } = useFinancial();
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
+  const { customers, updateCustomer, deleteCustomer } = useCustomers();
   const { categories } = useEquipmentCategories();
 
   const [equipFormOpen, setEquipFormOpen] = useState(false);
