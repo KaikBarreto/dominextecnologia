@@ -152,6 +152,33 @@ export function CustomerFormDialog({
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Photo upload */}
+              <div className="sm:col-span-2 flex items-center gap-4">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="" className="h-16 w-16 rounded-full object-cover border" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center border">
+                    <Users className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setPhotoFile(file);
+                        setPhotoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <span><Upload className="h-3 w-3 mr-1" /> Foto</span>
+                  </Button>
+                </label>
+              </div>
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Nome *</FormLabel>

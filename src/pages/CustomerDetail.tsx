@@ -67,6 +67,13 @@ export default function CustomerDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
+        {(customer as any).photo_url ? (
+          <img src={(customer as any).photo_url} alt="" className="h-12 w-12 rounded-full object-cover border" />
+        ) : (
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+            <Package className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{customer.name}</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
