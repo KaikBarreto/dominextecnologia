@@ -38,6 +38,8 @@ export default function CustomerDetail() {
 
   const [equipFormOpen, setEquipFormOpen] = useState(false);
   const [osFormOpen, setOsFormOpen] = useState(false);
+  const [editCustomerOpen, setEditCustomerOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
