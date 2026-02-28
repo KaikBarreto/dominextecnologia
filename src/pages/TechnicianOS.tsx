@@ -72,8 +72,28 @@ export default function TechnicianOS() {
       fetchServiceOrder();
       fetchPhotos();
       fetchCompany();
+      fetchEquipmentItems();
     }
   }, [id]);
+
+  const fetchEquipmentItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('service_order_equipment')
+        .select(`
+          equipment_id,
+          form_template_id,
+          equipment:equipment(id, name, brand, model),
+          form_template:form_templates(id, name)
+        `)
+        .eq('service_order_id', id);
+      
+      if (error) throw error;
+      setEquipmentItems((data || []) as unknown as EquipmentItem[]);
+    } catch (error) {
+      console.error('Error fetching equipment items:', error);
+    }
+  };
 
   const fetchCompany = async () => {
     const { data } = await supabase.from('company_settings').select('*').limit(1).single();
