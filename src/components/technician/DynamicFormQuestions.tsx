@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Camera, Upload, Check, X } from 'lucide-react';
+import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
