@@ -524,7 +524,7 @@ export default function TechnicianOS() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ClipboardCheck className="h-4 w-4" />
-                Formulário: {(serviceOrder as any).form_template?.name || 'Checklist'}
+                Questionário: {(serviceOrder as any).form_template?.name || 'Checklist'}
                 {!formValidation.isValid && (
                   <Badge variant="destructive" className="ml-2 text-xs">
                     {formValidation.missingQuestions.length} pendente{formValidation.missingQuestions.length > 1 ? 's' : ''}
