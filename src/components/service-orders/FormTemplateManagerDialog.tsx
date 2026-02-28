@@ -64,6 +64,8 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
   const { serviceTypes } = useServiceTypes();
   
   const [open, setOpen] = useState(false);
+  const isDialogOpen = controlledOpen ?? open;
+  const setDialogOpen = controlledOnOpenChange ?? setOpen;
   const [selectedTemplate, setSelectedTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
