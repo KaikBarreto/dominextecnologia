@@ -18,7 +18,7 @@ import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
 import { EquipmentDetailDialog } from './EquipmentDetailDialog';
 import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
-import { EquipmentCategoryManagerDialog } from './EquipmentCategoryManagerDialog';
+
 import type { Equipment } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
