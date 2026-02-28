@@ -1020,6 +1020,161 @@ export type Database = {
           },
         ]
       }
+      pmoc_generated_os: {
+        Row: {
+          generated_at: string
+          id: string
+          plan_id: string
+          scheduled_for: string
+          service_order_id: string
+        }
+        Insert: {
+          generated_at?: string
+          id?: string
+          plan_id: string
+          scheduled_for: string
+          service_order_id: string
+        }
+        Update: {
+          generated_at?: string
+          id?: string
+          plan_id?: string
+          scheduled_for?: string
+          service_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmoc_generated_os_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "pmoc_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_generated_os_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pmoc_items: {
+        Row: {
+          created_at: string
+          equipment_id: string
+          id: string
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipment_id: string
+          id?: string
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          equipment_id?: string
+          id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmoc_items_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "pmoc_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pmoc_plans: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          form_template_id: string | null
+          frequency_months: number
+          id: string
+          name: string
+          next_generation_date: string
+          notes: string | null
+          service_type_id: string | null
+          status: string
+          technician_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          form_template_id?: string | null
+          frequency_months?: number
+          id?: string
+          name: string
+          next_generation_date: string
+          notes?: string | null
+          service_type_id?: string | null
+          status?: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          form_template_id?: string | null
+          frequency_months?: number
+          id?: string
+          name?: string
+          next_generation_date?: string
+          notes?: string | null
+          service_type_id?: string | null
+          status?: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmoc_plans_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "pmoc_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_plans_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_plans_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_plans_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pmoc_schedules: {
         Row: {
           contract_id: string
@@ -1127,11 +1282,14 @@ export type Database = {
           os_type: Database["public"]["Enums"]["os_type"]
           parts_used: Json | null
           parts_value: number | null
+          require_client_signature: boolean | null
+          require_tech_signature: boolean | null
           scheduled_date: string | null
           scheduled_time: string | null
           service_type_id: string | null
           solution: string | null
           status: Database["public"]["Enums"]["os_status"]
+          tech_signature: string | null
           technician_id: string | null
           total_value: number | null
           updated_at: string
@@ -1157,11 +1315,14 @@ export type Database = {
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
+          require_client_signature?: boolean | null
+          require_tech_signature?: boolean | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          tech_signature?: string | null
           technician_id?: string | null
           total_value?: number | null
           updated_at?: string
@@ -1187,11 +1348,14 @@ export type Database = {
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
+          require_client_signature?: boolean | null
+          require_tech_signature?: boolean | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          tech_signature?: string | null
           technician_id?: string | null
           total_value?: number | null
           updated_at?: string
