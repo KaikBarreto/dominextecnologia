@@ -25,6 +25,7 @@ export default function Schedule() {
   const { data: technicians = [] } = useTechnicians();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
+  const { serviceTypes } = useServiceTypes();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
