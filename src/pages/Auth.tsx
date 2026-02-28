@@ -76,14 +76,10 @@ export default function Auth() {
   };
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center p-4"
-      style={{
-        backgroundImage: `url(${loginBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
+    <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <DarkVeil hueShift={240} speed={0.5} />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
