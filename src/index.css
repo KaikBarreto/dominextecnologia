@@ -58,14 +58,14 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
 
     --radius: 0.75rem;
 
-    /* Sidebar - Preto Premium */
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 90%;
+    /* Sidebar - Light theme */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 10%;
     --sidebar-primary: 33 77% 68%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 33 60% 75%;
-    --sidebar-border: 0 0% 15%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 33 77% 68%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 90%;
     --sidebar-ring: 33 77% 68%;
 
     /* Gradientes customizados */
