@@ -62,7 +62,7 @@ export default function Inventory() {
           <h1 className="text-2xl font-bold">Estoque</h1>
           <p className="text-muted-foreground">Controle de peças e materiais</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
+        <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setDialogOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" />
           Novo Item
         </Button>
