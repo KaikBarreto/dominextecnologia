@@ -70,6 +70,8 @@ export function CustomerFormDialog({
   useEffect(() => {
     if (open) {
       setStep(0);
+      setPhotoFile(null);
+      setPhotoPreview((customer as any)?.photo_url || null);
       form.reset({
         name: customer?.name ?? '',
         customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
@@ -88,12 +90,33 @@ export function CustomerFormDialog({
     }
   }, [open, customer]);
 
+  const uploadPhoto = async (): Promise<string | undefined> => {
+    if (!photoFile) return undefined;
+    const ext = photoFile.name.split('.').pop();
+    const path = `${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('customer-photos').upload(path, photoFile);
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('customer-photos').getPublicUrl(path);
+    return publicUrl;
+  };
+
   const handleSubmit = async (data: CustomerFormData) => {
-    const cleanedData = { ...data, birth_date: data.birth_date || undefined };
-    await onSubmit(cleanedData);
-    form.reset();
-    setStep(0);
-    onOpenChange(false);
+    setUploadingPhoto(true);
+    try {
+      let photo_url: string | undefined;
+      if (photoFile) {
+        photo_url = await uploadPhoto();
+      }
+      const cleanedData = { ...data, birth_date: data.birth_date || undefined, ...(photo_url ? { photo_url } : {}) };
+      await onSubmit(cleanedData);
+      form.reset();
+      setStep(0);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const canGoNext = () => {
