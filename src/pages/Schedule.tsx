@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { DailyCalendar } from '@/components/schedule/DailyCalendar';
@@ -10,8 +12,11 @@ import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 
