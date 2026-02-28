@@ -16,6 +16,42 @@ interface WeeklyCalendarProps {
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
 const SLOT_HEIGHT = 80; // px per hour
+const CASCADE_OFFSET = 18; // px offset for each overlapping card
+
+type PositionedOrder = {
+  order: (ServiceOrder & { customer: any; equipment: any });
+  startMin: number;
+  endMin: number;
+  index: number; // cascade index within cluster
+};
+
+function layoutCascade(
+  dayOrders: (ServiceOrder & { customer: any; equipment: any })[]
+): PositionedOrder[] {
+  const items = dayOrders.map((order) => {
+    const [h, m] = order.scheduled_time!.split(':').map(Number);
+    const startMin = h * 60 + m;
+    const duration = (order as any).duration_minutes || 120;
+    return { order, startMin, endMin: startMin + duration, index: 0 };
+  }).sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+  // Group into clusters of overlapping events
+  const clusters: PositionedOrder[][] = [];
+  for (const item of items) {
+    let placed = false;
+    for (const cluster of clusters) {
+      if (cluster.some(c => c.startMin < item.endMin && item.startMin < c.endMin)) {
+        item.index = cluster.length;
+        cluster.push(item);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) clusters.push([item]);
+  }
+
+  return items;
+}
 
 export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: WeeklyCalendarProps) {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
