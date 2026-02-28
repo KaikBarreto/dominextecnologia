@@ -437,11 +437,11 @@ export function ServiceOrderFormDialog({
           open={quickCreateOpen}
           onOpenChange={setQuickCreateOpen}
           equipment={null}
-          onSubmit={async (data) => {
+          onSubmit={async (data: any) => {
             const { supabase } = await import('@/integrations/supabase/client');
-            const { data: created, error } = await supabase.from('equipment').insert(data).select().single();
+            const { data: created, error } = await supabase.from('equipment').insert(data as any).select().single();
             if (!error && created) {
-              form.setValue('equipment_id', created.id);
+              form.setValue('equipment_id', (created as any).id);
             }
           }}
           customers={[customers.find(c => c.id === selectedCustomerId)!].filter(Boolean)}
