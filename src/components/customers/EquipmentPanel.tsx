@@ -21,6 +21,32 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
 import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import type { Equipment } from '@/types/database';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEquipment, type EquipmentInput } from '@/hooks/useEquipment';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { EquipmentFormDialog } from './EquipmentFormDialog';
+import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
 import type { Equipment } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
