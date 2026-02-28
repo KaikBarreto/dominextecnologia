@@ -180,7 +180,7 @@ export function EquipmentPanel() {
       </div>
 
       <div>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">
+        <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
           Lista de Equipamentos
         </h2>
         <Card>
