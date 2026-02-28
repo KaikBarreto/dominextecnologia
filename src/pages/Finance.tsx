@@ -359,7 +359,7 @@ function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: Tran
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((t) => (
+          {pagination.paginatedItems.map((t) => (
             <TableRow key={t.id}>
               <TableCell>
                 <span className="text-sm">
