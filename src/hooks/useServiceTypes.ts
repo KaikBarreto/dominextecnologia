@@ -8,6 +8,7 @@ export interface ServiceType {
   color: string;
   description: string | null;
   is_active: boolean;
+  requires_equipment: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -17,6 +18,7 @@ export interface ServiceTypeInput {
   color: string;
   description?: string;
   is_active?: boolean;
+  requires_equipment?: boolean;
 }
 
 export function useServiceTypes() {
@@ -31,7 +33,7 @@ export function useServiceTypes() {
         .select('*')
         .order('name');
       if (error) throw error;
-      return data as ServiceType[];
+      return data as unknown as ServiceType[];
     },
   });
 
@@ -39,7 +41,7 @@ export function useServiceTypes() {
     mutationFn: async (input: ServiceTypeInput) => {
       const { data, error } = await supabase
         .from('service_types')
-        .insert(input)
+        .insert(input as any)
         .select()
         .single();
       if (error) throw error;
@@ -58,7 +60,7 @@ export function useServiceTypes() {
     mutationFn: async ({ id, ...input }: ServiceTypeInput & { id: string }) => {
       const { data, error } = await supabase
         .from('service_types')
-        .update(input)
+        .update(input as any)
         .eq('id', id)
         .select()
         .single();

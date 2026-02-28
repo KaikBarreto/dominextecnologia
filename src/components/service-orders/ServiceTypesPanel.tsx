@@ -1,30 +1,30 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Badge } from '@/components/ui/badge';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ServiceTypeForm {
   name: string;
   color: string;
   description: string;
   is_active: boolean;
+  requires_equipment: boolean;
 }
 
 const defaultForm: ServiceTypeForm = {
@@ -32,10 +32,12 @@ const defaultForm: ServiceTypeForm = {
   color: '#22c55e',
   description: '',
   is_active: true,
+  requires_equipment: true,
 };
 
 export function ServiceTypesPanel() {
   const { serviceTypes, isLoading, createServiceType, updateServiceType, deleteServiceType } = useServiceTypes();
+  const isMobile = useIsMobile();
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ServiceTypeForm>(defaultForm);
@@ -55,6 +57,7 @@ export function ServiceTypesPanel() {
       color: st.color,
       description: st.description || '',
       is_active: st.is_active,
+      requires_equipment: st.requires_equipment ?? true,
     });
     setFormOpen(true);
   };
@@ -109,8 +112,9 @@ export function ServiceTypesPanel() {
             <p className="text-muted-foreground">Cadastre seus tipos de serviço para organizar as OS</p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      ) : isMobile ? (
+        /* Cards view for mobile */
+        <div className="grid gap-3">
           {serviceTypes.map((st) => (
             <Card key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
               <CardContent className="p-4">
@@ -127,9 +131,14 @@ export function ServiceTypesPanel() {
                       {st.description && (
                         <p className="text-xs text-muted-foreground line-clamp-1">{st.description}</p>
                       )}
-                      {!st.is_active && (
-                        <span className="text-xs text-muted-foreground italic">Inativo</span>
-                      )}
+                      <div className="flex gap-1 mt-1">
+                        {!st.is_active && (
+                          <Badge variant="secondary" className="text-xs">Inativo</Badge>
+                        )}
+                        {(st as any).requires_equipment && (
+                          <Badge variant="outline" className="text-xs">Equipamento</Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -150,6 +159,65 @@ export function ServiceTypesPanel() {
             </Card>
           ))}
         </div>
+      ) : (
+        /* Table view for desktop */
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cor</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Equipamento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[100px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {serviceTypes.map((st) => (
+                  <TableRow key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
+                    <TableCell>
+                      <div
+                        className="h-6 w-6 rounded-full"
+                        style={{ backgroundColor: st.color }}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{st.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                      {st.description || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={(st as any).requires_equipment ? 'default' : 'secondary'} className="text-xs">
+                        {(st as any).requires_equipment ? 'Sim' : 'Não'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={st.is_active ? 'default' : 'secondary'} className="text-xs">
+                        {st.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(st)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => { setToDeleteId(st.id); setDeleteDialogOpen(true); }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <ResponsiveModal
@@ -189,6 +257,13 @@ export function ServiceTypesPanel() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Descrição do tipo de serviço"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={form.requires_equipment}
+              onCheckedChange={(checked) => setForm({ ...form, requires_equipment: checked })}
+            />
+            <Label>Vinculado a equipamento</Label>
           </div>
           <div className="flex items-center gap-2">
             <Switch
