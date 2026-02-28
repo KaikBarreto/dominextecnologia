@@ -341,7 +341,7 @@ const changelog: ChangelogEntry[] = [
 export default function Changelog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChangeCategory | 'all'>('all');
-  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set([changelog[0]?.version]));
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.0.15']));
 
   const filteredChangelog = useMemo(() => {
     return changelog
