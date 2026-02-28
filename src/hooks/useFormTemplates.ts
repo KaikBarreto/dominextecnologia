@@ -252,5 +252,6 @@ export function useFormTemplates() {
     updateQuestion,
     deleteQuestion,
     reorderQuestions,
+    setTemplateServices,
   };
 }
