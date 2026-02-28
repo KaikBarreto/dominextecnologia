@@ -173,7 +173,7 @@ export default function ServiceOrders() {
                   className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
                 >
                   <Settings className="mr-2 h-4 w-4" />
-                  Configurar Status
+                  Configurações de OS
                 </Button>
                 <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" />
