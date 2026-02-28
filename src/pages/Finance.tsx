@@ -345,12 +345,12 @@ function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: Tran
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Data</TableHead>
-            <TableHead>Descrição</TableHead>
-            <TableHead className="hidden sm:table-cell">Categoria</TableHead>
-            <TableHead>Valor</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="w-[120px]">Ações</TableHead>
+            <TableHead className="text-xs uppercase tracking-wider">Data</TableHead>
+            <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
+            <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Categoria</TableHead>
+            <TableHead className="text-xs uppercase tracking-wider">Valor</TableHead>
+            <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+            <TableHead className="w-[120px] text-xs uppercase tracking-wider">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
