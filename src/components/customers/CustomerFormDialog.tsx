@@ -93,7 +93,12 @@ export function CustomerFormDialog({
   }, [open, customer]);
 
   const handleSubmit = async (data: CustomerFormData) => {
-    await onSubmit(data);
+    // Clean empty strings to null for date fields
+    const cleanedData = {
+      ...data,
+      birth_date: data.birth_date || undefined,
+    };
+    await onSubmit(cleanedData);
     form.reset();
     setStep(1);
     onOpenChange(false);

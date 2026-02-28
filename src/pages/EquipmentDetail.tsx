@@ -254,10 +254,10 @@ export default function EquipmentDetail() {
                   <Card key={att.id}>
                     <CardContent className="flex items-center gap-3 p-3">
                       {isImage ? (
-                        <img
+                         <img
                           src={att.file_url}
                           alt={att.file_name}
-                          className="h-10 w-10 rounded object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          className="h-20 w-20 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => setPreviewImage(att.file_url)}
                         />
                       ) : (
