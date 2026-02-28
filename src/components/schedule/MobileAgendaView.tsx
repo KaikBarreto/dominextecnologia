@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Clock } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';

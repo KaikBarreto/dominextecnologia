@@ -20,6 +20,9 @@ export function AppLayout() {
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <Outlet />
           </main>
+          <footer className="border-t px-4 py-3">
+            <SystemFooter />
+          </footer>
         </SidebarInset>
       </div>
     </SidebarProvider>

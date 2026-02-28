@@ -1,6 +1,4 @@
-import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
@@ -12,18 +10,16 @@ import {
   eachDayOfInterval,
   isSameMonth,
   isSameDay,
-  addMonths,
-  subMonths,
-  parseISO,
 } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import type { ServiceOrder, OsType } from '@/types/database';
+import { EventCard } from './EventCard';
 
 interface MonthlyCalendarProps {
+  currentDate: Date;
   serviceOrders: (ServiceOrder & { customer: any; equipment: any })[];
   onDateSelect?: (date: Date) => void;
   onOrderSelect?: (order: ServiceOrder & { customer: any; equipment: any }) => void;
-  onNewOrder?: () => void;
+  onDrop?: (orderId: string, newDate: string, newTime: string) => void;
 }
 
 const osTypeColors: Record<OsType, string> = {
@@ -34,86 +30,62 @@ const osTypeColors: Record<OsType, string> = {
 };
 
 const osTypeLabels: Record<OsType, string> = {
-  manutencao_preventiva: 'PRV',
-  manutencao_corretiva: 'COR',
-  instalacao: 'INS',
-  visita_tecnica: 'VIS',
+  manutencao_preventiva: 'Preventiva',
+  manutencao_corretiva: 'Corretiva',
+  instalacao: 'Instalação',
+  visita_tecnica: 'Visita Técnica',
 };
 
 export function MonthlyCalendar({
+  currentDate,
   serviceOrders,
   onDateSelect,
   onOrderSelect,
-  onNewOrder,
+  onDrop,
 }: MonthlyCalendarProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
   const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
     const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-  }, [currentMonth]);
+  }, [currentDate]);
 
   const ordersByDate = useMemo(() => {
     const grouped: Record<string, (ServiceOrder & { customer: any; equipment: any })[]> = {};
-    
     serviceOrders.forEach((order) => {
       if (order.scheduled_date) {
-        const dateKey = order.scheduled_date;
-        if (!grouped[dateKey]) {
-          grouped[dateKey] = [];
-        }
-        grouped[dateKey].push(order);
+        if (!grouped[order.scheduled_date]) grouped[order.scheduled_date] = [];
+        grouped[order.scheduled_date].push(order);
       }
     });
-
-    // Sort orders by time within each day
-    Object.keys(grouped).forEach((dateKey) => {
-      grouped[dateKey].sort((a, b) => {
-        const timeA = a.scheduled_time || '00:00';
-        const timeB = b.scheduled_time || '00:00';
-        return timeA.localeCompare(timeB);
-      });
-    });
-
+    Object.values(grouped).forEach((arr) =>
+      arr.sort((a, b) => (a.scheduled_time || '00:00').localeCompare(b.scheduled_time || '00:00'))
+    );
     return grouped;
   }, [serviceOrders]);
 
-  const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const handleToday = () => setCurrentMonth(new Date());
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('bg-primary/10');
+  };
 
-  const handleDateClick = (date: Date) => {
-    setSelectedDate(date);
-    onDateSelect?.(date);
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove('bg-primary/10');
+  };
+
+  const handleDropOnDay = (e: React.DragEvent, dateKey: string) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-primary/10');
+    const orderId = e.dataTransfer.getData('orderId');
+    const time = e.dataTransfer.getData('orderTime') || '08:00';
+    if (orderId && onDrop) onDrop(orderId, dateKey, time);
   };
 
   const weekDays = ['DOM.', 'SEG.', 'TER.', 'QUA.', 'QUI.', 'SEX.', 'SÁB.'];
 
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
-      {/* Navigation */}
-      <div className="flex items-center justify-between gap-4 p-3 border-b bg-muted/30">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth} className="h-8 w-8">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNextMonth} className="h-8 w-8">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <h2 className="text-sm font-semibold capitalize ml-1">
-            {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
-          </h2>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleToday} className="text-xs h-7">
-          Hoje
-        </Button>
-      </div>
-
       {/* Week Days Header */}
       <div className="grid grid-cols-7 border-b bg-muted/50">
         {weekDays.map((day) => (
@@ -131,19 +103,20 @@ export function MonthlyCalendar({
         {calendarDays.map((day, idx) => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const dayOrders = ordersByDate[dateKey] || [];
-          const isCurrentMonth = isSameMonth(day, currentMonth);
+          const isCurrentMonth = isSameMonth(day, currentDate);
           const isToday = isSameDay(day, new Date());
-          const isSelected = selectedDate && isSameDay(day, selectedDate);
 
           return (
             <div
               key={idx}
-              onClick={() => handleDateClick(day)}
+              onClick={() => onDateSelect?.(day)}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDropOnDay(e, dateKey)}
               className={cn(
-                'min-h-[120px] border-b border-r p-1.5 cursor-pointer transition-colors',
+                'min-h-[100px] border-b border-r p-1.5 cursor-pointer transition-colors',
                 !isCurrentMonth && 'bg-muted/30',
                 isToday && 'bg-primary/5',
-                isSelected && 'ring-2 ring-primary ring-inset',
                 'hover:bg-accent/50'
               )}
             >
@@ -166,24 +139,18 @@ export function MonthlyCalendar({
 
               <div className="space-y-1 overflow-hidden">
                 {dayOrders.slice(0, 3).map((order) => (
-                  <div
+                  <EventCard
                     key={order.id}
-                    onClick={(e) => {
+                    order={order}
+                    compact
+                    onClick={() => onOrderSelect?.(order)}
+                    draggable
+                    onDragStart={(e) => {
                       e.stopPropagation();
-                      onOrderSelect?.(order);
+                      e.dataTransfer.setData('orderId', order.id);
+                      e.dataTransfer.setData('orderTime', order.scheduled_time || '08:00');
                     }}
-                    className={cn(
-                      'group flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02]',
-                      osTypeColors[order.os_type]
-                    )}
-                  >
-                    <span className="font-medium shrink-0">
-                      {order.scheduled_time?.slice(0, 5) || '--:--'}
-                    </span>
-                    <span className="truncate">
-                      {osTypeLabels[order.os_type]} - {order.customer?.name || 'Cliente'}
-                    </span>
-                  </div>
+                  />
                 ))}
               </div>
             </div>
@@ -197,11 +164,7 @@ export function MonthlyCalendar({
         {Object.entries(osTypeLabels).map(([type, label]) => (
           <div key={type} className="flex items-center gap-1.5">
             <div className={cn('w-3 h-3 rounded-sm', osTypeColors[type as OsType])} />
-            <span className="text-xs text-muted-foreground">
-              {label} - {type === 'manutencao_preventiva' ? 'Preventiva' : 
-                       type === 'manutencao_corretiva' ? 'Corretiva' :
-                       type === 'instalacao' ? 'Instalação' : 'Visita'}
-            </span>
+            <span className="text-xs text-muted-foreground">{label}</span>
           </div>
         ))}
       </div>

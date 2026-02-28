@@ -3,12 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Form,
   FormControl,
@@ -72,7 +67,6 @@ export function ServiceOrderFormDialog({
   );
   const { equipment } = useEquipment(selectedCustomerId);
 
-  // Default to current date/time for new OS
   const defaultDate = useMemo(() => {
     if (serviceOrder?.scheduled_date) return serviceOrder.scheduled_date;
     return format(new Date(), 'yyyy-MM-dd');
@@ -99,7 +93,6 @@ export function ServiceOrderFormDialog({
   });
 
   const handleSubmit = async (data: ServiceOrderFormData) => {
-    // Clean empty strings and placeholder values
     const cleanedData = {
       ...data,
       equipment_id: data.equipment_id || undefined,
@@ -114,222 +107,218 @@ export function ServiceOrderFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>
-            {serviceOrder ? 'Editar OS' : 'Nova Ordem de Serviço'}
-          </DialogTitle>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="customer_id"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-2">
-                    <FormLabel>Cliente *</FormLabel>
-                    <Select 
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        setSelectedCustomerId(value);
-                        form.setValue('equipment_id', '');
-                      }} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {customers.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="equipment_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Equipamento</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {equipment.map((eq) => (
-                          <SelectItem key={eq.id} value={eq.id}>
-                            {eq.name} {eq.model && `- ${eq.model}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="technician_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Técnico</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {technicians?.map((tech) => (
-                          <SelectItem key={tech.user_id} value={tech.user_id}>
-                            {tech.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="os_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de OS</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(osTypeLabels).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="form_template_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1">
-                      <FileText className="h-3.5 w-3.5" />
-                      Template de Formulário
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sem formulário" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sem formulário</SelectItem>
-                        {templates.filter(t => t.is_active).map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.name} ({template.questions?.length || 0} perguntas)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="scheduled_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data Agendada</FormLabel>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={serviceOrder ? 'Editar OS' : 'Nova Ordem de Serviço'}
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="customer_id"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>Cliente *</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedCustomerId(value);
+                      form.setValue('equipment_id', '');
+                    }}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o cliente" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="scheduled_time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Horário</FormLabel>
+            <FormField
+              control={form.control}
+              name="equipment_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Equipamento</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    <SelectContent>
+                      {equipment.map((eq) => (
+                        <SelectItem key={eq.id} value={eq.id}>
+                          {eq.name} {eq.model && `- ${eq.model}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-2">
-                    <FormLabel>Descrição do Serviço</FormLabel>
+            <FormField
+              control={form.control}
+              name="technician_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Técnico</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <Textarea placeholder="Descreva o serviço a ser realizado" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    <SelectContent>
+                      {technicians?.map((tech) => (
+                        <SelectItem key={tech.user_id} value={tech.user_id}>
+                          {tech.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem className="sm:col-span-2">
-                    <FormLabel>Observações</FormLabel>
+            <FormField
+              control={form.control}
+              name="os_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de OS</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <Textarea placeholder="Observações adicionais" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    <SelectContent>
+                      {Object.entries(osTypeLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {serviceOrder ? 'Salvar' : 'Criar OS'}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            <FormField
+              control={form.control}
+              name="form_template_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1">
+                    <FileText className="h-3.5 w-3.5" />
+                    Template de Formulário
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sem formulário" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sem formulário</SelectItem>
+                      {templates.filter(t => t.is_active).map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name} ({template.questions?.length || 0} perguntas)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="scheduled_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data Agendada</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="scheduled_time"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Horário</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>Descrição do Serviço</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva o serviço a ser realizado" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>Observações</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Observações adicionais" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {serviceOrder ? 'Salvar' : 'Criar OS'}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </ResponsiveModal>
   );
 }

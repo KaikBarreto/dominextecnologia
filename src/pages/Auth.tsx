@@ -221,9 +221,9 @@ export default function Auth() {
           </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-[10px] text-white/40">
-          © {new Date().getFullYear()} Glacial Cold Brasil. Todos os direitos reservados.
-        </p>
+        <div className="mt-6">
+          <SystemFooter variant="dark" />
+        </div>
       </div>
     </div>
   );

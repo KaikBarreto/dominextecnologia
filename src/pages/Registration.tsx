@@ -27,6 +27,7 @@ import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
+import { SystemFooter } from '@/components/layout/SystemFooter';
 
 // Step 1 + Step 2 combined schema
 const registrationSchema = z.object({

@@ -1,18 +1,19 @@
 import { useState, useMemo, useCallback } from 'react';
-import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { DailyCalendar } from '@/components/schedule/DailyCalendar';
 import { MobileAgendaView } from '@/components/schedule/MobileAgendaView';
 import { ScheduleHeader, type ViewMode } from '@/components/schedule/ScheduleHeader';
-import { OrderSummarySheet } from '@/components/schedule/OrderSummarySheet';
+import { ScheduleDetailPanel } from '@/components/schedule/ScheduleDetailPanel';
 import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
-import type { ServiceOrder, OsStatus } from '@/types/database';
+import { cn } from '@/lib/utils';
+import type { ServiceOrder } from '@/types/database';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder } = useServiceOrders();
@@ -25,9 +26,6 @@ export default function Schedule() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [summaryOrder, setSummaryOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
-  const [summaryOpen, setSummaryOpen] = useState(false);
-  const [prefillDate, setPrefillDate] = useState<string | undefined>();
-  const [prefillTime, setPrefillTime] = useState<string | undefined>();
 
   // Filters
   const [technicianFilter, setTechnicianFilter] = useState('all');
@@ -59,37 +57,33 @@ export default function Schedule() {
 
   const handleOrderSelect = useCallback((order: ServiceOrder & { customer: any; equipment: any }) => {
     setSummaryOrder(order);
-    setSummaryOpen(true);
+  }, []);
+
+  const handleClearSummary = useCallback(() => {
+    setSummaryOrder(null);
   }, []);
 
   const handleEditFromSummary = () => {
     if (summaryOrder) {
       setSelectedOrder(summaryOrder);
-      setSummaryOpen(false);
+      setSummaryOrder(null);
       setIsFormOpen(true);
     }
   };
 
   const handleNewOrder = () => {
     setSelectedOrder(null);
-    setPrefillDate(undefined);
-    setPrefillTime(undefined);
     setIsFormOpen(true);
   };
 
   const handleSlotClick = (date: string, time: string) => {
     setSelectedOrder(null);
-    setPrefillDate(date);
-    setPrefillTime(time);
     setIsFormOpen(true);
   };
 
   const handleDateSelect = (date: Date) => {
     setCurrentDate(date);
-    if (viewMode === 'month') {
-      // On month view, clicking a date switches to day view on mobile
-      if (isMobile) setViewMode('day');
-    }
+    setSummaryOrder(null);
   };
 
   const handleDrop = async (orderId: string, newDate: string, newTime: string) => {
@@ -104,8 +98,6 @@ export default function Schedule() {
     if (!open) {
       setIsFormOpen(false);
       setSelectedOrder(null);
-      setPrefillDate(undefined);
-      setPrefillTime(undefined);
     }
   };
 
@@ -129,10 +121,10 @@ export default function Schedule() {
     );
   }
 
-  // Mobile: show agenda list view
+  // Mobile layout (phones only < 768px)
   if (isMobile) {
     return (
-      <div className="flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col gap-3 min-h-[calc(100vh-8rem)]">
         <ScheduleHeader
           currentDate={currentDate}
           viewMode={viewMode}
@@ -150,21 +142,30 @@ export default function Schedule() {
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
         />
-        <div className="flex-1 mt-3 overflow-hidden rounded-xl border bg-card">
+
+        <div className={cn(
+          "flex-1 overflow-hidden rounded-xl border bg-card",
+          summaryOrder && "flex-none max-h-[40vh]"
+        )}>
           <MobileAgendaView
             currentDate={currentDate}
             orders={filteredOrders}
             onOrderSelect={handleOrderSelect}
-            onNewOrder={handleNewOrder}
           />
         </div>
 
-        <OrderSummarySheet
-          order={summaryOrder}
-          open={summaryOpen}
-          onOpenChange={setSummaryOpen}
-          onEdit={handleEditFromSummary}
-        />
+        {summaryOrder && (
+          <div className="min-h-[200px]">
+            <ScheduleDetailPanel
+              selectedDate={currentDate}
+              orders={filteredOrders}
+              selectedOrder={summaryOrder}
+              onOrderSelect={handleOrderSelect}
+              onClearSelection={handleClearSummary}
+              onEdit={handleEditFromSummary}
+            />
+          </div>
+        )}
 
         <ServiceOrderFormDialog
           open={isFormOpen}
@@ -177,9 +178,10 @@ export default function Schedule() {
     );
   }
 
+  // Desktop & Tablet layout
   return (
-    <div className="space-y-4 h-[calc(100vh-8rem)]">
-      <div>
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold">Agenda</h1>
         <p className="text-muted-foreground">Visualize e gerencie os agendamentos de ordens de serviço</p>
       </div>
@@ -202,41 +204,48 @@ export default function Schedule() {
         onStatusFilterChange={setStatusFilter}
       />
 
-      <div className="flex-1 min-h-0" style={{ height: 'calc(100% - 10rem)' }}>
-        {viewMode === 'month' && (
-          <MonthlyCalendar
-            serviceOrders={filteredOrders}
-            onDateSelect={handleDateSelect}
-            onOrderSelect={handleOrderSelect}
-            onNewOrder={handleNewOrder}
-          />
-        )}
-        {viewMode === 'week' && (
-          <WeeklyCalendar
-            currentDate={currentDate}
-            orders={filteredOrders}
-            onOrderSelect={handleOrderSelect}
-            onSlotClick={handleSlotClick}
-            onDrop={handleDrop}
-          />
-        )}
-        {viewMode === 'day' && (
-          <DailyCalendar
-            currentDate={currentDate}
-            orders={filteredOrders}
-            onOrderSelect={handleOrderSelect}
-            onSlotClick={handleSlotClick}
-            onDrop={handleDrop}
-          />
-        )}
-      </div>
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 mt-4">
+        <div className="flex-1 min-w-0 min-h-0">
+          {viewMode === 'month' && (
+            <MonthlyCalendar
+              currentDate={currentDate}
+              serviceOrders={filteredOrders}
+              onDateSelect={handleDateSelect}
+              onOrderSelect={handleOrderSelect}
+              onDrop={handleDrop}
+            />
+          )}
+          {viewMode === 'week' && (
+            <WeeklyCalendar
+              currentDate={currentDate}
+              orders={filteredOrders}
+              onOrderSelect={handleOrderSelect}
+              onSlotClick={handleSlotClick}
+              onDrop={handleDrop}
+            />
+          )}
+          {viewMode === 'day' && (
+            <DailyCalendar
+              currentDate={currentDate}
+              orders={filteredOrders}
+              onOrderSelect={handleOrderSelect}
+              onSlotClick={handleSlotClick}
+              onDrop={handleDrop}
+            />
+          )}
+        </div>
 
-      <OrderSummarySheet
-        order={summaryOrder}
-        open={summaryOpen}
-        onOpenChange={setSummaryOpen}
-        onEdit={handleEditFromSummary}
-      />
+        <div className="w-full lg:w-80 lg:shrink-0 min-h-[200px]">
+          <ScheduleDetailPanel
+            selectedDate={currentDate}
+            orders={filteredOrders}
+            selectedOrder={summaryOrder}
+            onOrderSelect={handleOrderSelect}
+            onClearSelection={handleClearSummary}
+            onEdit={handleEditFromSummary}
+          />
+        </div>
+      </div>
 
       <ServiceOrderFormDialog
         open={isFormOpen}
