@@ -202,6 +202,7 @@ export function EquipmentPanel() {
                 </p>
               </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
