@@ -309,7 +309,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             <div className="border border-slate-200 rounded-lg p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <ClipboardCheck className="h-3.5 w-3.5" /> 
-                Questionário{serviceOrder.form_template ? `: ${(serviceOrder as any).form_template.name}` : ''}
+                {serviceOrder.equipment?.name || (serviceOrder.form_template ? (serviceOrder as any).form_template.name : 'Checklist')}
               </h3>
               <div className="space-y-2">
                 {otherResponses.map((response, idx) => (
