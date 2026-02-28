@@ -352,7 +352,7 @@ export default function TechnicianOS() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-28">
+      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-32">
         {/* Step 1: Check-in */}
         {isPending && (
           <Card className="border-primary/30">
@@ -422,12 +422,20 @@ export default function TechnicianOS() {
           </CardContent>
         </Card>
 
-        {/* Description */}
+        {/* Description & Notes - shown before questionnaires */}
         {serviceOrder.description && (
           <Card>
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Chamado</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Serviço</p>
               <p className="text-sm break-words">{serviceOrder.description}</p>
+            </CardContent>
+          </Card>
+        )}
+        {serviceOrder.notes && (
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Observações</p>
+              <p className="text-sm break-words">{serviceOrder.notes}</p>
             </CardContent>
           </Card>
         )}
