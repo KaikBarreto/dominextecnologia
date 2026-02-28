@@ -16,7 +16,7 @@ interface WeeklyCalendarProps {
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
 const SLOT_HEIGHT = 80; // px per hour
-const CASCADE_OFFSET = 18; // px offset for each overlapping card
+const CASCADE_OFFSET = 28; // px offset for each overlapping card
 
 type PositionedOrder = {
   order: (ServiceOrder & { customer: any; equipment: any });
@@ -200,6 +200,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                         draggable
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
                         fillHeight
+                        colorShift={index}
                       />
                     </div>
                   );
