@@ -30,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
+import { OSReport } from '@/components/technician/OSReport';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -345,6 +346,32 @@ export default function TechnicianOS() {
     concluida: 'bg-success/10 text-success border-success',
     cancelada: 'bg-destructive/10 text-destructive border-destructive',
   };
+
+  // Show report mode for completed OS
+  if (serviceOrder.status === 'concluida') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-lg print:hidden">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-bold">
+                  OS #{String(serviceOrder.order_number).padStart(4, '0')}
+                </h1>
+                <p className="text-sm opacity-90">Relatório de Serviço</p>
+              </div>
+              <Badge variant="outline" className="bg-success/10 text-success border-success border">
+                Concluída
+              </Badge>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto p-4">
+          <OSReport serviceOrder={serviceOrder} photos={photos} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
