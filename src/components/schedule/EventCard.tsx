@@ -68,6 +68,7 @@ export function EventCard({ order, compact = false, onClick, draggable, onDragSt
       draggable={draggable}
       onDragStart={onDragStart}
       className="p-3 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md hover:border-primary/30 space-y-1.5"
+      style={serviceTypeColor ? { borderLeftWidth: 4, borderLeftColor: serviceTypeColor } : undefined}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold text-sm">
