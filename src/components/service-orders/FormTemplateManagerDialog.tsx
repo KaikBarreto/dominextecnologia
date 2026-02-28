@@ -56,12 +56,14 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     updateQuestion,
     deleteQuestion,
     reorderQuestions,
+    setTemplateServices,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   
   const [open, setOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
@@ -293,22 +295,27 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
         </div>
         
         {/* New Template */}
-        <div className="p-3 border-b">
-          <div className="flex gap-2">
-            <Input
-              value={newTemplateName}
-              onChange={(e) => setNewTemplateName(e.target.value)}
-              placeholder="Nome do questionário"
-              className="flex-1"
-            />
-            <Button
-              onClick={handleCreateTemplate}
-              disabled={!newTemplateName.trim() || createTemplate.isPending}
-              size="icon"
-            >
-              <Plus className="h-4 w-4" />
+        <div className="p-3 border-b space-y-2">
+          {!showCreateTemplate ? (
+            <Button className="w-full" variant="outline" onClick={() => setShowCreateTemplate(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo questionário
             </Button>
-          </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="Nome do questionário"
+                className="flex-1"
+              />
+              <Button
+                onClick={handleCreateTemplate}
+                disabled={!newTemplateName.trim() || createTemplate.isPending}
+              >Criar</Button>
+              <Button variant="ghost" onClick={() => { setShowCreateTemplate(false); setNewTemplateName(''); }}>Cancelar</Button>
+            </div>
+          )}
         </div>
 
         {/* Templates */}
@@ -379,34 +386,43 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
               </div>
             </div>
 
-            {/* Service Type Link */}
-            <div className="px-4 py-2 border-b">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo de Serviço:</Label>
-                <Select
-                  value={(selectedTemplate as any).service_type_id || 'none'}
-                  onValueChange={(value) => {
-                    updateTemplate.mutate({
-                      id: selectedTemplate.id,
-                      service_type_id: value === 'none' ? null : value,
-                    } as any);
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Nenhum" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {serviceTypes.filter(t => t.is_active).map((st) => (
-                      <SelectItem key={st.id} value={st.id}>
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
-                          {st.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {/* Service Types Link */}
+            <div className="px-4 py-3 border-b space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Serviços habilitados</Label>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={((selectedTemplate as any).service_type_ids?.length ?? 0) === 0}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: [] });
+                      }
+                    }}
+                  />
+                  <Label className="text-xs">Todos</Label>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {serviceTypes.filter(t => t.is_active).map((st) => {
+                  const selectedIds = ((selectedTemplate as any).service_type_ids ?? []) as string[];
+                  const checked = selectedIds.includes(st.id);
+                  return (
+                    <label key={st.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...selectedIds, st.id]
+                            : selectedIds.filter((id) => id !== st.id);
+                          setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: next });
+                        }}
+                      />
+                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
+                      {st.name}
+                    </label>
+                  );
+                })}
               </div>
             </div>
 

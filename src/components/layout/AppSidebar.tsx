@@ -51,6 +51,8 @@ const menuItems: MenuItem[] = [
     roles: ['admin', 'gestor', 'tecnico'],
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', roles: ['admin', 'gestor', 'tecnico'] },
+      { title: 'Serviços', icon: Wrench, path: '/servicos', roles: ['admin', 'gestor', 'tecnico'] },
+      { title: 'Questionários', icon: FileText, path: '/questionarios', roles: ['admin', 'gestor', 'tecnico'] },
       { title: 'PMOC', icon: FileText, path: '/pmoc', roles: ['admin', 'gestor'] },
     ],
   },

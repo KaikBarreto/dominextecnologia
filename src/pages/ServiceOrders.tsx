@@ -41,6 +41,7 @@ import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel
 import { OsStatusManagerDialog } from '@/components/service-orders/OsStatusManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
+import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -65,6 +66,7 @@ export default function ServiceOrders() {
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
 
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const { statuses } = useOsStatuses();
 
   const filteredOrders = serviceOrders.filter((os) => {
     const matchesSearch =
@@ -73,6 +75,11 @@ export default function ServiceOrders() {
     const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const statusOptions = statuses.length
+    ? statuses.map((s) => ({ key: s.key as OsStatus, label: s.label }))
+    : (Object.keys(osStatusLabels) as OsStatus[]).map((key) => ({ key, label: osStatusLabels[key] }));
+
 
   const handleSubmit = async (data: any) => {
     if (editingOS) {
@@ -160,9 +167,9 @@ export default function ServiceOrders() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os status</SelectItem>
-                      {(Object.keys(osStatusLabels) as OsStatus[]).map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {osStatusLabels[status]}
+                      {statusOptions.map((status) => (
+                        <SelectItem key={status.key} value={status.key}>
+                          {status.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -197,7 +204,7 @@ export default function ServiceOrders() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-muted-foreground">{osStatusLabels[status]}</p>
+                            <p className="text-sm text-muted-foreground">{statusOptions.find((s) => s.key === status)?.label || osStatusLabels[status]}</p>
                             <p className="text-2xl font-bold">{count}</p>
                           </div>
                           <div className={`rounded-full p-2 ${config.bgColor}`}>
@@ -296,14 +303,14 @@ export default function ServiceOrders() {
                                       <SelectValue>
                                         <span className={`flex items-center gap-1 whitespace-nowrap ${status.color}`}>
                                           <status.icon className="h-3 w-3 shrink-0" />
-                                          {osStatusLabels[os.status]}
+                                          {statusOptions.find((s) => s.key === os.status)?.label || osStatusLabels[os.status]}
                                         </span>
                                       </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {(Object.keys(osStatusLabels) as OsStatus[]).map((s) => (
-                                        <SelectItem key={s} value={s}>
-                                          {osStatusLabels[s]}
+                                      {statusOptions.map((s) => (
+                                        <SelectItem key={s.key} value={s.key}>
+                                          {s.label}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
