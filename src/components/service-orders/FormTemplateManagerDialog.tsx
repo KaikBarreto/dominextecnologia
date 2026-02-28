@@ -57,6 +57,7 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     deleteQuestion,
     reorderQuestions,
   } = useFormTemplates();
+  const { serviceTypes } = useServiceTypes();
   
   const [open, setOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
