@@ -94,6 +94,8 @@ export function EquipmentFormDialog({
         install_date: equipment?.install_date ?? '',
         notes: equipment?.notes ?? '',
       });
+      setPhotoFile(null);
+      setPhotoPreview(equipment?.photo_url ?? null);
     }
   }, [open, equipment, autoIdentifier]);
 
