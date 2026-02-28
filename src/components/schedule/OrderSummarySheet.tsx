@@ -62,9 +62,9 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
             </div>
           )}
           {order.customer?.address && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              <span className="truncate">
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span className="break-words min-w-0">
                 {order.customer.address}
                 {order.customer.city && `, ${order.customer.city}`}
               </span>
