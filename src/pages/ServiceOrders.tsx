@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Settings2,
   Eye,
+  Palette,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
