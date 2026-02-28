@@ -183,9 +183,9 @@ export default function Changelog() {
             <Card key={entry.version} className={cn(isCurrent && 'ring-2 ring-success/30')}>
               <Collapsible open={isExpanded} onOpenChange={() => toggleVersion(entry.version)}>
                 <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 rounded-t-lg transition-colors">
+                  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted rounded-t-lg transition-colors">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-lg font-bold text-primary">Versão {entry.version}</h2>
+                      <h2 className="text-lg font-bold text-foreground">Versão {entry.version}</h2>
                       <Badge className="bg-success text-white hover:bg-success">{typeLabel[entry.type]}</Badge>
                       {isCurrent && <Badge className="bg-primary text-primary-foreground hover:bg-primary">Atual</Badge>}
                     </div>
