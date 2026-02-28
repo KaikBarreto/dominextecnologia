@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OsStatus } from '@/types/database';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 
 export type ViewMode = 'month' | 'week' | 'day';
 
