@@ -352,7 +352,7 @@ export default function TechnicianOS() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-28">
+      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-32">
         {/* Step 1: Check-in */}
         {isPending && (
           <Card className="border-primary/30">
