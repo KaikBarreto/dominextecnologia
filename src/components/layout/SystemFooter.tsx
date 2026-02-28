@@ -7,14 +7,16 @@ interface SystemFooterProps {
 
 export function SystemFooter({ variant = 'light' }: SystemFooterProps) {
   const textClass = variant === 'dark' ? 'text-white/40' : 'text-muted-foreground';
-  const linkClass = 'font-semibold text-primary hover:text-primary/80 transition-colors';
+  const linkClass = variant === 'dark'
+    ? 'font-bold text-white/70 hover:text-white transition-colors'
+    : 'font-bold text-foreground hover:text-foreground/80 transition-colors';
 
   return (
     <div className={`text-center text-[10px] ${textClass} space-y-0.5`}>
       <p>
         <Link
           to="/changelog"
-          className="font-bold hover:text-foreground transition-colors"
+          className={linkClass}
         >
           Sistema v{APP_VERSION}
         </Link>

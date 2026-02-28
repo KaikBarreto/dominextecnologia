@@ -155,8 +155,8 @@ export default function Dashboard() {
                       {stats?.osConcluidas ?? 0} concluídas
                     </p>
                   </div>
-                  <div className="rounded-full bg-info/10 p-3">
-                    <TrendingUp className="h-6 w-6 text-info" />
+                  <div className="rounded-full bg-info p-3">
+                    <TrendingUp className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>

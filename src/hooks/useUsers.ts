@@ -21,11 +21,11 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 export const ROLE_COLORS: Record<AppRole, string> = {
-  admin: 'bg-destructive/20 text-destructive',
-  gestor: 'bg-primary/20 text-primary',
-  tecnico: 'bg-info/20 text-info',
-  comercial: 'bg-success/20 text-success',
-  financeiro: 'bg-warning/20 text-warning',
+  admin: 'bg-destructive text-white',
+  gestor: 'bg-primary text-white',
+  tecnico: 'bg-info text-white',
+  comercial: 'bg-success text-white',
+  financeiro: 'bg-warning text-white',
 };
 
 export function useUsers() {
