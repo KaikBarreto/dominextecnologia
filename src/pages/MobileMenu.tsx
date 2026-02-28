@@ -41,8 +41,8 @@ export default function MobileMenu() {
       {profile && (
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <UserCircle className="h-6 w-6 text-primary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary">
+              <UserCircle className="h-6 w-6 text-white" />
             </div>
             <div>
               <p className="font-medium">{profile.full_name}</p>

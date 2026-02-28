@@ -70,8 +70,8 @@ export default function ResetPassword() {
           <CardContent className="p-8">
             {success ? (
               <div className="space-y-4 text-center">
-                <div className="mx-auto w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
-                  <CheckCircle className="h-7 w-7 text-primary" />
+                <div className="mx-auto w-14 h-14 rounded-full bg-primary flex items-center justify-center">
+                  <CheckCircle className="h-7 w-7 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-white">Senha redefinida!</h3>
                 <p className="text-sm text-white/70">Redirecionando para o sistema...</p>

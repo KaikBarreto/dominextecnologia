@@ -167,8 +167,8 @@ export default function Finance() {
                   {formatCurrency(summary.saldo)}
                 </p>
               </div>
-              <div className="rounded-full bg-primary/10 p-3">
-                <Wallet className="h-6 w-6 text-primary" />
+              <div className="rounded-full bg-primary p-3">
+                <Wallet className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>

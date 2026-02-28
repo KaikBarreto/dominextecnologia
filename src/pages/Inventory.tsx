@@ -77,8 +77,8 @@ export default function Inventory() {
                   <p className="text-2xl font-bold">{stats.totalItems}</p>
                 )}
               </div>
-              <div className="rounded-full bg-primary/10 p-3">
-                <Package className="h-6 w-6 text-primary" />
+              <div className="rounded-full bg-primary p-3">
+                <Package className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
