@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format } from 'date-fns';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { DailyCalendar } from '@/components/schedule/DailyCalendar';
@@ -26,6 +26,8 @@ export default function Schedule() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [summaryOrder, setSummaryOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
+  const [defaultDate, setDefaultDate] = useState<string | undefined>();
+  const [defaultTime, setDefaultTime] = useState<string | undefined>();
 
   // Filters
   const [technicianFilter, setTechnicianFilter] = useState('all');
@@ -67,17 +69,23 @@ export default function Schedule() {
     if (summaryOrder) {
       setSelectedOrder(summaryOrder);
       setSummaryOrder(null);
+      setDefaultDate(undefined);
+      setDefaultTime(undefined);
       setIsFormOpen(true);
     }
   };
 
   const handleNewOrder = () => {
     setSelectedOrder(null);
+    setDefaultDate(format(currentDate, 'yyyy-MM-dd'));
+    setDefaultTime(undefined);
     setIsFormOpen(true);
   };
 
   const handleSlotClick = (date: string, time: string) => {
     setSelectedOrder(null);
+    setDefaultDate(date);
+    setDefaultTime(time);
     setIsFormOpen(true);
   };
 
@@ -98,6 +106,8 @@ export default function Schedule() {
     if (!open) {
       setIsFormOpen(false);
       setSelectedOrder(null);
+      setDefaultDate(undefined);
+      setDefaultTime(undefined);
     }
   };
 
@@ -121,7 +131,7 @@ export default function Schedule() {
     );
   }
 
-  // Mobile layout (phones only < 768px)
+  // Mobile & Tablet layout
   if (isMobile) {
     return (
       <div className="flex flex-col gap-3 min-h-[calc(100vh-8rem)]">
@@ -173,12 +183,14 @@ export default function Schedule() {
           serviceOrder={selectedOrder}
           onSubmit={handleSubmit}
           isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
+          defaultDate={defaultDate}
+          defaultTime={defaultTime}
         />
       </div>
     );
   }
 
-  // Desktop & Tablet layout
+  // Desktop layout
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="mb-4">
@@ -253,6 +265,8 @@ export default function Schedule() {
         serviceOrder={selectedOrder}
         onSubmit={handleSubmit}
         isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
+        defaultDate={defaultDate}
+        defaultTime={defaultTime}
       />
     </div>
   );

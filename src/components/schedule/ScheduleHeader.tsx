@@ -72,7 +72,7 @@ export function ScheduleHeader({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={onToday}>
+          <Button variant="secondary" size="sm" onClick={onToday} className="hover:bg-secondary hover:text-secondary-foreground">
             Hoje
           </Button>
 
@@ -131,7 +131,7 @@ export function ScheduleHeader({
             </PopoverContent>
           </Popover>
 
-          <Button size="sm" onClick={onNewOrder} className="bg-primary hover:bg-primary/90">
+          <Button size="sm" onClick={onNewOrder}>
             <Plus className="h-4 w-4 mr-2" />
             Nova OS
           </Button>

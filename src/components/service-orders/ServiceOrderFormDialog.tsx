@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -52,6 +52,8 @@ interface ServiceOrderFormDialogProps {
   serviceOrder?: ServiceOrder | null;
   onSubmit: (data: ServiceOrderFormData) => Promise<void>;
   isLoading?: boolean;
+  defaultDate?: string;
+  defaultTime?: string;
 }
 
 export function ServiceOrderFormDialog({
@@ -60,6 +62,8 @@ export function ServiceOrderFormDialog({
   serviceOrder,
   onSubmit,
   isLoading,
+  defaultDate,
+  defaultTime,
 }: ServiceOrderFormDialogProps) {
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
@@ -73,21 +77,22 @@ export function ServiceOrderFormDialog({
   );
   const { equipment } = useEquipment(selectedCustomerId);
 
-  // Filter templates by selected service type
   const filteredTemplates = useMemo(() => {
     if (!selectedServiceTypeId) return templates.filter(t => t.is_active);
     return templates.filter(t => t.is_active && (!t.service_type_id || t.service_type_id === selectedServiceTypeId));
   }, [templates, selectedServiceTypeId]);
 
-  const defaultDate = useMemo(() => {
+  const computedDate = useMemo(() => {
     if (serviceOrder?.scheduled_date) return serviceOrder.scheduled_date;
+    if (defaultDate) return defaultDate;
     return format(new Date(), 'yyyy-MM-dd');
-  }, [serviceOrder?.scheduled_date]);
+  }, [serviceOrder?.scheduled_date, defaultDate]);
 
-  const defaultTime = useMemo(() => {
+  const computedTime = useMemo(() => {
     if (serviceOrder?.scheduled_time) return serviceOrder.scheduled_time;
+    if (defaultTime) return defaultTime;
     return format(new Date(), 'HH:mm');
-  }, [serviceOrder?.scheduled_time]);
+  }, [serviceOrder?.scheduled_time, defaultTime]);
 
   const form = useForm<ServiceOrderFormData>({
     resolver: zodResolver(serviceOrderSchema),
@@ -97,13 +102,33 @@ export function ServiceOrderFormDialog({
       technician_id: serviceOrder?.technician_id ?? '',
       os_type: (serviceOrder?.os_type as OsType) ?? 'manutencao_corretiva',
       service_type_id: serviceOrder?.service_type_id ?? '',
-      scheduled_date: defaultDate,
-      scheduled_time: defaultTime,
+      scheduled_date: computedDate,
+      scheduled_time: computedTime,
       description: serviceOrder?.description ?? '',
       notes: serviceOrder?.notes ?? '',
       form_template_id: serviceOrder?.form_template_id ?? '',
     },
   });
+
+  // Reset form when dialog opens with new defaults
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        customer_id: serviceOrder?.customer_id ?? '',
+        equipment_id: serviceOrder?.equipment_id ?? '',
+        technician_id: serviceOrder?.technician_id ?? '',
+        os_type: (serviceOrder?.os_type as OsType) ?? 'manutencao_corretiva',
+        service_type_id: serviceOrder?.service_type_id ?? '',
+        scheduled_date: computedDate,
+        scheduled_time: computedTime,
+        description: serviceOrder?.description ?? '',
+        notes: serviceOrder?.notes ?? '',
+        form_template_id: serviceOrder?.form_template_id ?? '',
+      });
+      setSelectedCustomerId(serviceOrder?.customer_id);
+      setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
+    }
+  }, [open, serviceOrder, computedDate, computedTime]);
 
   const handleSubmit = async (data: ServiceOrderFormData) => {
     const cleanedData = {
@@ -141,7 +166,7 @@ export function ServiceOrderFormDialog({
                       setSelectedCustomerId(value);
                       form.setValue('equipment_id', '');
                     }}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -167,7 +192,7 @@ export function ServiceOrderFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Equipamento</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
@@ -192,7 +217,7 @@ export function ServiceOrderFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Técnico</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
@@ -217,7 +242,7 @@ export function ServiceOrderFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de OS</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
@@ -247,7 +272,7 @@ export function ServiceOrderFormDialog({
                       field.onChange(value);
                       setSelectedServiceTypeId(value === 'none' ? undefined : value);
                     }}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -280,7 +305,7 @@ export function ServiceOrderFormDialog({
                     <FileText className="h-3.5 w-3.5" />
                     Template de Formulário
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sem formulário" />

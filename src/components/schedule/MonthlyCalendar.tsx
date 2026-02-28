@@ -158,16 +158,7 @@ export function MonthlyCalendar({
         })}
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 p-3 border-t bg-muted/30">
-        <span className="text-xs font-medium text-muted-foreground">Legenda:</span>
-        {Object.entries(osTypeLabels).map(([type, label]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div className={cn('w-3 h-3 rounded-sm', osTypeColors[type as OsType])} />
-            <span className="text-xs text-muted-foreground">{label}</span>
-          </div>
-        ))}
-      </div>
+      {/* Legend removed - now in ScheduleHeader */}
     </div>
   );
 }
