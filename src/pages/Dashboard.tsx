@@ -104,8 +104,8 @@ export default function Dashboard() {
                       {stats?.osPendentes ?? 0} pendentes
                     </p>
                   </div>
-                  <div className="rounded-full bg-primary/10 p-3">
-                    <ClipboardList className="h-6 w-6 text-primary" />
+                  <div className="rounded-full bg-primary p-3">
+                    <ClipboardList className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
