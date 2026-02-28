@@ -86,6 +86,13 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
     }
   };
 
+  const getHourFromY = (e: React.DragEvent, colElement: HTMLElement) => {
+    const rect = colElement.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const hourIndex = Math.floor(y / SLOT_HEIGHT);
+    return HOURS[Math.max(0, Math.min(hourIndex, HOURS.length - 1))];
+  };
+
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -156,22 +163,35 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
           {weekDays.map((day) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const dayOrders = ordersByDate[dateKey] || [];
+            const positioned = layoutCascade(dayOrders);
             return (
               <div key={dateKey} className="relative border-l">
-                {dayOrders.map((order) => {
-                  const timeParts = order.scheduled_time!.split(':');
-                  const h = parseInt(timeParts[0], 10);
-                  const m = parseInt(timeParts[1], 10);
-                  const duration = (order as any).duration_minutes || 120;
-                  
-                  const topOffset = ((h - HOURS[0]) + m / 60) * SLOT_HEIGHT;
-                  const height = Math.max((duration / 60) * SLOT_HEIGHT, 24);
+                {positioned.map(({ order, startMin, endMin, index }) => {
+                  const h = Math.floor(startMin / 60);
+                  const m = startMin % 60;
+                  const duration = endMin - startMin;
+
+                  const topOffset = ((h - HOURS[0]) + m / 60) * SLOT_HEIGHT + (index * CASCADE_OFFSET);
+                  const height = Math.max((duration / 60) * SLOT_HEIGHT - (index * CASCADE_OFFSET), 24);
 
                   return (
                     <div
                       key={order.id}
                       className="absolute left-0.5 right-0.5 pointer-events-auto"
-                      style={{ top: topOffset, height }}
+                      style={{ top: topOffset, height, zIndex: index + 1 }}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const orderId = e.dataTransfer.getData('text/plain');
+                        if (orderId) {
+                          const col = e.currentTarget.closest('.relative') as HTMLElement;
+                          if (col) {
+                            const hour = getHourFromY(e, col);
+                            onDrop(orderId, dateKey, `${String(hour).padStart(2, '0')}:00`);
+                          }
+                        }
+                      }}
                     >
                       <EventCard
                         order={order}
