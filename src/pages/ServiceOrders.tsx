@@ -52,7 +52,6 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
 import { ServiceTypeManagerDialog } from '@/components/service-orders/ServiceTypeManagerDialog';
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
-import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
