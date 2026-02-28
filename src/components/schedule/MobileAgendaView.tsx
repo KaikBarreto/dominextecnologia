@@ -22,39 +22,26 @@ export function MobileAgendaView({ currentDate, orders, onOrderSelect }: MobileA
   }, [orders, dateKey]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
-        <div>
-          <h2 className="text-base font-semibold capitalize">
-            {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            {dayOrders.length} {dayOrders.length === 1 ? 'agendamento' : 'agendamentos'}
+    <div className="flex flex-col">
+      {dayOrders.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Clock className="mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h3 className="text-base font-medium">Nenhum agendamento</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Não há ordens de serviço para este dia
           </p>
         </div>
-      </div>
-
-      <ScrollArea className="flex-1 px-4 pb-4">
-        {dayOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Clock className="mb-4 h-12 w-12 text-muted-foreground/50" />
-            <h3 className="text-base font-medium">Nenhum agendamento</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Não há ordens de serviço para este dia
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3 pt-4">
-            {dayOrders.map((order) => (
-              <EventCard
-                key={order.id}
-                order={order}
-                onClick={() => onOrderSelect(order)}
-              />
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+      ) : (
+        <div className="space-y-3">
+          {dayOrders.map((order) => (
+            <EventCard
+              key={order.id}
+              order={order}
+              onClick={() => onOrderSelect(order)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
