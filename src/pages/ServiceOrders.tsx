@@ -239,12 +239,12 @@ export default function ServiceOrders() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>OS</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                            <TableHead className="hidden sm:table-cell">Data</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[100px]">Ações</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider">Cliente</TableHead>
+                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
+                            <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                            <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
