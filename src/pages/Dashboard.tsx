@@ -38,20 +38,20 @@ const statusConfig = {
   pendente: {
     label: 'Pendente',
     icon: Clock,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
+    color: 'text-white',
+    bgColor: 'bg-warning',
   },
   em_andamento: {
     label: 'Em Andamento',
     icon: AlertCircle,
-    color: 'text-info',
-    bgColor: 'bg-info/10',
+    color: 'text-white',
+    bgColor: 'bg-info',
   },
   concluida: {
     label: 'Concluída',
     icon: CheckCircle2,
-    color: 'text-success',
-    bgColor: 'bg-success/10',
+    color: 'text-white',
+    bgColor: 'bg-success',
   },
 };
 
