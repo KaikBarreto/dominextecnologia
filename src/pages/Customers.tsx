@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -17,6 +18,7 @@ import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import type { Customer } from '@/types/database';
 
 export default function Customers() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -29,7 +31,8 @@ export default function Customers() {
     (customer) =>
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.document?.includes(searchTerm)
+      customer.document?.includes(searchTerm) ||
+      (customer as any).company_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = async (data: any) => {
@@ -41,7 +44,8 @@ export default function Customers() {
     setEditingCustomer(null);
   };
 
-  const handleEdit = (customer: Customer) => {
+  const handleEdit = (customer: Customer, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingCustomer(customer);
     setFormOpen(true);
   };
@@ -65,7 +69,7 @@ export default function Customers() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, email ou documento..."
+            placeholder="Buscar por nome, empresa, email ou documento..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -106,15 +110,16 @@ export default function Customers() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
+                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Empresa</TableHead>
                     <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
                     <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
-                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Cidade</TableHead>
+                    <TableHead className="hidden xl:table-cell text-xs uppercase tracking-wider">Endereço</TableHead>
                     <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id}>
+                    <TableRow key={customer.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${customer.id}`)}>
                       <TableCell>
                         <div>
                           <p className="font-medium">{customer.name}</p>
@@ -122,6 +127,9 @@ export default function Customers() {
                             <p className="text-xs text-muted-foreground">{customer.document}</p>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {(customer as any).company_name || '-'}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
@@ -132,36 +140,36 @@ export default function Customers() {
                         <div className="space-y-1">
                           {customer.phone && (
                             <div className="flex items-center gap-1 text-sm">
-                              <Phone className="h-3 w-3" />
-                              {customer.phone}
+                              <Phone className="h-3 w-3" />{customer.phone}
                             </div>
                           )}
                           {customer.email && (
                             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Mail className="h-3 w-3" />
-                              {customer.email}
+                              <Mail className="h-3 w-3" />{customer.email}
                             </div>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {customer.city && (
+                      <TableCell className="hidden xl:table-cell">
+                        {(customer.city || customer.address) ? (
                           <div className="flex items-center gap-1 text-sm">
-                            <MapPin className="h-3 w-3" />
-                            {customer.city}{customer.state && ` - ${customer.state}`}
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="truncate max-w-[200px]">
+                              {[customer.address, customer.city, customer.state].filter(Boolean).join(', ')}
+                            </span>
                           </div>
-                        )}
+                        ) : '-'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}>
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" onClick={(e) => handleEdit(customer, e)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="text-destructive"
-                            onClick={() => { setCustomerToDelete(customer); setDeleteDialogOpen(true); }}
+                            onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); setDeleteDialogOpen(true); }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
