@@ -81,6 +81,8 @@ export function EquipmentPanel() {
     return matchesSearch && matchesCategory && matchesCustomer;
   });
 
+  const pagination = useDataPagination(filteredEquipment);
+
   const handleSubmit = async (data: EquipmentInput) => {
     if (editingEquipment) {
       const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
