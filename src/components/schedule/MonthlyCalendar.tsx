@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -96,45 +96,22 @@ export function MonthlyCalendar({
 
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-b bg-muted/30">
+      {/* Navigation */}
+      <div className="flex items-center justify-between gap-4 p-3 border-b bg-muted/30">
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handlePrevMonth}
-            className="h-9 w-9"
-          >
+          <Button variant="outline" size="icon" onClick={handlePrevMonth} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleNextMonth}
-            className="h-9 w-9"
-          >
+          <Button variant="outline" size="icon" onClick={handleNextMonth} className="h-8 w-8">
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <h2 className="text-lg font-semibold capitalize ml-2">
+          <h2 className="text-sm font-semibold capitalize ml-1">
             {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
           </h2>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleToday}>
-            Hoje
-          </Button>
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filtros
-          </Button>
-          {onNewOrder && (
-            <Button size="sm" onClick={onNewOrder} className="bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova OS
-            </Button>
-          )}
-        </div>
+        <Button variant="outline" size="sm" onClick={handleToday} className="text-xs h-7">
+          Hoje
+        </Button>
       </div>
 
       {/* Week Days Header */}

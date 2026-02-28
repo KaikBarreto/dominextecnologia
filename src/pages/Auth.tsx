@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
 import logoWhite from '@/assets/logo-white.png';
-import loginBg from '@/assets/login-bg.jpg';
+import DarkVeil from '@/components/ui/DarkVeil';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
@@ -76,15 +76,11 @@ export default function Auth() {
   };
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center p-4"
-      style={{
-        backgroundImage: `url(${loginBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <DarkVeil hueShift={240} speed={0.5} />
+      </div>
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
           <img src={logoWhite} alt="Glacial Cold Brasil" className="h-16 w-auto mb-2" />
