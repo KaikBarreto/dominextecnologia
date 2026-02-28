@@ -52,9 +52,10 @@ export function EquipmentFormDialog({
 
   const autoIdentifier = useMemo(() => {
     if (equipment?.identifier) return equipment.identifier;
-    // Generate numeric identifier based on count
-    return String(equipmentCount + 1).padStart(6, '0');
-  }, [equipment, equipmentCount]);
+    // Generate random 16-digit numeric identifier
+    const part1 = Math.floor(Math.random() * 9000000000000000) + 1000000000000000;
+    return String(part1);
+  }, [equipment]);
 
   const form = useForm<EquipmentFormData>({
     resolver: zodResolver(equipmentSchema),

@@ -77,14 +77,13 @@ export default function Customers() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Lista de Clientes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+          Lista de Clientes
+        </h2>
+        <Card>
+          <CardContent className="p-0">
+          <div className="p-6">
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
@@ -106,11 +105,11 @@ export default function Customers() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                    <TableHead className="hidden sm:table-cell">Contato</TableHead>
-                    <TableHead className="hidden lg:table-cell">Cidade</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
+                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Cidade</TableHead>
+                    <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -174,8 +173,10 @@ export default function Customers() {
               </Table>
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
+      </div>
 
       <CustomerFormDialog
         open={formOpen}

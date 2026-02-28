@@ -210,14 +210,12 @@ export default function ServiceOrders() {
                 })}
               </div>
 
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                Lista de OS
+              </h2>
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ClipboardList className="h-5 w-5" />
-                    Lista de OS
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
+                  <div className="p-6">
                   {isLoading ? (
                     <div className="space-y-4">
                       {[...Array(5)].map((_, i) => (
@@ -241,12 +239,12 @@ export default function ServiceOrders() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>OS</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                            <TableHead className="hidden sm:table-cell">Data</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[100px]">Ações</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider">Cliente</TableHead>
+                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
+                            <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                            <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -362,6 +360,7 @@ export default function ServiceOrders() {
                       </Table>
                     </div>
                   )}
+                  </div>
                 </CardContent>
               </Card>
             </>

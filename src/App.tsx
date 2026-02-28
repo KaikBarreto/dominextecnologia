@@ -14,6 +14,7 @@ import ServiceOrders from "./pages/ServiceOrders";
 import Schedule from "./pages/Schedule";
 import Customers from "./pages/Customers";
 import EquipmentPage from "./pages/Equipment";
+import EquipmentDetail from "./pages/EquipmentDetail";
 import CRM from "./pages/CRM";
 import Inventory from "./pages/Inventory";
 import Finance from "./pages/Finance";
@@ -106,6 +107,7 @@ const AppRoutes = () => (
       <Route path="/agenda" element={<Schedule />} />
       <Route path="/clientes" element={<Customers />} />
       <Route path="/equipamentos" element={<EquipmentPage />} />
+      <Route path="/equipamentos/:id" element={<EquipmentDetail />} />
       <Route path="/crm" element={<CRM />} />
       <Route path="/estoque" element={<Inventory />} />
       <Route path="/financeiro" element={<Finance />} />
