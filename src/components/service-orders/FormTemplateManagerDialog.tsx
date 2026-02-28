@@ -295,22 +295,27 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
         </div>
         
         {/* New Template */}
-        <div className="p-3 border-b">
-          <div className="flex gap-2">
-            <Input
-              value={newTemplateName}
-              onChange={(e) => setNewTemplateName(e.target.value)}
-              placeholder="Nome do questionário"
-              className="flex-1"
-            />
-            <Button
-              onClick={handleCreateTemplate}
-              disabled={!newTemplateName.trim() || createTemplate.isPending}
-              size="icon"
-            >
-              <Plus className="h-4 w-4" />
+        <div className="p-3 border-b space-y-2">
+          {!showCreateTemplate ? (
+            <Button className="w-full" variant="outline" onClick={() => setShowCreateTemplate(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo questionário
             </Button>
-          </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="Nome do questionário"
+                className="flex-1"
+              />
+              <Button
+                onClick={handleCreateTemplate}
+                disabled={!newTemplateName.trim() || createTemplate.isPending}
+              >Criar</Button>
+              <Button variant="ghost" onClick={() => { setShowCreateTemplate(false); setNewTemplateName(''); }}>Cancelar</Button>
+            </div>
+          )}
         </div>
 
         {/* Templates */}
