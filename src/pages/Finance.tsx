@@ -152,8 +152,8 @@ export default function Finance() {
                   {formatCurrency(summary.totalSaidas)}
                 </p>
               </div>
-              <div className="rounded-full bg-destructive/10 p-3">
-                <TrendingDown className="h-6 w-6 text-destructive" />
+              <div className="rounded-full bg-destructive p-3">
+                <TrendingDown className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
