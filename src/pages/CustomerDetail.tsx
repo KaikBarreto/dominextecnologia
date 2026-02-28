@@ -30,11 +30,10 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
-  const { isLoading } = useCustomers();
+  const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
   const { serviceOrders, createServiceOrder } = useServiceOrders();
   const { transactions } = useFinancial();
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
-  const { customers, updateCustomer, deleteCustomer } = useCustomers();
   const { categories } = useEquipmentCategories();
 
   const [equipFormOpen, setEquipFormOpen] = useState(false);
