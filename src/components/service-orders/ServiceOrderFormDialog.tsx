@@ -147,6 +147,7 @@ export function ServiceOrderFormDialog({
         service_type_id: serviceOrder?.service_type_id ?? '',
         scheduled_date: computedDate,
         scheduled_time: computedTime,
+        duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
         description: serviceOrder?.description ?? '',
         notes: serviceOrder?.notes ?? '',
         form_template_id: serviceOrder?.form_template_id ?? '',
