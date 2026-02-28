@@ -63,8 +63,8 @@ const menuItems: MenuItem[] = [
   { title: 'Configurações', icon: Settings, path: '/configuracoes', roles: ['admin'] },
 ];
 
-const activeClass = 'bg-primary text-white hover:bg-primary hover:text-white font-semibold';
-const inactiveClass = 'text-foreground/70 hover:bg-primary hover:text-white';
+const activeClass = 'bg-primary text-white hover:bg-primary hover:text-white font-semibold transition-all duration-200';
+const inactiveClass = 'text-foreground/70 hover:bg-primary hover:text-white transition-all duration-200';
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000'; // TODO: replace with real support number
 
