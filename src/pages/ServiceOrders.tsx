@@ -175,7 +175,7 @@ export default function ServiceOrders() {
             <Settings className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Configurações</span>
           </Button>
-          <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" />
             Nova OS
           </Button>
