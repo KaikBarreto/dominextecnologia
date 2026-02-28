@@ -235,16 +235,7 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Configurações de OS">
-      <Tabs defaultValue="status" className="w-full">
-        <TabsList className="w-full grid grid-cols-4">
-          <TabsTrigger value="status">Status</TabsTrigger>
-          <TabsTrigger value="numeracao">Numeração</TabsTrigger>
-          <TabsTrigger value="campos">Campos</TabsTrigger>
-          <TabsTrigger value="sla">SLA</TabsTrigger>
-        </TabsList>
-
-        {/* Status Tab */}
-        <TabsContent value="status" className="space-y-4 mt-4">
+      <div className="space-y-4">
           <div className="rounded-lg border p-3 space-y-2">
             <p className="text-sm font-medium">Novo status</p>
             <div className="flex gap-2">
