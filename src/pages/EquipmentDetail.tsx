@@ -45,7 +45,11 @@ export default function EquipmentDetail() {
   const { settings: companySettings } = useCompanySettings();
   const { equipment: allEquipment, isLoading: eqLoading } = useEquipment();
   const { serviceOrders } = useServiceOrders();
+  const { customers } = useCustomers();
+  const { categories } = useEquipmentCategories();
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [editEquipOpen, setEditEquipOpen] = useState(false);
+  const [deleteEquipOpen, setDeleteEquipOpen] = useState(false);
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [selectedLabelSize, setSelectedLabelSize] = useState<string>('5x8');
