@@ -23,6 +23,8 @@ export default function Inventory() {
     item.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const pagination = useDataPagination(filteredItems);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
