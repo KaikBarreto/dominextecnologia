@@ -178,6 +178,7 @@ export function EquipmentPanel() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[60px] text-xs uppercase tracking-wider">Foto</TableHead>
                       <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
                       <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Marca/Modelo</TableHead>
                       <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Cliente</TableHead>
