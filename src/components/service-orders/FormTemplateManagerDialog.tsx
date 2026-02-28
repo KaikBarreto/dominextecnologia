@@ -274,8 +274,8 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium leading-tight">{question.question}</p>
           <div className="flex items-center gap-2 mt-1">
-            <Badge variant="secondary" className="text-xs">
-              {getQuestionTypeIcon(question.question_type)} {getQuestionTypeLabel(question.question_type)}
+            <Badge variant="secondary" className="text-xs gap-1">
+              {(() => { const QIcon = getQuestionTypeIcon(question.question_type); return typeof QIcon === 'string' ? QIcon : <QIcon className="h-3 w-3" />; })()} {getQuestionTypeLabel(question.question_type)}
             </Badge>
             {question.is_required && (
               <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
