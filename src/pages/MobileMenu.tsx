@@ -66,10 +66,10 @@ export default function MobileMenu() {
       </div>
 
       <Card
-        className="cursor-pointer transition-colors hover:bg-destructive/10"
+        className="cursor-pointer transition-colors hover:bg-destructive group"
         onClick={signOut}
       >
-        <CardContent className="flex items-center gap-4 p-4 text-destructive">
+        <CardContent className="flex items-center gap-4 p-4 text-destructive group-hover:text-white">
           <LogOut className="h-5 w-5" />
           <span className="font-medium">Sair</span>
         </CardContent>
