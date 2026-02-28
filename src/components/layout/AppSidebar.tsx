@@ -55,7 +55,7 @@ const menuItems: MenuItem[] = [
     ],
   },
   { title: 'Agenda', icon: Calendar, path: '/agenda', roles: ['admin', 'gestor', 'tecnico'] },
-  { title: 'Clientes', icon: Users, path: '/clientes', roles: ['admin', 'gestor', 'comercial'] },
+  { title: 'Clientes e Equipamentos', icon: Users, path: '/clientes', roles: ['admin', 'gestor', 'comercial'] },
   { title: 'CRM', icon: TrendingUp, path: '/crm', roles: ['admin', 'gestor', 'comercial'] },
   { title: 'Estoque', icon: Package, path: '/estoque', roles: ['admin', 'gestor'] },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', roles: ['admin', 'gestor', 'financeiro'] },
