@@ -141,7 +141,7 @@ export function ServiceOrderFormDialog({
 
   const handleSubmit = async (data: ServiceOrderFormData) => {
     if (!serviceOrder && !isLastStep) {
-      goNext();
+      // Don't submit, just advance step
       return;
     }
 
