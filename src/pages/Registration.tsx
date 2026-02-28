@@ -423,7 +423,7 @@ export default function Registration() {
                     onClick={() => navigate('/auth')}
                     className="text-white font-bold hover:text-primary transition-colors"
                   >
-                    Fazer Login
+                    FAZER LOGIN
                   </button>
                 </div>
               )}
