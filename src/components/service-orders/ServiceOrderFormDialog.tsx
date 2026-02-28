@@ -135,6 +135,8 @@ export function ServiceOrderFormDialog({
       setStep(0);
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
+      setRequireTechSignature(false);
+      setRequireClientSignature(false);
       form.reset({
         customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
         equipment_id: serviceOrder?.equipment_id ?? '',
