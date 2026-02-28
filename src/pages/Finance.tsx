@@ -428,5 +428,16 @@ function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: Tran
         </TableBody>
       </Table>
     </div>
+    <DataTablePagination
+      page={pagination.page}
+      totalPages={pagination.totalPages}
+      totalItems={pagination.totalItems}
+      from={pagination.from}
+      to={pagination.to}
+      pageSize={pagination.pageSize}
+      onPageChange={pagination.setPage}
+      onPageSizeChange={pagination.setPageSize}
+    />
+    </>
   );
 }
