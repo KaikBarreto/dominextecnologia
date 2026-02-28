@@ -559,7 +559,7 @@ export function ServiceOrderFormDialog({
                 Cancelar
               </Button>
               {isLastStep ? (
-                <Button type="submit" disabled={isLoading} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Criar OS
                 </Button>

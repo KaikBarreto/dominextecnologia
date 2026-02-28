@@ -13,7 +13,7 @@ export interface FormTemplateInsert {
 export interface FormQuestionInsert {
   template_id: string;
   question: string;
-  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select';
+  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature';
   options?: string[];
   is_required?: boolean;
   position?: number;
