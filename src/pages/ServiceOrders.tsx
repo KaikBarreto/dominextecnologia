@@ -204,7 +204,7 @@ export default function ServiceOrders() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-muted-foreground">{osStatusLabels[status]}</p>
+                            <p className="text-sm text-muted-foreground">{statusOptions.find((s) => s.key === status)?.label || osStatusLabels[status]}</p>
                             <p className="text-2xl font-bold">{count}</p>
                           </div>
                           <div className={`rounded-full p-2 ${config.bgColor}`}>
