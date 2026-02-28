@@ -91,36 +91,24 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (!reportRef.current) return;
     setGenerating(true);
     try {
-      const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
       const element = reportRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      let heightLeft = imgHeight;
-      let position = 10;
-
-      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-      heightLeft -= (pdfHeight - 20);
-
-      while (heightLeft > 0) {
-        position = position - pdfHeight + 10;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-        heightLeft -= (pdfHeight - 20);
-      }
+      await pdf.html(element, {
+        margin: [5, 5, 5, 5],
+        autoPaging: 'text',
+        width: pdfWidth - 10,
+        windowWidth: element.scrollWidth,
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+        },
+      });
 
       pdf.save(`OS-${String(serviceOrder.order_number).padStart(4, '0')}.pdf`);
     } catch (err) {
@@ -156,13 +144,13 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             )}
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-xl font-bold leading-tight">{company?.name || 'Empresa'}</h1>
-              {company?.document && <p className="text-xs sm:text-sm text-white/70">CNPJ: {company.document}</p>}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/60 mt-1">
+              {company?.document && <p className="text-xs sm:text-sm text-white/90">CNPJ: {company.document}</p>}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/80 mt-1">
                 {company?.phone && <span>{company.phone}</span>}
                 {company?.email && <span>{company.email}</span>}
               </div>
               {company?.address && (
-                <p className="text-xs text-white/50 mt-1">
+                <p className="text-xs text-white/75 mt-1">
                   {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
                   {company.zip_code && ` | CEP: ${company.zip_code}`}
                 </p>
@@ -172,7 +160,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <div className="text-lg sm:text-2xl font-black tracking-tight">
                 OS #{String(serviceOrder.order_number).padStart(4, '0')}
               </div>
-              <p className="text-xs sm:text-sm text-white/70 mt-1">{osTypeLabels[serviceOrder.os_type]}</p>
+              <p className="text-xs sm:text-sm text-white/90 mt-1">{osTypeLabels[serviceOrder.os_type]}</p>
             </div>
           </div>
         </div>
