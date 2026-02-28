@@ -172,8 +172,9 @@ export function ServiceTypesPanel() {
                   <TableHead>Cor</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrição</TableHead>
-                  <TableHead>Equipamento</TableHead>
-                  <TableHead>Status</TableHead>
+                   <TableHead>Prefixo OS</TableHead>
+                   <TableHead>Equipamento</TableHead>
+                   <TableHead>Status</TableHead>
                   <TableHead className="w-[100px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
