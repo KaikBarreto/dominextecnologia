@@ -108,10 +108,17 @@ function OrderDetail({
             </div>
           )}
           {onEdit && (
-            <Button onClick={onEdit} className="w-full mt-4">
+            <Button onClick={onEdit} variant="outline" className="w-full mt-4">
               Editar OS
             </Button>
           )}
+          <Button 
+            onClick={() => navigate(`/os-tecnico/${order.id}`)} 
+            className="w-full mt-2"
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Preencher OS
+          </Button>
         </div>
       </ScrollArea>
     </>
