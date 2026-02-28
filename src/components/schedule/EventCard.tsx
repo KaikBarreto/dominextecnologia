@@ -76,32 +76,37 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
     );
   }
 
+  const bgColor = serviceTypeColor
+    ? (colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor)
+    : undefined;
+
   return (
     <div
       onClick={onClick}
       draggable={draggable}
       onDragStart={onDragStart}
       className={cn(
-        'p-3 rounded-lg border bg-card cursor-pointer transition-all hover:shadow-md hover:border-primary/30 space-y-1.5 overflow-hidden',
-        fillHeight && 'h-full'
+        'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
+        fillHeight && 'h-full',
+        !bgColor && 'border bg-card hover:border-primary/30'
       )}
-      style={serviceTypeColor ? { borderLeftWidth: 4, borderLeftColor: serviceTypeColor } : undefined}
+      style={bgColor ? { backgroundColor: bgColor, color: 'white' } : undefined}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold text-sm">
           {order.scheduled_time?.slice(0, 5) || '--:--'}
         </span>
-        <Badge className={cn('text-[10px] px-1.5 h-5', statusBadge.className)}>
+        <Badge className={cn('text-[10px] px-1.5 h-5', !bgColor && statusBadge.className)} style={bgColor ? { backgroundColor: 'rgba(255,255,255,0.25)', color: 'white' } : undefined}>
           {statusBadge.label}
         </Badge>
       </div>
-      <p className="text-xs font-medium text-primary">{osTypeLabels[order.os_type]}</p>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <p className={cn('text-xs font-medium', bgColor ? 'text-white/90' : 'text-primary')}>{osTypeLabels[order.os_type]}</p>
+      <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
         <User className="h-3 w-3 shrink-0" />
         <span className="truncate">{order.customer?.name || 'Cliente'}</span>
       </div>
       {order.customer?.city && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
           <MapPin className="h-3 w-3 shrink-0" />
           <span className="truncate">{order.customer.city}</span>
         </div>
