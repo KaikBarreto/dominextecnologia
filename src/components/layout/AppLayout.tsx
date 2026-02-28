@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
+import { SystemFooter } from './SystemFooter';
 import { Outlet } from 'react-router-dom';
 import { Snowflake } from 'lucide-react';
 
