@@ -1,4 +1,4 @@
-// Tipos do sistema Glacial Cold Brasil
+// Tipos do sistema de gestão
 
 export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro';
 
