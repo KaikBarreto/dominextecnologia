@@ -317,7 +317,7 @@ export default function CustomerDetail() {
       <ServiceOrderFormDialog
         open={osFormOpen}
         onOpenChange={setOsFormOpen}
-        serviceOrder={{ customer_id: id } as any}
+        defaultCustomerId={id}
         onSubmit={async (data: any) => {
           await createServiceOrder.mutateAsync(data);
         }}

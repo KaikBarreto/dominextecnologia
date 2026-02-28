@@ -132,7 +132,7 @@ export function ServiceOrderFormDialog({
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
       form.reset({
-        customer_id: serviceOrder?.customer_id ?? '',
+        customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
         equipment_id: serviceOrder?.equipment_id ?? '',
         technician_id: serviceOrder?.technician_id ?? '',
         os_type: (serviceOrder?.os_type as any) ?? 'manutencao_corretiva',
@@ -143,7 +143,7 @@ export function ServiceOrderFormDialog({
         notes: serviceOrder?.notes ?? '',
         form_template_id: serviceOrder?.form_template_id ?? '',
       });
-      setSelectedCustomerId(serviceOrder?.customer_id);
+      setSelectedCustomerId(serviceOrder?.customer_id ?? defaultCustomerId);
       setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
     }
   }, [open, serviceOrder, computedDate, computedTime]);
