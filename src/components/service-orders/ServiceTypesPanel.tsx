@@ -25,6 +25,7 @@ interface ServiceTypeForm {
   description: string;
   is_active: boolean;
   requires_equipment: boolean;
+  number_prefix: string;
 }
 
 const defaultForm: ServiceTypeForm = {
