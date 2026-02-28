@@ -51,6 +51,7 @@ interface ServiceOrderFormDialogProps {
   isLoading?: boolean;
   defaultDate?: string;
   defaultTime?: string;
+  defaultCustomerId?: string;
 }
 
 const STEPS = [
@@ -60,14 +61,14 @@ const STEPS = [
 ];
 
 export function ServiceOrderFormDialog({
-  open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime,
+  open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId,
 }: ServiceOrderFormDialogProps) {
   const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const [step, setStep] = useState(0);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
@@ -131,7 +132,7 @@ export function ServiceOrderFormDialog({
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
       form.reset({
-        customer_id: serviceOrder?.customer_id ?? '',
+        customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
         equipment_id: serviceOrder?.equipment_id ?? '',
         technician_id: serviceOrder?.technician_id ?? '',
         os_type: (serviceOrder?.os_type as any) ?? 'manutencao_corretiva',
@@ -142,7 +143,7 @@ export function ServiceOrderFormDialog({
         notes: serviceOrder?.notes ?? '',
         form_template_id: serviceOrder?.form_template_id ?? '',
       });
-      setSelectedCustomerId(serviceOrder?.customer_id);
+      setSelectedCustomerId(serviceOrder?.customer_id ?? defaultCustomerId);
       setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
     }
   }, [open, serviceOrder, computedDate, computedTime]);
