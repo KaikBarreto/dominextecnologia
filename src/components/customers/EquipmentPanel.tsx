@@ -1,11 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -16,21 +20,21 @@ import { useEquipment, type EquipmentInput } from '@/hooks/useEquipment';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
-import { EquipmentDetailDialog } from './EquipmentDetailDialog';
 import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
-
 import type { Equipment } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export function EquipmentPanel() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [customerFilter, setCustomerFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<(Equipment & { customer?: any }) | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
-  const [detailEquipment, setDetailEquipment] = useState<(Equipment & { customer?: any }) | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
 
   const { equipment, isLoading, createEquipment } = useEquipment();
@@ -39,12 +43,17 @@ export function EquipmentPanel() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const filteredEquipment = equipment.filter((eq) =>
-    eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    eq.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    eq.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    eq.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEquipment = equipment.filter((eq) => {
+    const matchesSearch =
+      eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      eq.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      eq.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      eq.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      eq.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || (eq as any).category_id === categoryFilter;
+    const matchesCustomer = customerFilter === 'all' || eq.customer_id === customerFilter;
+    return matchesSearch && matchesCategory && matchesCustomer;
+  });
 
   const handleSubmit = async (data: EquipmentInput) => {
     if (editingEquipment) {
@@ -80,13 +89,16 @@ export function EquipmentPanel() {
     return categories.find(c => c.id === categoryId)?.name;
   };
 
+  // Unique customers that have equipment
+  const customersWithEquipment = customers.filter(c => equipment.some(eq => eq.customer_id === c.id));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, marca, modelo ou cliente..."
+            placeholder="Buscar por nome, identificador, marca ou cliente..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -108,98 +120,128 @@ export function EquipmentPanel() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Lista de Equipamentos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : filteredEquipment.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Package className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">
-                {searchTerm ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
-              </h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? 'Tente uma busca diferente' : 'Clique em "Novo Equipamento" para começar'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="hidden sm:table-cell">Marca/Modelo</TableHead>
-                    <TableHead className="hidden md:table-cell">Cliente</TableHead>
-                    <TableHead className="hidden lg:table-cell">Categoria</TableHead>
-                    <TableHead className="hidden lg:table-cell">Status</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEquipment.map((eq) => (
-                    <TableRow key={eq.id} className="cursor-pointer" onClick={() => setDetailEquipment(eq)}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{eq.name}</p>
-                          {eq.serial_number && (
-                            <p className="text-xs text-muted-foreground">S/N: {eq.serial_number}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <div className="text-sm">
-                          {eq.brand && <span>{eq.brand}</span>}
-                          {eq.model && <span className="text-muted-foreground"> {eq.model}</span>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {eq.customer?.name || '-'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {getCategoryName((eq as any).category_id) || '-'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <Badge variant={(eq as any).status === 'active' ? 'default' : 'secondary'}>
-                          {(eq as any).status === 'active' ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => { setEditingEquipment(eq); setFormOpen(true); }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={() => { setEquipmentToDelete(eq); setDeleteDialogOpen(true); }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as categorias</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id}>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                  {cat.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={customerFilter} onValueChange={setCustomerFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Cliente" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os clientes</SelectItem>
+            {customersWithEquipment.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+          Lista de Equipamentos
+        </h2>
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="space-y-4 p-6">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : filteredEquipment.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Package className="mb-4 h-12 w-12 text-muted-foreground" />
+                <h3 className="text-lg font-medium">
+                  {searchTerm || categoryFilter !== 'all' || customerFilter !== 'all' ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {searchTerm || categoryFilter !== 'all' || customerFilter !== 'all' ? 'Tente filtros diferentes' : 'Clique em "Novo Equipamento" para começar'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Marca/Modelo</TableHead>
+                      <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Cliente</TableHead>
+                      <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Categoria</TableHead>
+                      <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEquipment.map((eq) => (
+                      <TableRow key={eq.id} className="cursor-pointer" onClick={() => navigate(`/equipamentos/${eq.id}`)}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{eq.name}</p>
+                            {eq.identifier && (
+                              <p className="text-xs text-muted-foreground font-mono">{eq.identifier}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="text-sm">
+                            {eq.brand && <span>{eq.brand}</span>}
+                            {eq.model && <span className="text-muted-foreground"> {eq.model}</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {eq.customer?.name || '-'}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {getCategoryName((eq as any).category_id) || '-'}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <Badge variant={(eq as any).status === 'active' ? 'default' : 'secondary'}>
+                            {(eq as any).status === 'active' ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => { setEditingEquipment(eq); setFormOpen(true); }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                              onClick={() => { setEquipmentToDelete(eq); setDeleteDialogOpen(true); }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <EquipmentFormDialog
         open={formOpen}
@@ -212,17 +254,10 @@ export function EquipmentPanel() {
         equipmentCount={equipment.length}
       />
 
-      <EquipmentDetailDialog
-        open={!!detailEquipment}
-        onOpenChange={(open) => { if (!open) setDetailEquipment(null); }}
-        equipment={detailEquipment}
-      />
-
       <EquipmentFieldConfigDialog
         open={configOpen}
         onOpenChange={setConfigOpen}
       />
-
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
