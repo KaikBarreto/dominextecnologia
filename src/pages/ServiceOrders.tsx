@@ -409,6 +409,11 @@ export default function ServiceOrders() {
         onOpenChange={setViewDialogOpen}
         serviceOrderId={viewingOsId}
       />
+
+      <OsStatusManagerDialog
+        open={statusConfigOpen}
+        onOpenChange={setStatusConfigOpen}
+      />
     </div>
   );
 }

@@ -20,6 +20,7 @@ const menuItems = [
   { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico' },
   { title: 'Agenda', icon: Calendar, path: '/agenda' },
   { title: 'Clientes', icon: Users, path: '/clientes' },
+  { title: 'Equipamentos', icon: Package, path: '/equipamentos' },
   { title: 'CRM', icon: TrendingUp, path: '/crm' },
   { title: 'Estoque', icon: Package, path: '/estoque' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro' },
