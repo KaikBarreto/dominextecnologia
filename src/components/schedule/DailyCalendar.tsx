@@ -17,12 +17,71 @@ interface DailyCalendarProps {
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
 const SLOT_HEIGHT = 80; // px per hour
 
+type PositionedOrder = {
+  order: (ServiceOrder & { customer: any; equipment: any });
+  startMin: number;
+  endMin: number;
+  col: number;
+  totalCols: number;
+};
+
+function layoutOverlapping(
+  dayOrders: (ServiceOrder & { customer: any; equipment: any })[]
+): PositionedOrder[] {
+  const items = dayOrders.map((order) => {
+    const [h, m] = order.scheduled_time!.split(':').map(Number);
+    const startMin = h * 60 + m;
+    const duration = (order as any).duration_minutes || 120;
+    return { order, startMin, endMin: startMin + duration, col: 0, totalCols: 1 };
+  }).sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+  // Group into clusters of overlapping events
+  const clusters: PositionedOrder[][] = [];
+  for (const item of items) {
+    let placed = false;
+    for (const cluster of clusters) {
+      if (cluster.some(c => c.startMin < item.endMin && item.startMin < c.endMin)) {
+        cluster.push(item);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) clusters.push([item]);
+  }
+
+  // Assign columns within each cluster
+  for (const cluster of clusters) {
+    const cols: number[][] = []; // cols[colIndex] = array of endMin
+    for (const item of cluster) {
+      let assigned = false;
+      for (let c = 0; c < cols.length; c++) {
+        if (cols[c].every(end => end <= item.startMin)) {
+          item.col = c;
+          cols[c].push(item.endMin);
+          assigned = true;
+          break;
+        }
+      }
+      if (!assigned) {
+        item.col = cols.length;
+        cols.push([item.endMin]);
+      }
+    }
+    const totalCols = cols.length;
+    for (const item of cluster) item.totalCols = totalCols;
+  }
+
+  return items;
+}
+
 export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
 
   const dayOrders = useMemo(() => {
     return orders.filter(o => o.scheduled_date === dateKey && o.scheduled_time);
   }, [orders, dateKey]);
+
+  const positionedOrders = useMemo(() => layoutOverlapping(dayOrders), [dayOrders]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -78,20 +137,21 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
 
           {/* Positioned event cards */}
           <div className="absolute inset-0 pointer-events-none" style={{ left: 64 }}>
-            {dayOrders.map((order) => {
-              const timeParts = order.scheduled_time!.split(':');
-              const hour = parseInt(timeParts[0], 10);
-              const minute = parseInt(timeParts[1], 10);
-              const duration = (order as any).duration_minutes || 120;
-              
+            {positionedOrders.map(({ order, startMin, endMin, col, totalCols }) => {
+              const hour = Math.floor(startMin / 60);
+              const minute = startMin % 60;
+              const duration = endMin - startMin;
+
               const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT;
               const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
+              const widthPercent = 100 / totalCols;
+              const leftPercent = col * widthPercent;
 
               return (
                 <div
                   key={order.id}
-                  className="absolute right-1 left-1 pointer-events-auto"
-                  style={{ top: topOffset, height }}
+                  className="absolute pointer-events-auto px-0.5"
+                  style={{ top: topOffset, height, left: `${leftPercent}%`, width: `${widthPercent}%` }}
                 >
                   <EventCard
                     order={order}
