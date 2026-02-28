@@ -26,6 +26,7 @@ export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[
   { value: 'number', label: 'Número', icon: Hash },
   { value: 'photo', label: 'Foto', icon: Camera },
   { value: 'select', label: 'Seleção', icon: ListChecks },
+  { value: 'signature', label: 'Assinatura', icon: Type },
 ];
 
 export function useFormTemplates() {
