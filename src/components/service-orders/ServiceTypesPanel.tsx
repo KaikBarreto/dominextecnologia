@@ -34,6 +34,7 @@ const defaultForm: ServiceTypeForm = {
   description: '',
   is_active: true,
   requires_equipment: true,
+  number_prefix: '',
 };
 
 export function ServiceTypesPanel() {
