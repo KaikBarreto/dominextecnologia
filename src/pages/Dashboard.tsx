@@ -138,8 +138,8 @@ export default function Dashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground">Este mês</p>
                   </div>
-                  <div className="rounded-full bg-warning/10 p-3">
-                    <DollarSign className="h-6 w-6 text-warning" />
+                  <div className="rounded-full bg-warning p-3">
+                    <DollarSign className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
