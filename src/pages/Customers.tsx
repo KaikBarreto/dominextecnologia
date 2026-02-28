@@ -18,15 +18,6 @@ import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import type { Customer } from '@/types/database';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useCustomers } from '@/hooks/useCustomers';
-import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
-import type { Customer } from '@/types/database';
 
 export default function Customers() {
   const navigate = useNavigate();
