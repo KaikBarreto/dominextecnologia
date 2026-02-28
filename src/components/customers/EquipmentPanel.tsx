@@ -199,6 +199,7 @@ export function EquipmentPanel() {
                             </div>
                           )}
                         </TableCell>
+                        <TableCell>
                           <div>
                             <p className="font-medium">{eq.name}</p>
                             {eq.identifier && (
