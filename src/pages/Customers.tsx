@@ -79,7 +79,7 @@ export default function Customers() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => { setEditingCustomer(null); setFormOpen(true); }}>
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingCustomer(null); setFormOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" />
           Novo Cliente
         </Button>

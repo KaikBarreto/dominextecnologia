@@ -402,28 +402,30 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
                   <Label className="text-xs">Todos</Label>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {serviceTypes.filter(t => t.is_active).map((st) => {
-                  const selectedIds = ((selectedTemplate as any).service_type_ids ?? []) as string[];
-                  const checked = selectedIds.includes(st.id);
-                  return (
-                    <label key={st.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? [...selectedIds, st.id]
-                            : selectedIds.filter((id) => id !== st.id);
-                          setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: next });
-                        }}
-                      />
-                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
-                      {st.name}
-                    </label>
-                  );
-                })}
-              </div>
+              {((selectedTemplate as any).service_type_ids?.length ?? 0) > 0 && (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {serviceTypes.filter(t => t.is_active).map((st) => {
+                    const selectedIds = ((selectedTemplate as any).service_type_ids ?? []) as string[];
+                    const checked = selectedIds.includes(st.id);
+                    return (
+                      <label key={st.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...selectedIds, st.id]
+                              : selectedIds.filter((id) => id !== st.id);
+                            setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: next });
+                          }}
+                        />
+                        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
+                        {st.name}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Questions List */}

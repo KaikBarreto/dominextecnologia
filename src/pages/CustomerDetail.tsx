@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Plus, Eye, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useFinancial } from '@/hooks/useFinancial';
+import { useEquipment } from '@/hooks/useEquipment';
 import { osStatusLabels } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-type TabKey = 'geral' | 'historico' | 'financeiro';
+type TabKey = 'geral' | 'equipamentos' | 'historico' | 'financeiro';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -27,6 +28,7 @@ export default function CustomerDetail() {
   const { customers, isLoading } = useCustomers();
   const { serviceOrders } = useServiceOrders();
   const { transactions } = useFinancial();
+  const { equipment: customerEquipment } = useEquipment(id);
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
@@ -47,6 +49,7 @@ export default function CustomerDetail() {
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'geral', label: 'Geral' },
+    { key: 'equipamentos', label: 'Equipamentos' },
     { key: 'historico', label: 'Histórico' },
     { key: 'financeiro', label: 'Financeiro' },
   ];
@@ -59,7 +62,7 @@ export default function CustomerDetail() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{customer.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
               {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
             </Badge>
@@ -70,13 +73,13 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
               activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
@@ -132,11 +135,55 @@ export default function CustomerDetail() {
         </div>
       )}
 
-      {activeTab === 'historico' && (
+      {activeTab === 'equipamentos' && (
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-            Ordens de Serviço
+            Equipamentos do Cliente
           </h2>
+          {customerEquipment.length === 0 ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <Package className="mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {customerEquipment.map((eq) => (
+                <Card
+                  key={eq.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => navigate(`/equipamentos/${eq.id}`)}
+                >
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium truncate">{eq.name}</p>
+                      <Badge variant={eq.status === 'active' ? 'default' : 'secondary'} className="text-xs shrink-0">
+                        {eq.status === 'active' ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+                    {(eq.brand || eq.model) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[eq.brand, eq.model].filter(Boolean).join(' - ')}
+                      </p>
+                    )}
+                    {eq.identifier && (
+                      <p className="text-xs font-mono text-muted-foreground">ID: {eq.identifier}</p>
+                    )}
+                    {eq.location && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />{eq.location}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'historico' && (
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Ordens de Serviço</h2>
           {customerOrders.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <ClipboardList className="mb-2 h-8 w-8 text-muted-foreground" />
@@ -158,9 +205,7 @@ export default function CustomerDetail() {
                     {customerOrders.map((os) => (
                       <TableRow key={os.id}>
                         <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span></TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{osStatusLabels[os.status]}</Badge>
-                        </TableCell>
+                        <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {os.scheduled_date ? format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                         </TableCell>
@@ -181,9 +226,7 @@ export default function CustomerDetail() {
 
       {activeTab === 'financeiro' && (
         <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-            Transações do Cliente
-          </h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Transações do Cliente</h2>
           {customerTransactions.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <DollarSign className="mb-2 h-8 w-8 text-muted-foreground" />

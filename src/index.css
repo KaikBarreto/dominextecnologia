@@ -142,3 +142,10 @@ Design Premium com Azul da Marca #1565C0
     background-image: var(--gradient-brand);
   }
 }
+
+/* Destructive buttons (excluir, cancelar, sair) - vermelho com texto branco */
+@layer components {
+  .btn-destructive-action {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+  }
+}
