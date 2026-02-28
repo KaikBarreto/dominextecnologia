@@ -165,13 +165,19 @@ export function ServiceOrderFormDialog({
       scheduled_time: data.scheduled_time || undefined,
     };
 
-    // Always create a single OS with the first equipment
+    // Build equipment items for junction table
+    const equipment_items = selectedEquipmentIds.map(eqId => ({
+      equipment_id: eqId,
+      form_template_id: equipmentTemplateMap[eqId] || undefined,
+    }));
+
     const cleanedData = {
       ...baseData,
       equipment_id: selectedEquipmentIds[0] || undefined,
       form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined),
       require_tech_signature: requireTechSignature,
       require_client_signature: requireClientSignature,
+      equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
     };
     await onSubmit(cleanedData);
     form.reset();
