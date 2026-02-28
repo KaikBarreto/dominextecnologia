@@ -22,6 +22,7 @@ import { useTechnicians } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -224,10 +225,15 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="customer_id" render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Cliente *</FormLabel>
-                  <Select onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger></FormControl>
-                    <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
+                      value={field.value}
+                      onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }}
+                      placeholder="Selecione o cliente"
+                      searchPlaceholder="Buscar cliente..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -254,12 +260,15 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="equipment_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Equipamento</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {equipment.map((eq) => <SelectItem key={eq.id} value={eq.id}>{eq.name} {eq.model && `- ${eq.model}`}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={equipment.map(eq => ({ value: eq.id, label: eq.name, sublabel: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Selecione"
+                      searchPlaceholder="Buscar equipamento..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -342,10 +351,15 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="customer_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cliente *</FormLabel>
-                  <Select onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger></FormControl>
-                    <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
+                      value={field.value}
+                      onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
+                      placeholder="Selecione o cliente"
+                      searchPlaceholder="Buscar cliente..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

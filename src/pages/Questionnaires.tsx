@@ -1,21 +1,34 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, FileText, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
+import type { FormTemplate, FormQuestion } from '@/types/database';
 
 export default function QuestionnairesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const { createTemplate, setTemplateServices } = useFormTemplates();
+  const [editingTemplate, setEditingTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
 
   const handleCreate = () => {
@@ -39,6 +52,14 @@ export default function QuestionnairesPage() {
     );
   };
 
+  const handleDelete = () => {
+    if (deleteId) {
+      deleteTemplate.mutate(deleteId, {
+        onSuccess: () => setDeleteId(null),
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -46,16 +67,106 @@ export default function QuestionnairesPage() {
           <h1 className="text-2xl font-bold">Questionários</h1>
           <p className="text-muted-foreground">Gerencie modelos e perguntas por tipo de serviço</p>
         </div>
+      </div>
+
+      {/* Button above table */}
+      <div className="flex justify-end">
         <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          className="bg-accent text-accent-foreground hover:bg-accent/90"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="mr-2 h-4 w-4" />
           Novo questionário
         </Button>
       </div>
-      <FormTemplateManagerDialog />
 
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          {templates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Nenhum questionário criado</h3>
+              <p className="text-muted-foreground">Clique em "Novo questionário" para começar</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider hidden sm:table-cell">Perguntas</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider hidden md:table-cell">Serviços</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider w-[80px]">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {templates.map((template) => {
+                    const serviceIds = (template as any).service_type_ids as string[] | undefined;
+                    const appliesToAll = !serviceIds || serviceIds.length === 0;
+                    const linkedServices = appliesToAll
+                      ? []
+                      : serviceTypes.filter(st => serviceIds!.includes(st.id));
+
+                    return (
+                      <TableRow
+                        key={template.id}
+                        className="cursor-pointer"
+                        onClick={() => setEditingTemplate(template as FormTemplate & { questions: FormQuestion[] })}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="font-medium">{template.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <span className="text-sm">{template.questions?.length || 0}</span>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {appliesToAll ? (
+                            <Badge variant="secondary" className="text-xs">Todos</Badge>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {linkedServices.slice(0, 3).map(st => (
+                                <Badge key={st.id} variant="outline" className="text-xs">
+                                  <span className="inline-block h-2 w-2 rounded-full mr-1" style={{ backgroundColor: st.color }} />
+                                  {st.name}
+                                </Badge>
+                              ))}
+                              {linkedServices.length > 3 && (
+                                <Badge variant="outline" className="text-xs">+{linkedServices.length - 3}</Badge>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
+                            {template.is_active ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Modal */}
       <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Questionário">
         <div className="space-y-4">
           <div>
@@ -72,7 +183,10 @@ export default function QuestionnairesPage() {
           <div className="space-y-3">
             <Label>Serviços habilitados</Label>
             <div className="flex items-center gap-2">
-              <Switch checked={allServices} onCheckedChange={setAllServices} />
+              <Switch checked={allServices} onCheckedChange={(checked) => {
+                setAllServices(checked);
+                if (checked) setSelectedServiceIds([]);
+              }} />
               <Label className="text-sm cursor-pointer">Todos os serviços</Label>
             </div>
             {!allServices && (
@@ -94,7 +208,7 @@ export default function QuestionnairesPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
               onClick={handleCreate}
               disabled={!newName.trim() || createTemplate.isPending}
             >
@@ -103,6 +217,36 @@ export default function QuestionnairesPage() {
           </div>
         </div>
       </ResponsiveModal>
+
+      {/* Edit - open FormTemplateManagerDialog in dialog mode */}
+      {editingTemplate && (
+        <FormTemplateManagerDialog
+          initialTemplateId={editingTemplate.id}
+          open={!!editingTemplate}
+          onOpenChange={(open) => { if (!open) setEditingTemplate(null); }}
+        />
+      )}
+
+      {/* Delete dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover questionário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todas as perguntas deste questionário serão removidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

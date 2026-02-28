@@ -44,9 +44,12 @@ import { cn } from '@/lib/utils';
 
 interface FormTemplateManagerDialogProps {
   children?: React.ReactNode;
+  initialTemplateId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialogProps) {
+export function FormTemplateManagerDialog({ children, initialTemplateId, open: controlledOpen, onOpenChange: controlledOnOpenChange }: FormTemplateManagerDialogProps) {
   const { 
     templates, 
     createTemplate, 
@@ -61,6 +64,8 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
   const { serviceTypes } = useServiceTypes();
   
   const [open, setOpen] = useState(false);
+  const isDialogOpen = controlledOpen ?? open;
+  const setDialogOpen = controlledOnOpenChange ?? setOpen;
   const [selectedTemplate, setSelectedTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
@@ -75,6 +80,14 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     question_type: 'boolean',
     is_required: true,
   });
+
+  // Auto-select template by initialTemplateId
+  useEffect(() => {
+    if (initialTemplateId && templates.length > 0 && !selectedTemplate) {
+      const found = templates.find(t => t.id === initialTemplateId);
+      if (found) setSelectedTemplate(found as FormTemplate & { questions: FormQuestion[] });
+    }
+  }, [initialTemplateId, templates]);
 
   // Keep selectedTemplate in sync with templates
   useEffect(() => {
@@ -395,7 +408,12 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
                     checked={((selectedTemplate as any).service_type_ids?.length ?? 0) === 0}
                     onCheckedChange={(checked) => {
                       if (checked) {
+                        // Set to all services (empty array)
                         setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: [] });
+                      } else {
+                        // Set to first active service so checkboxes appear
+                        const firstActive = serviceTypes.find(t => t.is_active);
+                        setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: firstActive ? [firstActive.id] : [] });
                       }
                     }}
                   />
@@ -406,12 +424,12 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {serviceTypes.filter(t => t.is_active).map((st) => {
                     const selectedIds = ((selectedTemplate as any).service_type_ids ?? []) as string[];
-                    const checked = selectedIds.includes(st.id);
+                    const isChecked = selectedIds.includes(st.id);
                     return (
                       <label key={st.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={checked}
+                          checked={isChecked}
                           onChange={(e) => {
                             const next = e.target.checked
                               ? [...selectedIds, st.id]
@@ -527,8 +545,8 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     </AlertDialog>
   );
 
-  // Inline mode (no children) - render directly
-  if (!children) {
+  // Inline mode (no children and no controlled open) - render directly
+  if (!children && controlledOpen === undefined) {
     return (
       <>
         <div className="rounded-lg border overflow-hidden">
@@ -539,11 +557,11 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     );
   }
 
-  // Dialog mode (with children trigger)
+  // Dialog mode (with children trigger or controlled open)
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>{children}</DialogTrigger>
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        {children && <DialogTrigger asChild>{children}</DialogTrigger>}
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           {dialogContent}
         </DialogContent>
