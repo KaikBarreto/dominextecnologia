@@ -191,6 +191,14 @@ export function EquipmentPanel() {
                     {filteredEquipment.map((eq) => (
                       <TableRow key={eq.id} className="cursor-pointer" onClick={() => navigate(`/equipamentos/${eq.id}`)}>
                         <TableCell>
+                          {(eq as any).photo_url ? (
+                            <img src={(eq as any).photo_url} alt={eq.name} className="h-10 w-10 rounded object-cover" />
+                          ) : (
+                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </TableCell>
                           <div>
                             <p className="font-medium">{eq.name}</p>
                             {eq.identifier && (
