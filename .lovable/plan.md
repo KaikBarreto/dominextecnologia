@@ -1,166 +1,136 @@
 
-# Plano de Modernizacao do Sistema Glacial Cold Brasil
+# Agenda Tecnica Inteligente + DarkVeil Background
 
 ## Resumo
-
-Este plano cobre a implementacao das telas faltantes do sistema e a modernizacao visual baseada no site glacialcoldbrasil.com.br, com foco em:
-- Fonte Product Sans (alternativa ao Google Sans, que e proprietario)
-- Paleta de cores preto e dourado premium
-- Cards com glassmorphism e sombras modernas
-- Animacoes sutis e micro-interacoes
+Reconstruir completamente a tela de Agenda com visoes Mes/Semana/Dia, filtros por tecnico/cliente/status, drawer lateral para resumo de OS, Quick Action ao clicar em horario vazio, e visao mobile como lista cronologica. Substituir o background de imagem nas telas de login/cadastro pelo componente DarkVeil (WebGL animado). Modais no mobile serao Drawers vindos de baixo.
 
 ---
 
-## 1. Atualizacao do Design System
+## Parte 1: DarkVeil no Background de Login/Cadastro
 
-### 1.1 Tipografia
-- Adicionar fonte **Inter** como principal (ja instalada) com fallback para Product Sans via CDN
-- Alternativa: usar "Plus Jakarta Sans" do Google Fonts (muito similar ao Google Sans)
-- Atualizar `index.html` com link para a fonte escolhida
-- Atualizar `tailwind.config.ts` e `index.css` com a nova configuracao
+### Novos arquivos:
+- `src/components/ui/DarkVeil.tsx` - Componente WebGL usando a lib `ogl` (shader CPPN conforme fornecido)
 
-### 1.2 Paleta de Cores Modernizada
-Baseado no site da Glacial Cold:
-- **Dourado Principal**: `hsl(43 74% 49%)` (ja configurado)
-- **Preto Premium**: `hsl(0 0% 5%)`
-- **Glassmorphism**: backgrounds com blur e transparencia
+### Alteracoes:
+- **`src/pages/Auth.tsx`** - Substituir `backgroundImage: url(loginBg)` pelo componente `<DarkVeil>` posicionado absolute/fullscreen atras do card
+- **`src/pages/Registration.tsx`** - Mesma substituicao
+- **`src/pages/ResetPassword.tsx`** - Mesma substituicao
+- Instalar dependencia: `ogl`
 
-### 1.3 Componentes Modernizados
-- Cards com bordas sutis e sombras mais pronunciadas
-- Botoes com gradientes dourados
-- Inputs com bordas arredondadas e focus states modernos
-- Efeito de hover com escala e sombra
-
----
-
-## 2. Telas a Implementar/Melhorar
-
-### 2.1 Estoque (Inventory) - CRUD Completo
-**Arquivo**: `src/pages/Inventory.tsx`
-
-Funcionalidades:
-- Listagem de itens com busca e filtros
-- Formulario de cadastro/edicao de itens
-- Alertas de estoque baixo
-- Historico de movimentacoes
-- Cards de resumo (total itens, valor total, itens em baixa)
-
-**Novo componente**: `src/components/inventory/InventoryFormDialog.tsx`
-
-### 2.2 PMOC - Gestao de Contratos
-**Arquivo**: `src/pages/PMOC.tsx`
-
-Funcionalidades:
-- Listagem de contratos PMOC
-- Formulario de novo contrato vinculado a cliente
-- Cronograma de manutencoes (calendario)
-- Geracao de relatorios
-- Status do contrato (ativo/inativo)
-
-**Novos componentes**:
-- `src/components/pmoc/PmocContractFormDialog.tsx`
-- `src/components/pmoc/PmocScheduleView.tsx`
-
-### 2.3 CRM - Pipeline de Vendas
-**Arquivo**: `src/pages/CRM.tsx`
-
-Funcionalidades:
-- Kanban de leads/oportunidades
-- Cadastro de novos leads
-- Arraste e solte entre estagios
-- Historico de interacoes
-- Valor total por estagio
-
-**Novos componentes**:
-- `src/components/crm/LeadFormDialog.tsx`
-- `src/components/crm/LeadCard.tsx`
-- `src/components/crm/PipelineColumn.tsx`
-
-### 2.4 Usuarios - Gestao de Equipe
-**Arquivo**: `src/pages/Users.tsx`
-
-Funcionalidades:
-- Listagem de usuarios do sistema
-- Atribuicao de roles (admin, gestor, tecnico, etc)
-- Perfil com avatar
-- Ativacao/desativacao de usuarios
-
-**Novo componente**: `src/components/users/UserFormDialog.tsx`
-
-### 2.5 Configuracoes - Melhorias
-**Arquivo**: `src/pages/Settings.tsx`
-
-Funcionalidades:
-- Salvar dados da empresa no banco
-- Configuracoes de notificacao funcionais
-- Troca de tema (claro/escuro)
-- Logo da empresa personalizavel
-
----
-
-## 3. Componentes de UI Modernizados
-
-### 3.1 Novo Card Premium
-Criar variante de card com:
-- Glassmorphism effect
-- Borda com gradiente dourado sutil
-- Hover com elevacao
-
-### 3.2 Stats Card Component
-Componente reutilizavel para KPIs com:
-- Icone
-- Valor principal
-- Label
-- Indicador de variacao (up/down)
-
-### 3.3 Page Header Component
-Componente para cabecalho de paginas com:
-- Titulo
-- Descricao
-- Acoes (botoes)
-- Breadcrumbs (opcional)
-
----
-
-## 4. Ordem de Implementacao
-
-| Fase | Tarefa | Arquivos |
-|------|--------|----------|
-| 1 | Atualizar Design System (fonte + cores) | `index.html`, `index.css`, `tailwind.config.ts` |
-| 2 | Criar componentes UI modernos | `src/components/ui/` |
-| 3 | Implementar Estoque completo | `Inventory.tsx`, `InventoryFormDialog.tsx` |
-| 4 | Implementar PMOC completo | `PMOC.tsx`, `PmocContractFormDialog.tsx` |
-| 5 | Implementar CRM com Kanban | `CRM.tsx`, componentes de CRM |
-| 6 | Implementar Usuarios | `Users.tsx`, `UserFormDialog.tsx` |
-| 7 | Modernizar telas existentes | Dashboard, Clientes, OS, Financeiro |
-| 8 | Melhorar tela de Auth | `Auth.tsx` |
-
----
-
-## 5. Detalhes Tecnicos
-
-### 5.1 Hooks a Criar
-- `useInventory.ts` - CRUD de itens de estoque
-- `usePmocContracts.ts` - CRUD de contratos PMOC
-- `useLeads.ts` - CRUD de leads/oportunidades
-
-### 5.2 Tabelas do Banco (ja existentes)
-As tabelas `inventory`, `leads`, `lead_interactions`, `pmoc_contracts` e `pmoc_schedules` ja existem no schema.
-
-### 5.3 Fonte Recomendada
-Como o Google Sans nao e publico, usaremos **Plus Jakarta Sans** que tem aparencia muito similar:
-```html
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+### Estrutura visual:
+```text
++----------------------------------+
+|  DarkVeil (fullscreen, z-0)      |
+|  +----------------------------+  |
+|  |  Card glassmorphism (z-10) |  |
+|  |  bg-black/60 backdrop-blur |  |
+|  +----------------------------+  |
++----------------------------------+
 ```
 
 ---
 
-## 6. Resultado Esperado
+## Parte 2: Agenda Tecnica Inteligente
 
-Apos a implementacao:
-- Sistema com visual moderno alinhado ao site glacialcoldbrasil.com.br
-- Todas as telas funcionais com CRUD completo
-- Fonte elegante e profissional
-- Cards com efeitos de hover e sombras modernas
-- Experiencia de usuario premium
+### Novos componentes:
+1. `src/components/schedule/ScheduleHeader.tsx` - Header com filtros (Tecnico, Cliente, Status) usando Select + abas Mes/Semana/Dia usando Tabs
+2. `src/components/schedule/WeeklyCalendar.tsx` - Visao semanal com grid de horarios (7 colunas x 24 linhas)
+3. `src/components/schedule/DailyCalendar.tsx` - Visao diaria com timeline vertical de horarios
+4. `src/components/schedule/EventCard.tsx` - Card padrao para exibir evento no calendario (Nome Cliente, Titulo Servico, icone localizacao + bairro)
+5. `src/components/schedule/OrderSummarySheet.tsx` - Sheet/Drawer lateral que abre ao clicar em um evento com resumo da OS
+6. `src/components/schedule/MobileAgendaView.tsx` - Visao de lista cronologica para mobile
+7. `src/components/schedule/ScheduleSkeleton.tsx` - Skeletons de carregamento
 
+### Arquivos alterados:
+- `src/pages/Schedule.tsx` - Reescrever completamente para orquestrar as novas visoes
+- `src/components/schedule/MonthlyCalendar.tsx` - Refatorar para integrar com o novo sistema de filtros e EventCard
+- `src/components/schedule/DaySchedule.tsx` - Pode ser removido (substituido por DailyCalendar + OrderSummarySheet)
+
+### Cores dos badges de status (conforme solicitado):
+- **Azul** (`bg-info`): Pendente / Agendada
+- **Amarelo/Marca** (`bg-primary`): Em Andamento / Aguardando Peca
+- **Verde** (`bg-success`): Concluida
+- **Vermelho** (`bg-destructive`): Atrasada (status pendente + data passada) / Cancelada
+
+### Layout Desktop:
+```text
++--------------------------------------------------+
+| [< >] Janeiro 2026   [Filtros: Tecnico|Cliente|Status]  [+ Nova OS] |
+| [Mes] [Semana] [Dia]                              |
++--------------------------------------------------+
+|                                                    |
+|  Calendario (Mes/Semana/Dia)                      |
+|                                                    |
+|                        +-------------------------+ |
+|                        | Sheet: Resumo da OS     | |
+|                        | (abre ao clicar evento) | |
+|                        +-------------------------+ |
++--------------------------------------------------+
+```
+
+### Layout Mobile:
+```text
++----------------------+
+| Agenda  [Filtros] [+]|
+| Janeiro 2026  [< >]  |
++----------------------+
+| 08:00 - Preventiva   |
+|   Cliente ABC         |
+|   Bairro Centro       |
++----------------------+
+| 10:30 - Corretiva    |
+|   Cliente XYZ         |
+|   Bairro Tijuca       |
++----------------------+
+```
+- Usa `useIsMobile()` para detectar e alternar automaticamente
+- Modais no mobile usam Drawer (vaul) de baixo para cima
+
+### Quick Action (clicar em horario vazio):
+- Ao clicar em um slot vazio no calendario (semana ou dia), abre o Dialog/Drawer de nova OS pre-preenchido com a data/hora clicada
+- No mes, clicar em um dia vazio abre com a data preenchida
+
+### Filtros:
+- **Tecnico**: Select com lista de tecnicos (via `useTechnicians()`)
+- **Cliente**: Select com lista de clientes (via `useCustomers()`)  
+- **Status**: Select multi com opcoes (Pendente, Em Andamento, Concluida, Cancelada)
+- Filtros aplicados via `useMemo` sobre os dados ja carregados
+
+### Drag & Drop de datas:
+- Ao arrastar um evento para outra data/horario, dispara `updateServiceOrder` com os novos `scheduled_date` e `scheduled_time`
+- Implementacao simples com HTML5 drag events (sem lib externa)
+
+### Skeletons:
+- Enquanto `isLoading`, exibir Skeleton com formato do calendario (grid de celulas pulsantes)
+
+---
+
+## Detalhes Tecnicos
+
+### Dependencia nova:
+- `ogl` (para o shader WebGL do DarkVeil)
+
+### Componentes shadcn/ui utilizados:
+- `Tabs` (abas Mes/Semana/Dia)
+- `Card` (EventCard)
+- `Badge` (status coloridos)
+- `Dialog` (nova OS no desktop)
+- `Sheet` (resumo lateral da OS)
+- `Drawer` (modais mobile)
+- `Select` (filtros)
+- `Button`, `Popover`, `Skeleton`
+- `ScrollArea` (listas longas)
+
+### Responsive:
+- `useIsMobile()` hook existente para detectar mobile
+- Desktop: calendario completo + sheet lateral
+- Mobile: lista cronologica (MobileAgendaView) + drawers de baixo
+
+### Sincronizacao com banco:
+- Alteracao de data no calendario (drag & drop) chama `updateServiceOrder.mutateAsync({ id, scheduled_date, scheduled_time })`
+- Dados invalidados automaticamente via React Query
+
+### Parametros do DarkVeil:
+- `hueShift={240}` (tom azulado-escuro)
+- `speed={0.5}` (animacao suave)
+- `noiseIntensity={0}`, `scanlineIntensity={0}`, `scanlineFrequency={0}`, `warpAmount={0}`
