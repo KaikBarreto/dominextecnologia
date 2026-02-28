@@ -53,6 +53,10 @@ export function CustomerFormDialog({
   open, onOpenChange, customer, onSubmit, isLoading,
 }: CustomerFormDialogProps) {
   const [step, setStep] = useState(0);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
