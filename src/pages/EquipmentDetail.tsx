@@ -231,7 +231,7 @@ export default function EquipmentDetail() {
       {activeTab === 'anexos' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arquivos anexados</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Arquivos anexados</h2>
             <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
               <Upload className="mr-2 h-4 w-4" />
               Enviar arquivo
