@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OsStatus } from '@/types/database';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 
 export type ViewMode = 'month' | 'week' | 'day';
 
@@ -54,7 +55,7 @@ export function ScheduleHeader({
   onStatusFilterChange,
 }: ScheduleHeaderProps) {
   const hasActiveFilters = technicianFilter !== 'all' || customerFilter !== 'all' || statusFilter !== 'all';
-
+  const { serviceTypes } = useServiceTypes();
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -136,6 +137,19 @@ export function ScheduleHeader({
           </Button>
         </div>
       </div>
+
+      {/* Legend */}
+      {serviceTypes.length > 0 && (
+        <div className="flex flex-wrap gap-3 items-center">
+          <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
+          {serviceTypes.filter(t => t.is_active).map((st) => (
+            <div key={st.id} className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
+              <span className="text-xs text-muted-foreground">{st.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

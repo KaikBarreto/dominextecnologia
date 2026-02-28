@@ -9,6 +9,7 @@ export interface ServiceOrderInput {
   equipment_id?: string;
   technician_id?: string;
   os_type: OsType;
+  service_type_id?: string;
   status?: OsStatus;
   scheduled_date?: string;
   scheduled_time?: string;
@@ -47,7 +48,8 @@ export function useServiceOrders() {
           *,
           customer:customers(id, name, phone, address, city),
           equipment:equipment(id, name, brand, model),
-          form_template:form_templates(id, name)
+          form_template:form_templates(id, name),
+          service_type:service_types(id, name, color)
         `)
         .order('created_at', { ascending: false });
       

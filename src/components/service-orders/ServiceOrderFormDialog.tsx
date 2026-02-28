@@ -27,6 +27,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { osTypeLabels } from '@/types/database';
 
@@ -35,6 +36,7 @@ const serviceOrderSchema = z.object({
   equipment_id: z.string().optional(),
   technician_id: z.string().optional(),
   os_type: z.enum(['manutencao_preventiva', 'manutencao_corretiva', 'instalacao', 'visita_tecnica']),
+  service_type_id: z.string().optional(),
   scheduled_date: z.string().optional(),
   scheduled_time: z.string().optional(),
   description: z.string().optional(),
@@ -62,10 +64,20 @@ export function ServiceOrderFormDialog({
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
+  const { serviceTypes } = useServiceTypes();
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(
     serviceOrder?.customer_id
   );
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(
+    serviceOrder?.service_type_id ?? undefined
+  );
   const { equipment } = useEquipment(selectedCustomerId);
+
+  // Filter templates by selected service type
+  const filteredTemplates = useMemo(() => {
+    if (!selectedServiceTypeId) return templates.filter(t => t.is_active);
+    return templates.filter(t => t.is_active && (!t.service_type_id || t.service_type_id === selectedServiceTypeId));
+  }, [templates, selectedServiceTypeId]);
 
   const defaultDate = useMemo(() => {
     if (serviceOrder?.scheduled_date) return serviceOrder.scheduled_date;
@@ -84,6 +96,7 @@ export function ServiceOrderFormDialog({
       equipment_id: serviceOrder?.equipment_id ?? '',
       technician_id: serviceOrder?.technician_id ?? '',
       os_type: (serviceOrder?.os_type as OsType) ?? 'manutencao_corretiva',
+      service_type_id: serviceOrder?.service_type_id ?? '',
       scheduled_date: defaultDate,
       scheduled_time: defaultTime,
       description: serviceOrder?.description ?? '',
@@ -97,6 +110,7 @@ export function ServiceOrderFormDialog({
       ...data,
       equipment_id: data.equipment_id || undefined,
       technician_id: data.technician_id || undefined,
+      service_type_id: data.service_type_id || undefined,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
@@ -224,6 +238,41 @@ export function ServiceOrderFormDialog({
 
             <FormField
               control={form.control}
+              name="service_type_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Serviço</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedServiceTypeId(value === 'none' ? undefined : value);
+                    }}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {serviceTypes.filter(t => t.is_active).map((st) => (
+                        <SelectItem key={st.id} value={st.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
+                            {st.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="form_template_id"
               render={({ field }) => (
                 <FormItem>
@@ -239,7 +288,7 @@ export function ServiceOrderFormDialog({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">Sem formulário</SelectItem>
-                      {templates.filter(t => t.is_active).map((template) => (
+                      {filteredTemplates.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.name} ({template.questions?.length || 0} perguntas)
                         </SelectItem>

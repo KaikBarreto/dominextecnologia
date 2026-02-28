@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import MobileMenu from "./pages/MobileMenu";
 import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
+import Changelog from "./pages/Changelog";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -110,6 +111,7 @@ const AppRoutes = () => (
       <Route path="/usuarios" element={<Users />} />
       <Route path="/configuracoes" element={<Settings />} />
       <Route path="/menu" element={<MobileMenu />} />
+      <Route path="/changelog" element={<Changelog />} />
     </Route>
 
     {/* Catch-all */}

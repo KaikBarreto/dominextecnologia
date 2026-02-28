@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom';
+import { APP_VERSION } from '@/config/version';
+
 interface SystemFooterProps {
   variant?: 'light' | 'dark';
 }
@@ -9,7 +12,13 @@ export function SystemFooter({ variant = 'light' }: SystemFooterProps) {
   return (
     <div className={`text-center text-[10px] ${textClass} space-y-0.5`}>
       <p>
-        Sistema v1.0.0 · Desenvolvido por{' '}
+        <Link
+          to="/changelog"
+          className="font-bold hover:text-foreground transition-colors"
+        >
+          Sistema v{APP_VERSION}
+        </Link>
+        {' · Desenvolvido por '}
         <a
           href="https://auctustech.com.br"
           target="_blank"

@@ -68,6 +68,7 @@ export interface ServiceOrder {
   technician_id?: string;
   os_type: OsType;
   status: OsStatus;
+  service_type_id?: string;
   scheduled_date?: string;
   scheduled_time?: string;
   description?: string;
@@ -93,6 +94,7 @@ export interface ServiceOrder {
   equipment?: Equipment;
   technician?: Profile;
   form_template?: FormTemplate;
+  service_type?: { id: string; name: string; color: string } | null;
 }
 
 export interface FormTemplate {
@@ -100,6 +102,7 @@ export interface FormTemplate {
   name: string;
   description?: string;
   is_active: boolean;
+  service_type_id?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;

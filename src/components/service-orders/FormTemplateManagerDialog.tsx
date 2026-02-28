@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hooks/useFormTemplates';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +57,7 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     deleteQuestion,
     reorderQuestions,
   } = useFormTemplates();
+  const { serviceTypes } = useServiceTypes();
   
   const [open, setOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
@@ -378,6 +380,37 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                    </div>
+                  </div>
+
+                  {/* Service Type Link */}
+                  <div className="px-4 py-2 border-b">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo de Serviço:</Label>
+                      <Select
+                        value={(selectedTemplate as any).service_type_id || 'none'}
+                        onValueChange={(value) => {
+                          updateTemplate.mutate({
+                            id: selectedTemplate.id,
+                            service_type_id: value === 'none' ? null : value,
+                          } as any);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Nenhum" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {serviceTypes.filter(t => t.is_active).map((st) => (
+                            <SelectItem key={st.id} value={st.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
+                                {st.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

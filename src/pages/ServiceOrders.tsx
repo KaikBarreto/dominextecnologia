@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Settings2,
   Eye,
+  Palette,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
+import { ServiceTypeManagerDialog } from '@/components/service-orders/ServiceTypeManagerDialog';
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
@@ -135,6 +137,11 @@ export default function ServiceOrders() {
           </p>
         </div>
         <div className="flex gap-2">
+          <ServiceTypeManagerDialog>
+            <Button variant="outline" size="icon" title="Gerenciar Tipos de Serviço">
+              <Palette className="h-4 w-4" />
+            </Button>
+          </ServiceTypeManagerDialog>
           <FormTemplateManagerDialog>
             <Button variant="outline" size="icon" title="Gerenciar Templates de Formulário">
               <Settings2 className="h-4 w-4" />
