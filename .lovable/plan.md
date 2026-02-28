@@ -1,166 +1,184 @@
 
-# Plano de Modernizacao do Sistema Glacial Cold Brasil
+# Plano: Gestao de PMOC + Assinaturas em OS
 
-## Resumo
+## Visao Geral
 
-Este plano cobre a implementacao das telas faltantes do sistema e a modernizacao visual baseada no site glacialcoldbrasil.com.br, com foco em:
-- Fonte Product Sans (alternativa ao Google Sans, que e proprietario)
-- Paleta de cores preto e dourado premium
-- Cards com glassmorphism e sombras modernas
-- Animacoes sutis e micro-interacoes
+Refatorar completamente o modulo PMOC para funcionar como um sistema de geracao automatica de OS recorrentes, com planos vinculados a equipamentos. Adicionar toggles de assinatura no wizard de OS.
 
 ---
 
-## 1. Atualizacao do Design System
+## Parte 1: Modelagem de Dados (Migracao SQL)
 
-### 1.1 Tipografia
-- Adicionar fonte **Inter** como principal (ja instalada) com fallback para Product Sans via CDN
-- Alternativa: usar "Plus Jakarta Sans" do Google Fonts (muito similar ao Google Sans)
-- Atualizar `index.html` com link para a fonte escolhida
-- Atualizar `tailwind.config.ts` e `index.css` com a nova configuracao
+### Novas tabelas
 
-### 1.2 Paleta de Cores Modernizada
-Baseado no site da Glacial Cold:
-- **Dourado Principal**: `hsl(43 74% 49%)` (ja configurado)
-- **Preto Premium**: `hsl(0 0% 5%)`
-- **Glassmorphism**: backgrounds com blur e transparencia
+**pmoc_plans** - Define o plano de manutencao recorrente
+- `id` uuid PK
+- `customer_id` uuid NOT NULL (FK customers)
+- `name` text NOT NULL (nome do plano)
+- `frequency_months` integer NOT NULL DEFAULT 1 (intervalo em meses)
+- `next_generation_date` date NOT NULL
+- `status` text NOT NULL DEFAULT 'ativo' (ativo/pausado)
+- `contract_id` uuid (FK pmoc_contracts, opcional - vincula ao contrato financeiro)
+- `technician_id` uuid (tecnico padrao)
+- `service_type_id` uuid (tipo de servico padrao)
+- `form_template_id` uuid (questionario padrao)
+- `notes` text
+- `created_by` uuid
+- `created_at`, `updated_at` timestamps
+- RLS: authenticated users can CRUD
 
-### 1.3 Componentes Modernizados
-- Cards com bordas sutis e sombras mais pronunciadas
-- Botoes com gradientes dourados
-- Inputs com bordas arredondadas e focus states modernos
-- Efeito de hover com escala e sombra
+**pmoc_items** - Equipamentos vinculados ao plano
+- `id` uuid PK
+- `plan_id` uuid NOT NULL (FK pmoc_plans)
+- `equipment_id` uuid NOT NULL (FK equipment)
+- `created_at` timestamp
+- UNIQUE(plan_id, equipment_id)
+- RLS: authenticated users can CRUD
 
----
+**pmoc_generated_os** - Historico de OS geradas automaticamente
+- `id` uuid PK
+- `plan_id` uuid NOT NULL (FK pmoc_plans)
+- `service_order_id` uuid NOT NULL (FK service_orders)
+- `generated_at` timestamp DEFAULT now()
+- `scheduled_for` date NOT NULL
+- RLS: authenticated users can view
 
-## 2. Telas a Implementar/Melhorar
+### Alteracoes em tabelas existentes
 
-### 2.1 Estoque (Inventory) - CRUD Completo
-**Arquivo**: `src/pages/Inventory.tsx`
+**service_orders** - Adicionar campos de assinatura:
+- `require_tech_signature` boolean DEFAULT false
+- `require_client_signature` boolean DEFAULT false
+- `tech_signature` text (base64 da assinatura)
+- (client_signature ja existe)
 
-Funcionalidades:
-- Listagem de itens com busca e filtros
-- Formulario de cadastro/edicao de itens
-- Alertas de estoque baixo
-- Historico de movimentacoes
-- Cards de resumo (total itens, valor total, itens em baixa)
+### Funcao de banco para geracao automatica
 
-**Novo componente**: `src/components/inventory/InventoryFormDialog.tsx`
+Criar uma funcao `generate_pmoc_orders()` que:
+1. Busca todos os `pmoc_plans` onde `status = 'ativo'` AND `next_generation_date <= CURRENT_DATE`
+2. Para cada plano, busca equipamentos ativos em `pmoc_items` JOIN `equipment` (WHERE equipment existe e status = 'active')
+3. Cria uma `service_order` para cada equipamento com os dados do plano
+4. Registra em `pmoc_generated_os`
+5. Atualiza `next_generation_date` = `next_generation_date + frequency_months months`
 
-### 2.2 PMOC - Gestao de Contratos
-**Arquivo**: `src/pages/PMOC.tsx`
+### Cron Job (pg_cron)
 
-Funcionalidades:
-- Listagem de contratos PMOC
-- Formulario de novo contrato vinculado a cliente
-- Cronograma de manutencoes (calendario)
-- Geracao de relatorios
-- Status do contrato (ativo/inativo)
-
-**Novos componentes**:
-- `src/components/pmoc/PmocContractFormDialog.tsx`
-- `src/components/pmoc/PmocScheduleView.tsx`
-
-### 2.3 CRM - Pipeline de Vendas
-**Arquivo**: `src/pages/CRM.tsx`
-
-Funcionalidades:
-- Kanban de leads/oportunidades
-- Cadastro de novos leads
-- Arraste e solte entre estagios
-- Historico de interacoes
-- Valor total por estagio
-
-**Novos componentes**:
-- `src/components/crm/LeadFormDialog.tsx`
-- `src/components/crm/LeadCard.tsx`
-- `src/components/crm/PipelineColumn.tsx`
-
-### 2.4 Usuarios - Gestao de Equipe
-**Arquivo**: `src/pages/Users.tsx`
-
-Funcionalidades:
-- Listagem de usuarios do sistema
-- Atribuicao de roles (admin, gestor, tecnico, etc)
-- Perfil com avatar
-- Ativacao/desativacao de usuarios
-
-**Novo componente**: `src/components/users/UserFormDialog.tsx`
-
-### 2.5 Configuracoes - Melhorias
-**Arquivo**: `src/pages/Settings.tsx`
-
-Funcionalidades:
-- Salvar dados da empresa no banco
-- Configuracoes de notificacao funcionais
-- Troca de tema (claro/escuro)
-- Logo da empresa personalizavel
+Agendar execucao diaria da funcao `generate_pmoc_orders()` via pg_cron + pg_net chamando uma edge function.
 
 ---
 
-## 3. Componentes de UI Modernizados
+## Parte 2: Edge Function - generate-pmoc-orders
 
-### 3.1 Novo Card Premium
-Criar variante de card com:
-- Glassmorphism effect
-- Borda com gradiente dourado sutil
-- Hover com elevacao
-
-### 3.2 Stats Card Component
-Componente reutilizavel para KPIs com:
-- Icone
-- Valor principal
-- Label
-- Indicador de variacao (up/down)
-
-### 3.3 Page Header Component
-Componente para cabecalho de paginas com:
-- Titulo
-- Descricao
-- Acoes (botoes)
-- Breadcrumbs (opcional)
+Criar `supabase/functions/generate-pmoc-orders/index.ts`:
+- Busca planos ativos com `next_generation_date <= hoje`
+- Para cada plano, busca equipamentos vinculados (ativos)
+- Cria OS para cada equipamento
+- Atualiza `next_generation_date`
+- Registra historico em `pmoc_generated_os`
+- Configurar cron para executar diariamente
 
 ---
 
-## 4. Ordem de Implementacao
+## Parte 3: Interface PMOC Reformulada
 
-| Fase | Tarefa | Arquivos |
-|------|--------|----------|
-| 1 | Atualizar Design System (fonte + cores) | `index.html`, `index.css`, `tailwind.config.ts` |
-| 2 | Criar componentes UI modernos | `src/components/ui/` |
-| 3 | Implementar Estoque completo | `Inventory.tsx`, `InventoryFormDialog.tsx` |
-| 4 | Implementar PMOC completo | `PMOC.tsx`, `PmocContractFormDialog.tsx` |
-| 5 | Implementar CRM com Kanban | `CRM.tsx`, componentes de CRM |
-| 6 | Implementar Usuarios | `Users.tsx`, `UserFormDialog.tsx` |
-| 7 | Modernizar telas existentes | Dashboard, Clientes, OS, Financeiro |
-| 8 | Melhorar tela de Auth | `Auth.tsx` |
+### Pagina principal (`src/pages/PMOC.tsx`)
+
+Renomear titulo para "Gestao de PMOC". Reorganizar em abas:
+
+**Aba "Planos"** (principal):
+- Tabela com planos: Nome, Cliente, Frequencia, Proxima geracao, Equipamentos vinculados (contagem), Status (ativo/pausado), Acoes
+- Botao "Novo Plano" (azul)
+- Busca por cliente/nome
+
+**Aba "Contratos"** (financeiro):
+- Manter tabela atual de contratos PMOC (vinculo financeiro)
+
+**Aba "Cronograma"**:
+- Timeline visual das proximas 12 geracoes previstas
+- Indicador de conformidade (verde = em dia, vermelho = atrasado)
+- Historico de OS geradas com link para a OS
+
+### Dialog de Novo/Editar Plano (`src/components/pmoc/PmocPlanFormDialog.tsx`)
+
+Campos:
+- Nome do plano
+- Cliente (SearchableSelect)
+- Frequencia (select: Mensal/Bimestral/Trimestral/Semestral/Anual)
+- Data da proxima geracao
+- Tecnico padrao (select)
+- Tipo de servico (select)
+- Questionario padrao (select)
+- Contrato vinculado (select, opcional)
+- Multi-select de equipamentos do cliente (checkboxes, como no wizard de OS)
+- Status ativo/pausado (switch)
+- Observacoes
+
+### Hook `usePmocPlans.ts`
+
+CRUD para pmoc_plans + pmoc_items com queries relacionais.
 
 ---
 
-## 5. Detalhes Tecnicos
+## Parte 4: Assinaturas no Wizard de OS
 
-### 5.1 Hooks a Criar
-- `useInventory.ts` - CRUD de itens de estoque
-- `usePmocContracts.ts` - CRUD de contratos PMOC
-- `useLeads.ts` - CRUD de leads/oportunidades
+### Step 3 "Detalhes" do `ServiceOrderFormDialog.tsx`
 
-### 5.2 Tabelas do Banco (ja existentes)
-As tabelas `inventory`, `leads`, `lead_interactions`, `pmoc_contracts` e `pmoc_schedules` ja existem no schema.
+Adicionar 2 toggles (Switch) apos os campos de questionario:
 
-### 5.3 Fonte Recomendada
-Como o Google Sans nao e publico, usaremos **Plus Jakarta Sans** que tem aparencia muito similar:
-```html
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-```
+1. **"Assinatura do Tecnico"** - visivel somente quando `technician_id` esta preenchido
+2. **"Assinatura do Cliente"** - visivel somente quando `customer_id` esta preenchido (sempre, pois e obrigatorio)
+
+Valores salvos em `require_tech_signature` e `require_client_signature` na tabela `service_orders`.
+
+Para OS criadas via PMOC, `require_tech_signature` sera `true` por padrao.
+
+### Tela do Tecnico (`TechnicianOS.tsx`)
+
+Se `require_tech_signature = true`, exibir campo de assinatura (canvas de desenho) antes do check-out, bloqueando o check-out sem assinatura.
+
+Se `require_client_signature = true`, exibir campo de assinatura do cliente igualmente.
+
+Usar um componente `SignaturePad` simples (canvas HTML5 para desenho, salva como base64).
+
+### Visualizacao da OS (`ServiceOrderViewDialog.tsx`)
+
+Exibir assinaturas capturadas (imagem base64) na secao de detalhes quando existirem.
 
 ---
 
-## 6. Resultado Esperado
+## Parte 5: Relatorio da OS Finalizada (TechnicianOS)
 
-Apos a implementacao:
-- Sistema com visual moderno alinhado ao site glacialcoldbrasil.com.br
-- Todas as telas funcionais com CRUD completo
-- Fonte elegante e profissional
-- Cards com efeitos de hover e sombras modernas
-- Experiencia de usuario premium
+Quando a OS estiver com status `concluida`, transformar a tela em modo de visualizacao/relatorio:
+- Cabecalho com dados da empresa (de `company_settings`)
+- Dados do cliente, equipamento, tipo de servico
+- Check-in/check-out com timestamps e geolocalizacao
+- Fotos organizadas por etapa (antes/durante/depois)
+- Respostas do questionario formatadas
+- Diagnostico, solucao, observacoes
+- Valores financeiros
+- Assinaturas (tecnico e cliente) quando existirem
+- Layout otimizado para impressao
 
+---
+
+## Sequencia de Implementacao
+
+1. Migracao SQL (novas tabelas + campos de assinatura)
+2. Hook `usePmocPlans.ts`
+3. Edge function `generate-pmoc-orders`
+4. Cron job (pg_cron)
+5. Componente `PmocPlanFormDialog.tsx`
+6. Refatorar `PMOC.tsx` com abas e planos
+7. Componente `SignaturePad.tsx`
+8. Toggles de assinatura no `ServiceOrderFormDialog.tsx`
+9. Assinaturas no `TechnicianOS.tsx`
+10. Modo relatorio no `TechnicianOS.tsx`
+11. Exibir assinaturas no `ServiceOrderViewDialog.tsx`
+
+---
+
+## Detalhes Tecnicos
+
+- **Tabelas antigas**: `pmoc_contracts` e `pmoc_schedules` continuam existindo para o modulo financeiro/contratos, mas a logica de geracao de OS migra para `pmoc_plans` + `pmoc_items`
+- **Soft delete de equipamentos**: A query de geracao faz JOIN com `equipment` filtrando por `status = 'active'`, garantindo que equipamentos inativos/excluidos nao geram OS
+- **SignaturePad**: Componente canvas HTML5 puro, sem dependencia externa, salvando como data URL base64
+- **Cron**: Usar `pg_cron` + `pg_net` para chamar a edge function diariamente as 06:00 UTC
