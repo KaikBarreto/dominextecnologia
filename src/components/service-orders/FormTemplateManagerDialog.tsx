@@ -63,6 +63,7 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
   const [open, setOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
