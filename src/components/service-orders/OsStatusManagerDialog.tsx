@@ -139,7 +139,7 @@ const OS_FIELD_OPTIONS = [
 ];
 
 export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
-  const { statuses, isLoading: statusLoading, createStatus, updateStatus, deleteStatus } = useOsStatuses();
+  const { statuses, isLoading: statusLoading, createStatus, updateStatus, deleteStatus, reorderStatuses } = useOsStatuses();
   const { config, isLoading: configLoading, updateConfig } = useOsConfig();
   const { serviceTypes } = useServiceTypes();
   const { slaList, upsertSla, deleteSla } = useOsSla();
