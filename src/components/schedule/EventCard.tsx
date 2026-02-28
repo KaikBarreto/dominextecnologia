@@ -38,6 +38,8 @@ export function getStatusBadgeClass(status: OsStatus, scheduledDate?: string | n
 export function EventCard({ order, compact = false, onClick, draggable, onDragStart }: EventCardProps) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
 
+  const serviceTypeColor = (order as any).service_type?.color;
+
   if (compact) {
     return (
       <div
@@ -46,8 +48,9 @@ export function EventCard({ order, compact = false, onClick, draggable, onDragSt
         onDragStart={onDragStart}
         className={cn(
           'group flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02]',
-          statusBadge.className
+          !serviceTypeColor && statusBadge.className
         )}
+        style={serviceTypeColor ? { backgroundColor: serviceTypeColor, color: 'white' } : undefined}
       >
         <span className="font-medium shrink-0">
           {order.scheduled_time?.slice(0, 5) || '--:--'}
