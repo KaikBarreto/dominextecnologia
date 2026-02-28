@@ -137,20 +137,21 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
 
           {/* Positioned event cards */}
           <div className="absolute inset-0 pointer-events-none" style={{ left: 64 }}>
-            {dayOrders.map((order) => {
-              const timeParts = order.scheduled_time!.split(':');
-              const hour = parseInt(timeParts[0], 10);
-              const minute = parseInt(timeParts[1], 10);
-              const duration = (order as any).duration_minutes || 120;
-              
+            {positionedOrders.map(({ order, startMin, endMin, col, totalCols }) => {
+              const hour = Math.floor(startMin / 60);
+              const minute = startMin % 60;
+              const duration = endMin - startMin;
+
               const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT;
               const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
+              const widthPercent = 100 / totalCols;
+              const leftPercent = col * widthPercent;
 
               return (
                 <div
                   key={order.id}
-                  className="absolute right-1 left-1 pointer-events-auto"
-                  style={{ top: topOffset, height }}
+                  className="absolute pointer-events-auto px-0.5"
+                  style={{ top: topOffset, height, left: `${leftPercent}%`, width: `${widthPercent}%` }}
                 >
                   <EventCard
                     order={order}
