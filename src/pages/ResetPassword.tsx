@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import logoWhite from '@/assets/logo-white.png';
-import loginBg from '@/assets/login-bg.jpg';
+import DarkVeil from '@/components/ui/DarkVeil';
 
 const schema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
