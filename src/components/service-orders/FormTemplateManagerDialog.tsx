@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hooks/useFormTemplates';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
 
