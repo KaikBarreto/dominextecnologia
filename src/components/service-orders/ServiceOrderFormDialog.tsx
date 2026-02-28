@@ -22,6 +22,7 @@ import { useTechnicians } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
