@@ -9,6 +9,7 @@ export interface ServiceOrderInput {
   equipment_id?: string;
   technician_id?: string;
   os_type: OsType;
+  service_type_id?: string;
   status?: OsStatus;
   scheduled_date?: string;
   scheduled_time?: string;
