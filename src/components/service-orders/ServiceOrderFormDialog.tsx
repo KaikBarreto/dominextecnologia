@@ -260,12 +260,15 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="equipment_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Equipamento</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {equipment.map((eq) => <SelectItem key={eq.id} value={eq.id}>{eq.name} {eq.model && `- ${eq.model}`}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={equipment.map(eq => ({ value: eq.id, label: eq.name, sublabel: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Selecione"
+                      searchPlaceholder="Buscar equipamento..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
