@@ -148,7 +148,7 @@ export default function CustomerDetail() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               Equipamentos do Cliente
             </h2>
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setEquipFormOpen(true)}>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setEquipFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Equipamento
             </Button>
