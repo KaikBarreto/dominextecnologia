@@ -170,7 +170,7 @@ export default function Dashboard() {
         {/* Financial Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <DollarSign className="h-5 w-5" />
               Fluxo de Caixa
             </CardTitle>
