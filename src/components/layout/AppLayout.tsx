@@ -3,7 +3,6 @@ import { AppSidebar } from './AppSidebar';
 import { SystemFooter } from './SystemFooter';
 import { Outlet } from 'react-router-dom';
 import { Snowflake, LogOut, Menu } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
