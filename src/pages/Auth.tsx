@@ -80,7 +80,7 @@ export default function Auth() {
       <div className="absolute inset-0 z-0">
         <DarkVeil hueShift={240} speed={0.5} />
       </div>
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
           <img src={logoWhite} alt="Glacial Cold Brasil" className="h-16 w-auto mb-2" />
