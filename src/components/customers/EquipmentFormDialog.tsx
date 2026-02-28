@@ -13,11 +13,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import type { Equipment, Customer } from '@/types/database';
+import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
 
 const equipmentSchema = z.object({
   customer_id: z.string().min(1, 'Selecione um cliente'),
   name: z.string().min(1, 'Nome é obrigatório'),
+  category_id: z.string().optional(),
+  identifier: z.string().optional(),
   brand: z.string().optional(),
   model: z.string().optional(),
   serial_number: z.string().optional(),
@@ -35,17 +39,22 @@ interface EquipmentFormDialogProps {
   equipment?: (Equipment & { customer?: any }) | null;
   onSubmit: (data: EquipmentFormData) => Promise<void>;
   customers: Customer[];
+  categories?: EquipmentCategory[];
   isLoading?: boolean;
 }
 
 export function EquipmentFormDialog({
-  open, onOpenChange, equipment, onSubmit, customers, isLoading,
+  open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading,
 }: EquipmentFormDialogProps) {
+  const { fields: fieldConfig } = useEquipmentFieldConfig();
+
   const form = useForm<EquipmentFormData>({
     resolver: zodResolver(equipmentSchema),
     defaultValues: {
       customer_id: equipment?.customer_id ?? '',
       name: equipment?.name ?? '',
+      category_id: equipment?.category_id ?? '',
+      identifier: equipment?.identifier ?? '',
       brand: equipment?.brand ?? '',
       model: equipment?.model ?? '',
       serial_number: equipment?.serial_number ?? '',
@@ -61,6 +70,8 @@ export function EquipmentFormDialog({
       form.reset({
         customer_id: equipment?.customer_id ?? '',
         name: equipment?.name ?? '',
+        category_id: equipment?.category_id ?? '',
+        identifier: equipment?.identifier ?? '',
         brand: equipment?.brand ?? '',
         model: equipment?.model ?? '',
         serial_number: equipment?.serial_number ?? '',
@@ -77,6 +88,18 @@ export function EquipmentFormDialog({
     form.reset();
     onOpenChange(false);
   };
+
+  // Map field_key to form field name
+  const fieldKeyToName: Record<string, keyof EquipmentFormData> = {
+    brand: 'brand',
+    model: 'model',
+    serial_number: 'serial_number',
+    capacity: 'capacity',
+    location: 'location',
+    install_date: 'install_date',
+  };
+
+  const visibleFields = fieldConfig.filter(f => f.is_visible);
 
   return (
     <ResponsiveModal
@@ -115,84 +138,87 @@ export function EquipmentFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nome *</FormLabel>
-                  <FormControl><Input placeholder="Ex: Split 12.000 BTUs" {...field} /></FormControl>
+                  <FormControl><Input placeholder="Nome do equipamento" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
-              name="brand"
+              name="identifier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Marca</FormLabel>
-                  <FormControl><Input placeholder="Ex: Samsung" {...field} /></FormControl>
+                  <FormLabel>Identificador</FormLabel>
+                  <FormControl><Input placeholder="Código ou tag" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="model"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Modelo</FormLabel>
-                  <FormControl><Input placeholder="Modelo" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="serial_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nº de Série</FormLabel>
-                  <FormControl><Input placeholder="Número de série" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="capacity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Capacidade</FormLabel>
-                  <FormControl><Input placeholder="Ex: 12.000 BTUs" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Local</FormLabel>
-                  <FormControl><Input placeholder="Ex: Sala 202" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="install_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Instalação</FormLabel>
-                  <FormControl><Input type="date" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {categories.length > 0 && (
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoria</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            <div className="flex items-center gap-2">
+                              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                              {cat.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Dynamic fields based on config */}
+            {visibleFields.map((fc) => {
+              const fieldName = fieldKeyToName[fc.field_key];
+              if (!fieldName) return null; // Custom fields handled separately later
+              return (
+                <FormField
+                  key={fc.id}
+                  control={form.control}
+                  name={fieldName}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{fc.label}{fc.is_required && ' *'}</FormLabel>
+                      <FormControl>
+                        {fc.field_type === 'date' ? (
+                          <Input type="date" {...field} />
+                        ) : fc.field_type === 'number' ? (
+                          <Input type="number" placeholder={fc.label} {...field} />
+                        ) : (
+                          <Input placeholder={fc.label} {...field} />
+                        )}
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              );
+            })}
+
             <FormField
               control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Observações</FormLabel>
-                  <FormControl><Textarea placeholder="Observações" {...field} /></FormControl>
+                  <FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

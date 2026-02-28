@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Package, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,11 +10,19 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEquipment, type EquipmentInput } from '@/hooks/useEquipment';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
+import { EquipmentDetailDialog } from './EquipmentDetailDialog';
+import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
+import { EquipmentCategoryManagerDialog } from './EquipmentCategoryManagerDialog';
 import type { Equipment } from '@/types/database';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export function EquipmentPanel() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,9 +30,15 @@ export function EquipmentPanel() {
   const [editingEquipment, setEditingEquipment] = useState<(Equipment & { customer?: any }) | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
+  const [detailEquipment, setDetailEquipment] = useState<(Equipment & { customer?: any }) | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const { equipment, isLoading, createEquipment } = useEquipment();
   const { customers } = useCustomers();
+  const { categories } = useEquipmentCategories();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const filteredEquipment = equipment.filter((eq) =>
     eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -35,11 +49,13 @@ export function EquipmentPanel() {
 
   const handleSubmit = async (data: EquipmentInput) => {
     if (editingEquipment) {
-      // Update - we need to add update to hook
-      const { supabase } = await import('@/integrations/supabase/client');
-      await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
-      // Invalidate
-      const { useQueryClient } = await import('@tanstack/react-query');
+      const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
+      if (error) {
+        toast({ variant: 'destructive', title: 'Erro ao atualizar', description: error.message });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      toast({ title: 'Equipamento atualizado!' });
     } else {
       await createEquipment.mutateAsync(data);
     }
@@ -48,11 +64,21 @@ export function EquipmentPanel() {
 
   const handleDelete = async () => {
     if (equipmentToDelete) {
-      const { supabase } = await import('@/integrations/supabase/client');
-      await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
+      const { error } = await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
+      if (error) {
+        toast({ variant: 'destructive', title: 'Erro ao excluir', description: error.message });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['equipment'] });
+        toast({ title: 'Equipamento excluído!' });
+      }
       setEquipmentToDelete(null);
       setDeleteDialogOpen(false);
     }
+  };
+
+  const getCategoryName = (categoryId?: string) => {
+    if (!categoryId) return null;
+    return categories.find(c => c.id === categoryId)?.name;
   };
 
   return (
@@ -67,10 +93,18 @@ export function EquipmentPanel() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Equipamento
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={() => setCategoriesOpen(true)} title="Categorias">
+            <Package className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => setConfigOpen(true)} title="Configurar campos">
+            <Settings className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Equipamento
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -105,13 +139,14 @@ export function EquipmentPanel() {
                     <TableHead>Nome</TableHead>
                     <TableHead className="hidden sm:table-cell">Marca/Modelo</TableHead>
                     <TableHead className="hidden md:table-cell">Cliente</TableHead>
-                    <TableHead className="hidden lg:table-cell">Local</TableHead>
+                    <TableHead className="hidden lg:table-cell">Categoria</TableHead>
+                    <TableHead className="hidden lg:table-cell">Status</TableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEquipment.map((eq) => (
-                    <TableRow key={eq.id}>
+                    <TableRow key={eq.id} className="cursor-pointer" onClick={() => setDetailEquipment(eq)}>
                       <TableCell>
                         <div>
                           <p className="font-medium">{eq.name}</p>
@@ -124,17 +159,21 @@ export function EquipmentPanel() {
                         <div className="text-sm">
                           {eq.brand && <span>{eq.brand}</span>}
                           {eq.model && <span className="text-muted-foreground"> {eq.model}</span>}
-                          {eq.capacity && <p className="text-xs text-muted-foreground">{eq.capacity}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {eq.customer?.name || '-'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        {eq.location || '-'}
+                        {getCategoryName((eq as any).category_id) || '-'}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Badge variant={(eq as any).status === 'active' ? 'default' : 'secondary'}>
+                          {(eq as any).status === 'active' ? 'Ativo' : 'Inativo'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -167,7 +206,24 @@ export function EquipmentPanel() {
         equipment={editingEquipment}
         onSubmit={handleSubmit}
         customers={customers}
+        categories={categories}
         isLoading={createEquipment.isPending}
+      />
+
+      <EquipmentDetailDialog
+        open={!!detailEquipment}
+        onOpenChange={(open) => { if (!open) setDetailEquipment(null); }}
+        equipment={detailEquipment}
+      />
+
+      <EquipmentFieldConfigDialog
+        open={configOpen}
+        onOpenChange={setConfigOpen}
+      />
+
+      <EquipmentCategoryManagerDialog
+        open={categoriesOpen}
+        onOpenChange={setCategoriesOpen}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
