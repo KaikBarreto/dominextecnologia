@@ -61,7 +61,7 @@ const STEPS = [
 ];
 
 export function ServiceOrderFormDialog({
-  open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime,
+  open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId,
 }: ServiceOrderFormDialogProps) {
   const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useTechnicians();
