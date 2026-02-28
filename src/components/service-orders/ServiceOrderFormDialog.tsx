@@ -96,6 +96,7 @@ export function ServiceOrderFormDialog({
       equipment_id: serviceOrder?.equipment_id ?? '',
       technician_id: serviceOrder?.technician_id ?? '',
       os_type: (serviceOrder?.os_type as OsType) ?? 'manutencao_corretiva',
+      service_type_id: serviceOrder?.service_type_id ?? '',
       scheduled_date: defaultDate,
       scheduled_time: defaultTime,
       description: serviceOrder?.description ?? '',
