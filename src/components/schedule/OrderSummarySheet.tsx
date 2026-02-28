@@ -30,7 +30,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-5 p-1">
+      <div className="space-y-5 p-1 overflow-hidden">
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={cn('text-xs', statusBadge.className)}>{statusBadge.label}</Badge>
