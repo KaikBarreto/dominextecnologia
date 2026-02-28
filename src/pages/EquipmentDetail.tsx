@@ -144,22 +144,33 @@ export default function EquipmentDetail() {
       {/* Geral tab */}
       {activeTab === 'geral' && (
         <div className="space-y-6">
+          {/* Photo + QR row */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-start gap-6">
-                <div className="shrink-0"><QRCodeSVG value={qrValue} size={100} /></div>
-                <div className="flex-1 space-y-2">
-                  {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
-                  <p className="text-sm text-muted-foreground">QR Code do equipamento</p>
-                  <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
-                    <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
-                  </Button>
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                {equipment.photo_url && (
+                  <img
+                    src={equipment.photo_url}
+                    alt={equipment.name}
+                    className="h-40 w-40 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setPreviewImage(equipment.photo_url!)}
+                  />
+                )}
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0"><QRCodeSVG value={qrValue} size={100} /></div>
+                  <div className="space-y-2">
+                    {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
+                    <p className="text-sm text-muted-foreground">QR Code do equipamento</p>
+                    <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
+                      <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(equipment as any).customer?.name && (
               <Card><CardContent className="p-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
@@ -194,6 +205,18 @@ export default function EquipmentDetail() {
               <Card><CardContent className="p-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Local</p>
                 <p className="text-sm font-medium mt-1">{equipment.location}</p>
+              </CardContent></Card>
+            )}
+            {(equipment as any).install_date && (
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Data de Instalação</p>
+                <p className="text-sm font-medium mt-1">{format(new Date((equipment as any).install_date), 'dd/MM/yyyy', { locale: ptBR })}</p>
+              </CardContent></Card>
+            )}
+            {(equipment as any).warranty_until && (
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Garantia até</p>
+                <p className="text-sm font-medium mt-1">{format(new Date((equipment as any).warranty_until), 'dd/MM/yyyy', { locale: ptBR })}</p>
               </CardContent></Card>
             )}
           </div>
@@ -231,10 +254,10 @@ export default function EquipmentDetail() {
                   <Card key={att.id}>
                     <CardContent className="flex items-center gap-3 p-3">
                       {isImage ? (
-                        <img
+                         <img
                           src={att.file_url}
                           alt={att.file_name}
-                          className="h-10 w-10 rounded object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          className="h-20 w-20 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => setPreviewImage(att.file_url)}
                         />
                       ) : (

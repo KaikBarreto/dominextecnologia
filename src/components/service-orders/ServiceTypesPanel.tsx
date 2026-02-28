@@ -25,6 +25,7 @@ interface ServiceTypeForm {
   description: string;
   is_active: boolean;
   requires_equipment: boolean;
+  number_prefix: string;
 }
 
 const defaultForm: ServiceTypeForm = {
@@ -33,6 +34,7 @@ const defaultForm: ServiceTypeForm = {
   description: '',
   is_active: true,
   requires_equipment: true,
+  number_prefix: '',
 };
 
 export function ServiceTypesPanel() {
@@ -58,6 +60,7 @@ export function ServiceTypesPanel() {
       description: st.description || '',
       is_active: st.is_active,
       requires_equipment: st.requires_equipment ?? true,
+      number_prefix: (st as any).number_prefix || '',
     });
     setFormOpen(true);
   };
@@ -169,8 +172,9 @@ export function ServiceTypesPanel() {
                   <TableHead>Cor</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrição</TableHead>
-                  <TableHead>Equipamento</TableHead>
-                  <TableHead>Status</TableHead>
+                   <TableHead>Prefixo OS</TableHead>
+                   <TableHead>Equipamento</TableHead>
+                   <TableHead>Status</TableHead>
                   <TableHead className="w-[100px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,6 +190,9 @@ export function ServiceTypesPanel() {
                     <TableCell className="font-medium">{st.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                       {st.description || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm">{(st as any).number_prefix || '-'}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={(st as any).requires_equipment ? 'default' : 'secondary'} className="text-xs">
@@ -257,6 +264,16 @@ export function ServiceTypesPanel() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Descrição do tipo de serviço"
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Prefixo de Numeração OS</Label>
+            <Input
+              value={form.number_prefix}
+              onChange={(e) => setForm({ ...form, number_prefix: e.target.value })}
+              placeholder="Ex: MP, MC, INS"
+              className="w-40"
+            />
+            <p className="text-xs text-muted-foreground">Usado na numeração das OS deste tipo. Ex: MP-2026-0001</p>
           </div>
           <div className="flex items-center gap-2">
             <Switch

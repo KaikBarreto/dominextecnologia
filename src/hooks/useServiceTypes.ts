@@ -9,6 +9,7 @@ export interface ServiceType {
   description: string | null;
   is_active: boolean;
   requires_equipment: boolean;
+  number_prefix: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +20,7 @@ export interface ServiceTypeInput {
   description?: string;
   is_active?: boolean;
   requires_equipment?: boolean;
+  number_prefix?: string;
 }
 
 export function useServiceTypes() {
