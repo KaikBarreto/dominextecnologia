@@ -339,6 +339,9 @@ interface TransactionTableProps {
   onMarkAsPaid: (id: string) => void;
 }
 
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+
 function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: TransactionTableProps) {
   return (
     <div className="overflow-x-auto">
