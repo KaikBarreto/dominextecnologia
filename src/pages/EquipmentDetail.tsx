@@ -468,6 +468,43 @@ export default function EquipmentDetail() {
         open={!!previewImage}
         onClose={() => setPreviewImage(null)}
       />
+
+      {/* Edit Equipment Dialog */}
+      <EquipmentFormDialog
+        open={editEquipOpen}
+        onOpenChange={setEditEquipOpen}
+        equipment={equipment}
+        onSubmit={async (data: any) => {
+          const { error } = await supabase.from('equipment').update(data).eq('id', equipment.id);
+          if (error) throw error;
+          window.location.reload();
+        }}
+        customers={customers}
+        categories={categories}
+        isLoading={false}
+      />
+
+      {/* Delete Equipment Confirmation */}
+      <AlertDialog open={deleteEquipOpen} onOpenChange={setDeleteEquipOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir equipamento</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir "{equipment.name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                await supabase.from('equipment').delete().eq('id', equipment.id);
+                navigate('/equipamentos');
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
