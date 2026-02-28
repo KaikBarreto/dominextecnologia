@@ -34,9 +34,9 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
     --muted: 0 0% 94%;
     --muted-foreground: 0 0% 45%;
 
-    /* Accent - Tom suave da marca */
-    --accent: 33 50% 92%;
-    --accent-foreground: 33 77% 40%;
+    /* Accent - Neutral gray for hover states (never pastel/beige) */
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 10%;
 
     /* Alertas */
     --destructive: 0 84% 60%;
