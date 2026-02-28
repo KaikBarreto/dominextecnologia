@@ -8,15 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
 function HeaderContent() {
-  const { profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { toggleSidebar, isMobile } = useSidebar();
-
-  const initials = profile?.full_name
-    ?.split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || '?';
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -35,15 +28,9 @@ function HeaderContent() {
       </div>
 
       <div className="flex items-center gap-3">
-        {profile && (
+        {user && (
           <>
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
-                <AvatarFallback className="bg-primary text-white text-xs font-bold">{initials}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium hidden sm:inline">{profile.full_name}</span>
-            </div>
+            <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
             <Button
               variant="ghost"
               size="icon"
