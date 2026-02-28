@@ -104,6 +104,11 @@ export default function CustomerDetail() {
 
       {activeTab === 'geral' && (
         <div className="grid gap-4 sm:grid-cols-2">
+          {(customer as any).photo_url && (
+            <Card className="sm:col-span-2"><CardContent className="p-4 flex justify-center">
+              <img src={(customer as any).photo_url} alt={customer.name} className="h-32 w-32 rounded-full object-cover border" />
+            </CardContent></Card>
+          )}
           {customer.document && (
             <Card><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">CPF/CNPJ</p>
