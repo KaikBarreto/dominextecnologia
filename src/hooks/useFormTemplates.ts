@@ -38,12 +38,21 @@ export function useFormTemplates() {
         .from('form_templates')
         .select(`
           *,
-          questions:form_questions(*)
+          questions:form_questions(*),
+          service_type_links:form_template_service_types(service_type_id)
         `)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      return data as (FormTemplate & { questions: FormQuestion[] })[];
+
+      return (data as any[]).map((template) => {
+        const serviceTypeIds = (template.service_type_links ?? []).map((link: any) => link.service_type_id);
+        return {
+          ...template,
+          service_type_ids: serviceTypeIds,
+          applies_to_all_services: serviceTypeIds.length === 0,
+        } as FormTemplate & { questions: FormQuestion[] };
+      });
     },
   });
 
