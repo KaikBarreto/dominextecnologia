@@ -16,6 +16,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
@@ -75,6 +77,8 @@ export function ServiceOrderFormDialog({
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string>>({});
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [requireTechSignature, setRequireTechSignature] = useState(false);
+  const [requireClientSignature, setRequireClientSignature] = useState(false);
   const { equipment } = useEquipment(selectedCustomerId);
 
   const selectedServiceType = useMemo(
@@ -131,6 +135,8 @@ export function ServiceOrderFormDialog({
       setStep(0);
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
+      setRequireTechSignature(false);
+      setRequireClientSignature(false);
       form.reset({
         customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
         equipment_id: serviceOrder?.equipment_id ?? '',
@@ -164,6 +170,8 @@ export function ServiceOrderFormDialog({
       ...baseData,
       equipment_id: selectedEquipmentIds[0] || undefined,
       form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined),
+      require_tech_signature: requireTechSignature,
+      require_client_signature: requireClientSignature,
     };
     await onSubmit(cleanedData);
     form.reset();
@@ -531,6 +539,27 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="notes" render={({ field }) => (
                 <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
+
+              {/* Signature toggles */}
+              <div className="space-y-3 pt-2 border-t">
+                <p className="text-sm font-medium">Assinaturas</p>
+                {form.getValues('technician_id') && (
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={requireTechSignature}
+                      onCheckedChange={setRequireTechSignature}
+                    />
+                    <Label className="text-sm">Assinatura do Técnico</Label>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={requireClientSignature}
+                    onCheckedChange={setRequireClientSignature}
+                  />
+                  <Label className="text-sm">Assinatura do Cliente</Label>
+                </div>
+              </div>
             </div>
           )}
 

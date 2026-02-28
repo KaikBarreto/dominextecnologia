@@ -16,6 +16,8 @@ export interface ServiceOrderInput {
   description?: string;
   notes?: string;
   form_template_id?: string;
+  require_tech_signature?: boolean;
+  require_client_signature?: boolean;
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
