@@ -51,6 +51,7 @@ export default function TechnicianOS() {
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any }) | null>(null);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
+  const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
