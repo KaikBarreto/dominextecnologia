@@ -99,51 +99,230 @@ export type Database = {
         Row: {
           brand: string | null
           capacity: string | null
+          category_id: string | null
           created_at: string
+          custom_fields: Json | null
           customer_id: string
           id: string
+          identifier: string | null
           install_date: string | null
           location: string | null
           model: string | null
           name: string
           notes: string | null
+          photo_url: string | null
           serial_number: string | null
+          status: string
           updated_at: string
+          warranty_until: string | null
         }
         Insert: {
           brand?: string | null
           capacity?: string | null
+          category_id?: string | null
           created_at?: string
+          custom_fields?: Json | null
           customer_id: string
           id?: string
+          identifier?: string | null
           install_date?: string | null
           location?: string | null
           model?: string | null
           name: string
           notes?: string | null
+          photo_url?: string | null
           serial_number?: string | null
+          status?: string
           updated_at?: string
+          warranty_until?: string | null
         }
         Update: {
           brand?: string | null
           capacity?: string | null
+          category_id?: string | null
           created_at?: string
+          custom_fields?: Json | null
           customer_id?: string
           id?: string
+          identifier?: string | null
           install_date?: string | null
           location?: string | null
           model?: string | null
           name?: string
           notes?: string | null
+          photo_url?: string | null
           serial_number?: string | null
+          status?: string
           updated_at?: string
+          warranty_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "equipment_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "equipment_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_attachments: {
+        Row: {
+          created_at: string
+          description: string | null
+          equipment_id: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          equipment_id: string
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          equipment_id?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_attachments_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_categories: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_field_config: {
+        Row: {
+          created_at: string
+          field_key: string
+          field_type: string
+          id: string
+          is_required: boolean
+          is_visible: boolean
+          label: string
+          options: Json | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          label: string
+          options?: Json | null
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          label?: string
+          options?: Json | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_tasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          equipment_id: string
+          id: string
+          is_completed: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          equipment_id: string
+          id?: string
+          is_completed?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          equipment_id?: string
+          id?: string
+          is_completed?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_tasks_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
             referencedColumns: ["id"]
           },
         ]
