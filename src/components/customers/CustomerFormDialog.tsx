@@ -12,8 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Check, Upload, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import type { Customer, CustomerType } from '@/types/database';
 
 const customerSchema = z.object({
