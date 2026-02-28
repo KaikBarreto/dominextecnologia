@@ -282,7 +282,7 @@ function QuestionRow({
   getQTypeIcon: (t: string) => string; getQTypeLabel: (t: string) => string;
 }) {
   const [text, setText] = useState(question.question);
-  const [type, setType] = useState(question.question_type);
+  const [type, setType] = useState<string>(question.question_type);
   const [required, setRequired] = useState(question.is_required);
 
   useEffect(() => {
