@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -8,11 +7,11 @@ import {
   DollarSign,
   FileText,
   Settings,
-  LogOut,
   UserCircle,
   TrendingUp,
   Wrench,
   ChevronDown,
+  MessageCircle,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -30,10 +29,7 @@ import {
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { ROLE_LABELS } from '@/hooks/useUsers';
 import logoDark from '@/assets/logo-dark.png';
 import { cn } from '@/lib/utils';
 
@@ -68,8 +64,10 @@ const menuItems: MenuItem[] = [
 const activeClass = 'bg-primary text-white hover:bg-primary hover:text-white font-semibold';
 const inactiveClass = 'text-foreground/70 hover:bg-primary hover:text-white';
 
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000'; // TODO: replace with real support number
+
 export function AppSidebar() {
-  const { profile, roles, signOut, hasRole } = useAuth();
+  const { roles, hasRole } = useAuth();
   const location = useLocation();
 
   const filterByRole = (items: { roles: string[] }[]) => {
@@ -82,35 +80,11 @@ export function AppSidebar() {
   const isChildActive = (children?: MenuItem['children']) =>
     children?.some((c) => location.pathname === c.path) ?? false;
 
-  const roleLabel = roles.length > 0 ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS] : 'Usuário';
-  const initials = profile?.full_name
-    ?.split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || '?';
-
   return (
     <Sidebar className="border-r border-border bg-background">
       <SidebarHeader className="border-b border-border px-4 py-4">
         <img src={logoDark} alt="Glacial Cold Brasil" className="h-9 w-auto mx-auto" />
       </SidebarHeader>
-
-      {/* User profile */}
-      {profile && (
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
-            <AvatarFallback className="bg-primary text-white text-sm font-bold">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate">{profile.full_name}</p>
-            <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 hover:bg-primary">
-              {roleLabel}
-            </Badge>
-          </div>
-        </div>
-      )}
 
       <SidebarContent className="px-2 py-2">
         <SidebarGroup>
@@ -144,7 +118,7 @@ export function AppSidebar() {
                                     asChild
                                     isActive={isActive}
                                     className={cn(
-                                      'rounded-md',
+                                      'rounded-md [&>svg]:opacity-100',
                                       isActive ? activeClass : inactiveClass
                                     )}
                                   >
@@ -188,11 +162,13 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={signOut}
-              className="text-destructive hover:bg-destructive hover:text-white"
+              asChild
+              className="text-[#25D366] hover:bg-[#25D366] hover:text-white"
             >
-              <LogOut className="h-4 w-4" />
-              <span>Sair</span>
+              <a href={WHATSAPP_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="h-4 w-4" />
+                <span>Suporte</span>
+              </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

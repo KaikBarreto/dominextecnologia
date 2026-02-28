@@ -53,8 +53,9 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
 
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
       {/* Days header */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/30">
+      <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] border-b bg-muted/30 min-w-[820px]">
         <div className="py-3 text-center text-xs font-medium text-muted-foreground" />
         {weekDays.map((day) => (
           <div
@@ -81,7 +82,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
 
       {/* Time grid */}
       <ScrollArea className="flex-1">
-        <div className="grid grid-cols-[60px_repeat(7,1fr)]">
+        <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] min-w-[820px]">
           {HOURS.map((hour) => (
             <div key={hour} className="contents">
               <div className="h-20 flex items-start justify-end pr-2 pt-1 text-xs text-muted-foreground border-b">
@@ -119,6 +120,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
           ))}
         </div>
       </ScrollArea>
+      </div>
     </div>
   );
 }

@@ -114,7 +114,7 @@ export default function Registration() {
   return (
     <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <DarkVeil hueShift={240} speed={0.5} />
+        <DarkVeil hueShift={210} speed={0.5} />
       </div>
       <div className="w-full max-w-lg relative z-10">
         {/* Logo */}
