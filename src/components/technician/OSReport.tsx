@@ -51,9 +51,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
   useEffect(() => {
     fetchCompany();
-    if (serviceOrder.form_template_id) {
-      fetchResponses();
-    }
+    fetchAllResponses();
   }, [serviceOrder.id]);
 
   const fetchCompany = async () => {
@@ -61,7 +59,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (data) setCompany(data);
   };
 
-  const fetchResponses = async () => {
+  const fetchAllResponses = async () => {
+    // Fetch all responses for this service order (covers all templates/equipment)
     const { data } = await supabase
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, question:form_questions(*)')
