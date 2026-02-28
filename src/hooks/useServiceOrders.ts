@@ -4,6 +4,11 @@ import type { ServiceOrder, OsStatus, OsType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface ServiceOrderEquipmentItem {
+  equipment_id: string;
+  form_template_id?: string;
+}
+
 export interface ServiceOrderInput {
   customer_id: string;
   equipment_id?: string;
@@ -18,6 +23,7 @@ export interface ServiceOrderInput {
   form_template_id?: string;
   require_tech_signature?: boolean;
   require_client_signature?: boolean;
+  equipment_items?: ServiceOrderEquipmentItem[];
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
@@ -62,16 +68,31 @@ export function useServiceOrders() {
 
   const createServiceOrder = useMutation({
     mutationFn: async (input: ServiceOrderInput) => {
+      const { equipment_items, ...rest } = input;
       const { data, error } = await supabase
         .from('service_orders')
         .insert({
-          ...input,
+          ...rest,
           created_by: user?.id,
         })
         .select()
         .single();
       
       if (error) throw error;
+
+      // Insert equipment items into junction table
+      if (equipment_items && equipment_items.length > 0) {
+        const rows = equipment_items.map(item => ({
+          service_order_id: data.id,
+          equipment_id: item.equipment_id,
+          form_template_id: item.form_template_id || null,
+        }));
+        const { error: eqError } = await supabase
+          .from('service_order_equipment')
+          .insert(rows);
+        if (eqError) console.error('Error inserting equipment items:', eqError);
+      }
+
       return data;
     },
     onSuccess: () => {

@@ -36,6 +36,13 @@ interface OSPhoto {
   created_at: string;
 }
 
+interface EquipmentItem {
+  equipment_id: string;
+  form_template_id: string | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
+  form_template: { id: string; name: string } | null;
+}
+
 export default function TechnicianOS() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,13 +51,17 @@ export default function TechnicianOS() {
   const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any }) | null>(null);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
+  const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkInLocation, setCheckInLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [checkOutLocation, setCheckOutLocation] = useState<{ lat: number; lng: number } | null>(null);
   
-  const [formValidation, setFormValidation] = useState<FormValidationResult>({ isValid: true, missingQuestions: [] });
+  const [formValidations, setFormValidations] = useState<Record<string, FormValidationResult>>({});
+  
+  const allFormsValid = Object.values(formValidations).every(v => v.isValid);
+  const allMissingQuestions = Object.values(formValidations).flatMap(v => v.missingQuestions);
   
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
@@ -61,8 +72,28 @@ export default function TechnicianOS() {
       fetchServiceOrder();
       fetchPhotos();
       fetchCompany();
+      fetchEquipmentItems();
     }
   }, [id]);
+
+  const fetchEquipmentItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('service_order_equipment')
+        .select(`
+          equipment_id,
+          form_template_id,
+          equipment:equipment(id, name, brand, model),
+          form_template:form_templates(id, name)
+        `)
+        .eq('service_order_id', id);
+      
+      if (error) throw error;
+      setEquipmentItems((data || []) as unknown as EquipmentItem[]);
+    } catch (error) {
+      console.error('Error fetching equipment items:', error);
+    }
+  };
 
   const fetchCompany = async () => {
     const { data } = await supabase.from('company_settings').select('*').limit(1).single();
@@ -165,11 +196,11 @@ export default function TechnicianOS() {
   };
 
   const handleFinishOS = async () => {
-    if (serviceOrder?.form_template_id && !formValidation.isValid) {
+    if (!allFormsValid) {
       toast({
         variant: 'destructive',
         title: 'Campos obrigatórios pendentes',
-        description: `Preencha os campos: ${formValidation.missingQuestions.slice(0, 3).join(', ')}${formValidation.missingQuestions.length > 3 ? '...' : ''}`,
+        description: `Preencha os campos: ${allMissingQuestions.slice(0, 3).join(', ')}${allMissingQuestions.length > 3 ? '...' : ''}`,
       });
       return;
     }
@@ -401,8 +432,37 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Questionnaire */}
-        {serviceOrder.form_template_id && isCheckedIn && (
+        {/* Questionnaires - Multi equipment from junction table */}
+        {isCheckedIn && equipmentItems.length > 0 && equipmentItems.map((item) => (
+          item.form_template_id && (
+            <Card key={item.equipment_id}>
+              <CardHeader className="pb-3 px-3 sm:px-6">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
+                  <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                  <span className="break-words">
+                    {item.equipment?.name || 'Equipamento'}
+                    {item.equipment?.brand && ` — ${item.equipment.brand} ${item.equipment.model || ''}`}
+                  </span>
+                  {formValidations[item.equipment_id] && !formValidations[item.equipment_id].isValid && (
+                    <Badge variant="destructive" className="text-xs">
+                      {formValidations[item.equipment_id].missingQuestions.length} pendente{formValidations[item.equipment_id].missingQuestions.length > 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 sm:px-6">
+                <DynamicFormQuestions 
+                  serviceOrderId={id!}
+                  templateId={item.form_template_id}
+                  onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [item.equipment_id]: result }))}
+                />
+              </CardContent>
+            </Card>
+          )
+        ))}
+
+        {/* Fallback: single questionnaire from OS (legacy / no junction data) */}
+        {isCheckedIn && equipmentItems.length === 0 && serviceOrder.form_template_id && (
           <Card>
             <CardHeader className="pb-3 px-3 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
@@ -417,9 +477,9 @@ export default function TechnicianOS() {
                     serviceOrder.form_template?.name || 'Checklist'
                   )}
                 </span>
-                {!formValidation.isValid && (
+                {formValidations['legacy'] && !formValidations['legacy'].isValid && (
                   <Badge variant="destructive" className="text-xs">
-                    {formValidation.missingQuestions.length} pendente{formValidation.missingQuestions.length > 1 ? 's' : ''}
+                    {formValidations['legacy'].missingQuestions.length} pendente{formValidations['legacy'].missingQuestions.length > 1 ? 's' : ''}
                   </Badge>
                 )}
               </CardTitle>
@@ -428,7 +488,7 @@ export default function TechnicianOS() {
               <DynamicFormQuestions 
                 serviceOrderId={id!}
                 templateId={serviceOrder.form_template_id}
-                onValidationChange={setFormValidation}
+                onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
               />
             </CardContent>
           </Card>
