@@ -310,7 +310,7 @@ function QuestionRow({
             </div>
             <div className="ml-auto flex gap-1">
               <Button variant="ghost" size="icon" onClick={onCancelEdit}><X className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" onClick={() => onSave({ question: text, question_type: type, is_required: required })}><Check className="h-4 w-4 text-success" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => onSave({ question: text, question_type: type as any, is_required: required })}><Check className="h-4 w-4 text-success" /></Button>
             </div>
           </div>
         </div>
