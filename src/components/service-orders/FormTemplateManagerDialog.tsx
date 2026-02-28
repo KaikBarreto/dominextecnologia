@@ -383,6 +383,37 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
                     </div>
                   </div>
 
+                  {/* Service Type Link */}
+                  <div className="px-4 py-2 border-b">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo de Serviço:</Label>
+                      <Select
+                        value={(selectedTemplate as any).service_type_id || 'none'}
+                        onValueChange={(value) => {
+                          updateTemplate.mutate({
+                            id: selectedTemplate.id,
+                            service_type_id: value === 'none' ? null : value,
+                          } as any);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Nenhum" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {serviceTypes.filter(t => t.is_active).map((st) => (
+                            <SelectItem key={st.id} value={st.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
+                                {st.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   {/* Questions List */}
                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-2">
