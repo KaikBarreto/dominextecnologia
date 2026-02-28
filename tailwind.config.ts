@@ -91,7 +91,7 @@ export default {
         sans: ["Montserrat", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        "brand-glow": "0 0 20px -5px hsl(33 77% 68% / 0.3)",
+        "brand-glow": "0 0 20px -5px hsl(210 79% 42% / 0.3)",
         "card-hover": "0 10px 40px -10px hsl(0 0% 0% / 0.1)",
       },
       keyframes: {

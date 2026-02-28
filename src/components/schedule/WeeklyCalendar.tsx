@@ -120,6 +120,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
           ))}
         </div>
       </ScrollArea>
+      </div>
     </div>
   );
 }

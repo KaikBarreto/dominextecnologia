@@ -6,8 +6,8 @@
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
-Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
-#EEB770 = HSL(33, 77%, 68%)
+Glacial Cold Brasil - Design Premium com Azul da Marca #1565C0
+#1565C0 = HSL(210, 79%, 42%)
 */
 
 @layer base {
@@ -22,9 +22,9 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    /* Primary - Cor da Marca #EEB770 */
-    --primary: 33 77% 68%;
-    --primary-foreground: 0 0% 10%;
+    /* Primary - Cor da Marca #1565C0 */
+    --primary: 210 79% 42%;
+    --primary-foreground: 0 0% 100%;
 
     /* Secondary - Preto Elegante */
     --secondary: 0 0% 8%;
@@ -34,7 +34,7 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
     --muted: 0 0% 94%;
     --muted-foreground: 0 0% 45%;
 
-    /* Accent - Neutral gray for hover states (never pastel/beige) */
+    /* Accent - Neutral gray for hover states */
     --accent: 0 0% 94%;
     --accent-foreground: 0 0% 10%;
 
@@ -45,8 +45,8 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
     --success: 145 65% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 33 77% 68%;
-    --warning-foreground: 0 0% 10%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
     --info: 200 85% 45%;
     --info-foreground: 0 0% 100%;
@@ -54,22 +54,22 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
     /* Borders e Inputs */
     --border: 0 0% 88%;
     --input: 0 0% 88%;
-    --ring: 33 77% 68%;
+    --ring: 210 79% 42%;
 
     --radius: 0.75rem;
 
     /* Sidebar - Light theme */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 33 77% 68%;
+    --sidebar-primary: 210 79% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 33 77% 68%;
+    --sidebar-accent: 210 79% 42%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 33 77% 68%;
+    --sidebar-ring: 210 79% 42%;
 
     /* Gradientes customizados */
-    --gradient-brand: linear-gradient(135deg, hsl(33 77% 68%) 0%, hsl(33 85% 75%) 100%);
+    --gradient-brand: linear-gradient(135deg, hsl(210 79% 42%) 0%, hsl(210 85% 50%) 100%);
     --gradient-dark: linear-gradient(180deg, hsl(0 0% 5%) 0%, hsl(0 0% 12%) 100%);
   }
 
@@ -83,8 +83,8 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 33 77% 68%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 210 79% 42%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 95%;
@@ -101,26 +101,26 @@ Glacial Cold Brasil - Design Premium com Preto, Branco e Cor da Marca #EEB770
     --success: 145 55% 40%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 33 77% 68%;
-    --warning-foreground: 0 0% 10%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
     --info: 200 85% 55%;
     --info-foreground: 0 0% 100%;
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 33 77% 68%;
+    --ring: 210 79% 42%;
 
     --sidebar-background: 0 0% 8%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 33 77% 68%;
+    --sidebar-primary: 210 79% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 33 77% 68%;
+    --sidebar-accent: 210 79% 42%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 33 77% 68%;
+    --sidebar-ring: 210 79% 42%;
 
-    --gradient-brand: linear-gradient(135deg, hsl(33 77% 68%) 0%, hsl(33 85% 75%) 100%);
+    --gradient-brand: linear-gradient(135deg, hsl(210 79% 42%) 0%, hsl(210 85% 50%) 100%);
     --gradient-dark: linear-gradient(180deg, hsl(0 0% 8%) 0%, hsl(0 0% 5%) 100%);
   }
 }
