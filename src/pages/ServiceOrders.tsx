@@ -156,7 +156,7 @@ export default function ServiceOrders() {
         <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => setStatusConfigOpen(true)}
-            variant="outline"
+            className="bg-gradient-to-b from-gray-700 to-gray-900 text-white hover:from-gray-600 hover:to-gray-800"
           >
             <Settings className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Configurações</span>

@@ -75,7 +75,7 @@ export default function QuestionnairesPage() {
       {/* Button above table */}
       <div className="flex justify-end">
         <Button
-          className="bg-accent text-accent-foreground hover:bg-accent/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -211,7 +211,7 @@ export default function QuestionnairesPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
             <Button
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCreate}
               disabled={!newName.trim() || createTemplate.isPending}
             >
