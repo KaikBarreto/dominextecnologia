@@ -40,6 +40,7 @@ function OrderDetail({
   onBack: () => void;
   onEdit?: () => void;
 }) {
+  const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
 
   return (
