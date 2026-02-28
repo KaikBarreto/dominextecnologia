@@ -13,7 +13,7 @@ interface MobileAgendaViewProps {
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
 }
 
-export function MobileAgendaView({ currentDate, orders, onOrderSelect, onNewOrder }: MobileAgendaViewProps) {
+export function MobileAgendaView({ currentDate, orders, onOrderSelect }: MobileAgendaViewProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
 
   const dayOrders = useMemo(() => {
