@@ -46,9 +46,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { cn } from '@/lib/utils';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
