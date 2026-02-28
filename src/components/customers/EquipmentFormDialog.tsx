@@ -165,6 +165,40 @@ export function EquipmentFormDialog({
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Photo upload */}
+            <div className="sm:col-span-2">
+              <FormLabel>Foto</FormLabel>
+              <div className="mt-1.5 flex items-center gap-4">
+                {photoPreview ? (
+                  <div className="relative h-24 w-24 rounded-lg overflow-hidden border bg-muted">
+                    <img src={photoPreview} alt="Preview" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5 hover:bg-background"
+                      onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImagePlus className="h-6 w-6" />
+                    <span className="text-[10px]">Adicionar</span>
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+              </div>
+            </div>
             <FormField
               control={form.control}
               name="customer_id"
