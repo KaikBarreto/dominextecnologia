@@ -249,8 +249,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             )}
           </div>
 
-          {/* Description */}
-          {(serviceOrder.description || (serviceOrder as any).service_type) && (
+          {/* Description - only show for pendente/em_andamento */}
+          {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.description || (serviceOrder as any).service_type) && (
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição do Chamado</h3>
               {(serviceOrder as any).service_type && (
