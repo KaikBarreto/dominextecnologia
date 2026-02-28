@@ -137,8 +137,8 @@ export default function Finance() {
                   {formatCurrency(summary.totalEntradas)}
                 </p>
               </div>
-              <div className="rounded-full bg-success/10 p-3">
-                <TrendingUp className="h-6 w-6 text-success" />
+              <div className="rounded-full bg-success p-3">
+                <TrendingUp className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
