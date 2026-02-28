@@ -137,6 +137,19 @@ export function ScheduleHeader({
           </Button>
         </div>
       </div>
+
+      {/* Legend */}
+      {serviceTypes.length > 0 && (
+        <div className="flex flex-wrap gap-3 items-center">
+          <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
+          {serviceTypes.filter(t => t.is_active).map((st) => (
+            <div key={st.id} className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
+              <span className="text-xs text-muted-foreground">{st.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
