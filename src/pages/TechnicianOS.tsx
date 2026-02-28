@@ -194,17 +194,31 @@ export default function TechnicianOS() {
       return;
     }
 
+    // Validate required signatures
+    if ((serviceOrder as any)?.require_tech_signature && !techSignature) {
+      toast({ variant: 'destructive', title: 'Assinatura do técnico obrigatória', description: 'Assine antes de finalizar.' });
+      return;
+    }
+    if ((serviceOrder as any)?.require_client_signature && !clientSignature) {
+      toast({ variant: 'destructive', title: 'Assinatura do cliente obrigatória', description: 'Colete a assinatura do cliente.' });
+      return;
+    }
+
     try {
       const location = await getCurrentLocation();
       const now = new Date().toISOString();
       
+      const updateData: any = {
+        check_out_time: now,
+        check_out_location: location,
+        status: 'concluida',
+      };
+      if (techSignature) updateData.tech_signature = techSignature;
+      if (clientSignature) updateData.client_signature = clientSignature;
+
       const { error } = await supabase
         .from('service_orders')
-        .update({
-          check_out_time: now,
-          check_out_location: location,
-          status: 'concluida',
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
