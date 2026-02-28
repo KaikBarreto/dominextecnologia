@@ -95,7 +95,10 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          birth_date: string | null
           city: string | null
+          company_name: string | null
+          complement: string | null
           created_at: string
           customer_type: Database["public"]["Enums"]["customer_type"]
           document: string | null
@@ -110,7 +113,10 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          birth_date?: string | null
           city?: string | null
+          company_name?: string | null
+          complement?: string | null
           created_at?: string
           customer_type?: Database["public"]["Enums"]["customer_type"]
           document?: string | null
@@ -125,7 +131,10 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          birth_date?: string | null
           city?: string | null
+          company_name?: string | null
+          complement?: string | null
           created_at?: string
           customer_type?: Database["public"]["Enums"]["customer_type"]
           document?: string | null
@@ -777,6 +786,30 @@ export type Database = {
           },
         ]
       }
+      os_config: {
+        Row: {
+          created_at: string
+          id: string
+          number_format: string
+          number_prefix: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          number_format?: string
+          number_prefix?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          number_format?: string
+          number_prefix?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       os_photos: {
         Row: {
           created_at: string
@@ -808,6 +841,59 @@ export type Database = {
             columns: ["service_order_id"]
             isOneToOne: false
             referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_required_fields: {
+        Row: {
+          created_at: string
+          field_name: string
+          id: string
+          status_key: string
+        }
+        Insert: {
+          created_at?: string
+          field_name: string
+          id?: string
+          status_key: string
+        }
+        Update: {
+          created_at?: string
+          field_name?: string
+          id?: string
+          status_key?: string
+        }
+        Relationships: []
+      }
+      os_sla_config: {
+        Row: {
+          created_at: string
+          deadline_hours: number
+          id: string
+          service_type_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadline_hours?: number
+          id?: string
+          service_type_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadline_hours?: number
+          id?: string
+          service_type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_sla_config_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: true
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
         ]
