@@ -111,6 +111,7 @@ const AppRoutes = () => (
       <Route path="/usuarios" element={<Users />} />
       <Route path="/configuracoes" element={<Settings />} />
       <Route path="/menu" element={<MobileMenu />} />
+      <Route path="/changelog" element={<Changelog />} />
     </Route>
 
     {/* Catch-all */}

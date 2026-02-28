@@ -384,7 +384,7 @@ export default function Registration() {
                           type="button"
                           variant="outline"
                           onClick={() => setStep(step - 1)}
-                          className="gap-2 border-white/20 text-white hover:bg-white/10 uppercase tracking-widest text-xs"
+                          className="gap-2 border-white/20 text-white hover:bg-white/20 bg-white/10 uppercase tracking-widest text-xs"
                         >
                           <ArrowLeft className="h-4 w-4" />
                           Voltar
