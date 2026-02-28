@@ -216,7 +216,7 @@ export function EquipmentPanel() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredEquipment.map((eq) => (
+                    {pagination.paginatedItems.map((eq) => (
                       <TableRow key={eq.id} className="cursor-pointer" onClick={() => navigate(`/equipamentos/${eq.id}`)}>
                         <TableCell>
                           {(eq as any).photo_url ? (
