@@ -118,6 +118,7 @@ export default function Customers() {
               </p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
