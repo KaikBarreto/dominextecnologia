@@ -173,8 +173,10 @@ export default function Customers() {
               </Table>
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
+      </div>
 
       <CustomerFormDialog
         open={formOpen}
