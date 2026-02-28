@@ -64,10 +64,20 @@ export function ServiceOrderFormDialog({
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
+  const { serviceTypes } = useServiceTypes();
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(
     serviceOrder?.customer_id
   );
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(
+    serviceOrder?.service_type_id ?? undefined
+  );
   const { equipment } = useEquipment(selectedCustomerId);
+
+  // Filter templates by selected service type
+  const filteredTemplates = useMemo(() => {
+    if (!selectedServiceTypeId) return templates.filter(t => t.is_active);
+    return templates.filter(t => t.is_active && (!t.service_type_id || t.service_type_id === selectedServiceTypeId));
+  }, [templates, selectedServiceTypeId]);
 
   const defaultDate = useMemo(() => {
     if (serviceOrder?.scheduled_date) return serviceOrder.scheduled_date;
