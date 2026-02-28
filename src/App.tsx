@@ -11,6 +11,8 @@ import Registration from "./pages/Registration";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import ServiceOrders from "./pages/ServiceOrders";
+import ServicesPage from "./pages/Services";
+import QuestionnairesPage from "./pages/Questionnaires";
 import Schedule from "./pages/Schedule";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
