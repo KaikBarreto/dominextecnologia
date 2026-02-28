@@ -5,7 +5,6 @@ import {
   MapPin, 
   Clock, 
   User, 
-  Wrench,
   Phone,
   Play,
   ClipboardCheck,
@@ -18,7 +17,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,16 +45,13 @@ export default function TechnicianOS() {
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
 
-  // Check-in/out state
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkInLocation, setCheckInLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [checkOutLocation, setCheckOutLocation] = useState<{ lat: number; lng: number } | null>(null);
   
-  // Form validation state
   const [formValidation, setFormValidation] = useState<FormValidationResult>({ isValid: true, missingQuestions: [] });
   
-  // Signature state
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
@@ -170,7 +165,6 @@ export default function TechnicianOS() {
   };
 
   const handleFinishOS = async () => {
-    // Validate required form fields
     if (serviceOrder?.form_template_id && !formValidation.isValid) {
       toast({
         variant: 'destructive',
@@ -180,7 +174,6 @@ export default function TechnicianOS() {
       return;
     }
 
-    // Validate required signatures
     if ((serviceOrder as any)?.require_tech_signature && !techSignature) {
       toast({ variant: 'destructive', title: 'Assinatura do técnico obrigatória' });
       return;
@@ -250,32 +243,33 @@ export default function TechnicianOS() {
     );
   }
 
-  const statusColors: Record<OsStatus, string> = {
-    pendente: 'bg-warning/10 text-warning border-warning',
-    em_andamento: 'bg-info/10 text-info border-info',
-    concluida: 'bg-success/10 text-success border-success',
-    cancelada: 'bg-destructive/10 text-destructive border-destructive',
+  // Saturated badges with white text
+  const statusBadgeVariant: Record<OsStatus, 'warning' | 'info' | 'success' | 'destructive'> = {
+    pendente: 'warning',
+    em_andamento: 'info',
+    concluida: 'success',
+    cancelada: 'destructive',
   };
 
   // Show report mode for completed OS
   if (serviceOrder.status === 'concluida') {
     return (
       <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-lg print:hidden">
+        <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-3 sm:p-4 shadow-lg print:hidden">
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex-1">
-              <h1 className="text-lg font-bold">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
-              <p className="text-sm opacity-90">Relatório de Serviço</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base sm:text-lg font-bold truncate">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
+              <p className="text-xs sm:text-sm opacity-90">Relatório de Serviço</p>
             </div>
-            <Badge variant="outline" className="bg-success/20 text-success-foreground border-success-foreground/30">
-              Concluída
+            <Badge variant={statusBadgeVariant[serviceOrder.status]}>
+              {osStatusLabels[serviceOrder.status]}
             </Badge>
           </div>
         </div>
-        <div className="max-w-2xl mx-auto p-4">
+        <div className="max-w-2xl mx-auto p-3 sm:p-4">
           <OSReport serviceOrder={serviceOrder} photos={photos} />
         </div>
       </div>
@@ -287,46 +281,48 @@ export default function TechnicianOS() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - PDF-inspired with company + OS info */}
+      {/* Header */}
       <div className="bg-primary text-primary-foreground">
-        <div className="max-w-2xl mx-auto p-4">
-          <div className="flex items-center gap-3 mb-3">
+        <div className="max-w-2xl mx-auto p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 {company?.logo_url ? (
-                  <img src={company.logo_url} alt="Logo" className="h-8 w-8 rounded object-contain bg-primary-foreground/10 p-0.5" />
+                  <img src={company.logo_url} alt="Logo" className="h-10 w-10 sm:h-12 sm:w-12 rounded object-contain bg-white p-1 shrink-0" />
                 ) : (
-                  <Building2 className="h-5 w-5 opacity-70" />
+                  <Building2 className="h-5 w-5 opacity-70 shrink-0" />
                 )}
                 <span className="text-sm opacity-80 truncate">{company?.name || ''}</span>
               </div>
             </div>
-            <Badge className={`${statusColors[serviceOrder.status]} shrink-0`}>
+            <Badge variant={statusBadgeVariant[serviceOrder.status]} className="shrink-0">
               {osStatusLabels[serviceOrder.status]}
             </Badge>
           </div>
           
-          <div className="flex items-end justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
             <div>
-              <h1 className="text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
-              <p className="text-sm opacity-80">{osTypeLabels[serviceOrder.os_type]}</p>
+              <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
+              <p className="text-xs sm:text-sm opacity-80">{osTypeLabels[serviceOrder.os_type]}</p>
             </div>
             {serviceOrder.scheduled_date && (
-              <div className="flex items-center gap-1.5 text-sm opacity-80">
-                <Calendar className="h-3.5 w-3.5" />
-                {format(new Date(serviceOrder.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                {serviceOrder.scheduled_time && ` ${String(serviceOrder.scheduled_time).slice(0, 5)}`}
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm opacity-80">
+                <Calendar className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {format(new Date(serviceOrder.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                  {serviceOrder.scheduled_time && ` ${String(serviceOrder.scheduled_time).slice(0, 5)}`}
+                </span>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4 space-y-4 pb-28">
-        {/* Step 1: Check-in (only if pending) */}
+      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-28">
+        {/* Step 1: Check-in */}
         {isPending && (
           <Card className="border-primary/30">
             <CardHeader className="pb-3">
@@ -347,16 +343,18 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Check-in timestamp (when done) */}
+        {/* Check-in timestamp */}
         {isCheckedIn && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-            <Clock className="h-3.5 w-3.5 text-primary" />
-            <span>
-              Check-in: {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="text-xs sm:text-sm">
+                Check-in: {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </span>
+            </div>
             {checkInLocation && (
-              <span className="text-xs opacity-70 ml-auto flex items-center gap-0.5">
-                <MapPin className="h-3 w-3" />
+              <span className="text-xs opacity-70 sm:ml-auto flex items-center gap-0.5">
+                <MapPin className="h-3 w-3 shrink-0" />
                 {checkInLocation.lat.toFixed(4)}, {checkInLocation.lng.toFixed(4)}
               </span>
             )}
@@ -365,25 +363,25 @@ export default function TechnicianOS() {
 
         {/* Client Info */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <User className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
             </div>
-            <p className="font-semibold">{serviceOrder.customer?.name}</p>
+            <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
             {serviceOrder.customer?.document && (
               <p className="text-xs text-muted-foreground mt-0.5">{serviceOrder.customer.document}</p>
             )}
             {serviceOrder.customer?.phone && (
               <a href={`tel:${serviceOrder.customer.phone}`} className="flex items-center gap-1.5 text-sm text-primary mt-1">
-                <Phone className="h-3 w-3" />
+                <Phone className="h-3 w-3 shrink-0" />
                 {serviceOrder.customer.phone}
               </a>
             )}
             {serviceOrder.customer?.address && (
               <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
                 <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
-                <span>
+                <span className="break-words">
                   {serviceOrder.customer.address}
                   {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
                   {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
@@ -396,35 +394,37 @@ export default function TechnicianOS() {
         {/* Description */}
         {serviceOrder.description && (
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Chamado</p>
-              <p className="text-sm">{serviceOrder.description}</p>
+              <p className="text-sm break-words">{serviceOrder.description}</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Questionnaire - shown as equipment section */}
+        {/* Questionnaire */}
         {serviceOrder.form_template_id && isCheckedIn && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ClipboardCheck className="h-4 w-4 text-primary" />
-                {serviceOrder.equipment ? (
-                  <span>
-                    {serviceOrder.equipment.name}
-                    {serviceOrder.equipment.brand && ` — ${serviceOrder.equipment.brand} ${serviceOrder.equipment.model || ''}`}
-                  </span>
-                ) : (
-                  <span>{serviceOrder.form_template?.name || 'Checklist'}</span>
-                )}
+            <CardHeader className="pb-3 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
+                <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                <span className="break-words">
+                  {serviceOrder.equipment ? (
+                    <>
+                      {serviceOrder.equipment.name}
+                      {serviceOrder.equipment.brand && ` — ${serviceOrder.equipment.brand} ${serviceOrder.equipment.model || ''}`}
+                    </>
+                  ) : (
+                    serviceOrder.form_template?.name || 'Checklist'
+                  )}
+                </span>
                 {!formValidation.isValid && (
-                  <Badge variant="destructive" className="ml-auto text-xs">
+                  <Badge variant="destructive" className="text-xs">
                     {formValidation.missingQuestions.length} pendente{formValidation.missingQuestions.length > 1 ? 's' : ''}
                   </Badge>
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-6">
               <DynamicFormQuestions 
                 serviceOrderId={id!}
                 templateId={serviceOrder.form_template_id}
@@ -434,7 +434,7 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Signatures (if required) */}
+        {/* Signatures */}
         {isCheckedIn && ((serviceOrder as any)?.require_tech_signature || (serviceOrder as any)?.require_client_signature) && (
           <Card>
             <CardHeader className="pb-3">
@@ -465,7 +465,7 @@ export default function TechnicianOS() {
 
       {/* Fixed bottom button */}
       {isCheckedIn && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 sm:p-4 z-10">
           <div className="max-w-2xl mx-auto">
             <Button 
               className="w-full bg-success hover:bg-success/90 text-success-foreground" 
