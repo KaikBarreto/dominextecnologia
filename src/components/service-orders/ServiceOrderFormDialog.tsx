@@ -170,6 +170,8 @@ export function ServiceOrderFormDialog({
       ...baseData,
       equipment_id: selectedEquipmentIds[0] || undefined,
       form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined),
+      require_tech_signature: requireTechSignature,
+      require_client_signature: requireClientSignature,
     };
     await onSubmit(cleanedData);
     form.reset();
