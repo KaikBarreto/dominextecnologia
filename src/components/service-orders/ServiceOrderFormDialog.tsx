@@ -27,6 +27,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { osTypeLabels } from '@/types/database';
 
@@ -35,6 +36,7 @@ const serviceOrderSchema = z.object({
   equipment_id: z.string().optional(),
   technician_id: z.string().optional(),
   os_type: z.enum(['manutencao_preventiva', 'manutencao_corretiva', 'instalacao', 'visita_tecnica']),
+  service_type_id: z.string().optional(),
   scheduled_date: z.string().optional(),
   scheduled_time: z.string().optional(),
   description: z.string().optional(),
