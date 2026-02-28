@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
-import { Download, Printer, Building2, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool } from 'lucide-react';
+import { Download, Printer, Building2, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, FormQuestion } from '@/types/database';
 import { osTypeLabels } from '@/types/database';
@@ -46,6 +47,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [generating, setGenerating] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchCompany();
@@ -70,6 +72,19 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const formatCurrency = (value: number | null | undefined) => {
     if (!value) return '-';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleCopyLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({ title: 'Link copiado!' });
+    }).catch(() => {
+      toast({ variant: 'destructive', title: 'Erro ao copiar link' });
+    });
   };
 
   const handleDownloadPDF = async () => {
@@ -122,51 +137,48 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const checkInLoc = serviceOrder.check_in_location as { lat: number; lng: number } | null;
   const checkOutLoc = serviceOrder.check_out_location as { lat: number; lng: number } | null;
 
-  // Group signature responses and non-signature responses
   const signatureResponses = formResponses.filter(r => r.question?.question_type === 'signature');
   const otherResponses = formResponses.filter(r => r.question?.question_type !== 'signature');
 
   return (
     <div className="space-y-4">
-      {/* Report content first, buttons at the bottom */}
-
-      {/* Report content */}
-      <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden" style={{ fontFamily: "'Lufga', sans-serif" }}>
+      {/* Report content - always white bg with dark text for print consistency */}
+      <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         {/* Company header */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6">
-          <div className="flex items-center gap-4">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
+          <div className="flex items-start gap-3 sm:gap-4">
             {company?.logo_url ? (
-              <img src={company.logo_url} alt="Logo" className="h-14 w-14 object-contain rounded-lg bg-white/10 p-1" />
+              <img src={company.logo_url} alt="Logo" className="h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-lg bg-white p-1.5 shrink-0" />
             ) : (
-              <div className="h-14 w-14 rounded-lg bg-white/10 flex items-center justify-center">
+              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                 <Building2 className="h-7 w-7 text-white/70" />
               </div>
             )}
-            <div className="flex-1">
-              <h1 className="text-xl font-bold">{company?.name || 'Empresa'}</h1>
-              {company?.document && <p className="text-sm text-white/70">CNPJ: {company.document}</p>}
-              <div className="flex flex-wrap gap-x-4 gap-y-0 text-xs text-white/60 mt-1">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold leading-tight">{company?.name || 'Empresa'}</h1>
+              {company?.document && <p className="text-xs sm:text-sm text-white/70">CNPJ: {company.document}</p>}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/60 mt-1">
                 {company?.phone && <span>{company.phone}</span>}
                 {company?.email && <span>{company.email}</span>}
               </div>
+              {company?.address && (
+                <p className="text-xs text-white/50 mt-1">
+                  {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
+                  {company.zip_code && ` | CEP: ${company.zip_code}`}
+                </p>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-black tracking-tight">
+            <div className="text-right shrink-0">
+              <div className="text-lg sm:text-2xl font-black tracking-tight">
                 OS #{String(serviceOrder.order_number).padStart(4, '0')}
               </div>
-              <p className="text-sm text-white/70 mt-1">{osTypeLabels[serviceOrder.os_type]}</p>
+              <p className="text-xs sm:text-sm text-white/70 mt-1">{osTypeLabels[serviceOrder.os_type]}</p>
             </div>
           </div>
-          {company?.address && (
-            <p className="text-xs text-white/50 mt-2">
-              {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
-              {company.zip_code && ` | CEP: ${company.zip_code}`}
-            </p>
-          )}
         </div>
 
         {/* Status bar */}
-        <div className="bg-emerald-600 text-white text-center py-2 text-sm font-semibold tracking-wide uppercase">
+        <div className="bg-emerald-600 text-white text-center py-2 text-xs sm:text-sm font-semibold tracking-wide uppercase">
           ✓ Serviço Concluído
           {serviceOrder.check_out_time && (
             <span className="font-normal ml-2">
@@ -175,11 +187,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           )}
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Client & Equipment(s) row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          {/* Client & Equipment */}
+          <div className="grid grid-cols-1 gap-4">
             {/* Client */}
-            <div className="border border-slate-200 rounded-lg p-4">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
@@ -201,7 +213,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
             {/* Equipment(s) */}
             {serviceOrder.equipment && (
-              <div className="border border-slate-200 rounded-lg p-4">
+              <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
                 </h3>
@@ -221,7 +233,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Description */}
           {serviceOrder.description && (
-            <div className="border border-slate-200 rounded-lg p-4">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição do Chamado</h3>
               <p className="text-sm text-slate-700">{serviceOrder.description}</p>
             </div>
@@ -229,11 +241,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Check-in / Check-out */}
           {(serviceOrder.check_in_time || serviceOrder.check_out_time) && (
-            <div className="border border-slate-200 rounded-lg p-4">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5" /> Execução
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {serviceOrder.check_in_time && (
                   <div>
                     <p className="text-xs text-slate-400 font-semibold">CHECK-IN</p>
@@ -242,8 +254,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                     </p>
                     {checkInLoc && (
                       <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                        <MapPin className="h-3 w-3" />
-                        {checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="break-all">{checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}</span>
                       </p>
                     )}
                   </div>
@@ -256,8 +268,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                     </p>
                     {checkOutLoc && (
                       <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                        <MapPin className="h-3 w-3" />
-                        {checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="break-all">{checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}</span>
                       </p>
                     )}
                   </div>
@@ -281,7 +293,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Photos */}
           {photos.length > 0 && (
-            <div className="border border-slate-200 rounded-lg p-4">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Camera className="h-3.5 w-3.5" /> Registro Fotográfico ({photos.length} fotos)
               </h3>
@@ -292,7 +304,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               ].filter(g => g.items.length > 0).map(group => (
                 <div key={group.label} className="mb-3 last:mb-0">
                   <p className="text-xs font-semibold text-slate-600 mb-2 uppercase">{group.label}</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {group.items.map(photo => (
                       <img
                         key={photo.id}
@@ -309,7 +321,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Questionnaire Responses */}
           {otherResponses.length > 0 && (
-            <div className="border border-slate-200 rounded-lg p-4">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <ClipboardCheck className="h-3.5 w-3.5" /> 
                 {serviceOrder.equipment?.name || (serviceOrder.form_template ? (serviceOrder as any).form_template.name : 'Checklist')}
@@ -319,7 +331,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                   <div key={response.id} className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
                     <span className="text-xs font-bold text-slate-400 mt-0.5 min-w-[20px]">{idx + 1}.</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700">{response.question?.question}</p>
+                      <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
                       <div className="mt-1">
                         {response.question?.question_type === 'boolean' ? (
                           <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -333,7 +345,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                         ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
                           <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
                         ) : (
-                          <p className="text-sm text-slate-600">{response.response_value || '-'}</p>
+                          <p className="text-sm text-slate-600 break-words">{response.response_value || '-'}</p>
                         )}
                       </div>
                     </div>
@@ -345,7 +357,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Service Details */}
           {(serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
-            <div className="border border-slate-200 rounded-lg p-4">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <FileSignature className="h-3.5 w-3.5" /> Detalhes do Serviço
               </h3>
@@ -353,19 +365,19 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 {serviceOrder.diagnosis && (
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase">Diagnóstico</p>
-                    <p className="text-sm text-slate-700 mt-0.5">{serviceOrder.diagnosis}</p>
+                    <p className="text-sm text-slate-700 mt-0.5 break-words">{serviceOrder.diagnosis}</p>
                   </div>
                 )}
                 {serviceOrder.solution && (
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase">Solução Aplicada</p>
-                    <p className="text-sm text-slate-700 mt-0.5">{serviceOrder.solution}</p>
+                    <p className="text-sm text-slate-700 mt-0.5 break-words">{serviceOrder.solution}</p>
                   </div>
                 )}
                 {serviceOrder.notes && (
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase">Observações</p>
-                    <p className="text-sm text-slate-700 mt-0.5">{serviceOrder.notes}</p>
+                    <p className="text-sm text-slate-700 mt-0.5 break-words">{serviceOrder.notes}</p>
                   </div>
                 )}
               </div>
@@ -374,7 +386,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Financial Summary */}
           {(serviceOrder.labor_value || serviceOrder.parts_value || serviceOrder.total_value) && (
-            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Resumo Financeiro</h3>
               <div className="space-y-1 text-sm">
                 {serviceOrder.labor_hours && (
@@ -402,7 +414,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Signatures */}
           {(signatureResponses.length > 0 || (serviceOrder as any).tech_signature || (serviceOrder as any).client_signature) && (
-            <div className="border border-slate-200 rounded-lg p-4">
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <PenTool className="h-3.5 w-3.5" /> Assinaturas
               </h3>
@@ -440,14 +452,18 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       </div>
 
       {/* Action buttons at the bottom */}
-      <div className="flex gap-2 print:hidden">
+      <div className="flex flex-col sm:flex-row gap-2 print:hidden">
         <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
           <Download className="h-4 w-4 mr-2" />
           {generating ? 'Gerando PDF...' : 'Baixar PDF'}
         </Button>
-        <Button variant="outline" onClick={() => window.print()}>
+        <Button variant="outline" onClick={handlePrint}>
           <Printer className="h-4 w-4 mr-2" />
           Imprimir
+        </Button>
+        <Button variant="outline" onClick={handleCopyLink}>
+          <Link2 className="h-4 w-4 mr-2" />
+          Copiar Link
         </Button>
       </div>
     </div>

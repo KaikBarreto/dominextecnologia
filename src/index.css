@@ -157,3 +157,29 @@ Design Premium com Azul da Marca #1565C0
     @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
   }
 }
+
+/* Print styles for OS Report - clean, no browser chrome */
+@media print {
+  /* Hide everything except the report */
+  body * {
+    visibility: hidden;
+  }
+  .print-report,
+  .print-report * {
+    visibility: visible !important;
+  }
+  .print-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border-radius: 0 !important;
+  }
+
+  /* Remove page header/footer (date, title, URL) */
+  @page {
+    margin: 10mm;
+  }
+}
