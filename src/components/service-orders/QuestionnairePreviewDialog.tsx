@@ -31,8 +31,8 @@ export function QuestionnairePreviewDialog({ templateId, open, onOpenChange, tem
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{q.question}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {getIcon(q.question_type)} {getLabel(q.question_type)}
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    {(() => { const QIcon = getIcon(q.question_type); return typeof QIcon === 'string' ? QIcon : <QIcon className="h-3 w-3" />; })()} {getLabel(q.question_type)}
                   </Badge>
                   {q.is_required && (
                     <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
