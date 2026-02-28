@@ -200,6 +200,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                         draggable
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
                         fillHeight
+                        colorShift={index}
                       />
                     </div>
                   );
