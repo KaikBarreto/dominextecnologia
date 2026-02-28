@@ -95,12 +95,22 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const { jsPDF } = await import('jspdf');
 
       const element = reportRef.current;
+      
+      // Force a fixed width for consistent A4-like rendering regardless of screen size
+      const originalWidth = element.style.width;
+      element.style.width = '794px'; // A4 width at 96dpi
+      
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
+        width: 794,
+        windowWidth: 794,
       });
+      
+      // Restore original width
+      element.style.width = originalWidth;
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
