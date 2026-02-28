@@ -390,7 +390,8 @@ export default function Registration() {
                         </Button>
                       )}
                       <Button
-                        type="submit"
+                        type={step === 2 ? "submit" : "button"}
+                        onClick={step === 1 ? handleNextStep : undefined}
                         className="flex-1 gap-2 uppercase tracking-widest text-sm font-semibold"
                         disabled={isLoading}
                       >
