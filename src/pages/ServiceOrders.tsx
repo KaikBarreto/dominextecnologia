@@ -74,7 +74,11 @@ export default function ServiceOrders() {
       String(os.order_number).includes(searchTerm);
     const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+
+  const statusOptions = statuses.length
+    ? statuses.map((s) => ({ key: s.key as OsStatus, label: s.label }))
+    : (Object.keys(osStatusLabels) as OsStatus[]).map((key) => ({ key, label: osStatusLabels[key] }));
+
 
   const handleSubmit = async (data: any) => {
     if (editingOS) {
