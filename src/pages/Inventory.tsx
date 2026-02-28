@@ -162,6 +162,7 @@ export default function Inventory() {
               </p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
