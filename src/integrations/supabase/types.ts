@@ -542,6 +542,42 @@ export type Database = {
           },
         ]
       }
+      form_template_service_types: {
+        Row: {
+          created_at: string
+          id: string
+          service_type_id: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          service_type_id: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          service_type_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_template_service_types_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_template_service_types_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_templates: {
         Row: {
           created_at: string
