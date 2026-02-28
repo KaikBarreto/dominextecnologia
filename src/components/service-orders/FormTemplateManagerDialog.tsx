@@ -283,6 +283,7 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
 
   return (
     <>
+      {children ? (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
