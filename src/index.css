@@ -161,6 +161,10 @@ Design Premium com Azul da Marca #1565C0
 /* Print styles for OS Report - clean, no browser chrome */
 @media print {
   /* Hide everything except the report */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   body * {
     visibility: hidden;
   }
@@ -177,9 +181,13 @@ Design Premium com Azul da Marca #1565C0
     padding: 0;
     border-radius: 0 !important;
   }
+  .print\\:hidden {
+    display: none !important;
+  }
 
-  /* Remove page header/footer (date, title, URL) */
+  /* Remove browser header/footer (date, title, URL) */
   @page {
-    margin: 10mm;
+    margin: 0;
+    size: A4;
   }
 }
