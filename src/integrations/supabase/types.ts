@@ -317,6 +317,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          service_type_id: string | null
           updated_at: string
         }
         Insert: {
@@ -326,6 +327,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          service_type_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -335,9 +337,18 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          service_type_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "form_templates_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory: {
         Row: {
@@ -739,6 +750,7 @@ export type Database = {
           parts_value: number | null
           scheduled_date: string | null
           scheduled_time: string | null
+          service_type_id: string | null
           solution: string | null
           status: Database["public"]["Enums"]["os_status"]
           technician_id: string | null
@@ -768,6 +780,7 @@ export type Database = {
           parts_value?: number | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           technician_id?: string | null
@@ -797,6 +810,7 @@ export type Database = {
           parts_value?: number | null
           scheduled_date?: string | null
           scheduled_time?: string | null
+          service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           technician_id?: string | null
@@ -825,7 +839,44 @@ export type Database = {
             referencedRelation: "form_templates"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "service_orders_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      service_types: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
