@@ -41,6 +41,7 @@ import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel
 import { OsStatusManagerDialog } from '@/components/service-orders/OsStatusManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
+import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
