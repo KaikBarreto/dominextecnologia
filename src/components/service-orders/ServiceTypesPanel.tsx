@@ -60,6 +60,7 @@ export function ServiceTypesPanel() {
       description: st.description || '',
       is_active: st.is_active,
       requires_equipment: st.requires_equipment ?? true,
+      number_prefix: (st as any).number_prefix || '',
     });
     setFormOpen(true);
   };
