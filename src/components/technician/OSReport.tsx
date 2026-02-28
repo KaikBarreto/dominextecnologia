@@ -176,7 +176,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Client & Equipment row */}
+          {/* Client & Equipment(s) row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Client */}
             <div className="border border-slate-200 rounded-lg p-4">
@@ -184,6 +184,9 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
               <p className="font-semibold text-slate-900">{serviceOrder.customer?.name}</p>
+              {serviceOrder.customer?.document && (
+                <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
+              )}
               {serviceOrder.customer?.phone && (
                 <p className="text-sm text-slate-600">{serviceOrder.customer.phone}</p>
               )}
@@ -196,11 +199,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               )}
             </div>
 
-            {/* Equipment */}
+            {/* Equipment(s) */}
             {serviceOrder.equipment && (
               <div className="border border-slate-200 rounded-lg p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5" /> Equipamento
+                  <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
                 </h3>
                 <p className="font-semibold text-slate-900">{serviceOrder.equipment.name}</p>
                 <p className="text-sm text-slate-600">

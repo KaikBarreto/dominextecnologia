@@ -411,11 +411,11 @@ export default function TechnicianOS() {
                 <ClipboardCheck className="h-4 w-4 text-primary" />
                 {serviceOrder.equipment ? (
                   <span>
-                    Inspeção: {serviceOrder.equipment.name}
+                    {serviceOrder.equipment.name}
                     {serviceOrder.equipment.brand && ` — ${serviceOrder.equipment.brand} ${serviceOrder.equipment.model || ''}`}
                   </span>
                 ) : (
-                  <span>Questionário: {serviceOrder.form_template?.name || 'Checklist'}</span>
+                  <span>{serviceOrder.form_template?.name || 'Checklist'}</span>
                 )}
                 {!formValidation.isValid && (
                   <Badge variant="destructive" className="ml-auto text-xs">

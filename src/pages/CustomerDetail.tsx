@@ -347,6 +347,39 @@ export default function CustomerDetail() {
         }}
         isLoading={createServiceOrder.isPending}
       />
+
+      {/* Edit Customer Dialog */}
+      <CustomerFormDialog
+        open={editCustomerOpen}
+        onOpenChange={setEditCustomerOpen}
+        customer={customer}
+        onSubmit={async (data: any) => {
+          await updateCustomer.mutateAsync({ id: customer.id, ...data });
+        }}
+        isLoading={updateCustomer.isPending}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir o cliente "{customer.name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                await deleteCustomer.mutateAsync(customer.id);
+                navigate('/clientes');
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
