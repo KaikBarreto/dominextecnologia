@@ -90,6 +90,7 @@ export default function ServiceOrders() {
   const [osToDelete, setOsToDelete] = useState<ServiceOrder | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('orders');
 
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
 
