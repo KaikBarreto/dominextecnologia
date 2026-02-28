@@ -26,7 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-white.png';
-import loginBg from '@/assets/login-bg.jpg';
+import DarkVeil from '@/components/ui/DarkVeil';
 
 // Step 1 + Step 2 combined schema
 const registrationSchema = z.object({
