@@ -51,6 +51,7 @@ interface ServiceOrderFormDialogProps {
   isLoading?: boolean;
   defaultDate?: string;
   defaultTime?: string;
+  defaultCustomerId?: string;
 }
 
 const STEPS = [
