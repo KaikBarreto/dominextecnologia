@@ -44,14 +44,6 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
 
   const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
 
-  if (!equipment) return null;
-
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'geral', label: 'Geral' },
-    { key: 'anexos', label: 'Anexos' },
-    { key: 'tarefas', label: 'Tarefas' },
-  ];
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !equipment) return;
