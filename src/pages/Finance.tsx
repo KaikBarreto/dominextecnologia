@@ -137,8 +137,8 @@ export default function Finance() {
                   {formatCurrency(summary.totalEntradas)}
                 </p>
               </div>
-              <div className="rounded-full bg-success/10 p-3">
-                <TrendingUp className="h-6 w-6 text-success" />
+              <div className="rounded-full bg-success p-3">
+                <TrendingUp className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -152,8 +152,8 @@ export default function Finance() {
                   {formatCurrency(summary.totalSaidas)}
                 </p>
               </div>
-              <div className="rounded-full bg-destructive/10 p-3">
-                <TrendingDown className="h-6 w-6 text-destructive" />
+              <div className="rounded-full bg-destructive p-3">
+                <TrendingDown className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -167,8 +167,8 @@ export default function Finance() {
                   {formatCurrency(summary.saldo)}
                 </p>
               </div>
-              <div className="rounded-full bg-primary/10 p-3">
-                <Wallet className="h-6 w-6 text-primary" />
+              <div className="rounded-full bg-primary p-3">
+                <Wallet className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -182,8 +182,8 @@ export default function Finance() {
                   {formatCurrency(summary.aReceber)}
                 </p>
               </div>
-              <div className="rounded-full bg-warning/10 p-3">
-                <Calendar className="h-6 w-6 text-warning" />
+              <div className="rounded-full bg-warning p-3">
+                <Calendar className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>

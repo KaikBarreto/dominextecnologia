@@ -50,8 +50,8 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
   if (sent) {
     return (
       <div className="space-y-4 text-center">
-        <div className="mx-auto w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-          <CheckCircle className="h-6 w-6 text-primary" />
+        <div className="mx-auto w-12 h-12 rounded-full bg-primary flex items-center justify-center">
+          <CheckCircle className="h-6 w-6 text-white" />
         </div>
         <h3 className="text-lg font-semibold text-white">Email enviado!</h3>
         <p className="text-sm text-white/70">

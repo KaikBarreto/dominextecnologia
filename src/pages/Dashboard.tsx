@@ -38,20 +38,20 @@ const statusConfig = {
   pendente: {
     label: 'Pendente',
     icon: Clock,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
+    color: 'text-white',
+    bgColor: 'bg-warning',
   },
   em_andamento: {
     label: 'Em Andamento',
     icon: AlertCircle,
-    color: 'text-info',
-    bgColor: 'bg-info/10',
+    color: 'text-white',
+    bgColor: 'bg-info',
   },
   concluida: {
     label: 'Concluída',
     icon: CheckCircle2,
-    color: 'text-success',
-    bgColor: 'bg-success/10',
+    color: 'text-white',
+    bgColor: 'bg-success',
   },
 };
 
@@ -104,8 +104,8 @@ export default function Dashboard() {
                       {stats?.osPendentes ?? 0} pendentes
                     </p>
                   </div>
-                  <div className="rounded-full bg-primary/10 p-3">
-                    <ClipboardList className="h-6 w-6 text-primary" />
+                  <div className="rounded-full bg-primary p-3">
+                    <ClipboardList className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -121,8 +121,8 @@ export default function Dashboard() {
                       cadastrados
                     </p>
                   </div>
-                  <div className="rounded-full bg-success/10 p-3">
-                    <Users className="h-6 w-6 text-success" />
+                  <div className="rounded-full bg-success p-3">
+                    <Users className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -138,8 +138,8 @@ export default function Dashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground">Este mês</p>
                   </div>
-                  <div className="rounded-full bg-warning/10 p-3">
-                    <DollarSign className="h-6 w-6 text-warning" />
+                  <div className="rounded-full bg-warning p-3">
+                    <DollarSign className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -155,8 +155,8 @@ export default function Dashboard() {
                       {stats?.osConcluidas ?? 0} concluídas
                     </p>
                   </div>
-                  <div className="rounded-full bg-info/10 p-3">
-                    <TrendingUp className="h-6 w-6 text-info" />
+                  <div className="rounded-full bg-info p-3">
+                    <TrendingUp className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>

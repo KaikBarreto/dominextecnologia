@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { DailyCalendar } from '@/components/schedule/DailyCalendar';
@@ -10,8 +12,11 @@ import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 
@@ -20,6 +25,7 @@ export default function Schedule() {
   const { data: technicians = [] } = useTechnicians();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
+  const { serviceTypes } = useServiceTypes();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -134,35 +140,103 @@ export default function Schedule() {
   // Mobile & Tablet layout
   if (isMobile) {
     return (
-      <div className="flex flex-col gap-3 min-h-[calc(100vh-8rem)]">
-        <ScheduleHeader
-          currentDate={currentDate}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          onPrev={handlePrev}
-          onNext={handleNext}
-          onToday={handleToday}
-          onNewOrder={handleNewOrder}
-          technicianFilter={technicianFilter}
-          onTechnicianFilterChange={setTechnicianFilter}
-          technicians={technicians}
-          customerFilter={customerFilter}
-          onCustomerFilterChange={setCustomerFilter}
-          customers={customers}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-        />
-
-        <div className={cn(
-          "flex-1 overflow-hidden rounded-xl border bg-card",
-          summaryOrder && "flex-none max-h-[40vh]"
-        )}>
-          <MobileAgendaView
-            currentDate={currentDate}
-            orders={filteredOrders}
-            onOrderSelect={handleOrderSelect}
-          />
+      <div className="flex flex-col gap-4">
+        {/* Title */}
+        <div>
+          <h1 className="text-2xl font-bold">Agenda</h1>
+          <p className="text-muted-foreground text-sm">Gerencie suas tarefas e compromissos</p>
         </div>
+
+        {/* Navigation: arrows + month centered */}
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={handlePrev} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h2 className="text-base font-semibold capitalize">
+            {format(currentDate, viewMode === 'day' ? "dd 'de' MMMM yyyy" : 'MMM yyyy', { locale: ptBR })}
+          </h2>
+          <button onClick={handleNext} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* View mode tabs */}
+        <div className="flex justify-center">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+            <TabsList>
+              <TabsTrigger value="day" className="px-5">Dia</TabsTrigger>
+              <TabsTrigger value="week" className="px-5">Semana</TabsTrigger>
+              <TabsTrigger value="month" className="px-5">Mês</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Calendar */}
+        <div className="rounded-xl border bg-card overflow-hidden">
+          {viewMode === 'month' && (
+            <MonthlyCalendar
+              currentDate={currentDate}
+              serviceOrders={filteredOrders}
+              onDateSelect={handleDateSelect}
+              onOrderSelect={handleOrderSelect}
+              onDrop={handleDrop}
+            />
+          )}
+          {viewMode === 'week' && (
+            <WeeklyCalendar
+              currentDate={currentDate}
+              orders={filteredOrders}
+              onOrderSelect={handleOrderSelect}
+              onSlotClick={handleSlotClick}
+              onDrop={handleDrop}
+            />
+          )}
+          {viewMode === 'day' && (
+            <DailyCalendar
+              currentDate={currentDate}
+              orders={filteredOrders}
+              onOrderSelect={handleOrderSelect}
+              onSlotClick={handleSlotClick}
+              onDrop={handleDrop}
+            />
+          )}
+        </div>
+
+        {/* Legend */}
+        {serviceTypes.filter(t => t.is_active).length > 0 && (
+          <div className="flex flex-wrap gap-3 items-center justify-center">
+            <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
+            {serviceTypes.filter(t => t.is_active).map((st) => (
+              <div key={st.id} className="flex items-center gap-1.5">
+                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
+                <span className="text-xs text-muted-foreground">{st.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Day description + New button */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold capitalize">
+              {format(currentDate, "dd 'de' MMMM", { locale: ptBR })}
+            </h3>
+            <p className="text-xs text-muted-foreground capitalize">
+              {format(currentDate, 'EEEE', { locale: ptBR })}
+            </p>
+          </div>
+          <Button size="sm" onClick={handleNewOrder}>
+            <Plus className="h-4 w-4 mr-1" />
+            Nova Tarefa
+          </Button>
+        </div>
+
+        {/* Day orders list */}
+        <MobileAgendaView
+          currentDate={currentDate}
+          orders={filteredOrders}
+          onOrderSelect={handleOrderSelect}
+        />
 
         {summaryOrder && (
           <div className="min-h-[200px]">

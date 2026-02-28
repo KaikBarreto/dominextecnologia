@@ -46,9 +46,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { cn } from '@/lib/utils';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
@@ -91,6 +90,7 @@ export default function ServiceOrders() {
   const [osToDelete, setOsToDelete] = useState<ServiceOrder | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('orders');
 
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
 
@@ -130,249 +130,268 @@ export default function ServiceOrders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
-          <p className="text-muted-foreground">
-            Gerencie suas ordens de serviço e tipos de serviço
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
+        <p className="text-muted-foreground">
+          Gerencie suas ordens de serviço e tipos de serviço
+        </p>
       </div>
 
-      <Tabs defaultValue="orders" className="w-full">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="orders" className="gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Ordens de Serviço
-          </TabsTrigger>
-          <TabsTrigger value="services" className="gap-2">
-            <Wrench className="h-4 w-4" />
-            Serviços
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="orders" className="mt-4 space-y-6">
-          {/* Actions bar */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row flex-1">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por cliente ou número..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Filtrar status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  {(Object.keys(osStatusLabels) as OsStatus[]).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {osStatusLabels[status]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2">
-              <FormTemplateManagerDialog>
-                <Button variant="outline" size="icon" title="Gerenciar Templates de Formulário">
-                  <Settings2 className="h-4 w-4" />
-                </Button>
-              </FormTemplateManagerDialog>
-              <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova OS
-              </Button>
-            </div>
-          </div>
-
-          {/* Status Summary Cards */}
-          <div className="grid gap-4 sm:grid-cols-4">
-            {(Object.keys(statusConfig) as OsStatus[]).map((status) => {
-              const config = statusConfig[status];
-              const count = serviceOrders.filter((os) => os.status === status).length;
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Vertical sidebar navigation */}
+        <nav className="lg:w-52 shrink-0">
+          <div className="flex lg:flex-col gap-1">
+            {[
+              { key: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
+              { key: 'services', label: 'Serviços', icon: Wrench },
+            ].map((item) => {
+              const isActive = activeTab === item.key;
               return (
-                <Card
-                  key={status}
-                  className={`cursor-pointer transition-colors hover:bg-muted ${
-                    statusFilter === status ? 'ring-2 ring-primary' : ''
-                  }`}
-                  onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left w-full',
+                    isActive
+                      ? 'bg-primary text-white'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">{osStatusLabels[status]}</p>
-                        <p className="text-2xl font-bold">{count}</p>
-                      </div>
-                      <div className={`rounded-full p-2 ${config.bgColor}`}>
-                        <config.icon className={`h-5 w-5 ${config.color}`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </button>
               );
             })}
           </div>
+        </nav>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Lista de OS
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
-                  ))}
+        {/* Content area */}
+        <div className="flex-1 min-w-0 space-y-6">
+          {activeTab === 'orders' && (
+            <>
+              {/* Actions bar */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row flex-1">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por cliente ou número..."
+                      className="pl-10"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Filtrar status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os status</SelectItem>
+                      {(Object.keys(osStatusLabels) as OsStatus[]).map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {osStatusLabels[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : filteredOrders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <ClipboardList className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-medium">
-                    {searchTerm || statusFilter !== 'all' ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
-                  </h3>
-                  <p className="text-muted-foreground">
-                    {searchTerm || statusFilter !== 'all'
-                      ? 'Tente filtros diferentes'
-                      : 'Clique em "Nova OS" para começar'}
-                  </p>
+                <div className="flex gap-2">
+                  <FormTemplateManagerDialog>
+                    <Button variant="outline" size="icon" title="Gerenciar Templates de Formulário">
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
+                  </FormTemplateManagerDialog>
+                  <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nova OS
+                  </Button>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>OS</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                        <TableHead className="hidden sm:table-cell">Data</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[100px]">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.map((os) => {
-                        const status = statusConfig[os.status];
-                        return (
-                          <TableRow key={os.id}>
-                            <TableCell>
-                              <span className="font-mono font-medium">
-                                #{String(os.order_number).padStart(4, '0')}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{os.customer?.name || 'N/A'}</p>
-                                {os.equipment && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {os.equipment.name}
-                                  </p>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              <span className="text-sm">{osTypeLabels[os.os_type]}</span>
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell">
-                              {os.scheduled_date ? (
-                                <div className="flex items-center gap-1 text-sm">
-                                  <Calendar className="h-3 w-3" />
-                                  {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={os.status}
-                                onValueChange={(value) => handleStatusChange(os, value as OsStatus)}
-                              >
-                                <SelectTrigger className={`h-8 w-[140px] ${status.bgColor}`}>
-                                  <SelectValue>
-                                    <span className={`flex items-center gap-1 ${status.color}`}>
-                                      <status.icon className="h-3 w-3" />
-                                      {osStatusLabels[os.status]}
-                                    </span>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {(Object.keys(osStatusLabels) as OsStatus[]).map((s) => (
-                                    <SelectItem key={s} value={s}>
-                                      {osStatusLabels[s]}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="Visualizar OS"
-                                  onClick={() => {
-                                    setViewingOsId(os.id);
-                                    setViewDialogOpen(true);
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="Abrir Formulário do Técnico"
-                                  onClick={() => {
-                                    const url = `${window.location.origin}/os-tecnico/${os.id}`;
-                                    window.open(url, '_blank');
-                                  }}
-                                >
-                                  <ExternalLink className="h-4 w-4 text-primary" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEdit(os)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive"
-                                  onClick={() => {
-                                    setOsToDelete(os);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
+              </div>
+
+              {/* Status Summary Cards */}
+              <div className="grid gap-4 sm:grid-cols-4">
+                {(Object.keys(statusConfig) as OsStatus[]).map((status) => {
+                  const config = statusConfig[status];
+                  const count = serviceOrders.filter((os) => os.status === status).length;
+                  return (
+                    <Card
+                      key={status}
+                      className={`cursor-pointer transition-colors hover:bg-muted ${
+                        statusFilter === status ? 'ring-2 ring-primary' : ''
+                      }`}
+                      onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground">{osStatusLabels[status]}</p>
+                            <p className="text-2xl font-bold">{count}</p>
+                          </div>
+                          <div className={`rounded-full p-2 ${config.bgColor}`}>
+                            <config.icon className={`h-5 w-5 ${config.color}`} />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5" />
+                    Lista de OS
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : filteredOrders.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <ClipboardList className="mb-4 h-12 w-12 text-muted-foreground" />
+                      <h3 className="text-lg font-medium">
+                        {searchTerm || statusFilter !== 'all' ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {searchTerm || statusFilter !== 'all'
+                          ? 'Tente filtros diferentes'
+                          : 'Clique em "Nova OS" para começar'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>OS</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                            <TableHead className="hidden sm:table-cell">Data</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="w-[100px]">Ações</TableHead>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredOrders.map((os) => {
+                            const status = statusConfig[os.status];
+                            return (
+                              <TableRow key={os.id}>
+                                <TableCell>
+                                  <span className="font-mono font-medium">
+                                    #{String(os.order_number).padStart(4, '0')}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium">{os.customer?.name || 'N/A'}</p>
+                                    {os.equipment && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {os.equipment.name}
+                                      </p>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  <span className="text-sm">{osTypeLabels[os.os_type]}</span>
+                                </TableCell>
+                                <TableCell className="hidden sm:table-cell">
+                                  {os.scheduled_date ? (
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Select
+                                    value={os.status}
+                                    onValueChange={(value) => handleStatusChange(os, value as OsStatus)}
+                                  >
+                                    <SelectTrigger className={`h-8 w-[140px] ${status.bgColor}`}>
+                                      <SelectValue>
+                                        <span className={`flex items-center gap-1 ${status.color}`}>
+                                          <status.icon className="h-3 w-3" />
+                                          {osStatusLabels[os.status]}
+                                        </span>
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {(Object.keys(osStatusLabels) as OsStatus[]).map((s) => (
+                                        <SelectItem key={s} value={s}>
+                                          {osStatusLabels[s]}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      title="Visualizar OS"
+                                      onClick={() => {
+                                        setViewingOsId(os.id);
+                                        setViewDialogOpen(true);
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      title="Abrir Formulário do Técnico"
+                                      onClick={() => {
+                                        const url = `${window.location.origin}/os-tecnico/${os.id}`;
+                                        window.open(url, '_blank');
+                                      }}
+                                    >
+                                      <ExternalLink className="h-4 w-4 text-primary" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleEdit(os)}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        setOsToDelete(os);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
 
-        <TabsContent value="services" className="mt-4">
-          <ServiceTypesPanel />
-        </TabsContent>
-      </Tabs>
+          {activeTab === 'services' && (
+            <ServiceTypesPanel />
+          )}
+        </div>
+      </div>
 
       <ServiceOrderFormDialog
         open={formOpen}

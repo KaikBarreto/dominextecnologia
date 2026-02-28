@@ -356,8 +356,8 @@ export default function Registration() {
                   {/* Step 3: Success */}
                   {step === 3 && (
                     <div className="space-y-6 text-center animate-in fade-in duration-500 py-4">
-                      <div className="mx-auto w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                        <PartyPopper className="h-8 w-8 text-primary" />
+                      <div className="mx-auto w-16 h-16 rounded-full bg-primary flex items-center justify-center">
+                        <PartyPopper className="h-8 w-8 text-white" />
                       </div>
                       <div className="space-y-2">
                         <h3 className="text-lg font-semibold text-white">Conta criada com sucesso!</h3>
