@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import MobileMenu from "./pages/MobileMenu";
 import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
+import Changelog from "./pages/Changelog";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
