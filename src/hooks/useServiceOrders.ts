@@ -49,7 +49,7 @@ export function useServiceOrders() {
           customer:customers(id, name, phone, address, city),
           equipment:equipment(id, name, brand, model),
           form_template:form_templates(id, name),
-          service_type:service_types(id, name, color)
+          service_type:service_types(id, name, color, number_prefix)
         `)
         .order('created_at', { ascending: false });
       

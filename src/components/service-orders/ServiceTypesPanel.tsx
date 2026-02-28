@@ -267,13 +267,17 @@ export function ServiceTypesPanel() {
           </div>
           <div className="space-y-2">
             <Label>Prefixo de Numeração OS</Label>
-            <Input
-              value={form.number_prefix}
-              onChange={(e) => setForm({ ...form, number_prefix: e.target.value })}
-              placeholder="Ex: MP, MC, INS"
-              className="w-40"
-            />
-            <p className="text-xs text-muted-foreground">Usado na numeração das OS deste tipo. Ex: MP-2026-0001</p>
+            <div className="flex items-center gap-3">
+              <Input
+                value={form.number_prefix}
+                onChange={(e) => setForm({ ...form, number_prefix: e.target.value })}
+                placeholder="Ex: MP, MC, INS"
+                className="w-40"
+              />
+              <span className="text-sm font-mono text-muted-foreground whitespace-nowrap">
+                → {form.number_prefix || 'OS'}-2026-0001
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Switch

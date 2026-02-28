@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export default function Inventory() {
   const { items, isLoading, stats, deleteItem } = useInventory();
@@ -20,6 +22,8 @@ export default function Inventory() {
     item.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const pagination = useDataPagination(filteredItems);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -58,7 +62,7 @@ export default function Inventory() {
           <h1 className="text-2xl font-bold">Estoque</h1>
           <p className="text-muted-foreground">Controle de peças e materiais</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
+        <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2" onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           Novo Item
         </Button>
@@ -158,6 +162,7 @@ export default function Inventory() {
               </p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -172,7 +177,7 @@ export default function Inventory() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((item) => (
+                  {pagination.paginatedItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
@@ -225,6 +230,17 @@ export default function Inventory() {
                 </TableBody>
               </Table>
             </div>
+            <DataTablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              from={pagination.from}
+              to={pagination.to}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+            </>
           )}
         </CardContent>
       </Card>

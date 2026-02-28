@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCustomers } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import type { Customer } from '@/types/database';
 
 export default function Customers() {
@@ -34,6 +36,8 @@ export default function Customers() {
       customer.document?.includes(searchTerm) ||
       (customer as any).company_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const pagination = useDataPagination(filteredCustomers);
 
   const handleSubmit = async (data: any) => {
     if (editingCustomer) {
@@ -75,14 +79,14 @@ export default function Customers() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button onClick={() => { setEditingCustomer(null); setFormOpen(true); }}>
+        <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => { setEditingCustomer(null); setFormOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" />
           Novo Cliente
         </Button>
       </div>
 
       <div>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">
+        <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
           Lista de Clientes
         </h2>
         <Card>
@@ -105,6 +109,7 @@ export default function Customers() {
               </p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -118,7 +123,7 @@ export default function Customers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustomers.map((customer) => (
+                  {pagination.paginatedItems.map((customer) => (
                     <TableRow key={customer.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${customer.id}`)}>
                       <TableCell>
                         <div>
@@ -180,6 +185,17 @@ export default function Customers() {
                 </TableBody>
               </Table>
             </div>
+            <DataTablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              from={pagination.from}
+              to={pagination.to}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+            </>
           )}
           </div>
         </CardContent>

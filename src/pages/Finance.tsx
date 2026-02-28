@@ -339,8 +339,13 @@ interface TransactionTableProps {
   onMarkAsPaid: (id: string) => void;
 }
 
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+
 function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: TransactionTableProps) {
+  const pagination = useDataPagination(transactions);
   return (
+    <>
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
@@ -354,7 +359,7 @@ function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: Tran
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((t) => (
+          {pagination.paginatedItems.map((t) => (
             <TableRow key={t.id}>
               <TableCell>
                 <span className="text-sm">
@@ -423,5 +428,16 @@ function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: Tran
         </TableBody>
       </Table>
     </div>
+    <DataTablePagination
+      page={pagination.page}
+      totalPages={pagination.totalPages}
+      totalItems={pagination.totalItems}
+      from={pagination.from}
+      to={pagination.to}
+      pageSize={pagination.pageSize}
+      onPageChange={pagination.setPage}
+      onPageSizeChange={pagination.setPageSize}
+    />
+    </>
   );
 }

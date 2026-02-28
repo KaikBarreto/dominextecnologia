@@ -21,6 +21,8 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
 import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import type { Equipment } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,6 +56,8 @@ export function EquipmentPanel() {
     const matchesCustomer = customerFilter === 'all' || eq.customer_id === customerFilter;
     return matchesSearch && matchesCategory && matchesCustomer;
   });
+
+  const pagination = useDataPagination(filteredEquipment);
 
   const handleSubmit = async (data: EquipmentInput) => {
     if (editingEquipment) {
@@ -113,7 +117,7 @@ export function EquipmentPanel() {
             <Settings className="mr-2 h-4 w-4" />
             Configurar Campos
           </Button>
-          <Button onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
+          <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Equipamento
           </Button>
@@ -152,7 +156,7 @@ export function EquipmentPanel() {
       </div>
 
       <div>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">
+        <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
           Lista de Equipamentos
         </h2>
         <Card>
@@ -174,6 +178,7 @@ export function EquipmentPanel() {
                 </p>
               </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -188,7 +193,7 @@ export function EquipmentPanel() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredEquipment.map((eq) => (
+                    {pagination.paginatedItems.map((eq) => (
                       <TableRow key={eq.id} className="cursor-pointer" onClick={() => navigate(`/equipamentos/${eq.id}`)}>
                         <TableCell>
                           {(eq as any).photo_url ? (
@@ -248,6 +253,17 @@ export function EquipmentPanel() {
                   </TableBody>
                 </Table>
               </div>
+              <DataTablePagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                from={pagination.from}
+                to={pagination.to}
+                pageSize={pagination.pageSize}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+              </>
             )}
           </CardContent>
         </Card>
