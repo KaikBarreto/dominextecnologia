@@ -192,6 +192,9 @@ export function ServiceTypesPanel() {
                       {st.description || '-'}
                     </TableCell>
                     <TableCell>
+                      <span className="font-mono text-sm">{(st as any).number_prefix || '-'}</span>
+                    </TableCell>
+                    <TableCell>
                       <Badge variant={(st as any).requires_equipment ? 'default' : 'secondary'} className="text-xs">
                         {(st as any).requires_equipment ? 'Sim' : 'Não'}
                       </Badge>
