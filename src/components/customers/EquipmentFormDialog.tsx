@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,8 +12,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ImagePlus, X } from 'lucide-react';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
+import { supabase } from '@/integrations/supabase/client';
 import type { Equipment, Customer } from '@/types/database';
 import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
 
@@ -49,6 +50,10 @@ export function EquipmentFormDialog({
   open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const autoIdentifier = useMemo(() => {
     if (equipment?.identifier) return equipment.identifier;
@@ -89,12 +94,43 @@ export function EquipmentFormDialog({
         install_date: equipment?.install_date ?? '',
         notes: equipment?.notes ?? '',
       });
+      setPhotoFile(null);
+      setPhotoPreview(equipment?.photo_url ?? null);
     }
   }, [open, equipment, autoIdentifier]);
 
+  const uploadPhoto = async (): Promise<string | undefined> => {
+    if (!photoFile) return undefined;
+    setUploadingPhoto(true);
+    try {
+      const ext = photoFile.name.split('.').pop();
+      const path = `photos/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from('equipment-files').upload(path, photoFile);
+      if (error) throw error;
+      const { data } = supabase.storage.from('equipment-files').getPublicUrl(path);
+      return data.publicUrl;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (data: EquipmentFormData) => {
+    // Upload photo if selected
+    let photo_url = equipment?.photo_url;
+    if (photoFile) {
+      photo_url = await uploadPhoto();
+    }
+
     // Clean empty strings to avoid DB errors (especially for date fields)
-    const cleaned: any = { ...data };
+    const cleaned: any = { ...data, photo_url };
     Object.keys(cleaned).forEach(key => {
       if (cleaned[key] === '') {
         cleaned[key] = undefined;
@@ -129,6 +165,40 @@ export function EquipmentFormDialog({
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Photo upload */}
+            <div className="sm:col-span-2">
+              <FormLabel>Foto</FormLabel>
+              <div className="mt-1.5 flex items-center gap-4">
+                {photoPreview ? (
+                  <div className="relative h-24 w-24 rounded-lg overflow-hidden border bg-muted">
+                    <img src={photoPreview} alt="Preview" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5 hover:bg-background"
+                      onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImagePlus className="h-6 w-6" />
+                    <span className="text-[10px]">Adicionar</span>
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+              </div>
+            </div>
             <FormField
               control={form.control}
               name="customer_id"
@@ -244,8 +314,8 @@ export function EquipmentFormDialog({
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isLoading || uploadingPhoto}>
+              {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {equipment ? 'Salvar' : 'Criar'}
             </Button>
           </div>
