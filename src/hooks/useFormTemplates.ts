@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { FormTemplate, FormQuestion } from '@/types/database';
+import { CheckSquare, Type, Hash, Camera, ListChecks, LucideIcon } from 'lucide-react';
 
 export interface FormTemplateInsert {
   name: string;
@@ -19,13 +20,13 @@ export interface FormQuestionInsert {
   description?: string;
 }
 
-export const QUESTION_TYPES = [
-  { value: 'boolean', label: 'Verdadeiro/Falso', icon: '✓' },
-  { value: 'text', label: 'Texto', icon: '📝' },
-  { value: 'number', label: 'Número', icon: '🔢' },
-  { value: 'photo', label: 'Foto', icon: '📷' },
-  { value: 'select', label: 'Seleção', icon: '📋' },
-] as const;
+export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: 'boolean', label: 'Verdadeiro/Falso', icon: CheckSquare },
+  { value: 'text', label: 'Texto', icon: Type },
+  { value: 'number', label: 'Número', icon: Hash },
+  { value: 'photo', label: 'Foto', icon: Camera },
+  { value: 'select', label: 'Seleção', icon: ListChecks },
+];
 
 export function useFormTemplates() {
   const { toast } = useToast();
@@ -128,7 +129,6 @@ export function useFormTemplates() {
     },
   });
 
-  // Question mutations
   const createQuestion = useMutation({
     mutationFn: async (question: FormQuestionInsert) => {
       const { data, error } = await supabase
