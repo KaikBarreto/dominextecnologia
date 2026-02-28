@@ -260,7 +260,7 @@ export default function Dashboard() {
         {/* Recent OS */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <ClipboardList className="h-5 w-5" />
               Ordens de Serviço Recentes
             </CardTitle>
