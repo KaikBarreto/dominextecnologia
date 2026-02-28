@@ -83,6 +83,7 @@ export default function Customers() {
         </h2>
         <Card>
           <CardContent className="p-0">
+          <div className="p-6">
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
