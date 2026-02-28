@@ -38,6 +38,7 @@ const serviceOrderSchema = z.object({
   service_type_id: z.string().optional(),
   scheduled_date: z.string().optional(),
   scheduled_time: z.string().optional(),
+  duration_minutes: z.coerce.number().min(15).default(120),
   description: z.string().optional(),
   notes: z.string().optional(),
   form_template_id: z.string().optional(),
