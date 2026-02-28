@@ -107,6 +107,8 @@ const AppRoutes = () => (
     >
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/ordens-servico" element={<ServiceOrders />} />
+      <Route path="/servicos" element={<ServicesPage />} />
+      <Route path="/questionarios" element={<QuestionnairesPage />} />
       <Route path="/agenda" element={<Schedule />} />
       <Route path="/clientes" element={<Customers />} />
       <Route path="/clientes/:id" element={<CustomerDetail />} />
