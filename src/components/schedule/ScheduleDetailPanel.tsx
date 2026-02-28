@@ -9,11 +9,7 @@ import { EventCard, getStatusBadgeClass } from './EventCard';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { EventCard, getStatusBadgeClass } from './EventCard';
-import { cn } from '@/lib/utils';
-import type { ServiceOrder, OsType } from '@/types/database';
+
 
 const osTypeLabels: Record<OsType, string> = {
   manutencao_preventiva: 'Manutenção Preventiva',
