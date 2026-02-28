@@ -182,8 +182,8 @@ export default function Finance() {
                   {formatCurrency(summary.aReceber)}
                 </p>
               </div>
-              <div className="rounded-full bg-warning/10 p-3">
-                <Calendar className="h-6 w-6 text-warning" />
+              <div className="rounded-full bg-warning p-3">
+                <Calendar className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
