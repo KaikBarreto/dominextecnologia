@@ -44,9 +44,12 @@ import { cn } from '@/lib/utils';
 
 interface FormTemplateManagerDialogProps {
   children?: React.ReactNode;
+  initialTemplateId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialogProps) {
+export function FormTemplateManagerDialog({ children, initialTemplateId, open: controlledOpen, onOpenChange: controlledOnOpenChange }: FormTemplateManagerDialogProps) {
   const { 
     templates, 
     createTemplate, 
