@@ -1,0 +1,1 @@
+ALTER TABLE public.service_orders ADD COLUMN duration_minutes integer NOT NULL DEFAULT 120;

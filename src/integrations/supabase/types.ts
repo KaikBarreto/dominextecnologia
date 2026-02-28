@@ -1330,6 +1330,7 @@ export type Database = {
           customer_id: string
           description: string | null
           diagnosis: string | null
+          duration_minutes: number
           equipment_id: string | null
           form_template_id: string | null
           id: string
@@ -1363,6 +1364,7 @@ export type Database = {
           customer_id: string
           description?: string | null
           diagnosis?: string | null
+          duration_minutes?: number
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string
@@ -1396,6 +1398,7 @@ export type Database = {
           customer_id?: string
           description?: string | null
           diagnosis?: string | null
+          duration_minutes?: number
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string

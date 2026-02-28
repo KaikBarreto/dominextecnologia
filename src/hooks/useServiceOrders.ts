@@ -18,6 +18,7 @@ export interface ServiceOrderInput {
   status?: OsStatus;
   scheduled_date?: string;
   scheduled_time?: string;
+  duration_minutes?: number;
   description?: string;
   notes?: string;
   form_template_id?: string;

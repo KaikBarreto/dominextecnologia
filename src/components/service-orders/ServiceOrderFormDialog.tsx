@@ -38,6 +38,7 @@ const serviceOrderSchema = z.object({
   service_type_id: z.string().optional(),
   scheduled_date: z.string().optional(),
   scheduled_time: z.string().optional(),
+  duration_minutes: z.coerce.number().min(15).default(120),
   description: z.string().optional(),
   notes: z.string().optional(),
   form_template_id: z.string().optional(),
@@ -124,6 +125,7 @@ export function ServiceOrderFormDialog({
       service_type_id: serviceOrder?.service_type_id ?? '',
       scheduled_date: computedDate,
       scheduled_time: computedTime,
+      duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
       description: serviceOrder?.description ?? '',
       notes: serviceOrder?.notes ?? '',
       form_template_id: serviceOrder?.form_template_id ?? '',
@@ -145,6 +147,7 @@ export function ServiceOrderFormDialog({
         service_type_id: serviceOrder?.service_type_id ?? '',
         scheduled_date: computedDate,
         scheduled_time: computedTime,
+        duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
         description: serviceOrder?.description ?? '',
         notes: serviceOrder?.notes ?? '',
         form_template_id: serviceOrder?.form_template_id ?? '',
@@ -473,6 +476,28 @@ export function ServiceOrderFormDialog({
                 )} />
                 <FormField control={form.control} name="scheduled_time" render={({ field }) => (
                   <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="duration_minutes" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duração</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || 120)}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="15">15 min</SelectItem>
+                        <SelectItem value="30">30 min</SelectItem>
+                        <SelectItem value="45">45 min</SelectItem>
+                        <SelectItem value="60">1 hora</SelectItem>
+                        <SelectItem value="90">1h30</SelectItem>
+                        <SelectItem value="120">2 horas</SelectItem>
+                        <SelectItem value="180">3 horas</SelectItem>
+                        <SelectItem value="240">4 horas</SelectItem>
+                        <SelectItem value="300">5 horas</SelectItem>
+                        <SelectItem value="360">6 horas</SelectItem>
+                        <SelectItem value="480">8 horas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
                 )} />
               </div>
 
