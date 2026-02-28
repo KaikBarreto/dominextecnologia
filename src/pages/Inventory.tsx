@@ -240,6 +240,7 @@ export default function Inventory() {
               onPageChange={pagination.setPage}
               onPageSizeChange={pagination.setPageSize}
             />
+            </>
           )}
         </CardContent>
       </Card>

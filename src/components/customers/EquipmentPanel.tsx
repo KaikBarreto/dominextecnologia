@@ -287,6 +287,7 @@ export function EquipmentPanel() {
                 onPageChange={pagination.setPage}
                 onPageSizeChange={pagination.setPageSize}
               />
+              </>
             )}
           </CardContent>
         </Card>
