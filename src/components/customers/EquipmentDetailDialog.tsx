@@ -42,9 +42,9 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
-  if (!equipment) return null;
+  const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
 
-  const qrValue = `EQ-${equipment.identifier || equipment.id}`;
+  if (!equipment) return null;
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'geral', label: 'Geral' },
