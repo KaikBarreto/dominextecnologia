@@ -64,7 +64,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           fillHeight && 'h-full',
           !serviceTypeColor && statusBadge.className
         )}
-        style={serviceTypeColor ? { backgroundColor: serviceTypeColor, color: 'white' } : undefined}
+        style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
       >
         <span className="font-medium shrink-0">
           {order.scheduled_time?.slice(0, 5) || '--:--'}
