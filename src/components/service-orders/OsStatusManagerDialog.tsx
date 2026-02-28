@@ -183,6 +183,31 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
     setDeleteId(null);
   };
 
+  const handleDragStart = (statusId: string) => {
+    setDraggedStatusId(statusId);
+  };
+
+  const handleDropStatus = (targetStatusId: string) => {
+    if (!draggedStatusId || draggedStatusId === targetStatusId) {
+      setDraggedStatusId(null);
+      setDragOverStatusId(null);
+      return;
+    }
+
+    const current = [...statuses];
+    const draggedIndex = current.findIndex((s) => s.id === draggedStatusId);
+    const targetIndex = current.findIndex((s) => s.id === targetStatusId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const [dragged] = current.splice(draggedIndex, 1);
+    current.splice(targetIndex, 0, dragged);
+
+    reorderStatuses.mutate(current.map((s) => s.id));
+    setDraggedStatusId(null);
+    setDragOverStatusId(null);
+  };
+
   const handleSavePrefix = () => {
     if (prefix.trim() && config) {
       updateConfig.mutate({ number_prefix: prefix });
