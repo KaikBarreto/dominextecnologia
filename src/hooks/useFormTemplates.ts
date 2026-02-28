@@ -201,13 +201,44 @@ export function useFormTemplates() {
 
   const reorderQuestions = useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      const updates = orderedIds.map((id, index) => 
+      const updates = orderedIds.map((id, index) =>
         supabase.from('form_questions').update({ position: index }).eq('id', id)
       );
       await Promise.all(updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
+    },
+  });
+
+  const setTemplateServices = useMutation({
+    mutationFn: async ({ templateId, serviceTypeIds }: { templateId: string; serviceTypeIds: string[] }) => {
+      const { error: deleteError } = await supabase
+        .from('form_template_service_types')
+        .delete()
+        .eq('template_id', templateId);
+
+      if (deleteError) throw deleteError;
+
+      if (serviceTypeIds.length > 0) {
+        const payload = serviceTypeIds.map((serviceTypeId) => ({ template_id: templateId, service_type_id: serviceTypeId }));
+        const { error: insertError } = await supabase
+          .from('form_template_service_types')
+          .insert(payload as any);
+
+        if (insertError) throw insertError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['form-templates'] });
+      toast({ title: 'Serviços vinculados ao questionário!' });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erro ao vincular serviços',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
