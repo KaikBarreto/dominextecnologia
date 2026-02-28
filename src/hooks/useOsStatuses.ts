@@ -78,11 +78,29 @@ export function useOsStatuses() {
     },
   });
 
+  const reorderStatuses = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      await Promise.all(
+        orderedIds.map((id, index) =>
+          supabase.from('os_statuses').update({ position: index }).eq('id', id)
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['os_statuses'] });
+      toast({ title: 'Ordem dos status atualizada!' });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    },
+  });
+
   return {
     statuses: query.data ?? [],
     isLoading: query.isLoading,
     createStatus,
     updateStatus,
     deleteStatus,
+    reorderStatuses,
   };
 }
