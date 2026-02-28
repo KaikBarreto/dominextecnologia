@@ -204,13 +204,13 @@ export default function ServiceOrders() {
             </h2>
             <div className="flex rounded-lg border overflow-hidden">
               <button
-                className={cn('px-3 py-2 text-sm', viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                className={cn('px-3 py-2 text-sm', 'bg-primary text-primary-foreground')}
                 onClick={() => setViewMode('list')}
               >
                 <LayoutList className="h-4 w-4" />
               </button>
               <button
-                className={cn('px-3 py-2 text-sm', viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                className={cn('px-3 py-2 text-sm', 'hover:bg-muted')}
                 onClick={() => setViewMode('kanban')}
               >
                 <LayoutGrid className="h-4 w-4" />
