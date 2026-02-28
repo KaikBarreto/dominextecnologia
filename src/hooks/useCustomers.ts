@@ -6,13 +6,16 @@ import { useToast } from '@/hooks/use-toast';
 export interface CustomerInput {
   name: string;
   customer_type: CustomerType;
+  company_name?: string;
   document?: string;
   email?: string;
   phone?: string;
   address?: string;
+  complement?: string;
   city?: string;
   state?: string;
   zip_code?: string;
+  birth_date?: string;
   notes?: string;
 }
 
