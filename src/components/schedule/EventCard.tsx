@@ -37,7 +37,18 @@ export function getStatusBadgeClass(status: OsStatus, scheduledDate?: string | n
   return statusConfig[status];
 }
 
-export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart }: EventCardProps) {
+function getShiftedColor(hex: string, shift: number): string {
+  if (!shift) return hex;
+  // Parse hex color and adjust lightness
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const factor = 1 + shift * 0.15; // lighten by 15% per step
+  const clamp = (v: number) => Math.min(255, Math.round(v * factor + (255 - v * factor) * 0.1 * shift));
+  return `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`;
+}
+
+export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0 }: EventCardProps) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
 
   const serviceTypeColor = (order as any).service_type?.color;
