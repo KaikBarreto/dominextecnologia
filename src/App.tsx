@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import ServiceOrders from "./pages/ServiceOrders";
 import ServicesPage from "./pages/Services";
 import QuestionnairesPage from "./pages/Questionnaires";
+import QuestionnaireDetail from "./pages/QuestionnaireDetail";
 import Schedule from "./pages/Schedule";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
