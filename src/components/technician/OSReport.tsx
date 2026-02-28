@@ -128,17 +128,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
   return (
     <div className="space-y-4">
-      {/* Action buttons */}
-      <div className="flex gap-2 print:hidden">
-        <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
-          <Download className="h-4 w-4 mr-2" />
-          {generating ? 'Gerando PDF...' : 'Baixar PDF'}
-        </Button>
-        <Button variant="outline" onClick={() => window.print()}>
-          <Printer className="h-4 w-4 mr-2" />
-          Imprimir
-        </Button>
-      </div>
+      {/* Report content first, buttons at the bottom */}
 
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden" style={{ fontFamily: "'Lufga', sans-serif" }}>
@@ -186,7 +176,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Client & Equipment row */}
+          {/* Client & Equipment(s) row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Client */}
             <div className="border border-slate-200 rounded-lg p-4">
@@ -194,6 +184,9 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
               <p className="font-semibold text-slate-900">{serviceOrder.customer?.name}</p>
+              {serviceOrder.customer?.document && (
+                <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
+              )}
               {serviceOrder.customer?.phone && (
                 <p className="text-sm text-slate-600">{serviceOrder.customer.phone}</p>
               )}
@@ -206,11 +199,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               )}
             </div>
 
-            {/* Equipment */}
+            {/* Equipment(s) */}
             {serviceOrder.equipment && (
               <div className="border border-slate-200 rounded-lg p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5" /> Equipamento
+                  <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
                 </h3>
                 <p className="font-semibold text-slate-900">{serviceOrder.equipment.name}</p>
                 <p className="text-sm text-slate-600">
@@ -319,7 +312,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             <div className="border border-slate-200 rounded-lg p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <ClipboardCheck className="h-3.5 w-3.5" /> 
-                Questionário{serviceOrder.form_template ? `: ${(serviceOrder as any).form_template.name}` : ''}
+                {serviceOrder.equipment?.name || (serviceOrder.form_template ? (serviceOrder as any).form_template.name : 'Checklist')}
               </h3>
               <div className="space-y-2">
                 {otherResponses.map((response, idx) => (
@@ -444,6 +437,18 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             {company?.name && <p className="mt-0.5">{company.name}</p>}
           </div>
         </div>
+      </div>
+
+      {/* Action buttons at the bottom */}
+      <div className="flex gap-2 print:hidden">
+        <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
+          <Download className="h-4 w-4 mr-2" />
+          {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+        </Button>
+        <Button variant="outline" onClick={() => window.print()}>
+          <Printer className="h-4 w-4 mr-2" />
+          Imprimir
+        </Button>
       </div>
     </div>
   );

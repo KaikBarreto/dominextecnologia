@@ -113,7 +113,7 @@ function OrderDetail({
             className="w-full mt-2"
           >
             <ClipboardList className="h-4 w-4 mr-2" />
-            Preencher OS
+            {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
           </Button>
         </div>
       </ScrollArea>

@@ -12,18 +12,22 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { cn } from '@/lib/utils';
 import { osStatusLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
@@ -42,7 +46,11 @@ export default function EquipmentDetail() {
   const { settings: companySettings } = useCompanySettings();
   const { equipment: allEquipment, isLoading: eqLoading } = useEquipment();
   const { serviceOrders } = useServiceOrders();
+  const { customers } = useCustomers();
+  const { categories } = useEquipmentCategories();
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [editEquipOpen, setEditEquipOpen] = useState(false);
+  const [deleteEquipOpen, setDeleteEquipOpen] = useState(false);
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [selectedLabelSize, setSelectedLabelSize] = useState<string>('5x8');
@@ -123,6 +131,14 @@ export default function EquipmentDetail() {
               {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
             </Badge>
           </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setEditEquipOpen(true)}>
+            <Edit className="h-4 w-4 mr-1" /> Editar
+          </Button>
+          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteEquipOpen(true)}>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          </Button>
         </div>
       </div>
 
@@ -453,6 +469,43 @@ export default function EquipmentDetail() {
         open={!!previewImage}
         onClose={() => setPreviewImage(null)}
       />
+
+      {/* Edit Equipment Dialog */}
+      <EquipmentFormDialog
+        open={editEquipOpen}
+        onOpenChange={setEditEquipOpen}
+        equipment={equipment}
+        onSubmit={async (data: any) => {
+          const { error } = await supabase.from('equipment').update(data).eq('id', equipment.id);
+          if (error) throw error;
+          window.location.reload();
+        }}
+        customers={customers}
+        categories={categories}
+        isLoading={false}
+      />
+
+      {/* Delete Equipment Confirmation */}
+      <AlertDialog open={deleteEquipOpen} onOpenChange={setDeleteEquipOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir equipamento</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir "{equipment.name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                await supabase.from('equipment').delete().eq('id', equipment.id);
+                navigate('/equipamentos');
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

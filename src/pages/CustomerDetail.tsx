@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,9 @@ import { useFinancial } from '@/hooks/useFinancial';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
+import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { osStatusLabels } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -28,7 +30,7 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
-  const { customers, isLoading } = useCustomers();
+  const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
   const { serviceOrders, createServiceOrder } = useServiceOrders();
   const { transactions } = useFinancial();
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
@@ -36,6 +38,8 @@ export default function CustomerDetail() {
 
   const [equipFormOpen, setEquipFormOpen] = useState(false);
   const [osFormOpen, setOsFormOpen] = useState(false);
+  const [editCustomerOpen, setEditCustomerOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
@@ -84,6 +88,14 @@ export default function CustomerDetail() {
               <span className="text-sm text-muted-foreground">{(customer as any).company_name}</span>
             )}
           </div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setEditCustomerOpen(true)}>
+            <Edit className="h-4 w-4 mr-1" /> Editar
+          </Button>
+          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmOpen(true)}>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          </Button>
         </div>
       </div>
 
@@ -335,6 +347,39 @@ export default function CustomerDetail() {
         }}
         isLoading={createServiceOrder.isPending}
       />
+
+      {/* Edit Customer Dialog */}
+      <CustomerFormDialog
+        open={editCustomerOpen}
+        onOpenChange={setEditCustomerOpen}
+        customer={customer}
+        onSubmit={async (data: any) => {
+          await updateCustomer.mutateAsync({ id: customer.id, ...data });
+        }}
+        isLoading={updateCustomer.isPending}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir o cliente "{customer.name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                await deleteCustomer.mutateAsync(customer.id);
+                navigate('/clientes');
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
