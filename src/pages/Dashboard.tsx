@@ -121,8 +121,8 @@ export default function Dashboard() {
                       cadastrados
                     </p>
                   </div>
-                  <div className="rounded-full bg-success/10 p-3">
-                    <Users className="h-6 w-6 text-success" />
+                  <div className="rounded-full bg-success p-3">
+                    <Users className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
