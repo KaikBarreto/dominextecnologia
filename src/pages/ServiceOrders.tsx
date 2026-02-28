@@ -303,7 +303,7 @@ export default function ServiceOrders() {
                                       <SelectValue>
                                         <span className={`flex items-center gap-1 whitespace-nowrap ${status.color}`}>
                                           <status.icon className="h-3 w-3 shrink-0" />
-                                          {osStatusLabels[os.status]}
+                                          {statusOptions.find((s) => s.key === os.status)?.label || osStatusLabels[os.status]}
                                         </span>
                                       </SelectValue>
                                     </SelectTrigger>
