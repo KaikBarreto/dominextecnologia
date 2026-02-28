@@ -363,54 +363,35 @@ export default function TechnicianOS() {
           </div>
         )}
 
-        {/* Client & Equipment Info - PDF-inspired cards */}
-        <div className="grid grid-cols-1 gap-3">
-          {/* Client */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <User className="h-4 w-4 text-primary" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
-              </div>
-              <p className="font-semibold">{serviceOrder.customer?.name}</p>
-              {serviceOrder.customer?.phone && (
-                <a href={`tel:${serviceOrder.customer.phone}`} className="flex items-center gap-1.5 text-sm text-primary mt-1">
-                  <Phone className="h-3 w-3" />
-                  {serviceOrder.customer.phone}
-                </a>
-              )}
-              {serviceOrder.customer?.address && (
-                <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
-                  <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
-                  <span>
-                    {serviceOrder.customer.address}
-                    {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
-                    {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
-                  </span>
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Equipment */}
-          {serviceOrder.equipment && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Wrench className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equipamento</span>
-                </div>
-                <p className="font-semibold">{serviceOrder.equipment.name}</p>
-                <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
-                  <p>{serviceOrder.equipment.brand} {serviceOrder.equipment.model}</p>
-                  {serviceOrder.equipment.serial_number && <p>S/N: {serviceOrder.equipment.serial_number}</p>}
-                  {serviceOrder.equipment.capacity && <p>Capacidade: {serviceOrder.equipment.capacity}</p>}
-                  {serviceOrder.equipment.location && <p>Local: {serviceOrder.equipment.location}</p>}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        {/* Client Info */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <User className="h-4 w-4 text-primary" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
+            </div>
+            <p className="font-semibold">{serviceOrder.customer?.name}</p>
+            {serviceOrder.customer?.document && (
+              <p className="text-xs text-muted-foreground mt-0.5">{serviceOrder.customer.document}</p>
+            )}
+            {serviceOrder.customer?.phone && (
+              <a href={`tel:${serviceOrder.customer.phone}`} className="flex items-center gap-1.5 text-sm text-primary mt-1">
+                <Phone className="h-3 w-3" />
+                {serviceOrder.customer.phone}
+              </a>
+            )}
+            {serviceOrder.customer?.address && (
+              <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
+                <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                <span>
+                  {serviceOrder.customer.address}
+                  {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
+                  {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
+                </span>
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Description */}
         {serviceOrder.description && (
