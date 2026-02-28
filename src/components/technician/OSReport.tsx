@@ -144,13 +144,13 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             )}
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-xl font-bold leading-tight">{company?.name || 'Empresa'}</h1>
-              {company?.document && <p className="text-xs sm:text-sm text-white/70">CNPJ: {company.document}</p>}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/60 mt-1">
+              {company?.document && <p className="text-xs sm:text-sm text-white/90">CNPJ: {company.document}</p>}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/80 mt-1">
                 {company?.phone && <span>{company.phone}</span>}
                 {company?.email && <span>{company.email}</span>}
               </div>
               {company?.address && (
-                <p className="text-xs text-white/50 mt-1">
+                <p className="text-xs text-white/75 mt-1">
                   {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
                   {company.zip_code && ` | CEP: ${company.zip_code}`}
                 </p>
