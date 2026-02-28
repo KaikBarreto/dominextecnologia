@@ -49,6 +49,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
+import { ServiceTypeManagerDialog } from '@/components/service-orders/ServiceTypeManagerDialog';
+import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
