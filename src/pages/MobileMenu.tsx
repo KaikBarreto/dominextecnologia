@@ -18,6 +18,8 @@ import { useAuth } from '@/contexts/AuthContext';
 const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico' },
+  { title: 'Serviços', icon: FileText, path: '/servicos' },
+  { title: 'Questionários', icon: FileText, path: '/questionarios' },
   { title: 'Agenda', icon: Calendar, path: '/agenda' },
   { title: 'Clientes', icon: Users, path: '/clientes' },
   { title: 'Equipamentos', icon: Package, path: '/equipamentos' },
