@@ -540,8 +540,8 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
     </AlertDialog>
   );
 
-  // Inline mode (no children) - render directly
-  if (!children) {
+  // Inline mode (no children and no controlled open) - render directly
+  if (!children && controlledOpen === undefined) {
     return (
       <>
         <div className="rounded-lg border overflow-hidden">
@@ -552,11 +552,11 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
     );
   }
 
-  // Dialog mode (with children trigger)
+  // Dialog mode (with children trigger or controlled open)
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>{children}</DialogTrigger>
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        {children && <DialogTrigger asChild>{children}</DialogTrigger>}
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           {dialogContent}
         </DialogContent>
