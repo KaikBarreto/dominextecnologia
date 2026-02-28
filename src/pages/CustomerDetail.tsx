@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,9 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
+import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { osStatusLabels } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -26,9 +29,13 @@ export default function CustomerDetail() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { customers, isLoading } = useCustomers();
-  const { serviceOrders } = useServiceOrders();
+  const { serviceOrders, createServiceOrder } = useServiceOrders();
   const { transactions } = useFinancial();
-  const { equipment: customerEquipment } = useEquipment(id);
+  const { equipment: customerEquipment, createEquipment } = useEquipment(id);
+  const { categories } = useEquipmentCategories();
+
+  const [equipFormOpen, setEquipFormOpen] = useState(false);
+  const [osFormOpen, setOsFormOpen] = useState(false);
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
@@ -50,7 +57,7 @@ export default function CustomerDetail() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'geral', label: 'Geral' },
     { key: 'equipamentos', label: 'Equipamentos' },
-    { key: 'historico', label: 'Histórico' },
+    { key: 'historico', label: 'Histórico de OS' },
     { key: 'financeiro', label: 'Financeiro' },
   ];
 
@@ -137,9 +144,15 @@ export default function CustomerDetail() {
 
       {activeTab === 'equipamentos' && (
         <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-            Equipamentos do Cliente
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
+              Equipamentos do Cliente
+            </h2>
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setEquipFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Equipamento
+            </Button>
+          </div>
           {customerEquipment.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <Package className="mb-2 h-8 w-8 text-muted-foreground" />
@@ -183,7 +196,13 @@ export default function CustomerDetail() {
 
       {activeTab === 'historico' && (
         <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Ordens de Serviço</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Histórico de OS</h2>
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setOsFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova OS
+            </Button>
+          </div>
           {customerOrders.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <ClipboardList className="mb-2 h-8 w-8 text-muted-foreground" />
@@ -270,6 +289,30 @@ export default function CustomerDetail() {
           )}
         </div>
       )}
+
+      {/* Equipment Form Dialog */}
+      <EquipmentFormDialog
+        open={equipFormOpen}
+        onOpenChange={setEquipFormOpen}
+        equipment={null}
+        onSubmit={async (data: any) => {
+          await createEquipment.mutateAsync({ ...data, customer_id: id });
+        }}
+        customers={customer ? [customer] : []}
+        categories={categories}
+        isLoading={createEquipment.isPending}
+      />
+
+      {/* OS Form Dialog - pre-filled with this customer */}
+      <ServiceOrderFormDialog
+        open={osFormOpen}
+        onOpenChange={setOsFormOpen}
+        serviceOrder={{ customer_id: id } as any}
+        onSubmit={async (data: any) => {
+          await createServiceOrder.mutateAsync(data);
+        }}
+        isLoading={createServiceOrder.isPending}
+      />
     </div>
   );
 }

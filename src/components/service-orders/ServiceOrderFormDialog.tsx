@@ -15,14 +15,16 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, Plus, Check } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
+import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -60,7 +62,7 @@ const STEPS = [
 export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime,
 }: ServiceOrderFormDialogProps) {
-  const { customers } = useCustomers();
+  const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
@@ -68,8 +70,10 @@ export function ServiceOrderFormDialog({
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id);
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string>>({});
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const { equipment } = useEquipment(selectedCustomerId);
 
   const selectedServiceType = useMemo(
@@ -143,6 +147,7 @@ export function ServiceOrderFormDialog({
     }
   }, [open, serviceOrder, computedDate, computedTime]);
 
+  // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const handleCreateSubmit = async () => {
     const data = form.getValues();
     const baseData = {
@@ -153,25 +158,13 @@ export function ServiceOrderFormDialog({
       scheduled_time: data.scheduled_time || undefined,
     };
 
-    if (selectedEquipmentIds.length <= 1) {
-      // Single or no equipment
-      const cleanedData = {
-        ...baseData,
-        equipment_id: selectedEquipmentIds[0] || undefined,
-        form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined),
-      };
-      await onSubmit(cleanedData);
-    } else {
-      // Multiple equipment — create one OS per equipment
-      for (const eqId of selectedEquipmentIds) {
-        const cleanedData = {
-          ...baseData,
-          equipment_id: eqId,
-          form_template_id: equipmentTemplateMap[eqId] || undefined,
-        };
-        await onSubmit(cleanedData);
-      }
-    }
+    // Always create a single OS with the first equipment
+    const cleanedData = {
+      ...baseData,
+      equipment_id: selectedEquipmentIds[0] || undefined,
+      form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined),
+    };
+    await onSubmit(cleanedData);
     form.reset();
     onOpenChange(false);
   };
@@ -197,7 +190,6 @@ export function ServiceOrderFormDialog({
     );
   };
 
-  // Determine active steps (skip equipment if not needed)
   const activeSteps = useMemo(() => {
     if (serviceOrder) return STEPS;
     if (!showEquipmentStep) return STEPS.filter(s => s.key !== 'equipment');
@@ -215,6 +207,11 @@ export function ServiceOrderFormDialog({
   const goBack = () => { if (step > 0) setStep(step - 1); };
   const isLastStep = step === activeSteps.length - 1;
 
+  const customerOptions = useMemo(() =>
+    customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
+    [customers]
+  );
+
   // Edit mode: flat form
   if (serviceOrder) {
     return (
@@ -227,7 +224,7 @@ export function ServiceOrderFormDialog({
                   <FormLabel>Cliente *</FormLabel>
                   <FormControl>
                     <SearchableSelect
-                      options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
+                      options={customerOptions}
                       value={field.value}
                       onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }}
                       placeholder="Selecione o cliente"
@@ -351,15 +348,22 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="customer_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cliente *</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
-                      value={field.value}
-                      onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
-                      placeholder="Selecione o cliente"
-                      searchPlaceholder="Buscar cliente..."
-                    />
-                  </FormControl>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <FormControl>
+                        <SearchableSelect
+                          options={customerOptions}
+                          value={field.value}
+                          onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
+                          placeholder="Selecione o cliente"
+                          searchPlaceholder="Buscar cliente..."
+                        />
+                      </FormControl>
+                    </div>
+                    <Button type="button" variant="outline" size="icon" title="Criar cliente" onClick={() => setQuickCreateCustomerOpen(true)}>
+                      <UserPlus className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -396,7 +400,7 @@ export function ServiceOrderFormDialog({
             </div>
           )}
 
-          {/* Step 2: Equipment(s) - multi-select with checkboxes */}
+          {/* Step 2: Equipment(s) */}
           {currentStepKey === 'equipment' && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
@@ -442,7 +446,7 @@ export function ServiceOrderFormDialog({
             </div>
           )}
 
-          {/* Step 3: Details - with questionnaire per equipment */}
+          {/* Step 3: Details */}
           {currentStepKey === 'details' && (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -454,31 +458,45 @@ export function ServiceOrderFormDialog({
                 )} />
               </div>
 
-              {/* Questionnaire selection per equipment */}
+              {/* Questionnaire per equipment */}
               {selectedEquipmentIds.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Questionário por equipamento</p>
                   {selectedEquipmentIds.map((eqId) => {
                     const eq = equipment.find(e => e.id === eqId);
+                    const selectedTemplateId = equipmentTemplateMap[eqId] || '';
                     return (
                       <div key={eqId} className="rounded-lg border p-3 space-y-2">
                         <p className="text-sm font-medium">{eq?.name || 'Equipamento'}</p>
-                        <Select
-                          value={equipmentTemplateMap[eqId] || 'none'}
-                          onValueChange={(v) => setEquipmentTemplateMap(prev => ({ ...prev, [eqId]: v === 'none' ? '' : v }))}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Sem questionário" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Sem questionário</SelectItem>
-                            {filteredTemplates.map((t) => (
-                              <SelectItem key={t.id} value={t.id}>
-                                {t.name} ({t.questions?.length || 0} perguntas)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex gap-2 items-center">
+                          <Select
+                            value={selectedTemplateId || 'none'}
+                            onValueChange={(v) => setEquipmentTemplateMap(prev => ({ ...prev, [eqId]: v === 'none' ? '' : v }))}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Sem questionário" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem questionário</SelectItem>
+                              {filteredTemplates.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>
+                                  {t.name} ({t.questions?.length || 0} perguntas)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {selectedTemplateId && selectedTemplateId !== 'none' && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              title="Pré-visualizar questionário"
+                              onClick={() => setPreviewTemplateId(selectedTemplateId)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -487,13 +505,20 @@ export function ServiceOrderFormDialog({
                 <FormField control={form.control} name="form_template_id" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Questionário</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sem questionário</SelectItem>
-                        {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2 items-center">
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger className="flex-1"><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Sem questionário</SelectItem>
+                          {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {field.value && field.value !== 'none' && (
+                        <Button type="button" variant="ghost" size="icon" title="Pré-visualizar questionário" onClick={() => setPreviewTemplateId(field.value!)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -523,9 +548,9 @@ export function ServiceOrderFormDialog({
                 Cancelar
               </Button>
               {isLastStep ? (
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="bg-accent text-accent-foreground hover:bg-accent/90">
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {selectedEquipmentIds.length > 1 ? `Criar ${selectedEquipmentIds.length} OS` : 'Criar OS'}
+                  Criar OS
                 </Button>
               ) : (
                 <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
@@ -555,6 +580,30 @@ export function ServiceOrderFormDialog({
           isLoading={false}
         />
       )}
+
+      {/* Quick create customer */}
+      <CustomerFormDialog
+        open={quickCreateCustomerOpen}
+        onOpenChange={setQuickCreateCustomerOpen}
+        onSubmit={async (data: any) => {
+          const result = await createCustomer.mutateAsync(data);
+          if (result) {
+            const newId = (result as any).id;
+            form.setValue('customer_id', newId);
+            setSelectedCustomerId(newId);
+            setSelectedEquipmentIds([]);
+          }
+        }}
+        isLoading={createCustomer.isPending}
+      />
+
+      {/* Questionnaire preview */}
+      <QuestionnairePreviewDialog
+        templateId={previewTemplateId}
+        open={!!previewTemplateId}
+        onOpenChange={(o) => { if (!o) setPreviewTemplateId(null); }}
+        templates={templates}
+      />
     </ResponsiveModal>
   );
 }

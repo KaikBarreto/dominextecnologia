@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import ServiceOrders from "./pages/ServiceOrders";
 import ServicesPage from "./pages/Services";
 import QuestionnairesPage from "./pages/Questionnaires";
+import QuestionnaireDetail from "./pages/QuestionnaireDetail";
 import Schedule from "./pages/Schedule";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
@@ -109,6 +110,7 @@ const AppRoutes = () => (
       <Route path="/ordens-servico" element={<ServiceOrders />} />
       <Route path="/servicos" element={<ServicesPage />} />
       <Route path="/questionarios" element={<QuestionnairesPage />} />
+      <Route path="/questionarios/:id" element={<QuestionnaireDetail />} />
       <Route path="/agenda" element={<Schedule />} />
       <Route path="/clientes" element={<Customers />} />
       <Route path="/clientes/:id" element={<CustomerDetail />} />
