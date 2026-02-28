@@ -43,7 +43,7 @@ import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 interface FormTemplateManagerDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialogProps) {
