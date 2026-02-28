@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export default function Inventory() {
   const { items, isLoading, stats, deleteItem } = useInventory();
