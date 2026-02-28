@@ -26,7 +26,7 @@ const mobileNavItems = [
     path: '/agenda',
   },
   {
-    title: 'Clientes e Equip.',
+    title: 'Clientes',
     icon: Users,
     path: '/clientes',
   },

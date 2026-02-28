@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Wrench,
   FileText,
+  Settings,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
+import { OsStatusManagerDialog } from '@/components/service-orders/OsStatusManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -60,6 +62,7 @@ export default function ServiceOrders() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('orders');
+  const [statusConfigOpen, setStatusConfigOpen] = useState(false);
 
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
 
@@ -165,6 +168,13 @@ export default function ServiceOrders() {
                     </SelectContent>
                   </Select>
                 </div>
+                <Button
+                  onClick={() => setStatusConfigOpen(true)}
+                  className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configurar Status
+                </Button>
                 <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nova OS
@@ -284,10 +294,10 @@ export default function ServiceOrders() {
                                     value={os.status}
                                     onValueChange={(value) => handleStatusChange(os, value as OsStatus)}
                                   >
-                                    <SelectTrigger className={`h-8 w-[140px] ${status.bgColor}`}>
+                                    <SelectTrigger className={`h-8 w-[140px] whitespace-nowrap ${status.bgColor}`}>
                                       <SelectValue>
-                                        <span className={`flex items-center gap-1 ${status.color}`}>
-                                          <status.icon className="h-3 w-3" />
+                                        <span className={`flex items-center gap-1 whitespace-nowrap ${status.color}`}>
+                                          <status.icon className="h-3 w-3 shrink-0" />
                                           {osStatusLabels[os.status]}
                                         </span>
                                       </SelectValue>
@@ -398,6 +408,11 @@ export default function ServiceOrders() {
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
         serviceOrderId={viewingOsId}
+      />
+
+      <OsStatusManagerDialog
+        open={statusConfigOpen}
+        onOpenChange={setStatusConfigOpen}
       />
     </div>
   );
