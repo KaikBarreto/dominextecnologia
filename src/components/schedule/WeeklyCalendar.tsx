@@ -82,7 +82,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
 
       {/* Time grid */}
       <ScrollArea className="flex-1">
-        <div className="grid grid-cols-[60px_repeat(7,1fr)]">
+        <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] min-w-[820px]">
           {HOURS.map((hour) => (
             <div key={hour} className="contents">
               <div className="h-20 flex items-start justify-end pr-2 pt-1 text-xs text-muted-foreground border-b">
