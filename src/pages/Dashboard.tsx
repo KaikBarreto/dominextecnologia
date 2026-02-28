@@ -211,7 +211,7 @@ export default function Dashboard() {
         {/* OS by Type Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <ClipboardList className="h-5 w-5" />
               OS por Tipo
             </CardTitle>
