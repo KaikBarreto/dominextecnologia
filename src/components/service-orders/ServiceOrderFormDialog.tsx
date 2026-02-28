@@ -110,6 +110,7 @@ export function ServiceOrderFormDialog({
       ...data,
       equipment_id: data.equipment_id || undefined,
       technician_id: data.technician_id || undefined,
+      service_type_id: data.service_type_id || undefined,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
