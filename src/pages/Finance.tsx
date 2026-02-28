@@ -343,7 +343,9 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 function TransactionTable({ transactions, onEdit, onDelete, onMarkAsPaid }: TransactionTableProps) {
+  const pagination = useDataPagination(transactions);
   return (
+    <>
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
