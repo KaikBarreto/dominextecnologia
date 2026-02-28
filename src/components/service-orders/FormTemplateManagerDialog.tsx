@@ -408,7 +408,12 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                     checked={((selectedTemplate as any).service_type_ids?.length ?? 0) === 0}
                     onCheckedChange={(checked) => {
                       if (checked) {
+                        // Set to all services (empty array)
                         setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: [] });
+                      } else {
+                        // Set to first active service so checkboxes appear
+                        const firstActive = serviceTypes.find(t => t.is_active);
+                        setTemplateServices.mutate({ templateId: selectedTemplate.id, serviceTypeIds: firstActive ? [firstActive.id] : [] });
                       }
                     }}
                   />
@@ -419,12 +424,12 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {serviceTypes.filter(t => t.is_active).map((st) => {
                     const selectedIds = ((selectedTemplate as any).service_type_ids ?? []) as string[];
-                    const checked = selectedIds.includes(st.id);
+                    const isChecked = selectedIds.includes(st.id);
                     return (
                       <label key={st.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={checked}
+                          checked={isChecked}
                           onChange={(e) => {
                             const next = e.target.checked
                               ? [...selectedIds, st.id]
