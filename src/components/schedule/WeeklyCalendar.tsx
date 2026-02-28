@@ -15,19 +15,18 @@ interface WeeklyCalendarProps {
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
+const SLOT_HEIGHT = 80; // px per hour
 
 export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: WeeklyCalendarProps) {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const ordersByDateAndHour = useMemo(() => {
+  const ordersByDate = useMemo(() => {
     const map: Record<string, (ServiceOrder & { customer: any; equipment: any })[]> = {};
     orders.forEach((order) => {
       if (order.scheduled_date && order.scheduled_time) {
-        const hour = parseInt(order.scheduled_time.split(':')[0], 10);
-        const key = `${order.scheduled_date}-${hour}`;
-        if (!map[key]) map[key] = [];
-        map[key].push(order);
+        if (!map[order.scheduled_date]) map[order.scheduled_date] = [];
+        map[order.scheduled_date].push(order);
       }
     });
     return map;
@@ -85,39 +84,73 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
         <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] min-w-[820px]">
           {HOURS.map((hour) => (
             <div key={hour} className="contents">
-              <div className="h-20 flex items-start justify-end pr-2 pt-1 text-xs text-muted-foreground border-b">
+              <div className="flex items-start justify-end pr-2 pt-1 text-xs text-muted-foreground border-b" style={{ height: SLOT_HEIGHT }}>
                 {`${String(hour).padStart(2, '0')}:00`}
               </div>
               {weekDays.map((day) => {
                 const dateKey = format(day, 'yyyy-MM-dd');
-                const cellOrders = ordersByDateAndHour[`${dateKey}-${hour}`] || [];
                 return (
                   <div
                     key={`${dateKey}-${hour}`}
                     className={cn(
-                      'h-20 border-l border-b p-0.5 transition-colors cursor-pointer hover:bg-accent/30',
+                      'border-l border-b relative transition-colors cursor-pointer hover:bg-accent/30',
                       isSameDay(day, new Date()) && 'bg-primary/5'
                     )}
-                    onClick={() => cellOrders.length === 0 && onSlotClick(dateKey, `${String(hour).padStart(2, '0')}:00`)}
+                    style={{ height: SLOT_HEIGHT }}
+                    onClick={() => {
+                      const cellOrders = (ordersByDate[dateKey] || []).filter(o => {
+                        const h = parseInt(o.scheduled_time!.split(':')[0], 10);
+                        return h === hour;
+                      });
+                      if (cellOrders.length === 0) onSlotClick(dateKey, `${String(hour).padStart(2, '0')}:00`);
+                    }}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, dateKey, hour)}
-                  >
-                    {cellOrders.map((order) => (
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Overlay for positioned events per day column */}
+        <div className="absolute inset-0 grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] min-w-[820px] pointer-events-none" style={{ top: 0 }}>
+          <div /> {/* spacer for time column */}
+          {weekDays.map((day) => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const dayOrders = ordersByDate[dateKey] || [];
+            return (
+              <div key={dateKey} className="relative border-l">
+                {dayOrders.map((order) => {
+                  const timeParts = order.scheduled_time!.split(':');
+                  const h = parseInt(timeParts[0], 10);
+                  const m = parseInt(timeParts[1], 10);
+                  const duration = (order as any).duration_minutes || 120;
+                  
+                  const topOffset = ((h - HOURS[0]) + m / 60) * SLOT_HEIGHT;
+                  const height = Math.max((duration / 60) * SLOT_HEIGHT, 24);
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="absolute left-0.5 right-0.5 pointer-events-auto"
+                      style={{ top: topOffset, height }}
+                    >
                       <EventCard
-                        key={order.id}
                         order={order}
                         compact
                         onClick={() => onOrderSelect(order)}
                         draggable
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
+                        fillHeight
                       />
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </ScrollArea>
       </div>

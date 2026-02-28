@@ -74,9 +74,9 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
         {/* Equipment */}
         {order.equipment && (
-          <div className="flex items-center gap-2 text-sm">
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-            <span>
+          <div className="flex items-start gap-2 text-sm">
+            <Wrench className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <span className="break-words min-w-0">
               {order.equipment.name}
               {order.equipment.brand && ` - ${order.equipment.brand}`}
               {order.equipment.model && ` ${order.equipment.model}`}

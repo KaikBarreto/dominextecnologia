@@ -15,20 +15,13 @@ interface DailyCalendarProps {
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
+const SLOT_HEIGHT = 80; // px per hour
 
 export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
 
-  const ordersByHour = useMemo(() => {
-    const map: Record<number, (ServiceOrder & { customer: any; equipment: any })[]> = {};
-    orders.forEach((order) => {
-      if (order.scheduled_date === dateKey && order.scheduled_time) {
-        const hour = parseInt(order.scheduled_time.split(':')[0], 10);
-        if (!map[hour]) map[hour] = [];
-        map[hour].push(order);
-      }
-    });
-    return map;
+  const dayOrders = useMemo(() => {
+    return orders.filter(o => o.scheduled_date === dateKey && o.scheduled_time);
   }, [orders, dateKey]);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -58,35 +51,59 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="divide-y">
-          {HOURS.map((hour) => {
-            const hourOrders = ordersByHour[hour] || [];
-            return (
-              <div
-                key={hour}
-                className="flex min-h-[80px] transition-colors hover:bg-accent/30 cursor-pointer"
-                onClick={() => hourOrders.length === 0 && onSlotClick(dateKey, `${String(hour).padStart(2, '0')}:00`)}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDropOnSlot(e, hour)}
-              >
-                <div className="w-16 shrink-0 py-2 pr-2 text-right text-xs text-muted-foreground">
-                  {`${String(hour).padStart(2, '0')}:00`}
-                </div>
-                <div className="flex-1 p-1 space-y-1 border-l">
-                  {hourOrders.map((order) => (
-                    <EventCard
-                      key={order.id}
-                      order={order}
-                      onClick={() => onOrderSelect(order)}
-                      draggable
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
-                    />
-                  ))}
-                </div>
+        <div className="relative">
+          {/* Hour grid lines */}
+          {HOURS.map((hour) => (
+            <div
+              key={hour}
+              className="flex transition-colors hover:bg-accent/30 cursor-pointer"
+              style={{ height: SLOT_HEIGHT }}
+              onClick={() => {
+                const hasOrders = dayOrders.some(o => {
+                  const h = parseInt(o.scheduled_time!.split(':')[0], 10);
+                  return h === hour;
+                });
+                if (!hasOrders) onSlotClick(dateKey, `${String(hour).padStart(2, '0')}:00`);
+              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDropOnSlot(e, hour)}
+            >
+              <div className="w-16 shrink-0 py-1 pr-2 text-right text-xs text-muted-foreground">
+                {`${String(hour).padStart(2, '0')}:00`}
               </div>
-            );
-          })}
+              <div className="flex-1 border-l border-b" />
+            </div>
+          ))}
+
+          {/* Positioned event cards */}
+          <div className="absolute inset-0 pointer-events-none" style={{ left: 64 }}>
+            {dayOrders.map((order) => {
+              const timeParts = order.scheduled_time!.split(':');
+              const hour = parseInt(timeParts[0], 10);
+              const minute = parseInt(timeParts[1], 10);
+              const duration = (order as any).duration_minutes || 120;
+              
+              const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT;
+              const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
+
+              return (
+                <div
+                  key={order.id}
+                  className="absolute right-1 left-1 pointer-events-auto"
+                  style={{ top: topOffset, height }}
+                >
+                  <EventCard
+                    order={order}
+                    onClick={() => onOrderSelect(order)}
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
+                    fillHeight
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </ScrollArea>
     </div>

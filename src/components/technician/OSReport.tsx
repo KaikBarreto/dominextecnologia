@@ -250,10 +250,15 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           </div>
 
           {/* Description */}
-          {serviceOrder.description && (
+          {(serviceOrder.description || (serviceOrder as any).service_type) && (
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição do Chamado</h3>
-              <p className="text-sm text-slate-700">{serviceOrder.description}</p>
+              {(serviceOrder as any).service_type && (
+                <p className="text-sm font-semibold text-slate-800 mb-1">{(serviceOrder as any).service_type.name}</p>
+              )}
+              {serviceOrder.description && (
+                <p className="text-sm text-slate-700">{serviceOrder.description}</p>
+              )}
             </div>
           )}
 
