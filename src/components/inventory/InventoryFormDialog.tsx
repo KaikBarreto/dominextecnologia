@@ -112,7 +112,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
                 id="name"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
-                placeholder="Ex: Filtro de ar split"
+                placeholder="Nome do item"
                 required
               />
             </div>
