@@ -75,7 +75,7 @@ export default function QuestionnairesPage() {
       {/* Button above table */}
       <div className="flex justify-end">
         <Button
-          className="bg-accent text-accent-foreground hover:bg-accent/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="mr-2 h-4 w-4" />
