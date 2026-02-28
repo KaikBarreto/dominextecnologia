@@ -112,6 +112,8 @@ export interface FormTemplate {
   description?: string;
   is_active: boolean;
   service_type_id?: string;
+  service_type_ids?: string[];
+  applies_to_all_services?: boolean;
   created_by?: string;
   created_at: string;
   updated_at: string;
