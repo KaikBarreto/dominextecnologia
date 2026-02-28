@@ -137,6 +137,11 @@ export default function ServiceOrders() {
           </p>
         </div>
         <div className="flex gap-2">
+          <ServiceTypeManagerDialog>
+            <Button variant="outline" size="icon" title="Gerenciar Tipos de Serviço">
+              <Palette className="h-4 w-4" />
+            </Button>
+          </ServiceTypeManagerDialog>
           <FormTemplateManagerDialog>
             <Button variant="outline" size="icon" title="Gerenciar Templates de Formulário">
               <Settings2 className="h-4 w-4" />
