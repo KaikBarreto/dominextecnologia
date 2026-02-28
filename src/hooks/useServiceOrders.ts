@@ -4,6 +4,11 @@ import type { ServiceOrder, OsStatus, OsType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface ServiceOrderEquipmentItem {
+  equipment_id: string;
+  form_template_id?: string;
+}
+
 export interface ServiceOrderInput {
   customer_id: string;
   equipment_id?: string;
@@ -18,6 +23,7 @@ export interface ServiceOrderInput {
   form_template_id?: string;
   require_tech_signature?: boolean;
   require_client_signature?: boolean;
+  equipment_items?: ServiceOrderEquipmentItem[];
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
