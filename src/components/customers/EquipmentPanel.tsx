@@ -141,7 +141,7 @@ export function EquipmentPanel() {
             <Settings className="mr-2 h-4 w-4" />
             Configurar Campos
           </Button>
-          <Button onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
+          <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Equipamento
           </Button>
