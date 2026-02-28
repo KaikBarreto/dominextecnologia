@@ -253,7 +253,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
                     <CardHeader className="py-3">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <ClipboardCheck className="h-4 w-4" /> 
-                        Formulário: {serviceOrder.form_template?.name}
+                        Questionário: {serviceOrder.form_template?.name}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">

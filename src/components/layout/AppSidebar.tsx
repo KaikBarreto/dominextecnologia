@@ -55,7 +55,7 @@ const menuItems: MenuItem[] = [
     ],
   },
   { title: 'Agenda', icon: Calendar, path: '/agenda', roles: ['admin', 'gestor', 'tecnico'] },
-  { title: 'Clientes', icon: Users, path: '/clientes', roles: ['admin', 'gestor', 'comercial'] },
+  { title: 'Clientes e Equipamentos', icon: Users, path: '/clientes', roles: ['admin', 'gestor', 'comercial'] },
   { title: 'CRM', icon: TrendingUp, path: '/crm', roles: ['admin', 'gestor', 'comercial'] },
   { title: 'Estoque', icon: Package, path: '/estoque', roles: ['admin', 'gestor'] },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', roles: ['admin', 'gestor', 'financeiro'] },
@@ -63,8 +63,8 @@ const menuItems: MenuItem[] = [
   { title: 'Configurações', icon: Settings, path: '/configuracoes', roles: ['admin'] },
 ];
 
-const activeClass = 'bg-primary text-white hover:bg-primary hover:text-white font-semibold';
-const inactiveClass = 'text-foreground/70 hover:bg-primary hover:text-white';
+const activeClass = 'bg-primary text-white hover:bg-primary hover:text-white font-semibold transition-all duration-200';
+const inactiveClass = 'text-foreground/70 hover:bg-primary hover:text-white transition-all duration-200';
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000'; // TODO: replace with real support number
 

@@ -43,7 +43,7 @@ import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 interface FormTemplateManagerDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialogProps) {
@@ -281,237 +281,256 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     );
   };
 
+  const dialogContent = (
+    <div className="flex h-[600px]">
+      {/* Templates List */}
+      <div className="w-80 border-r flex flex-col">
+        <div className="p-4 border-b">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Settings2 className="h-5 w-5" />
+            Questionários
+          </h3>
+        </div>
+        
+        {/* New Template */}
+        <div className="p-3 border-b">
+          <div className="flex gap-2">
+            <Input
+              value={newTemplateName}
+              onChange={(e) => setNewTemplateName(e.target.value)}
+              placeholder="Nome do questionário"
+              className="flex-1"
+            />
+            <Button
+              onClick={handleCreateTemplate}
+              disabled={!newTemplateName.trim() || createTemplate.isPending}
+              size="icon"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Templates */}
+        <ScrollArea className="flex-1">
+          <div className="p-2 space-y-1">
+            {templates.map((template) => (
+              <div
+                key={template.id}
+                className={cn(
+                  "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors group",
+                  selectedTemplate?.id === template.id 
+                    ? "bg-primary/10 border border-primary/30" 
+                    : "hover:bg-muted"
+                )}
+                onClick={() => setSelectedTemplate(template as FormTemplate & { questions: FormQuestion[] })}
+              >
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{template.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {template.questions?.length || 0} perguntas
+                  </p>
+                </div>
+                <Badge variant={template.is_active ? 'success' : 'muted'} className="text-xs">
+                  {template.is_active ? 'Ativo' : 'Inativo'}
+                </Badge>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            ))}
+            {templates.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-8">
+                Nenhum questionário criado
+              </p>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Template Details */}
+      <div className="flex-1 flex flex-col">
+        {selectedTemplate ? (
+          <>
+            <div className="p-4 border-b flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold">{selectedTemplate.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedTemplate.questions?.length || 0} perguntas
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={selectedTemplate.is_active}
+                    onCheckedChange={(checked) => {
+                      updateTemplate.mutate({ id: selectedTemplate.id, is_active: checked });
+                    }}
+                  />
+                  <Label className="text-sm">Ativo</Label>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  onClick={() => setDeleteId(selectedTemplate.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Service Type Link */}
+            <div className="px-4 py-2 border-b">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo de Serviço:</Label>
+                <Select
+                  value={(selectedTemplate as any).service_type_id || 'none'}
+                  onValueChange={(value) => {
+                    updateTemplate.mutate({
+                      id: selectedTemplate.id,
+                      service_type_id: value === 'none' ? null : value,
+                    } as any);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Nenhum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {serviceTypes.filter(t => t.is_active).map((st) => (
+                      <SelectItem key={st.id} value={st.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
+                          {st.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Questions List */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-2">
+                {selectedTemplate.questions
+                  ?.sort((a, b) => a.position - b.position)
+                  .map((question, index) => (
+                    <div key={question.id} className="flex items-start gap-2">
+                      <span className="text-xs font-medium text-muted-foreground mt-3 w-6">
+                        {index + 1}.
+                      </span>
+                      <div className="flex-1">
+                        <EditableQuestion question={question} />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </ScrollArea>
+
+            {/* Add Question Form */}
+            <div className="p-4 border-t space-y-3">
+              <Label className="text-sm font-medium">Nova Pergunta</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newQuestion.question || ''}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
+                  placeholder="Texto da pergunta..."
+                  className="flex-1"
+                />
+                <Select 
+                  value={newQuestion.question_type || 'boolean'} 
+                  onValueChange={(v) => setNewQuestion({ ...newQuestion, question_type: v as FormQuestion['question_type'] })}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {QUESTION_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.icon} {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="new-question-required"
+                    checked={newQuestion.is_required ?? true}
+                    onCheckedChange={(checked) => setNewQuestion({ ...newQuestion, is_required: checked })}
+                  />
+                  <Label htmlFor="new-question-required" className="text-sm cursor-pointer">
+                    Campo obrigatório
+                  </Label>
+                </div>
+                <Button
+                  onClick={handleAddQuestion}
+                  disabled={!newQuestion.question?.trim() || createQuestion.isPending}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Adicionar
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Selecione um questionário para editar</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const deleteDialog = (
+    <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remover questionário?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta ação não pode ser desfeita. Todas as perguntas deste questionário serão removidas.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteTemplate}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            Remover
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  // Inline mode (no children) - render directly
+  if (!children) {
+    return (
+      <>
+        <div className="rounded-lg border overflow-hidden">
+          {dialogContent}
+        </div>
+        {deleteDialog}
+      </>
+    );
+  }
+
+  // Dialog mode (with children trigger)
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-          <div className="flex h-[600px]">
-            {/* Templates List */}
-            <div className="w-80 border-r flex flex-col">
-              <DialogHeader className="p-4 border-b">
-                <DialogTitle className="flex items-center gap-2">
-                  <Settings2 className="h-5 w-5" />
-                  Templates de Formulário
-                </DialogTitle>
-              </DialogHeader>
-              
-              {/* New Template */}
-              <div className="p-3 border-b">
-                <div className="flex gap-2">
-                  <Input
-                    value={newTemplateName}
-                    onChange={(e) => setNewTemplateName(e.target.value)}
-                    placeholder="Nome do template"
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleCreateTemplate}
-                    disabled={!newTemplateName.trim() || createTemplate.isPending}
-                    size="icon"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Templates */}
-              <ScrollArea className="flex-1">
-                <div className="p-2 space-y-1">
-                  {templates.map((template) => (
-                    <div
-                      key={template.id}
-                      className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors group",
-                        selectedTemplate?.id === template.id 
-                          ? "bg-primary/10 border border-primary/30" 
-                          : "hover:bg-muted"
-                      )}
-                      onClick={() => setSelectedTemplate(template as FormTemplate & { questions: FormQuestion[] })}
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{template.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {template.questions?.length || 0} perguntas
-                        </p>
-                      </div>
-                      <Badge variant={template.is_active ? 'success' : 'muted'} className="text-xs">
-                        {template.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  ))}
-                  {templates.length === 0 && (
-                    <p className="text-center text-sm text-muted-foreground py-8">
-                      Nenhum template criado
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-
-            {/* Template Details */}
-            <div className="flex-1 flex flex-col">
-              {selectedTemplate ? (
-                <>
-                  <div className="p-4 border-b flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{selectedTemplate.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedTemplate.questions?.length || 0} perguntas
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={selectedTemplate.is_active}
-                          onCheckedChange={(checked) => {
-                            updateTemplate.mutate({ id: selectedTemplate.id, is_active: checked });
-                          }}
-                        />
-                        <Label className="text-sm">Ativo</Label>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => setDeleteId(selectedTemplate.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Service Type Link */}
-                  <div className="px-4 py-2 border-b">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Tipo de Serviço:</Label>
-                      <Select
-                        value={(selectedTemplate as any).service_type_id || 'none'}
-                        onValueChange={(value) => {
-                          updateTemplate.mutate({
-                            id: selectedTemplate.id,
-                            service_type_id: value === 'none' ? null : value,
-                          } as any);
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Nenhum" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {serviceTypes.filter(t => t.is_active).map((st) => (
-                            <SelectItem key={st.id} value={st.id}>
-                              <div className="flex items-center gap-2">
-                                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
-                                {st.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Questions List */}
-                  <ScrollArea className="flex-1 p-4">
-                    <div className="space-y-2">
-                      {selectedTemplate.questions
-                        ?.sort((a, b) => a.position - b.position)
-                        .map((question, index) => (
-                          <div key={question.id} className="flex items-start gap-2">
-                            <span className="text-xs font-medium text-muted-foreground mt-3 w-6">
-                              {index + 1}.
-                            </span>
-                            <div className="flex-1">
-                              <EditableQuestion question={question} />
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </ScrollArea>
-
-                  {/* Add Question Form */}
-                  <div className="p-4 border-t space-y-3">
-                    <Label className="text-sm font-medium">Nova Pergunta</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newQuestion.question || ''}
-                        onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
-                        placeholder="Texto da pergunta..."
-                        className="flex-1"
-                      />
-                      <Select 
-                        value={newQuestion.question_type || 'boolean'} 
-                        onValueChange={(v) => setNewQuestion({ ...newQuestion, question_type: v as FormQuestion['question_type'] })}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {QUESTION_TYPES.map((t) => (
-                            <SelectItem key={t.value} value={t.value}>
-                              {t.icon} {t.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="new-question-required"
-                          checked={newQuestion.is_required ?? true}
-                          onCheckedChange={(checked) => setNewQuestion({ ...newQuestion, is_required: checked })}
-                        />
-                        <Label htmlFor="new-question-required" className="text-sm cursor-pointer">
-                          Campo obrigatório
-                        </Label>
-                      </div>
-                      <Button
-                        onClick={handleAddQuestion}
-                        disabled={!newQuestion.question?.trim() || createQuestion.isPending}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Adicionar
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Selecione um template para editar</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          {dialogContent}
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover template?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Todas as perguntas deste template serão removidas.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteTemplate}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {deleteDialog}
     </>
   );
 }
