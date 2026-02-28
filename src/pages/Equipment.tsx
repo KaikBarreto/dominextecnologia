@@ -4,6 +4,8 @@ import { EquipmentPanel } from '@/components/customers/EquipmentPanel';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -59,6 +61,7 @@ export default function EquipmentPage() {
 
 function CategoriesPanel() {
   const { categories, createCategory, updateCategory, deleteCategory } = useEquipmentCategories();
+  const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#3b82f6');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -71,6 +74,7 @@ function CategoriesPanel() {
     createCategory.mutate({ name: newName, color: newColor });
     setNewName('');
     setNewColor('#3b82f6');
+    setCreateOpen(false);
   };
 
   const handleUpdate = () => {
@@ -87,37 +91,15 @@ function CategoriesPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
           Categorias de Equipamentos
         </h2>
+        <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova Categoria
+        </Button>
       </div>
-
-      {/* Add new */}
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-sm font-medium mb-3">Nova categoria</p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Nome da categoria"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="flex-1"
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            />
-            <input
-              type="color"
-              value={newColor}
-              onChange={(e) => setNewColor(e.target.value)}
-              className="h-9 w-9 rounded border cursor-pointer"
-            />
-            <Button size="sm" onClick={handleCreate} disabled={!newName.trim()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Criar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* List */}
       <div className="space-y-2">
@@ -167,6 +149,44 @@ function CategoriesPanel() {
           </div>
         )}
       </div>
+
+      {/* Create Category Modal */}
+      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Nova Categoria">
+        <div className="space-y-4">
+          <div>
+            <Label>Nome da categoria</Label>
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Ex: Split, Cassete, VRF..."
+              className="mt-1"
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            />
+          </div>
+          <div>
+            <Label>Cor</Label>
+            <div className="flex items-center gap-3 mt-1">
+              <input
+                type="color"
+                value={newColor}
+                onChange={(e) => setNewColor(e.target.value)}
+                className="h-9 w-9 rounded border cursor-pointer"
+              />
+              <span className="text-sm text-muted-foreground">{newColor}</span>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={handleCreate}
+              disabled={!newName.trim() || createCategory.isPending}
+            >
+              Criar
+            </Button>
+          </div>
+        </div>
+      </ResponsiveModal>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

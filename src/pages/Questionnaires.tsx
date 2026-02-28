@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, FileText, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
@@ -17,15 +18,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-import { FormTemplateManagerDialog } from '@/components/service-orders/FormTemplateManagerDialog';
-import type { FormTemplate, FormQuestion } from '@/types/database';
 
 export default function QuestionnairesPage() {
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const [editingTemplate, setEditingTemplate] = useState<(FormTemplate & { questions: FormQuestion[] }) | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
@@ -42,6 +41,10 @@ export default function QuestionnairesPage() {
         setAllServices(true);
         setSelectedServiceIds([]);
         setCreateOpen(false);
+        // Navigate to the new questionnaire page
+        if (data) {
+          navigate(`/questionarios/${data.id}`);
+        }
       },
     });
   };
@@ -113,7 +116,7 @@ export default function QuestionnairesPage() {
                       <TableRow
                         key={template.id}
                         className="cursor-pointer"
-                        onClick={() => setEditingTemplate(template as FormTemplate & { questions: FormQuestion[] })}
+                        onClick={() => navigate(`/questionarios/${template.id}`)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -217,15 +220,6 @@ export default function QuestionnairesPage() {
           </div>
         </div>
       </ResponsiveModal>
-
-      {/* Edit - open FormTemplateManagerDialog in dialog mode */}
-      {editingTemplate && (
-        <FormTemplateManagerDialog
-          initialTemplateId={editingTemplate.id}
-          open={!!editingTemplate}
-          onOpenChange={(open) => { if (!open) setEditingTemplate(null); }}
-        />
-      )}
 
       {/* Delete dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
