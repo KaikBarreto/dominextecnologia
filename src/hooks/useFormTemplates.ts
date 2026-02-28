@@ -13,7 +13,7 @@ export interface FormTemplateInsert {
 export interface FormQuestionInsert {
   template_id: string;
   question: string;
-  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select';
+  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature';
   options?: string[];
   is_required?: boolean;
   position?: number;
@@ -26,6 +26,7 @@ export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[
   { value: 'number', label: 'Número', icon: Hash },
   { value: 'photo', label: 'Foto', icon: Camera },
   { value: 'select', label: 'Seleção', icon: ListChecks },
+  { value: 'signature', label: 'Assinatura', icon: Type },
 ];
 
 export function useFormTemplates() {

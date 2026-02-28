@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Camera, Upload, Check, X } from 'lucide-react';
+import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -329,6 +330,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
               </Button>
             </label>
           </div>
+        );
+
+      case 'signature':
+        return (
+          <SignaturePad
+            value={value || null}
+            onChange={(dataUrl) => saveResponse(question.id, dataUrl)}
+            label={question.description || undefined}
+            disabled={isSaving}
+          />
         );
 
       default:

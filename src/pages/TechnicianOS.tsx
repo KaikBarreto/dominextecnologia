@@ -15,7 +15,8 @@ import {
   Play,
   Square,
   FileSignature,
-  ClipboardCheck
+  ClipboardCheck,
+  PenTool,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
+import { SignaturePad } from '@/components/SignaturePad';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -66,6 +68,10 @@ export default function TechnicianOS() {
   
   // Form validation state
   const [formValidation, setFormValidation] = useState<FormValidationResult>({ isValid: true, missingQuestions: [] });
+  
+  // Signature state
+  const [techSignature, setTechSignature] = useState<string | null>(null);
+  const [clientSignature, setClientSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -188,17 +194,31 @@ export default function TechnicianOS() {
       return;
     }
 
+    // Validate required signatures
+    if ((serviceOrder as any)?.require_tech_signature && !techSignature) {
+      toast({ variant: 'destructive', title: 'Assinatura do técnico obrigatória', description: 'Assine antes de finalizar.' });
+      return;
+    }
+    if ((serviceOrder as any)?.require_client_signature && !clientSignature) {
+      toast({ variant: 'destructive', title: 'Assinatura do cliente obrigatória', description: 'Colete a assinatura do cliente.' });
+      return;
+    }
+
     try {
       const location = await getCurrentLocation();
       const now = new Date().toISOString();
       
+      const updateData: any = {
+        check_out_time: now,
+        check_out_location: location,
+        status: 'concluida',
+      };
+      if (techSignature) updateData.tech_signature = techSignature;
+      if (clientSignature) updateData.client_signature = clientSignature;
+
       const { error } = await supabase
         .from('service_orders')
-        .update({
-          check_out_time: now,
-          check_out_location: location,
-          status: 'concluida',
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
@@ -541,6 +561,37 @@ export default function TechnicianOS() {
                 templateId={serviceOrder.form_template_id}
                 onValidationChange={setFormValidation}
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Signatures */}
+        {((serviceOrder as any)?.require_tech_signature || (serviceOrder as any)?.require_client_signature) && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <PenTool className="h-4 w-4" />
+                Assinaturas
+              </CardTitle>
+              <CardDescription>Assinaturas obrigatórias para finalizar a OS</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(serviceOrder as any)?.require_tech_signature && (
+                <SignaturePad
+                  value={techSignature}
+                  onChange={setTechSignature}
+                  label="Assinatura do Técnico"
+                  disabled={!!checkOutTime}
+                />
+              )}
+              {(serviceOrder as any)?.require_client_signature && (
+                <SignaturePad
+                  value={clientSignature}
+                  onChange={setClientSignature}
+                  label="Assinatura do Cliente"
+                  disabled={!!checkOutTime}
+                />
+              )}
             </CardContent>
           </Card>
         )}

@@ -107,6 +107,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          photo_url: string | null
           state: string | null
           updated_at: string
           zip_code: string | null
@@ -125,6 +126,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           state?: string | null
           updated_at?: string
           zip_code?: string | null
@@ -143,6 +145,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           state?: string | null
           updated_at?: string
           zip_code?: string | null
@@ -1102,7 +1105,10 @@ export type Database = {
           created_by: string | null
           customer_id: string
           form_template_id: string | null
+          frequency_config: Json | null
           frequency_months: number
+          frequency_type: string
+          generation_horizon_months: number
           id: string
           name: string
           next_generation_date: string
@@ -1118,7 +1124,10 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           form_template_id?: string | null
+          frequency_config?: Json | null
           frequency_months?: number
+          frequency_type?: string
+          generation_horizon_months?: number
           id?: string
           name: string
           next_generation_date: string
@@ -1134,7 +1143,10 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           form_template_id?: string | null
+          frequency_config?: Json | null
           frequency_months?: number
+          frequency_type?: string
+          generation_horizon_months?: number
           id?: string
           name?: string
           next_generation_date?: string

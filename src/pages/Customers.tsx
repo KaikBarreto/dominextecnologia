@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -111,9 +111,10 @@ export default function Customers() {
           ) : (
             <>
             <div className="overflow-x-auto">
-              <Table>
+               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px] text-xs uppercase tracking-wider">Foto</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
                     <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Empresa</TableHead>
                     <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
@@ -125,6 +126,15 @@ export default function Customers() {
                 <TableBody>
                   {pagination.paginatedItems.map((customer) => (
                     <TableRow key={customer.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${customer.id}`)}>
+                      <TableCell>
+                        {(customer as any).photo_url ? (
+                          <img src={(customer as any).photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="font-medium">{customer.name}</p>

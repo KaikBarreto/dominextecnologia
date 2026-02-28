@@ -12,8 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Check, Upload, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import type { Customer, CustomerType } from '@/types/database';
 
 const customerSchema = z.object({
@@ -51,6 +53,10 @@ export function CustomerFormDialog({
   open, onOpenChange, customer, onSubmit, isLoading,
 }: CustomerFormDialogProps) {
   const [step, setStep] = useState(0);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
@@ -64,6 +70,8 @@ export function CustomerFormDialog({
   useEffect(() => {
     if (open) {
       setStep(0);
+      setPhotoFile(null);
+      setPhotoPreview((customer as any)?.photo_url || null);
       form.reset({
         name: customer?.name ?? '',
         customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
@@ -82,12 +90,33 @@ export function CustomerFormDialog({
     }
   }, [open, customer]);
 
+  const uploadPhoto = async (): Promise<string | undefined> => {
+    if (!photoFile) return undefined;
+    const ext = photoFile.name.split('.').pop();
+    const path = `${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('customer-photos').upload(path, photoFile);
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('customer-photos').getPublicUrl(path);
+    return publicUrl;
+  };
+
   const handleSubmit = async (data: CustomerFormData) => {
-    const cleanedData = { ...data, birth_date: data.birth_date || undefined };
-    await onSubmit(cleanedData);
-    form.reset();
-    setStep(0);
-    onOpenChange(false);
+    setUploadingPhoto(true);
+    try {
+      let photo_url: string | undefined;
+      if (photoFile) {
+        photo_url = await uploadPhoto();
+      }
+      const cleanedData = { ...data, birth_date: data.birth_date || undefined, ...(photo_url ? { photo_url } : {}) };
+      await onSubmit(cleanedData);
+      form.reset();
+      setStep(0);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const canGoNext = () => {
@@ -123,6 +152,33 @@ export function CustomerFormDialog({
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Photo upload */}
+              <div className="sm:col-span-2 flex items-center gap-4">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="" className="h-16 w-16 rounded-full object-cover border" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center border">
+                    <Users className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setPhotoFile(file);
+                        setPhotoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <span><Upload className="h-3 w-3 mr-1" /> Foto</span>
+                  </Button>
+                </label>
+              </div>
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Nome *</FormLabel>

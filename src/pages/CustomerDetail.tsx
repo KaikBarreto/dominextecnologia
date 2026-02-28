@@ -67,6 +67,13 @@ export default function CustomerDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
+        {(customer as any).photo_url ? (
+          <img src={(customer as any).photo_url} alt="" className="h-12 w-12 rounded-full object-cover border" />
+        ) : (
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+            <Package className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{customer.name}</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -97,6 +104,11 @@ export default function CustomerDetail() {
 
       {activeTab === 'geral' && (
         <div className="grid gap-4 sm:grid-cols-2">
+          {(customer as any).photo_url && (
+            <Card className="sm:col-span-2"><CardContent className="p-4 flex justify-center">
+              <img src={(customer as any).photo_url} alt={customer.name} className="h-32 w-32 rounded-full object-cover border" />
+            </CardContent></Card>
+          )}
           {customer.document && (
             <Card><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">CPF/CNPJ</p>
