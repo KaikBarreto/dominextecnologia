@@ -134,35 +134,44 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         {/* Company header */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
-          <div className="flex items-start gap-3 sm:gap-4">
-            {company?.logo_url ? (
-              <img src={company.logo_url} alt="Logo" className="h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-lg bg-white p-1.5 shrink-0" />
-            ) : (
-              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                <Building2 className="h-7 w-7 text-white/70" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold leading-tight">{company?.name || 'Empresa'}</h1>
-              {company?.document && <p className="text-xs sm:text-sm text-white/90">CNPJ: {company.document}</p>}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/80 mt-1">
-                {company?.phone && <span>{company.phone}</span>}
-                {company?.email && <span>{company.email}</span>}
-              </div>
-              {company?.address && (
-                <p className="text-xs text-white/75 mt-1">
-                  {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
-                  {company.zip_code && ` | CEP: ${company.zip_code}`}
-                </p>
+          {/* Mobile: vertical stack / Desktop: horizontal */}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              {company?.logo_url ? (
+                <img src={company.logo_url} alt="Logo" className="h-14 w-14 sm:h-20 sm:w-20 object-contain rounded-lg bg-white p-1.5 shrink-0" />
+              ) : (
+                <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                  <Building2 className="h-7 w-7 text-white/70" />
+                </div>
               )}
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-bold leading-tight">{company?.name || 'Empresa'}</h1>
+                {company?.document && <p className="text-xs sm:text-sm text-white/90">CNPJ: {company.document}</p>}
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/80 mt-0.5">
+                  {company?.phone && <span>{company.phone}</span>}
+                  {company?.email && <span className="break-all">{company.email}</span>}
+                </div>
+              </div>
             </div>
-            <div className="text-right shrink-0">
+            {company?.address && (
+              <p className="text-xs text-white/75 sm:hidden">
+                {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
+                {company.zip_code && ` | CEP: ${company.zip_code}`}
+              </p>
+            )}
+            <div className="flex items-center justify-between sm:flex-col sm:items-end sm:ml-auto shrink-0">
               <div className="text-lg sm:text-2xl font-black tracking-tight">
                 OS #{String(serviceOrder.order_number).padStart(4, '0')}
               </div>
-              <p className="text-xs sm:text-sm text-white/90 mt-1">{osTypeLabels[serviceOrder.os_type]}</p>
+              <p className="text-xs sm:text-sm text-white/90">{osTypeLabels[serviceOrder.os_type]}</p>
             </div>
           </div>
+          {company?.address && (
+            <p className="text-xs text-white/75 mt-2 hidden sm:block">
+              {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
+              {company.zip_code && ` | CEP: ${company.zip_code}`}
+            </p>
+          )}
         </div>
 
         {/* Status bar */}

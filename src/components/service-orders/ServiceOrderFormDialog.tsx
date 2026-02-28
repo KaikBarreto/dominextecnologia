@@ -330,23 +330,26 @@ export function ServiceOrderFormDialog({
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço">
       {/* Step indicators */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        {activeSteps.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2">
-            <div className={cn(
-              'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
-              i < step ? 'bg-primary text-white' :
-              i === step ? 'bg-primary text-white' :
-              'bg-muted text-muted-foreground'
-            )}>
-              {i < step ? <Check className="h-4 w-4" /> : i + 1}
+      <div className="flex flex-col items-center mb-6">
+        <div className="flex items-center justify-center gap-2">
+          {activeSteps.map((s, i) => (
+            <div key={s.key} className="flex items-center gap-2">
+              <div className={cn(
+                'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
+                i < step ? 'bg-primary text-white' :
+                i === step ? 'bg-primary text-white' :
+                'bg-muted text-muted-foreground'
+              )}>
+                {i < step ? <Check className="h-4 w-4" /> : i + 1}
+              </div>
+              <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
+                {s.label}
+              </span>
+              {i < activeSteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
             </div>
-            <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
-              {s.label}
-            </span>
-            {i < activeSteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          </div>
-        ))}
+          ))}
+        </div>
+        <p className="text-sm font-medium text-foreground mt-2 sm:hidden">{activeSteps[step]?.label}</p>
       </div>
 
       <Form {...form}>
