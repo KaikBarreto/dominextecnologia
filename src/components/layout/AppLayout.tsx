@@ -21,7 +21,7 @@ function HeaderContent() {
         {isMobile && (
           <div className="flex items-center gap-2">
             <Snowflake className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Glacial Cold</span>
+            <span className="font-semibold">Sistema</span>
           </div>
         )}
       </div>

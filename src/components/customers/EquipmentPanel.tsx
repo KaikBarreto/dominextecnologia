@@ -208,6 +208,7 @@ export function EquipmentPanel() {
         customers={customers}
         categories={categories}
         isLoading={createEquipment.isPending}
+        equipmentCount={equipment.length}
       />
 
       <EquipmentDetailDialog

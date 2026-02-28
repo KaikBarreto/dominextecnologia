@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -41,12 +41,20 @@ interface EquipmentFormDialogProps {
   customers: Customer[];
   categories?: EquipmentCategory[];
   isLoading?: boolean;
+  /** Total equipment count for auto-generating identifier */
+  equipmentCount?: number;
 }
 
 export function EquipmentFormDialog({
-  open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading,
+  open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
+
+  const autoIdentifier = useMemo(() => {
+    if (equipment?.identifier) return equipment.identifier;
+    // Generate numeric identifier based on count
+    return String(equipmentCount + 1).padStart(6, '0');
+  }, [equipment, equipmentCount]);
 
   const form = useForm<EquipmentFormData>({
     resolver: zodResolver(equipmentSchema),
@@ -54,7 +62,7 @@ export function EquipmentFormDialog({
       customer_id: equipment?.customer_id ?? '',
       name: equipment?.name ?? '',
       category_id: equipment?.category_id ?? '',
-      identifier: equipment?.identifier ?? '',
+      identifier: equipment?.identifier ?? autoIdentifier,
       brand: equipment?.brand ?? '',
       model: equipment?.model ?? '',
       serial_number: equipment?.serial_number ?? '',
@@ -71,7 +79,7 @@ export function EquipmentFormDialog({
         customer_id: equipment?.customer_id ?? '',
         name: equipment?.name ?? '',
         category_id: equipment?.category_id ?? '',
-        identifier: equipment?.identifier ?? '',
+        identifier: equipment?.identifier ?? autoIdentifier,
         brand: equipment?.brand ?? '',
         model: equipment?.model ?? '',
         serial_number: equipment?.serial_number ?? '',
@@ -81,15 +89,25 @@ export function EquipmentFormDialog({
         notes: equipment?.notes ?? '',
       });
     }
-  }, [open, equipment]);
+  }, [open, equipment, autoIdentifier]);
 
   const handleSubmit = async (data: EquipmentFormData) => {
-    await onSubmit(data);
+    // Clean empty strings to avoid DB errors (especially for date fields)
+    const cleaned: any = { ...data };
+    Object.keys(cleaned).forEach(key => {
+      if (cleaned[key] === '') {
+        cleaned[key] = undefined;
+      }
+    });
+    // Ensure required fields stay
+    cleaned.customer_id = data.customer_id;
+    cleaned.name = data.name;
+    
+    await onSubmit(cleaned);
     form.reset();
     onOpenChange(false);
   };
 
-  // Map field_key to form field name
   const fieldKeyToName: Record<string, keyof EquipmentFormData> = {
     brand: 'brand',
     model: 'model',
@@ -149,7 +167,7 @@ export function EquipmentFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Identificador</FormLabel>
-                  <FormControl><Input placeholder="Código ou tag" {...field} /></FormControl>
+                  <FormControl><Input placeholder="Gerado automaticamente" {...field} readOnly className="bg-muted" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -184,10 +202,9 @@ export function EquipmentFormDialog({
               />
             )}
 
-            {/* Dynamic fields based on config */}
             {visibleFields.map((fc) => {
               const fieldName = fieldKeyToName[fc.field_key];
-              if (!fieldName) return null; // Custom fields handled separately later
+              if (!fieldName) return null;
               return (
                 <FormField
                   key={fc.id}
@@ -198,7 +215,7 @@ export function EquipmentFormDialog({
                       <FormLabel>{fc.label}{fc.is_required && ' *'}</FormLabel>
                       <FormControl>
                         {fc.field_type === 'date' ? (
-                          <Input type="date" {...field} />
+                          <Input type="date" {...field} value={field.value ?? ''} />
                         ) : fc.field_type === 'number' ? (
                           <Input type="number" placeholder={fc.label} {...field} />
                         ) : (
