@@ -224,10 +224,6 @@ export function EquipmentPanel() {
         onOpenChange={setConfigOpen}
       />
 
-      <EquipmentCategoryManagerDialog
-        open={categoriesOpen}
-        onOpenChange={setCategoriesOpen}
-      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
