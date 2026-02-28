@@ -1272,6 +1272,52 @@ export type Database = {
         }
         Relationships: []
       }
+      service_order_equipment: {
+        Row: {
+          created_at: string
+          equipment_id: string
+          form_template_id: string | null
+          id: string
+          service_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipment_id: string
+          form_template_id?: string | null
+          id?: string
+          service_order_id: string
+        }
+        Update: {
+          created_at?: string
+          equipment_id?: string
+          form_template_id?: string | null
+          id?: string
+          service_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_equipment_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_equipment_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_equipment_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_orders: {
         Row: {
           check_in_location: Json | null
