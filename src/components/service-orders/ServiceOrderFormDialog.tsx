@@ -79,8 +79,16 @@ export function ServiceOrderFormDialog({
   }, [selectedServiceTypeId, selectedServiceType]);
 
   const filteredTemplates = useMemo(() => {
-    if (!selectedServiceTypeId) return templates.filter(t => t.is_active);
-    return templates.filter(t => t.is_active && (!t.service_type_id || t.service_type_id === selectedServiceTypeId));
+    return templates.filter((t) => {
+      if (!t.is_active) return false;
+      if (!selectedServiceTypeId) return true;
+
+      const serviceTypeIds = (t as any).service_type_ids as string[] | undefined;
+      const appliesToAll = (t as any).applies_to_all_services || !serviceTypeIds || serviceTypeIds.length === 0;
+      if (appliesToAll) return true;
+
+      return serviceTypeIds.includes(selectedServiceTypeId);
+    });
   }, [templates, selectedServiceTypeId]);
 
   const computedDate = useMemo(() => {
