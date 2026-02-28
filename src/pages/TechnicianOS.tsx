@@ -304,7 +304,7 @@ export default function TechnicianOS() {
                 <span className="text-sm opacity-80 truncate">{company?.name || ''}</span>
               </div>
             </div>
-            <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border shrink-0`}>
+            <Badge className={`${statusColors[serviceOrder.status]} shrink-0`}>
               {osStatusLabels[serviceOrder.status]}
             </Badge>
           </div>
