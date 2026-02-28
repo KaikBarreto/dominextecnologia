@@ -94,11 +94,13 @@ export function EquipmentPanel() {
           />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => setCategoriesOpen(true)} title="Categorias">
-            <Package className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => setConfigOpen(true)} title="Configurar campos">
-            <Settings className="h-4 w-4" />
+          <Button
+            onClick={() => setConfigOpen(true)}
+            title="Configurar campos"
+            className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Configurar Campos
           </Button>
           <Button onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" />
