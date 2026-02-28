@@ -332,6 +332,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
           </div>
         );
 
+      case 'signature':
+        return (
+          <SignaturePad
+            value={value || null}
+            onChange={(dataUrl) => saveResponse(question.id, dataUrl)}
+            label={question.description || undefined}
+            disabled={isSaving}
+          />
+        );
+
       default:
         return <p className="text-sm text-muted-foreground">Tipo não suportado</p>;
     }
