@@ -151,6 +151,8 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
   const [editLabel, setEditLabel] = useState('');
   const [editColor, setEditColor] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [draggedStatusId, setDraggedStatusId] = useState<string | null>(null);
+  const [dragOverStatusId, setDragOverStatusId] = useState<string | null>(null);
 
   // Config state
   const [prefix, setPrefix] = useState('');
