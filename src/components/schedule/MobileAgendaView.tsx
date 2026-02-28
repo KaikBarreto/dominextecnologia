@@ -33,10 +33,6 @@ export function MobileAgendaView({ currentDate, orders, onOrderSelect }: MobileA
             {dayOrders.length} {dayOrders.length === 1 ? 'agendamento' : 'agendamentos'}
           </p>
         </div>
-        <Button size="sm" onClick={onNewOrder}>
-          <Plus className="h-4 w-4 mr-1" />
-          Nova OS
-        </Button>
       </div>
 
       <ScrollArea className="flex-1 px-4 pb-4">
