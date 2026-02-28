@@ -316,7 +316,7 @@ export default function Dashboard() {
         {/* Status Summary */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <Calendar className="h-5 w-5" />
               Resumo por Status
             </CardTitle>

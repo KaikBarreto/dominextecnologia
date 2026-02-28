@@ -210,7 +210,7 @@ export default function ServiceOrders() {
                 })}
               </div>
 
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">
                 Lista de OS
               </h2>
               <Card>

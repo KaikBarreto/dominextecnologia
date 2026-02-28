@@ -247,19 +247,30 @@ export default function EquipmentDetail() {
             </div>
           ) : (
             <div className="space-y-2">
-              {attachments.map((att) => (
-                <Card key={att.id}>
-                  <CardContent className="flex items-center gap-3 p-3">
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm hover:underline truncate">
-                      {att.file_name}
-                    </a>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {attachments.map((att) => {
+                const isImage = /\.(webp|jpe?g|png|heic)$/i.test(att.file_name);
+                return (
+                  <Card key={att.id}>
+                    <CardContent className="flex items-center gap-3 p-3">
+                      {isImage ? (
+                        <img
+                          src={att.file_url}
+                          alt={att.file_name}
+                          className="h-10 w-10 rounded object-cover shrink-0"
+                        />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm hover:underline truncate">
+                        {att.file_name}
+                      </a>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
