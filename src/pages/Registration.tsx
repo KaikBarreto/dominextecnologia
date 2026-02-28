@@ -27,6 +27,7 @@ import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
+import { SystemFooter } from '@/components/layout/SystemFooter';
 
 // Step 1 + Step 2 combined schema
 const registrationSchema = z.object({
@@ -390,7 +391,8 @@ export default function Registration() {
                         </Button>
                       )}
                       <Button
-                        type="submit"
+                        type={step === 2 ? "submit" : "button"}
+                        onClick={step === 1 ? handleNextStep : undefined}
                         className="flex-1 gap-2 uppercase tracking-widest text-sm font-semibold"
                         disabled={isLoading}
                       >
@@ -422,7 +424,7 @@ export default function Registration() {
                     onClick={() => navigate('/auth')}
                     className="text-white font-bold hover:text-primary transition-colors"
                   >
-                    Fazer Login
+                    FAZER LOGIN
                   </button>
                 </div>
               )}
@@ -430,9 +432,9 @@ export default function Registration() {
           </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-[10px] text-white/40">
-          © {new Date().getFullYear()} Glacial Cold Brasil. Todos os direitos reservados.
-        </p>
+        <div className="mt-6">
+          <SystemFooter variant="dark" />
+        </div>
       </div>
     </div>
   );

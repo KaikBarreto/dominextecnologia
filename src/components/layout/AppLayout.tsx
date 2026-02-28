@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
+import { SystemFooter } from './SystemFooter';
 import { Outlet } from 'react-router-dom';
 import { Snowflake } from 'lucide-react';
 
@@ -19,6 +20,9 @@ export function AppLayout() {
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <Outlet />
           </main>
+          <footer className="border-t px-4 py-3">
+            <SystemFooter />
+          </footer>
         </SidebarInset>
       </div>
     </SidebarProvider>

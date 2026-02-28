@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Clock } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
@@ -11,10 +10,9 @@ interface MobileAgendaViewProps {
   currentDate: Date;
   orders: (ServiceOrder & { customer: any; equipment: any })[];
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
-  onNewOrder: () => void;
 }
 
-export function MobileAgendaView({ currentDate, orders, onOrderSelect, onNewOrder }: MobileAgendaViewProps) {
+export function MobileAgendaView({ currentDate, orders, onOrderSelect }: MobileAgendaViewProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
 
   const dayOrders = useMemo(() => {
@@ -34,10 +32,6 @@ export function MobileAgendaView({ currentDate, orders, onOrderSelect, onNewOrde
             {dayOrders.length} {dayOrders.length === 1 ? 'agendamento' : 'agendamentos'}
           </p>
         </div>
-        <Button size="sm" onClick={onNewOrder}>
-          <Plus className="h-4 w-4 mr-1" />
-          Nova OS
-        </Button>
       </div>
 
       <ScrollArea className="flex-1 px-4 pb-4">

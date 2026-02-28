@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
+import { SystemFooter } from '@/components/layout/SystemFooter';
 
 const schema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
@@ -152,9 +153,9 @@ export default function ResetPassword() {
           </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-[10px] text-white/40">
-          © {new Date().getFullYear()} Glacial Cold Brasil. Todos os direitos reservados.
-        </p>
+        <div className="mt-6">
+          <SystemFooter variant="dark" />
+        </div>
       </div>
     </div>
   );

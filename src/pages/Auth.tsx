@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
+import { SystemFooter } from '@/components/layout/SystemFooter';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
@@ -220,9 +221,9 @@ export default function Auth() {
           </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-[10px] text-white/40">
-          © {new Date().getFullYear()} Glacial Cold Brasil. Todos os direitos reservados.
-        </p>
+        <div className="mt-6">
+          <SystemFooter variant="dark" />
+        </div>
       </div>
     </div>
   );
