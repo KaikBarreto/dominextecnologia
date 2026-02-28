@@ -13,6 +13,8 @@ export interface EquipmentInput {
   location?: string;
   install_date?: string;
   notes?: string;
+  category_id?: string;
+  identifier?: string;
 }
 
 export function useEquipment(customerId?: string) {
