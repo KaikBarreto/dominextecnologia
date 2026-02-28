@@ -68,6 +68,10 @@ export default function TechnicianOS() {
   
   // Form validation state
   const [formValidation, setFormValidation] = useState<FormValidationResult>({ isValid: true, missingQuestions: [] });
+  
+  // Signature state
+  const [techSignature, setTechSignature] = useState<string | null>(null);
+  const [clientSignature, setClientSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
