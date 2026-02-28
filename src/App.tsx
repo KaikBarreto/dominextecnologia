@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 // Pages
 import Auth from "./pages/Auth";
+import Registration from "./pages/Registration";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import ServiceOrders from "./pages/ServiceOrders";
 import Schedule from "./pages/Schedule";
@@ -76,6 +78,15 @@ const AppRoutes = () => (
         </PublicRoute>
       }
     />
+    <Route
+      path="/cadastro"
+      element={
+        <PublicRoute>
+          <Registration />
+        </PublicRoute>
+      }
+    />
+    <Route path="/reset-password" element={<ResetPassword />} />
     
     {/* Technician OS - Public route with OS ID */}
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />
