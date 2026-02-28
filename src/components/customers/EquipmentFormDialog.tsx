@@ -99,9 +99,38 @@ export function EquipmentFormDialog({
     }
   }, [open, equipment, autoIdentifier]);
 
+  const uploadPhoto = async (): Promise<string | undefined> => {
+    if (!photoFile) return undefined;
+    setUploadingPhoto(true);
+    try {
+      const ext = photoFile.name.split('.').pop();
+      const path = `photos/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from('equipment-files').upload(path, photoFile);
+      if (error) throw error;
+      const { data } = supabase.storage.from('equipment-files').getPublicUrl(path);
+      return data.publicUrl;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (data: EquipmentFormData) => {
+    // Upload photo if selected
+    let photo_url = equipment?.photo_url;
+    if (photoFile) {
+      photo_url = await uploadPhoto();
+    }
+
     // Clean empty strings to avoid DB errors (especially for date fields)
-    const cleaned: any = { ...data };
+    const cleaned: any = { ...data, photo_url };
     Object.keys(cleaned).forEach(key => {
       if (cleaned[key] === '') {
         cleaned[key] = undefined;
