@@ -140,6 +140,11 @@ export function ServiceOrderFormDialog({
   }, [open, serviceOrder, computedDate, computedTime]);
 
   const handleSubmit = async (data: ServiceOrderFormData) => {
+    if (!serviceOrder && !isLastStep) {
+      goNext();
+      return;
+    }
+
     const cleanedData = {
       ...data,
       equipment_id: data.equipment_id || undefined,
