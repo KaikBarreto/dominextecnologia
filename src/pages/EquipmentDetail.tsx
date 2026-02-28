@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { osStatusLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
