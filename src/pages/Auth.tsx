@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
+import { SystemFooter } from '@/components/layout/SystemFooter';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
