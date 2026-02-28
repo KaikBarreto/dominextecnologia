@@ -313,12 +313,12 @@ export default function QuestionnaireDetail() {
               {(newQ.options || []).length > 0 && (
                 <div className="space-y-1">
                   {(newQ.options || []).map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm bg-muted/30">
-                      <span className="flex-1">{opt}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleRemoveOption(i)}>
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <EditableOption
+                      key={i}
+                      value={opt}
+                      onChange={(newVal) => setNewQ(prev => ({ ...prev, options: (prev.options || []).map((o, idx) => idx === i ? newVal : o) }))}
+                      onRemove={() => handleRemoveOption(i)}
+                    />
                   ))}
                 </div>
               )}
