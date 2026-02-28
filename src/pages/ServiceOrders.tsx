@@ -360,6 +360,7 @@ export default function ServiceOrders() {
                       </Table>
                     </div>
                   )}
+                  </div>
                 </CardContent>
               </Card>
             </>
