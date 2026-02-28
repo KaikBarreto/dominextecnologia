@@ -477,17 +477,12 @@ function QuestionRow({
               {options.length > 0 && (
                 <div className="space-y-1">
                   {options.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded border px-2 py-1 text-xs bg-background">
-                      <span className="flex-1">{opt}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 text-destructive"
-                        onClick={() => setOptions(options.filter((_, idx) => idx !== i))}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <EditableOption
+                      key={i}
+                      value={opt}
+                      onChange={(newVal) => setOptions(options.map((o, idx) => idx === i ? newVal : o))}
+                      onRemove={() => setOptions(options.filter((_, idx) => idx !== i))}
+                    />
                   ))}
                 </div>
               )}

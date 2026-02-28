@@ -163,9 +163,19 @@ export default function CustomerDetail() {
               {customerEquipment.map((eq) => (
                 <Card
                   key={eq.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
                   onClick={() => navigate(`/equipamentos/${eq.id}`)}
                 >
+                  {eq.photo_url && (
+                    <div className="h-32 w-full bg-muted">
+                      <img
+                        src={eq.photo_url}
+                        alt={eq.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
                   <CardContent className="p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="font-medium truncate">{eq.name}</p>
