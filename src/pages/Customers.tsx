@@ -46,6 +46,8 @@ export default function Customers() {
       (customer as any).company_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const pagination = useDataPagination(filteredCustomers);
+
   const handleSubmit = async (data: any) => {
     if (editingCustomer) {
       await updateCustomer.mutateAsync({ ...data, id: editingCustomer.id });
