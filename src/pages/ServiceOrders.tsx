@@ -62,6 +62,7 @@ export default function ServiceOrders() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('orders');
+  const [statusConfigOpen, setStatusConfigOpen] = useState(false);
 
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
 
