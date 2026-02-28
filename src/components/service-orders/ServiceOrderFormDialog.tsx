@@ -539,6 +539,27 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="notes" render={({ field }) => (
                 <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
+
+              {/* Signature toggles */}
+              <div className="space-y-3 pt-2 border-t">
+                <p className="text-sm font-medium">Assinaturas</p>
+                {form.getValues('technician_id') && (
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={requireTechSignature}
+                      onCheckedChange={setRequireTechSignature}
+                    />
+                    <Label className="text-sm">Assinatura do Técnico</Label>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={requireClientSignature}
+                    onCheckedChange={setRequireClientSignature}
+                  />
+                  <Label className="text-sm">Assinatura do Cliente</Label>
+                </div>
+              </div>
             </div>
           )}
 
