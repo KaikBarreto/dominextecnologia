@@ -1,31 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ClipboardList, 
-  Camera, 
   MapPin, 
   Clock, 
-  CheckCircle2, 
   User, 
   Wrench,
   Phone,
-  Save,
-  Upload,
-  X,
   Play,
-  Square,
-  FileSignature,
   ClipboardCheck,
   PenTool,
+  CheckCircle2,
+  ArrowLeft,
+  Calendar,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
@@ -46,20 +40,12 @@ interface OSPhoto {
 
 export default function TechnicianOS() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
+  const [serviceOrder, setServiceOrder] = useState<(ServiceOrder & { customer: any; equipment: any; form_template?: any }) | null>(null);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  
-  // Form state
-  const [diagnosis, setDiagnosis] = useState('');
-  const [solution, setSolution] = useState('');
-  const [notes, setNotes] = useState('');
-  const [laborHours, setLaborHours] = useState('');
-  const [laborValue, setLaborValue] = useState('');
-  const [partsValue, setPartsValue] = useState('');
+  const [company, setCompany] = useState<any>(null);
 
   // Check-in/out state
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -73,13 +59,20 @@ export default function TechnicianOS() {
   // Signature state
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchServiceOrder();
       fetchPhotos();
+      fetchCompany();
     }
   }, [id]);
+
+  const fetchCompany = async () => {
+    const { data } = await supabase.from('company_settings').select('*').limit(1).single();
+    if (data) setCompany(data);
+  };
 
   const fetchServiceOrder = async () => {
     try {
@@ -87,8 +80,8 @@ export default function TechnicianOS() {
         .from('service_orders')
         .select(`
           *,
-          customer:customers(id, name, phone, address, city, state),
-          equipment:equipment(id, name, brand, model, serial_number, location),
+          customer:customers(id, name, phone, address, city, state, document),
+          equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name)
         `)
         .eq('id', id)
@@ -97,12 +90,6 @@ export default function TechnicianOS() {
       if (error) throw error;
       
       setServiceOrder(data as any);
-      setDiagnosis(data.diagnosis || '');
-      setSolution(data.solution || '');
-      setNotes(data.notes || '');
-      setLaborHours(data.labor_hours?.toString() || '');
-      setLaborValue(data.labor_value?.toString() || '');
-      setPartsValue(data.parts_value?.toString() || '');
       setCheckInTime(data.check_in_time);
       setCheckOutTime(data.check_out_time);
       setCheckInLocation(data.check_in_location as any);
@@ -146,9 +133,7 @@ export default function TechnicianOS() {
             lng: position.coords.longitude,
           });
         },
-        (error) => {
-          reject(error);
-        },
+        (error) => reject(error),
         { enableHighAccuracy: true }
       );
     });
@@ -172,7 +157,7 @@ export default function TechnicianOS() {
 
       setCheckInTime(now);
       setCheckInLocation(location);
-      setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
+      setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus, check_in_time: now } : null);
       
       toast({ title: 'Check-in realizado com sucesso!' });
     } catch (error: any) {
@@ -184,8 +169,8 @@ export default function TechnicianOS() {
     }
   };
 
-  const handleCheckOut = async () => {
-    // Validate required form fields before checkout
+  const handleFinishOS = async () => {
+    // Validate required form fields
     if (serviceOrder?.form_template_id && !formValidation.isValid) {
       toast({
         variant: 'destructive',
@@ -197,14 +182,15 @@ export default function TechnicianOS() {
 
     // Validate required signatures
     if ((serviceOrder as any)?.require_tech_signature && !techSignature) {
-      toast({ variant: 'destructive', title: 'Assinatura do técnico obrigatória', description: 'Assine antes de finalizar.' });
+      toast({ variant: 'destructive', title: 'Assinatura do técnico obrigatória' });
       return;
     }
     if ((serviceOrder as any)?.require_client_signature && !clientSignature) {
-      toast({ variant: 'destructive', title: 'Assinatura do cliente obrigatória', description: 'Colete a assinatura do cliente.' });
+      toast({ variant: 'destructive', title: 'Assinatura do cliente obrigatória' });
       return;
     }
 
+    setFinishing(true);
     try {
       const location = await getCurrentLocation();
       const now = new Date().toISOString();
@@ -226,91 +212,17 @@ export default function TechnicianOS() {
 
       setCheckOutTime(now);
       setCheckOutLocation(location);
-      setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus } : null);
+      setServiceOrder((prev) => prev ? { ...prev, status: 'concluida' as OsStatus, check_out_time: now } : null);
       
-      toast({ title: 'Check-out realizado! OS concluída.' });
+      toast({ title: 'OS finalizada com sucesso!' });
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro no check-out',
-        description: error.message,
-      });
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const laborHoursNum = laborHours ? parseFloat(laborHours) : null;
-      const laborValueNum = laborValue ? parseFloat(laborValue) : null;
-      const partsValueNum = partsValue ? parseFloat(partsValue) : null;
-      const totalValue = (laborValueNum || 0) + (partsValueNum || 0);
-
-      const { error } = await supabase
-        .from('service_orders')
-        .update({
-          diagnosis,
-          solution,
-          notes,
-          labor_hours: laborHoursNum,
-          labor_value: laborValueNum,
-          parts_value: partsValueNum,
-          total_value: totalValue > 0 ? totalValue : null,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-      toast({ title: 'OS salva com sucesso!' });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao salvar',
+        title: 'Erro ao finalizar OS',
         description: error.message,
       });
     } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, photoType: string) => {
-    const file = event.target.files?.[0];
-    if (!file || !id) return;
-
-    setUploadingPhoto(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${id}/${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('os-photos')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('os-photos')
-        .getPublicUrl(fileName);
-
-      const { error: insertError } = await supabase
-        .from('os_photos')
-        .insert({
-          service_order_id: id,
-          photo_url: publicUrl,
-          photo_type: photoType,
-        });
-
-      if (insertError) throw insertError;
-
-      await fetchPhotos();
-      toast({ title: 'Foto enviada com sucesso!' });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao enviar foto',
-        description: error.message,
-      });
-    } finally {
-      setUploadingPhoto(false);
+      setFinishing(false);
     }
   };
 
@@ -331,9 +243,7 @@ export default function TechnicianOS() {
           <CardContent className="pt-6 text-center">
             <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-2">OS não encontrada</h2>
-            <p className="text-muted-foreground">
-              Verifique o link e tente novamente.
-            </p>
+            <p className="text-muted-foreground">Verifique o link e tente novamente.</p>
           </CardContent>
         </Card>
       </div>
@@ -352,18 +262,17 @@ export default function TechnicianOS() {
     return (
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-lg print:hidden">
-          <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-bold">
-                  OS #{String(serviceOrder.order_number).padStart(4, '0')}
-                </h1>
-                <p className="text-sm opacity-90">Relatório de Serviço</p>
-              </div>
-              <Badge variant="outline" className="bg-success/10 text-success border-success border">
-                Concluída
-              </Badge>
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-lg font-bold">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
+              <p className="text-sm opacity-90">Relatório de Serviço</p>
             </div>
+            <Badge variant="outline" className="bg-success/20 text-success-foreground border-success-foreground/30">
+              Concluída
+            </Badge>
           </div>
         </div>
         <div className="max-w-2xl mx-auto p-4">
@@ -373,214 +282,166 @@ export default function TechnicianOS() {
     );
   }
 
+  const isCheckedIn = !!checkInTime;
+  const isPending = serviceOrder.status === 'pendente';
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-lg">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold">
-                OS #{String(serviceOrder.order_number).padStart(4, '0')}
-              </h1>
-              <p className="text-sm opacity-90">{osTypeLabels[serviceOrder.os_type]}</p>
+      {/* Header - PDF-inspired with company + OS info */}
+      <div className="bg-primary text-primary-foreground">
+        <div className="max-w-2xl mx-auto p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {company?.logo_url ? (
+                  <img src={company.logo_url} alt="Logo" className="h-8 w-8 rounded object-contain bg-primary-foreground/10 p-0.5" />
+                ) : (
+                  <Building2 className="h-5 w-5 opacity-70" />
+                )}
+                <span className="text-sm opacity-80 truncate">{company?.name || ''}</span>
+              </div>
             </div>
-            <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border`}>
+            <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border shrink-0`}>
               {osStatusLabels[serviceOrder.status]}
             </Badge>
+          </div>
+          
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
+              <p className="text-sm opacity-80">{osTypeLabels[serviceOrder.os_type]}</p>
+            </div>
+            {serviceOrder.scheduled_date && (
+              <div className="flex items-center gap-1.5 text-sm opacity-80">
+                <Calendar className="h-3.5 w-3.5" />
+                {format(new Date(serviceOrder.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                {serviceOrder.scheduled_time && ` ${String(serviceOrder.scheduled_time).slice(0, 5)}`}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4 space-y-4 pb-24">
-        {/* Client Info */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-4 w-4" />
-              Cliente
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="font-medium">{serviceOrder.customer?.name}</p>
-            {serviceOrder.customer?.phone && (
-              <a 
-                href={`tel:${serviceOrder.customer.phone}`}
-                className="flex items-center gap-2 text-sm text-primary"
-              >
-                <Phone className="h-3 w-3" />
-                {serviceOrder.customer.phone}
-              </a>
-            )}
-            {serviceOrder.customer?.address && (
-              <p className="text-sm text-muted-foreground flex items-start gap-2">
-                <MapPin className="h-3 w-3 mt-1 shrink-0" />
-                {serviceOrder.customer.address}
-                {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
-                {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Equipment Info */}
-        {serviceOrder.equipment && (
-          <Card>
+      <div className="max-w-2xl mx-auto p-4 space-y-4 pb-28">
+        {/* Step 1: Check-in (only if pending) */}
+        {isPending && (
+          <Card className="border-primary/30">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Wrench className="h-4 w-4" />
-                Equipamento
+                <Play className="h-4 w-4 text-primary" />
+                Iniciar Atendimento
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
-              <p className="font-medium">{serviceOrder.equipment.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {serviceOrder.equipment.brand} {serviceOrder.equipment.model}
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Faça o check-in para registrar sua chegada e iniciar o atendimento.
               </p>
-              {serviceOrder.equipment.serial_number && (
-                <p className="text-sm text-muted-foreground">
-                  S/N: {serviceOrder.equipment.serial_number}
-                </p>
-              )}
-              {serviceOrder.equipment.location && (
-                <p className="text-sm text-muted-foreground">
-                  Local: {serviceOrder.equipment.location}
-                </p>
-              )}
+              <Button className="w-full" size="lg" onClick={handleCheckIn}>
+                <Play className="h-4 w-4 mr-2" />
+                Fazer Check-in
+              </Button>
             </CardContent>
           </Card>
         )}
 
+        {/* Check-in timestamp (when done) */}
+        {isCheckedIn && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <Clock className="h-3.5 w-3.5 text-primary" />
+            <span>
+              Check-in: {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            </span>
+            {checkInLocation && (
+              <span className="text-xs opacity-70 ml-auto flex items-center gap-0.5">
+                <MapPin className="h-3 w-3" />
+                {checkInLocation.lat.toFixed(4)}, {checkInLocation.lng.toFixed(4)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Client & Equipment Info - PDF-inspired cards */}
+        <div className="grid grid-cols-1 gap-3">
+          {/* Client */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
+              </div>
+              <p className="font-semibold">{serviceOrder.customer?.name}</p>
+              {serviceOrder.customer?.phone && (
+                <a href={`tel:${serviceOrder.customer.phone}`} className="flex items-center gap-1.5 text-sm text-primary mt-1">
+                  <Phone className="h-3 w-3" />
+                  {serviceOrder.customer.phone}
+                </a>
+              )}
+              {serviceOrder.customer?.address && (
+                <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
+                  <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>
+                    {serviceOrder.customer.address}
+                    {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
+                    {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
+                  </span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Equipment */}
+          {serviceOrder.equipment && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wrench className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equipamento</span>
+                </div>
+                <p className="font-semibold">{serviceOrder.equipment.name}</p>
+                <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
+                  <p>{serviceOrder.equipment.brand} {serviceOrder.equipment.model}</p>
+                  {serviceOrder.equipment.serial_number && <p>S/N: {serviceOrder.equipment.serial_number}</p>}
+                  {serviceOrder.equipment.capacity && <p>Capacidade: {serviceOrder.equipment.capacity}</p>}
+                  {serviceOrder.equipment.location && <p>Local: {serviceOrder.equipment.location}</p>}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
         {/* Description */}
         {serviceOrder.description && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Descrição do Chamado</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Chamado</p>
               <p className="text-sm">{serviceOrder.description}</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Check-in/out */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Clock className="h-4 w-4" />
-              Check-in / Check-out
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-3">
-              <Button
-                className="flex-1"
-                variant={checkInTime ? 'secondary' : 'default'}
-                disabled={!!checkInTime}
-                onClick={handleCheckIn}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                {checkInTime ? 'Check-in feito' : 'Fazer Check-in'}
-              </Button>
-              <Button
-                className="flex-1"
-                variant={checkOutTime ? 'secondary' : 'default'}
-                disabled={!checkInTime || !!checkOutTime}
-                onClick={handleCheckOut}
-              >
-                <Square className="h-4 w-4 mr-2" />
-                {checkOutTime ? 'Check-out feito' : 'Fazer Check-out'}
-              </Button>
-            </div>
-            {checkInTime && (
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>
-                  <strong>Check-in:</strong>{' '}
-                  {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </p>
-                {checkOutTime && (
-                  <p>
-                    <strong>Check-out:</strong>{' '}
-                    {format(new Date(checkOutTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Photos */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Camera className="h-4 w-4" />
-              Fotos do Serviço
-            </CardTitle>
-            <CardDescription>
-              Registre fotos antes, durante e depois do serviço
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {['antes', 'durante', 'depois'].map((type) => (
-              <div key={type} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="capitalize font-medium">{type}</Label>
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => handlePhotoUpload(e, type)}
-                      disabled={uploadingPhoto}
-                    />
-                    <Button variant="outline" size="sm" asChild disabled={uploadingPhoto}>
-                      <span>
-                        <Upload className="h-3 w-3 mr-1" />
-                        Adicionar
-                      </span>
-                    </Button>
-                  </label>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {photos
-                    .filter((p) => p.photo_type === type)
-                    .map((photo) => (
-                      <div key={photo.id} className="relative aspect-square rounded-md overflow-hidden bg-muted">
-                        <img
-                          src={photo.photo_url}
-                          alt={`Foto ${type}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  {photos.filter((p) => p.photo_type === type).length === 0 && (
-                    <div className="aspect-square rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                      <Camera className="h-6 w-6 text-muted-foreground/50" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Dynamic Form Questions */}
-        {serviceOrder.form_template_id && (
+        {/* Questionnaire - shown as equipment section */}
+        {serviceOrder.form_template_id && isCheckedIn && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <ClipboardCheck className="h-4 w-4" />
-                Questionário: {(serviceOrder as any).form_template?.name || 'Checklist'}
+                <ClipboardCheck className="h-4 w-4 text-primary" />
+                {serviceOrder.equipment ? (
+                  <span>
+                    Inspeção: {serviceOrder.equipment.name}
+                    {serviceOrder.equipment.brand && ` — ${serviceOrder.equipment.brand} ${serviceOrder.equipment.model || ''}`}
+                  </span>
+                ) : (
+                  <span>Questionário: {serviceOrder.form_template?.name || 'Checklist'}</span>
+                )}
                 {!formValidation.isValid && (
-                  <Badge variant="destructive" className="ml-2 text-xs">
+                  <Badge variant="destructive" className="ml-auto text-xs">
                     {formValidation.missingQuestions.length} pendente{formValidation.missingQuestions.length > 1 ? 's' : ''}
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription>
-                Responda as perguntas do questionário de inspeção
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <DynamicFormQuestions 
@@ -592,15 +453,14 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Signatures */}
-        {((serviceOrder as any)?.require_tech_signature || (serviceOrder as any)?.require_client_signature) && (
+        {/* Signatures (if required) */}
+        {isCheckedIn && ((serviceOrder as any)?.require_tech_signature || (serviceOrder as any)?.require_client_signature) && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <PenTool className="h-4 w-4" />
+                <PenTool className="h-4 w-4 text-primary" />
                 Assinaturas
               </CardTitle>
-              <CardDescription>Assinaturas obrigatórias para finalizar a OS</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {(serviceOrder as any)?.require_tech_signature && (
@@ -608,7 +468,6 @@ export default function TechnicianOS() {
                   value={techSignature}
                   onChange={setTechSignature}
                   label="Assinatura do Técnico"
-                  disabled={!!checkOutTime}
                 />
               )}
               {(serviceOrder as any)?.require_client_signature && (
@@ -616,102 +475,29 @@ export default function TechnicianOS() {
                   value={clientSignature}
                   onChange={setClientSignature}
                   label="Assinatura do Cliente"
-                  disabled={!!checkOutTime}
                 />
               )}
             </CardContent>
           </Card>
         )}
-
-        {/* Service Details Form */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileSignature className="h-4 w-4" />
-              Detalhes do Serviço
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Diagnóstico</Label>
-              <Textarea
-                placeholder="Descreva o problema encontrado..."
-                value={diagnosis}
-                onChange={(e) => setDiagnosis(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Solução Aplicada</Label>
-              <Textarea
-                placeholder="Descreva a solução aplicada..."
-                value={solution}
-                onChange={(e) => setSolution(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Observações</Label>
-              <Textarea
-                placeholder="Observações adicionais..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
-            </div>
-            
-            <Separator />
-            
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label>Horas</Label>
-                <Input
-                  type="number"
-                  step="0.5"
-                  placeholder="0"
-                  value={laborHours}
-                  onChange={(e) => setLaborHours(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Mão de Obra</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="R$ 0,00"
-                  value={laborValue}
-                  onChange={(e) => setLaborValue(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Peças</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="R$ 0,00"
-                  value={partsValue}
-                  onChange={(e) => setPartsValue(e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Fixed Save Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
-        <div className="max-w-2xl mx-auto">
-          <Button 
-            className="w-full" 
-            size="lg"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Salvando...' : 'Salvar Alterações'}
-          </Button>
+      {/* Fixed bottom button */}
+      {isCheckedIn && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
+          <div className="max-w-2xl mx-auto">
+            <Button 
+              className="w-full bg-success hover:bg-success/90 text-success-foreground" 
+              size="lg"
+              onClick={handleFinishOS}
+              disabled={finishing}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {finishing ? 'Finalizando...' : 'Finalizar OS'}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
