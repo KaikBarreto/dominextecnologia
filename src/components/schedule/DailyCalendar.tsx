@@ -185,6 +185,7 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
                     fillHeight
+                    colorShift={col}
                   />
                 </div>
               );
