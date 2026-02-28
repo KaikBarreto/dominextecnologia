@@ -259,9 +259,25 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
           ) : (
             <div className="space-y-2">
               {statuses.map((status) => (
-                <div key={status.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <div
+                  key={status.id}
+                  draggable
+                  onDragStart={() => handleDragStart(status.id)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragOverStatusId !== status.id) setDragOverStatusId(status.id);
+                  }}
+                  onDragLeave={() => setDragOverStatusId(null)}
+                  onDrop={() => handleDropStatus(status.id)}
+                  onDragEnd={() => {
+                    setDraggedStatusId(null);
+                    setDragOverStatusId(null);
+                  }}
+                  className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${dragOverStatusId === status.id ? 'border-primary bg-primary/5' : ''}`}
+                >
                   {editingId === status.id ? (
                     <>
+                      <GripVertical className="h-4 w-4 text-muted-foreground/60 cursor-grab" />
                       <input type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} className="h-8 w-8 rounded border cursor-pointer shrink-0" />
                       <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="flex-1 h-8" onKeyDown={(e) => e.key === 'Enter' && handleUpdate()} />
                       <Button size="sm" variant="outline" onClick={handleUpdate}>Salvar</Button>
@@ -269,6 +285,7 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
                     </>
                   ) : (
                     <>
+                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />
                       <div className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
                       <span className="flex-1 text-sm font-medium">{status.label}</span>
                       <span className="text-xs text-muted-foreground font-mono">{status.key}</span>
