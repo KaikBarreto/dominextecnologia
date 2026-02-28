@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ChevronRight, ChevronLeft, Plus, Check } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -51,7 +52,7 @@ interface ServiceOrderFormDialogProps {
 
 const STEPS = [
   { key: 'client', label: 'Cliente e Serviço' },
-  { key: 'equipment', label: 'Equipamento' },
+  { key: 'equipment', label: 'Equipamento(s)' },
   { key: 'details', label: 'Detalhes' },
 ];
 
@@ -66,6 +67,8 @@ export function ServiceOrderFormDialog({
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id);
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
+  const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string>>({});
   const { equipment } = useEquipment(selectedCustomerId);
 
   const selectedServiceType = useMemo(
@@ -82,11 +85,9 @@ export function ServiceOrderFormDialog({
     return templates.filter((t) => {
       if (!t.is_active) return false;
       if (!selectedServiceTypeId) return true;
-
       const serviceTypeIds = (t as any).service_type_ids as string[] | undefined;
       const appliesToAll = (t as any).applies_to_all_services || !serviceTypeIds || serviceTypeIds.length === 0;
       if (appliesToAll) return true;
-
       return serviceTypeIds.includes(selectedServiceTypeId);
     });
   }, [templates, selectedServiceTypeId]);
@@ -122,6 +123,8 @@ export function ServiceOrderFormDialog({
   useEffect(() => {
     if (open) {
       setStep(0);
+      setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
+      setEquipmentTemplateMap({});
       form.reset({
         customer_id: serviceOrder?.customer_id ?? '',
         equipment_id: serviceOrder?.equipment_id ?? '',
@@ -139,12 +142,40 @@ export function ServiceOrderFormDialog({
     }
   }, [open, serviceOrder, computedDate, computedTime]);
 
-  const handleSubmit = async (data: ServiceOrderFormData) => {
-    if (!serviceOrder && !isLastStep) {
-      // Don't submit, just advance step
-      return;
-    }
+  const handleCreateSubmit = async () => {
+    const data = form.getValues();
+    const baseData = {
+      ...data,
+      technician_id: data.technician_id || undefined,
+      service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
+      scheduled_date: data.scheduled_date || undefined,
+      scheduled_time: data.scheduled_time || undefined,
+    };
 
+    if (selectedEquipmentIds.length <= 1) {
+      // Single or no equipment
+      const cleanedData = {
+        ...baseData,
+        equipment_id: selectedEquipmentIds[0] || undefined,
+        form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined),
+      };
+      await onSubmit(cleanedData);
+    } else {
+      // Multiple equipment — create one OS per equipment
+      for (const eqId of selectedEquipmentIds) {
+        const cleanedData = {
+          ...baseData,
+          equipment_id: eqId,
+          form_template_id: equipmentTemplateMap[eqId] || undefined,
+        };
+        await onSubmit(cleanedData);
+      }
+    }
+    form.reset();
+    onOpenChange(false);
+  };
+
+  const handleEditSubmit = async (data: ServiceOrderFormData) => {
     const cleanedData = {
       ...data,
       equipment_id: data.equipment_id || undefined,
@@ -159,9 +190,15 @@ export function ServiceOrderFormDialog({
     onOpenChange(false);
   };
 
+  const toggleEquipment = (eqId: string) => {
+    setSelectedEquipmentIds(prev =>
+      prev.includes(eqId) ? prev.filter(id => id !== eqId) : [...prev, eqId]
+    );
+  };
+
   // Determine active steps (skip equipment if not needed)
   const activeSteps = useMemo(() => {
-    if (serviceOrder) return STEPS; // Edit mode shows all
+    if (serviceOrder) return STEPS;
     if (!showEquipmentStep) return STEPS.filter(s => s.key !== 'equipment');
     return STEPS;
   }, [showEquipmentStep, serviceOrder]);
@@ -169,25 +206,20 @@ export function ServiceOrderFormDialog({
   const currentStepKey = activeSteps[step]?.key || 'client';
 
   const canGoNext = () => {
-    if (currentStepKey === 'client') {
-      return !!form.getValues('customer_id');
-    }
+    if (currentStepKey === 'client') return !!form.getValues('customer_id');
     return true;
   };
 
-  const goNext = () => {
-    if (step < activeSteps.length - 1 && canGoNext()) setStep(step + 1);
-  };
+  const goNext = () => { if (step < activeSteps.length - 1 && canGoNext()) setStep(step + 1); };
   const goBack = () => { if (step > 0) setStep(step - 1); };
-
   const isLastStep = step === activeSteps.length - 1;
 
-  // For edit mode, show flat form
+  // Edit mode: flat form
   if (serviceOrder) {
     return (
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField control={form.control} name="customer_id" render={({ field }) => (
                 <FormItem className="sm:col-span-2">
@@ -283,7 +315,7 @@ export function ServiceOrderFormDialog({
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço">
       {/* Step indicators */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center justify-center gap-2 mb-6">
         {activeSteps.map((s, i) => (
           <div key={s.key} className="flex items-center gap-2">
             <div className={cn(
@@ -303,14 +335,14 @@ export function ServiceOrderFormDialog({
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); if (isLastStep) handleCreateSubmit(); }} className="space-y-4">
           {/* Step 1: Client & Service */}
           {currentStepKey === 'client' && (
             <div className="space-y-4">
               <FormField control={form.control} name="customer_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cliente *</FormLabel>
-                  <Select onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }} value={field.value}>
+                  <Select onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger></FormControl>
                     <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
@@ -350,38 +382,53 @@ export function ServiceOrderFormDialog({
             </div>
           )}
 
-          {/* Step 2: Equipment */}
+          {/* Step 2: Equipment(s) - multi-select with checkboxes */}
           {currentStepKey === 'equipment' && (
             <div className="space-y-4">
-              <FormField control={form.control} name="equipment_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Equipamento</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione o equipamento" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {equipment.map((eq) => (
-                        <SelectItem key={eq.id} value={eq.id}>
-                          {eq.name} {eq.brand && `(${eq.brand})`} {eq.model && `- ${eq.model}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <p className="text-sm text-muted-foreground">
+                {equipment.length > 1 ? 'Selecione um ou mais equipamentos para esta OS.' : 'Selecione o equipamento.'}
+              </p>
+              {equipment.length === 0 && selectedCustomerId && (
+                <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente.</p>
+              )}
+              {!selectedCustomerId && (
+                <p className="text-sm text-muted-foreground">Selecione um cliente primeiro para ver equipamentos.</p>
+              )}
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {equipment.map((eq) => (
+                  <label
+                    key={eq.id}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50",
+                      selectedEquipmentIds.includes(eq.id) && "border-primary bg-primary/5"
+                    )}
+                  >
+                    <Checkbox
+                      checked={selectedEquipmentIds.includes(eq.id)}
+                      onCheckedChange={() => toggleEquipment(eq.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{eq.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[eq.brand, eq.model].filter(Boolean).join(' - ') || 'Sem detalhes'}
+                      </p>
+                    </div>
+                    {eq.identifier && (
+                      <span className="text-xs font-mono text-muted-foreground shrink-0">{eq.identifier}</span>
+                    )}
+                  </label>
+                ))}
+              </div>
               {selectedCustomerId && (
                 <Button type="button" variant="outline" size="sm" onClick={() => setQuickCreateOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Criar equipamento
                 </Button>
               )}
-              {!selectedCustomerId && (
-                <p className="text-sm text-muted-foreground">Selecione um cliente primeiro para ver equipamentos.</p>
-              )}
             </div>
           )}
 
-          {/* Step 3: Details */}
+          {/* Step 3: Details - with questionnaire per equipment */}
           {currentStepKey === 'details' && (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -392,19 +439,52 @@ export function ServiceOrderFormDialog({
                   <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
-              <FormField control={form.control} name="form_template_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Questionário</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Sem questionário</SelectItem>
-                      {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+
+              {/* Questionnaire selection per equipment */}
+              {selectedEquipmentIds.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Questionário por equipamento</p>
+                  {selectedEquipmentIds.map((eqId) => {
+                    const eq = equipment.find(e => e.id === eqId);
+                    return (
+                      <div key={eqId} className="rounded-lg border p-3 space-y-2">
+                        <p className="text-sm font-medium">{eq?.name || 'Equipamento'}</p>
+                        <Select
+                          value={equipmentTemplateMap[eqId] || 'none'}
+                          onValueChange={(v) => setEquipmentTemplateMap(prev => ({ ...prev, [eqId]: v === 'none' ? '' : v }))}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Sem questionário" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem questionário</SelectItem>
+                            {filteredTemplates.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.name} ({t.questions?.length || 0} perguntas)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <FormField control={form.control} name="form_template_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Questionário</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Sem questionário</SelectItem>
+                        {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem><FormLabel>Descrição do Serviço</FormLabel><FormControl><Textarea placeholder="Descreva o serviço a ser realizado" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -431,7 +511,7 @@ export function ServiceOrderFormDialog({
               {isLastStep ? (
                 <Button type="submit" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar OS
+                  {selectedEquipmentIds.length > 1 ? `Criar ${selectedEquipmentIds.length} OS` : 'Criar OS'}
                 </Button>
               ) : (
                 <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
@@ -454,7 +534,7 @@ export function ServiceOrderFormDialog({
             const { supabase } = await import('@/integrations/supabase/client');
             const { data: created, error } = await supabase.from('equipment').insert(data as any).select().single();
             if (!error && created) {
-              form.setValue('equipment_id', (created as any).id);
+              setSelectedEquipmentIds(prev => [...prev, (created as any).id]);
             }
           }}
           customers={[customers.find(c => c.id === selectedCustomerId)!].filter(Boolean)}
