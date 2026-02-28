@@ -50,6 +50,10 @@ export function EquipmentFormDialog({
   open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const autoIdentifier = useMemo(() => {
     if (equipment?.identifier) return equipment.identifier;
