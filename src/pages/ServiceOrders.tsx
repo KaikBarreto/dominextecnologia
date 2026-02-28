@@ -294,10 +294,10 @@ export default function ServiceOrders() {
                                     value={os.status}
                                     onValueChange={(value) => handleStatusChange(os, value as OsStatus)}
                                   >
-                                    <SelectTrigger className={`h-8 w-[140px] ${status.bgColor}`}>
+                                    <SelectTrigger className={`h-8 w-[140px] whitespace-nowrap ${status.bgColor}`}>
                                       <SelectValue>
-                                        <span className={`flex items-center gap-1 ${status.color}`}>
-                                          <status.icon className="h-3 w-3" />
+                                        <span className={`flex items-center gap-1 whitespace-nowrap ${status.color}`}>
+                                          <status.icon className="h-3 w-3 shrink-0" />
                                           {osStatusLabels[os.status]}
                                         </span>
                                       </SelectValue>
