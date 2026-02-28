@@ -58,7 +58,10 @@ export default function TechnicianOS() {
   const [checkInLocation, setCheckInLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [checkOutLocation, setCheckOutLocation] = useState<{ lat: number; lng: number } | null>(null);
   
-  const [formValidation, setFormValidation] = useState<FormValidationResult>({ isValid: true, missingQuestions: [] });
+  const [formValidations, setFormValidations] = useState<Record<string, FormValidationResult>>({});
+  
+  const allFormsValid = Object.values(formValidations).every(v => v.isValid);
+  const allMissingQuestions = Object.values(formValidations).flatMap(v => v.missingQuestions);
   
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
