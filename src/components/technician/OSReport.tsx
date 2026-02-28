@@ -160,7 +160,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <div className="text-lg sm:text-2xl font-black tracking-tight">
                 OS #{String(serviceOrder.order_number).padStart(4, '0')}
               </div>
-              <p className="text-xs sm:text-sm text-white/70 mt-1">{osTypeLabels[serviceOrder.os_type]}</p>
+              <p className="text-xs sm:text-sm text-white/90 mt-1">{osTypeLabels[serviceOrder.os_type]}</p>
             </div>
           </div>
         </div>
