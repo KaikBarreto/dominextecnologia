@@ -1235,6 +1235,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          number_prefix: string | null
           requires_equipment: boolean
           updated_at: string
         }
@@ -1245,6 +1246,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          number_prefix?: string | null
           requires_equipment?: boolean
           updated_at?: string
         }
@@ -1255,6 +1257,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          number_prefix?: string | null
           requires_equipment?: boolean
           updated_at?: string
         }
