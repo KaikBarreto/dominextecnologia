@@ -81,6 +81,14 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
     is_required: true,
   });
 
+  // Auto-select template by initialTemplateId
+  useEffect(() => {
+    if (initialTemplateId && templates.length > 0 && !selectedTemplate) {
+      const found = templates.find(t => t.id === initialTemplateId);
+      if (found) setSelectedTemplate(found as FormTemplate & { questions: FormQuestion[] });
+    }
+  }, [initialTemplateId, templates]);
+
   // Keep selectedTemplate in sync with templates
   useEffect(() => {
     if (selectedTemplate) {
