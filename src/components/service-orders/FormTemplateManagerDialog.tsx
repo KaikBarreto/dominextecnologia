@@ -56,6 +56,7 @@ export function FormTemplateManagerDialog({ children }: FormTemplateManagerDialo
     updateQuestion,
     deleteQuestion,
     reorderQuestions,
+    setTemplateServices,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   
