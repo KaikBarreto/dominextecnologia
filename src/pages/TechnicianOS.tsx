@@ -432,8 +432,37 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Questionnaire */}
-        {serviceOrder.form_template_id && isCheckedIn && (
+        {/* Questionnaires - Multi equipment from junction table */}
+        {isCheckedIn && equipmentItems.length > 0 && equipmentItems.map((item) => (
+          item.form_template_id && (
+            <Card key={item.equipment_id}>
+              <CardHeader className="pb-3 px-3 sm:px-6">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
+                  <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                  <span className="break-words">
+                    {item.equipment?.name || 'Equipamento'}
+                    {item.equipment?.brand && ` — ${item.equipment.brand} ${item.equipment.model || ''}`}
+                  </span>
+                  {formValidations[item.equipment_id] && !formValidations[item.equipment_id].isValid && (
+                    <Badge variant="destructive" className="text-xs">
+                      {formValidations[item.equipment_id].missingQuestions.length} pendente{formValidations[item.equipment_id].missingQuestions.length > 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 sm:px-6">
+                <DynamicFormQuestions 
+                  serviceOrderId={id!}
+                  templateId={item.form_template_id}
+                  onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [item.equipment_id]: result }))}
+                />
+              </CardContent>
+            </Card>
+          )
+        ))}
+
+        {/* Fallback: single questionnaire from OS (legacy / no junction data) */}
+        {isCheckedIn && equipmentItems.length === 0 && serviceOrder.form_template_id && (
           <Card>
             <CardHeader className="pb-3 px-3 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
@@ -448,9 +477,9 @@ export default function TechnicianOS() {
                     serviceOrder.form_template?.name || 'Checklist'
                   )}
                 </span>
-                {!formValidation.isValid && (
+                {formValidations['legacy'] && !formValidations['legacy'].isValid && (
                   <Badge variant="destructive" className="text-xs">
-                    {formValidation.missingQuestions.length} pendente{formValidation.missingQuestions.length > 1 ? 's' : ''}
+                    {formValidations['legacy'].missingQuestions.length} pendente{formValidations['legacy'].missingQuestions.length > 1 ? 's' : ''}
                   </Badge>
                 )}
               </CardTitle>
@@ -459,7 +488,7 @@ export default function TechnicianOS() {
               <DynamicFormQuestions 
                 serviceOrderId={id!}
                 templateId={serviceOrder.form_template_id}
-                onValidationChange={setFormValidation}
+                onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
               />
             </CardContent>
           </Card>
