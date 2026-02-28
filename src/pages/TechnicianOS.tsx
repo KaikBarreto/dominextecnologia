@@ -196,11 +196,11 @@ export default function TechnicianOS() {
   };
 
   const handleFinishOS = async () => {
-    if (serviceOrder?.form_template_id && !formValidation.isValid) {
+    if (!allFormsValid) {
       toast({
         variant: 'destructive',
         title: 'Campos obrigatórios pendentes',
-        description: `Preencha os campos: ${formValidation.missingQuestions.slice(0, 3).join(', ')}${formValidation.missingQuestions.length > 3 ? '...' : ''}`,
+        description: `Preencha os campos: ${allMissingQuestions.slice(0, 3).join(', ')}${allMissingQuestions.length > 3 ? '...' : ''}`,
       });
       return;
     }
