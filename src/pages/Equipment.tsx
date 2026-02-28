@@ -88,7 +88,7 @@ function CategoriesPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
           Categorias de Equipamentos
         </h2>
       </div>

@@ -214,7 +214,7 @@ export default function Finance() {
 
            <Card>
             <CardHeader>
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
                 Todas as Transações
               </CardTitle>
             </CardHeader>

@@ -170,7 +170,7 @@ export default function Dashboard() {
         {/* Financial Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <DollarSign className="h-5 w-5" />
               Fluxo de Caixa
             </CardTitle>
@@ -211,7 +211,7 @@ export default function Dashboard() {
         {/* OS by Type Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <ClipboardList className="h-5 w-5" />
               OS por Tipo
             </CardTitle>
@@ -260,7 +260,7 @@ export default function Dashboard() {
         {/* Recent OS */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <ClipboardList className="h-5 w-5" />
               Ordens de Serviço Recentes
             </CardTitle>
@@ -316,7 +316,7 @@ export default function Dashboard() {
         {/* Status Summary */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
               <Calendar className="h-5 w-5" />
               Resumo por Status
             </CardTitle>
