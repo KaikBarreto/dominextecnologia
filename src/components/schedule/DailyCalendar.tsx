@@ -101,6 +101,30 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
     }
   };
 
+  const getHourFromY = (e: React.DragEvent) => {
+    // Walk up to find the grid container (the relative div)
+    const grid = (e.currentTarget.closest('.relative') || e.currentTarget) as HTMLElement;
+    const rect = grid.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const hourIndex = Math.floor(y / SLOT_HEIGHT);
+    return HOURS[Math.max(0, Math.min(hourIndex, HOURS.length - 1))];
+  };
+
+  const handleCardDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleCardDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const orderId = e.dataTransfer.getData('text/plain');
+    if (orderId) {
+      const hour = getHourFromY(e);
+      onDrop(orderId, dateKey, `${String(hour).padStart(2, '0')}:00`);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
@@ -152,6 +176,8 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                   key={order.id}
                   className="absolute pointer-events-auto px-0.5"
                   style={{ top: topOffset, height, left: `${leftPercent}%`, width: `${widthPercent}%` }}
+                  onDragOver={handleCardDragOver}
+                  onDrop={handleCardDrop}
                 >
                   <EventCard
                     order={order}
