@@ -210,14 +210,12 @@ export default function ServiceOrders() {
                 })}
               </div>
 
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                Lista de OS
+              </h2>
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ClipboardList className="h-5 w-5" />
-                    Lista de OS
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
+                  <div className="p-6">
                   {isLoading ? (
                     <div className="space-y-4">
                       {[...Array(5)].map((_, i) => (
