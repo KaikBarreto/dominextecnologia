@@ -198,7 +198,7 @@ export default function CustomerDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Histórico de OS</h2>
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setOsFormOpen(true)}>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOsFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Nova OS
             </Button>
