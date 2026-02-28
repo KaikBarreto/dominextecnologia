@@ -178,6 +178,7 @@ export function EquipmentPanel() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[60px] text-xs uppercase tracking-wider">Foto</TableHead>
                       <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
                       <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Marca/Modelo</TableHead>
                       <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Cliente</TableHead>
@@ -189,6 +190,15 @@ export function EquipmentPanel() {
                   <TableBody>
                     {filteredEquipment.map((eq) => (
                       <TableRow key={eq.id} className="cursor-pointer" onClick={() => navigate(`/equipamentos/${eq.id}`)}>
+                        <TableCell>
+                          {(eq as any).photo_url ? (
+                            <img src={(eq as any).photo_url} alt={eq.name} className="h-10 w-10 rounded object-cover" />
+                          ) : (
+                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{eq.name}</p>

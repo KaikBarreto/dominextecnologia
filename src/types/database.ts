@@ -33,13 +33,16 @@ export interface Customer {
   id: string;
   customer_type: CustomerType;
   name: string;
+  company_name?: string;
   document?: string;
   email?: string;
   phone?: string;
   address?: string;
+  complement?: string;
   city?: string;
   state?: string;
   zip_code?: string;
+  birth_date?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
