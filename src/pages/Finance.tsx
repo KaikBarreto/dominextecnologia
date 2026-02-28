@@ -212,10 +212,9 @@ export default function Finance() {
             />
           </div>
 
-          <Card>
+           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Todas as Transações
               </CardTitle>
             </CardHeader>
