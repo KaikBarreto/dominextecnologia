@@ -12,7 +12,7 @@ export function AppLayout() {
         <SidebarInset className="flex flex-col">
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <SidebarTrigger className="-ml-1" />
-            <div className="flex items-center gap-2 md:hidden">
+            <div className="flex items-center gap-2 lg:hidden">
               <Snowflake className="h-5 w-5 text-primary" />
               <span className="font-semibold">Glacial Cold</span>
             </div>
