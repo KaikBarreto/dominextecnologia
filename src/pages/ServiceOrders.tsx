@@ -66,6 +66,7 @@ export default function ServiceOrders() {
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
 
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const { statuses } = useOsStatuses();
 
   const filteredOrders = serviceOrders.filter((os) => {
     const matchesSearch =
