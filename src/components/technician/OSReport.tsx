@@ -435,6 +435,18 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           </div>
         </div>
       </div>
+
+      {/* Action buttons at the bottom */}
+      <div className="flex gap-2 print:hidden">
+        <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
+          <Download className="h-4 w-4 mr-2" />
+          {generating ? 'Gerando PDF...' : 'Baixar PDF'}
+        </Button>
+        <Button variant="outline" onClick={() => window.print()}>
+          <Printer className="h-4 w-4 mr-2" />
+          Imprimir
+        </Button>
+      </div>
     </div>
   );
 }
