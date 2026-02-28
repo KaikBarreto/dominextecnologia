@@ -105,11 +105,11 @@ export default function Customers() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                    <TableHead className="hidden sm:table-cell">Contato</TableHead>
-                    <TableHead className="hidden lg:table-cell">Cidade</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
+                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Cidade</TableHead>
+                    <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
