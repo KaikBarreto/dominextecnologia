@@ -207,7 +207,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   if (questions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
-        Nenhuma pergunta configurada para este formulário.
+        Nenhuma pergunta configurada para este questionário.
       </p>
     );
   }

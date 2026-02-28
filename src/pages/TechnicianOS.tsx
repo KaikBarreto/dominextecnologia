@@ -532,7 +532,7 @@ export default function TechnicianOS() {
                 )}
               </CardTitle>
               <CardDescription>
-                Responda as perguntas do formulário de inspeção
+                Responda as perguntas do questionário de inspeção
               </CardDescription>
             </CardHeader>
             <CardContent>
