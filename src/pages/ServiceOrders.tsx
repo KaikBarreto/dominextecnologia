@@ -167,9 +167,9 @@ export default function ServiceOrders() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os status</SelectItem>
-                      {(Object.keys(osStatusLabels) as OsStatus[]).map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {osStatusLabels[status]}
+                      {statusOptions.map((status) => (
+                        <SelectItem key={status.key} value={status.key}>
+                          {status.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
