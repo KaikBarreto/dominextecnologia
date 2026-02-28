@@ -77,14 +77,12 @@ export default function Customers() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Lista de Clientes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+          Lista de Clientes
+        </h2>
+        <Card>
+          <CardContent className="p-0">
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
