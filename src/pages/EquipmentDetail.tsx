@@ -11,13 +11,19 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { cn } from '@/lib/utils';
+import { osStatusLabels } from '@/types/database';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
@@ -35,14 +41,17 @@ export default function EquipmentDetail() {
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
   const { settings: companySettings } = useCompanySettings();
   const { equipment: allEquipment, isLoading: eqLoading } = useEquipment();
+  const { serviceOrders } = useServiceOrders();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [selectedLabelSize, setSelectedLabelSize] = useState<string>('5x8');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
   const equipment = allEquipment.find(eq => eq.id === id);
+  const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
   const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,20 +91,13 @@ export default function EquipmentDetail() {
   }, [equipment, selectedLabelSize, companySettings]);
 
   if (eqLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+    return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
   }
 
   if (!equipment) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/equipamentos')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-        </Button>
+        <Button variant="ghost" onClick={() => navigate('/equipamentos')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
         <p className="text-muted-foreground">Equipamento não encontrado.</p>
       </div>
     );
@@ -104,7 +106,7 @@ export default function EquipmentDetail() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'geral', label: 'Geral' },
     { key: 'anexos', label: 'Anexos' },
-    { key: 'tarefas', label: 'Tarefas' },
+    { key: 'tarefas', label: 'Histórico / Tarefas' },
   ];
 
   return (
@@ -124,7 +126,6 @@ export default function EquipmentDetail() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 border-b">
         {tabs.map((tab) => (
           <button
@@ -132,9 +133,7 @@ export default function EquipmentDetail() {
             onClick={() => setActiveTab(tab.key)}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
-              activeTab === tab.key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+              activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
             {tab.label}
@@ -145,21 +144,15 @@ export default function EquipmentDetail() {
       {/* Geral tab */}
       {activeTab === 'geral' && (
         <div className="space-y-6">
-          {/* QR Code section */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-start gap-6">
-                <div className="shrink-0">
-                  <QRCodeSVG value={qrValue} size={100} />
-                </div>
+                <div className="shrink-0"><QRCodeSVG value={qrValue} size={100} /></div>
                 <div className="flex-1 space-y-2">
-                  {equipment.identifier && (
-                    <p className="text-lg font-mono font-medium">{equipment.identifier}</p>
-                  )}
+                  {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
                   <p className="text-sm text-muted-foreground">QR Code do equipamento</p>
                   <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
-                    <Tag className="mr-2 h-3.5 w-3.5" />
-                    Gerar Etiqueta
+                    <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
                   </Button>
                 </div>
               </div>
@@ -168,61 +161,47 @@ export default function EquipmentDetail() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             {(equipment as any).customer?.name && (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
-                  <p className="text-sm font-medium mt-1">{(equipment as any).customer.name}</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
+                <p className="text-sm font-medium mt-1">{(equipment as any).customer.name}</p>
+              </CardContent></Card>
             )}
             {equipment.brand && (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Marca</p>
-                  <p className="text-sm font-medium mt-1">{equipment.brand}</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Marca</p>
+                <p className="text-sm font-medium mt-1">{equipment.brand}</p>
+              </CardContent></Card>
             )}
             {equipment.model && (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Modelo</p>
-                  <p className="text-sm font-medium mt-1">{equipment.model}</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Modelo</p>
+                <p className="text-sm font-medium mt-1">{equipment.model}</p>
+              </CardContent></Card>
             )}
             {equipment.serial_number && (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Nº de Série</p>
-                  <p className="text-sm font-medium mt-1">{equipment.serial_number}</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Nº de Série</p>
+                <p className="text-sm font-medium mt-1">{equipment.serial_number}</p>
+              </CardContent></Card>
             )}
             {equipment.capacity && (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Capacidade</p>
-                  <p className="text-sm font-medium mt-1">{equipment.capacity}</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Descrição</p>
+                <p className="text-sm font-medium mt-1">{equipment.capacity}</p>
+              </CardContent></Card>
             )}
             {equipment.location && (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Local</p>
-                  <p className="text-sm font-medium mt-1">{equipment.location}</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Local</p>
+                <p className="text-sm font-medium mt-1">{equipment.location}</p>
+              </CardContent></Card>
             )}
           </div>
           {equipment.notes && (
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
-                <p className="text-sm mt-1">{equipment.notes}</p>
-              </CardContent>
-            </Card>
+            <Card><CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
+              <p className="text-sm mt-1">{equipment.notes}</p>
+            </CardContent></Card>
           )}
         </div>
       )}
@@ -233,8 +212,7 @@ export default function EquipmentDetail() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Arquivos anexados</h2>
             <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="mr-2 h-4 w-4" />
-              Enviar arquivo
+              <Upload className="mr-2 h-4 w-4" />Enviar arquivo
             </Button>
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
           </div>
@@ -256,7 +234,8 @@ export default function EquipmentDetail() {
                         <img
                           src={att.file_url}
                           alt={att.file_name}
-                          className="h-10 w-10 rounded object-cover shrink-0"
+                          className="h-10 w-10 rounded object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setPreviewImage(att.file_url)}
                         />
                       ) : (
                         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -276,55 +255,109 @@ export default function EquipmentDetail() {
         </div>
       )}
 
-      {/* Tarefas tab */}
+      {/* Tarefas / Histórico tab */}
       {activeTab === 'tarefas' && (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Nova tarefa..."
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-              className="flex-1"
-            />
-            <Button size="sm" onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
-              <Plus className="h-4 w-4" />
-            </Button>
+        <div className="space-y-6">
+          {/* OS History */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
+              Ordens de Serviço Relacionadas
+            </h2>
+            {equipmentOrders.length === 0 ? (
+              <div className="flex flex-col items-center py-8 text-center">
+                <ClipboardList className="mb-2 h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Nenhuma OS relacionada a este equipamento</p>
+              </div>
+            ) : (
+              <Card><CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                        <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {equipmentOrders.map((os) => (
+                        <TableRow key={os.id}>
+                          <TableCell>
+                            <span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span>
+                            {os.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{os.description}</p>}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{osStatusLabels[os.status]}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {os.scheduled_date ? format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent></Card>
+            )}
           </div>
-          {tasksLoading ? (
-            <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : tasks.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <CheckCircle2 className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhuma tarefa</p>
+
+          {/* Tasks */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Tarefas</h2>
             </div>
-          ) : (
-            <div className="space-y-1">
-              {tasks.map((task) => (
-                <Card key={task.id}>
-                  <CardContent className="flex items-center gap-3 p-3">
-                    <button onClick={() => toggleTask.mutate({ id: task.id, is_completed: !task.is_completed })}>
-                      {task.is_completed
-                        ? <CheckCircle2 className="h-5 w-5 text-primary" />
-                        : <Circle className="h-5 w-5 text-muted-foreground" />}
-                    </button>
-                    <span className={cn('flex-1 text-sm', task.is_completed && 'line-through text-muted-foreground')}>
-                      {task.title}
-                    </span>
-                    {task.due_date && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {task.due_date}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nova tarefa..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                className="flex-1"
+              />
+              <Button size="sm" onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {tasksLoading ? (
+              <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : tasks.length === 0 ? (
+              <div className="flex flex-col items-center py-8 text-center">
+                <CheckCircle2 className="mb-2 h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Nenhuma tarefa</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {tasks.map((task) => (
+                  <Card key={task.id}>
+                    <CardContent className="flex items-center gap-3 p-3">
+                      <button onClick={() => toggleTask.mutate({ id: task.id, is_completed: !task.is_completed })}>
+                        {task.is_completed
+                          ? <CheckCircle2 className="h-5 w-5 text-primary" />
+                          : <Circle className="h-5 w-5 text-muted-foreground" />}
+                      </button>
+                      <span className={cn('flex-1 text-sm', task.is_completed && 'line-through text-muted-foreground')}>
+                        {task.title}
                       </span>
-                    )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteTask.mutate(task.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                      {task.due_date && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />{task.due_date}
+                        </span>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteTask.mutate(task.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -385,12 +418,18 @@ export default function EquipmentDetail() {
           </div>
           <div className="flex justify-end">
             <Button onClick={handleDownloadLabel}>
-              <Download className="mr-2 h-4 w-4" />
-              Imprimir
+              <Download className="mr-2 h-4 w-4" />Imprimir
             </Button>
           </div>
         </div>
       </ResponsiveModal>
+
+      {/* Image preview */}
+      <ImagePreviewModal
+        src={previewImage || ''}
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }
