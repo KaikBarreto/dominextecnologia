@@ -565,6 +565,37 @@ export default function TechnicianOS() {
           </Card>
         )}
 
+        {/* Signatures */}
+        {((serviceOrder as any)?.require_tech_signature || (serviceOrder as any)?.require_client_signature) && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <PenTool className="h-4 w-4" />
+                Assinaturas
+              </CardTitle>
+              <CardDescription>Assinaturas obrigatórias para finalizar a OS</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(serviceOrder as any)?.require_tech_signature && (
+                <SignaturePad
+                  value={techSignature}
+                  onChange={setTechSignature}
+                  label="Assinatura do Técnico"
+                  disabled={!!checkOutTime}
+                />
+              )}
+              {(serviceOrder as any)?.require_client_signature && (
+                <SignaturePad
+                  value={clientSignature}
+                  onChange={setClientSignature}
+                  label="Assinatura do Cliente"
+                  disabled={!!checkOutTime}
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Service Details Form */}
         <Card>
           <CardHeader className="pb-3">
