@@ -204,6 +204,7 @@ export default function Customers() {
               onPageChange={pagination.setPage}
               onPageSizeChange={pagination.setPageSize}
             />
+            </>
           )}
           </div>
         </CardContent>
