@@ -160,7 +160,6 @@ Design Premium com Azul da Marca #1565C0
 
 /* Print styles for OS Report - clean, no browser chrome */
 @media print {
-  /* Hide everything except the report */
   html, body {
     margin: 0 !important;
     padding: 0 !important;
@@ -181,11 +180,33 @@ Design Premium com Azul da Marca #1565C0
     padding: 0;
     border-radius: 0 !important;
   }
-  .print\\:hidden {
+  .print\:hidden {
     display: none !important;
   }
 
-  /* Remove browser header/footer (date, title, URL) */
+  /* Force all text to be dark/black for print */
+  .print-report,
+  .print-report * {
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print-report h1,
+  .print-report h2,
+  .print-report h3,
+  .print-report p,
+  .print-report span,
+  .print-report div {
+    color: #000 !important;
+  }
+  /* Keep white text on dark/colored backgrounds */
+  .print-report [class*="bg-gradient"],
+  .print-report [class*="bg-gradient"] *,
+  .print-report [class*="bg-emerald"],
+  .print-report [class*="bg-emerald"] * {
+    color: #fff !important;
+  }
+
   @page {
     margin: 0;
     size: A4;
