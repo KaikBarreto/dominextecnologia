@@ -19,13 +19,13 @@ export function ResponsiveModal({ open, onOpenChange, title, children, className
   if (isCompact) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent className="max-h-[90vh]">
           <DrawerHeader>
             <DrawerTitle>{title}</DrawerTitle>
           </DrawerHeader>
-          <ScrollArea className={cn("px-4 pb-6 max-h-[75vh]", className)}>
+          <div className={cn("px-4 pb-6 overflow-y-auto", className)} style={{ maxHeight: 'calc(90vh - 80px)' }}>
             {children}
-          </ScrollArea>
+          </div>
         </DrawerContent>
       </Drawer>
     );
