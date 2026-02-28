@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EventCard, getStatusBadgeClass } from './EventCard';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
+
 
 const osTypeLabels: Record<OsType, string> = {
   manutencao_preventiva: 'Manutenção Preventiva',
@@ -34,6 +36,7 @@ function OrderDetail({
   onBack: () => void;
   onEdit?: () => void;
 }) {
+  const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
 
   return (
@@ -101,10 +104,17 @@ function OrderDetail({
             </div>
           )}
           {onEdit && (
-            <Button onClick={onEdit} className="w-full mt-4">
+            <Button onClick={onEdit} variant="outline" className="w-full mt-4">
               Editar OS
             </Button>
           )}
+          <Button 
+            onClick={() => navigate(`/os-tecnico/${order.id}`)} 
+            className="w-full mt-2"
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Preencher OS
+          </Button>
         </div>
       </ScrollArea>
     </>
