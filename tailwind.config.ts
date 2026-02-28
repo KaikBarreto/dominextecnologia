@@ -88,7 +88,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Lufga", "system-ui", "sans-serif"],
+        sans: ["Montserrat", "system-ui", "sans-serif"],
       },
       boxShadow: {
         "brand-glow": "0 0 20px -5px hsl(33 77% 68% / 0.3)",

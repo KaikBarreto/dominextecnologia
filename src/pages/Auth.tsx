@@ -1,214 +1,134 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
 import logoWhite from '@/assets/logo-white.png';
 import loginBg from '@/assets/login-bg.jpg';
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  rememberMe: z.boolean().default(false),
 });
 
-const signupSchema = z.object({
-  fullName: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Senhas não conferem',
-  path: ['confirmPassword'],
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-type SignupFormData = z.infer<typeof signupSchema>;
+type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const loginForm = useForm<LoginFormData>({
+  const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      email: localStorage.getItem('rememberedEmail') || '',
       password: '',
+      rememberMe: !!localStorage.getItem('rememberedEmail'),
     },
   });
 
-  const signupForm = useForm<SignupFormData>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      fullName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
-  });
-
-  const handleLogin = async (data: LoginFormData) => {
+  const handleLogin = async (data: LoginForm) => {
     setIsLoading(true);
+    setAuthError(null);
+
     try {
       const { error } = await signIn(data.email, data.password);
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
-          toast({
-            variant: 'destructive',
-            title: 'Erro no login',
-            description: 'Email ou senha incorretos',
-          });
+          setAuthError('Email ou senha incorretos. Verifique suas credenciais e tente novamente.');
         } else if (error.message.includes('Email not confirmed')) {
-          toast({
-            variant: 'destructive',
-            title: 'Email não confirmado',
-            description: 'Por favor, confirme seu email antes de fazer login',
-          });
+          setAuthError('Email não confirmado. Verifique sua caixa de entrada.');
         } else {
-          toast({
-            variant: 'destructive',
-            title: 'Erro no login',
-            description: error.message,
-          });
+          setAuthError(error.message);
         }
-      } else {
-        toast({
-          title: 'Bem-vindo!',
-          description: 'Login realizado com sucesso',
-        });
-        navigate('/dashboard');
+        return;
       }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Ocorreu um erro inesperado',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleSignup = async (data: SignupFormData) => {
-    setIsLoading(true);
-    try {
-      const { error } = await signUp(data.email, data.password, data.fullName);
-      if (error) {
-        if (error.message.includes('User already registered')) {
-          toast({
-            variant: 'destructive',
-            title: 'Usuário já existe',
-            description: 'Este email já está cadastrado. Tente fazer login.',
-          });
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Erro no cadastro',
-            description: error.message,
-          });
-        }
+      // Remember email
+      if (data.rememberMe) {
+        localStorage.setItem('rememberedEmail', data.email);
       } else {
-        toast({
-          title: 'Cadastro realizado!',
-          description: 'Verifique seu email para confirmar o cadastro',
-        });
-        signupForm.reset();
+        localStorage.removeItem('rememberedEmail');
       }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Ocorreu um erro inesperado',
-      });
+
+      toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
+      navigate('/dashboard');
+    } catch {
+      setAuthError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div 
+    <div
       className="flex min-h-screen items-center justify-center p-4"
       style={{
         backgroundImage: `url(${loginBg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
       }}
     >
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
-          <img 
-            src={logoWhite} 
-            alt="Glacial Cold Brasil" 
-            className="h-16 w-auto mb-2"
-          />
-          <p className="text-white/80">Sistema de Gestão</p>
+          <img src={logoWhite} alt="Glacial Cold Brasil" className="h-16 w-auto mb-2" />
+          <p className="text-white/80 text-sm">Sistema de Gestão</p>
         </div>
 
         <Card className="border-0 bg-black/60 backdrop-blur-md shadow-2xl">
-          <Tabs defaultValue="login" className="w-full">
-            <CardHeader className="pb-4">
-              <TabsList className="grid w-full grid-cols-2 bg-white/10">
-                <TabsTrigger 
-                  value="login" 
-                  className="text-white data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  Entrar
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="signup"
-                  className="text-white data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  Cadastrar
-                </TabsTrigger>
-              </TabsList>
-            </CardHeader>
+          <CardContent className="p-8">
+            {showForgotPassword ? (
+              <ForgotPasswordFlow
+                initialEmail={form.getValues('email')}
+                onBack={() => setShowForgotPassword(false)}
+              />
+            ) : (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h1 className="text-xl font-semibold text-white uppercase tracking-widest">Login</h1>
+                </div>
 
-            <CardContent>
-              <TabsContent value="login" className="mt-0">
-                <CardTitle className="mb-2 text-lg text-white">Bem-vindo de volta</CardTitle>
-                <CardDescription className="mb-6 text-white/70">
-                  Entre com suas credenciais para acessar o sistema
-                </CardDescription>
+                {authError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{authError}</AlertDescription>
+                  </Alert>
+                )}
 
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
                     <FormField
-                      control={loginForm.control}
+                      control={form.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-white">Email</FormLabel>
+                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Email</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
-                                placeholder="seu@email.com"
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
+                                type="email"
+                                placeholder="seu@email.com"
+                                autoComplete="email"
+                                autoFocus
+                                disabled={isLoading}
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                               />
                             </div>
                           </FormControl>
@@ -218,20 +138,30 @@ export default function Auth() {
                     />
 
                     <FormField
-                      control={loginForm.control}
+                      control={form.control}
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-white">Senha</FormLabel>
+                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Senha</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                               <Input
-                                type="password"
-                                placeholder="••••••••"
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                                 {...field}
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                autoComplete="current-password"
+                                disabled={isLoading}
+                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                               />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                                disabled={isLoading}
+                              >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -239,7 +169,37 @@ export default function Auth() {
                       )}
                     />
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <div className="flex items-center justify-between">
+                      <FormField
+                        control={form.control}
+                        name="rememberMe"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={isLoading}
+                                className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                              />
+                            </FormControl>
+                            <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60 cursor-pointer">
+                              Lembrar-me
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors"
+                        disabled={isLoading}
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
+
+                    <Button type="submit" className="w-full uppercase tracking-widest text-sm font-semibold" disabled={isLoading}>
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -251,120 +211,20 @@ export default function Auth() {
                     </Button>
                   </form>
                 </Form>
-              </TabsContent>
 
-              <TabsContent value="signup" className="mt-0">
-                <CardTitle className="mb-2 text-lg text-white">Criar conta</CardTitle>
-                <CardDescription className="mb-6 text-white/70">
-                  Preencha os dados para criar sua conta
-                </CardDescription>
-
-                <Form {...signupForm}>
-                  <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
-                    <FormField
-                      control={signupForm.control}
-                      name="fullName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-white">Nome completo</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                              <Input
-                                placeholder="Seu nome"
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                {...field}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={signupForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-white">Email</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                              <Input
-                                placeholder="seu@email.com"
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                {...field}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={signupForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-white">Senha</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                              <Input
-                                type="password"
-                                placeholder="••••••••"
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                {...field}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={signupForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-white">Confirmar senha</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                              <Input
-                                type="password"
-                                placeholder="••••••••"
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                {...field}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Cadastrando...
-                        </>
-                      ) : (
-                        'Criar conta'
-                      )}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-            </CardContent>
-          </Tabs>
+                {/* Registration Link */}
+                <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
+                  Ainda não tem conta?{' '}
+                  <Link to="/cadastro" className="text-white font-bold hover:text-primary transition-colors">
+                    Cadastre-se
+                  </Link>
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
-        <p className="mt-6 text-center text-sm text-white/60">
+        <p className="mt-6 text-center text-[10px] text-white/40">
           © {new Date().getFullYear()} Glacial Cold Brasil. Todos os direitos reservados.
         </p>
       </div>
