@@ -358,9 +358,25 @@ export default function ServiceOrders() {
       {/* Kanban View */}
       {viewMode === 'kanban' && (
         <>
-          <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
-            Kanban
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
+              OS por Status
+            </h2>
+            <div className="flex rounded-lg border overflow-hidden">
+              <button
+                className={cn('px-3 py-2 text-sm', viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                onClick={() => setViewMode('list')}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button
+                className={cn('px-3 py-2 text-sm', viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                onClick={() => setViewMode('kanban')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
           <div className="flex gap-4 overflow-x-auto pb-4">
             {kanbanColumns.map((col) => {
               const columnOrders = filteredOrders.filter((os) => os.status === col.key);
