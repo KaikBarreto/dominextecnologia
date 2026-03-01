@@ -551,7 +551,8 @@ export function PmocPlanFormDialog({ open, onOpenChange, plan }: PmocPlanFormDia
                   🗓️ Serão geradas {totalOsToGenerate} OSs automaticamente
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {previewDates.length} datas × {selectedEquipmentIds.length || 1} equipamento(s) nos próximos {horizonMonths} meses
+                  {previewDates.length} datas nos próximos {horizonMonths} meses
+                  {selectedEquipmentIds.length > 0 && ` • ${selectedEquipmentIds.length} equipamento(s) vinculado(s) a cada OS`}
                 </p>
               </div>
             )}
