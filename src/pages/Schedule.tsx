@@ -199,6 +199,9 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              movingOrderId={touchDrag.movingOrderId}
+              onTouchPickUp={touchDrag.pickUp}
+              onTouchDrop={touchDrag.dropOn}
             />
           )}
           {viewMode === 'day' && (
@@ -208,6 +211,9 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              movingOrderId={touchDrag.movingOrderId}
+              onTouchPickUp={touchDrag.pickUp}
+              onTouchDrop={touchDrag.dropOn}
             />
           )}
         </div>
