@@ -90,7 +90,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
       className={cn(
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
         fillHeight && 'h-full',
-        !bgColor && 'border bg-card hover:border-primary/30'
+        !bgColor && 'border bg-card hover:border-primary/30',
+        isMoving && 'ring-2 ring-primary ring-offset-1 animate-pulse'
       )}
       style={bgColor ? { backgroundColor: bgColor, color: 'white' } : undefined}
     >
