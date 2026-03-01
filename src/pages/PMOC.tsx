@@ -439,6 +439,14 @@ export default function PMOC() {
       {/* Dialogs */}
       <PmocPlanFormDialog open={planDialogOpen} onOpenChange={setPlanDialogOpen} plan={editingPlan} />
       <PmocContractFormDialog open={contractDialogOpen} onOpenChange={setContractDialogOpen} contract={editingContract} />
+      {postponeData && (
+        <PmocPostponeDialog
+          open={!!postponeData}
+          onOpenChange={(open) => !open && setPostponeData(null)}
+          plan={postponeData.plan}
+          generatedOs={postponeData.os}
+        />
+      )}
 
       {/* Delete future OSs confirmation */}
       <AlertDialog open={!!deleteFutureOsDialog} onOpenChange={() => setDeleteFutureOsDialog(null)}>
