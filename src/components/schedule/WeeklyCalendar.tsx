@@ -3,6 +3,7 @@ import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
 
@@ -12,6 +13,9 @@ interface WeeklyCalendarProps {
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onSlotClick: (date: string, time: string) => void;
   onDrop: (orderId: string, date: string, time: string) => void;
+  movingOrderId?: string | null;
+  onTouchPickUp?: (orderId: string) => void;
+  onTouchDrop?: (date: string, time: string) => void;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
@@ -53,7 +57,8 @@ function layoutCascade(
   return items;
 }
 
-export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop }: WeeklyCalendarProps) {
+  const isMobile = useIsMobile();
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -94,8 +99,8 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden max-w-full">
+      <div className="overflow-x-auto max-w-full">
       {/* Days header */}
       <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] border-b bg-muted/30 min-w-[820px]">
         <div className="py-3 text-center text-xs font-medium text-muted-foreground" />
@@ -141,6 +146,10 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                     )}
                     style={{ height: SLOT_HEIGHT }}
                     onClick={() => {
+                      if (isMobile && movingOrderId && onTouchDrop) {
+                        onTouchDrop(dateKey, `${String(hour).padStart(2, '0')}:00`);
+                        return;
+                      }
                       const cellOrders = (ordersByDate[dateKey] || []).filter(o => {
                         const h = parseInt(o.scheduled_time!.split(':')[0], 10);
                         return h === hour;
@@ -196,11 +205,18 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                       <EventCard
                         order={order}
                         compact
-                        onClick={() => onOrderSelect(order)}
-                        draggable
+                        onClick={() => {
+                          if (isMobile && onTouchPickUp) {
+                            onTouchPickUp(order.id);
+                          } else {
+                            onOrderSelect(order);
+                          }
+                        }}
+                        draggable={!isMobile}
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
                         fillHeight
                         colorShift={index}
+                        isMoving={movingOrderId === order.id}
                       />
                     </div>
                   );

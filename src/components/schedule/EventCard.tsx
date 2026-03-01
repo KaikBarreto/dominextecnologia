@@ -10,7 +10,8 @@ interface EventCardProps {
   onClick?: () => void;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
-  colorShift?: number; // 0-based index to vary color for same-type overlapping events
+  colorShift?: number;
+  isMoving?: boolean;
 }
 
 const osTypeLabels: Record<OsType, string> = {
@@ -48,7 +49,7 @@ function getShiftedColor(hex: string, shift: number): string {
   return `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`;
 }
 
-export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0 }: EventCardProps) {
+export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false }: EventCardProps) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
 
   const serviceTypeColor = (order as any).service_type?.color;
@@ -62,7 +63,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         className={cn(
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
-          !serviceTypeColor && statusBadge.className
+          !serviceTypeColor && statusBadge.className,
+          isMoving && 'ring-2 ring-primary ring-offset-1 animate-pulse'
         )}
         style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
       >
@@ -88,7 +90,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
       className={cn(
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
         fillHeight && 'h-full',
-        !bgColor && 'border bg-card hover:border-primary/30'
+        !bgColor && 'border bg-card hover:border-primary/30',
+        isMoving && 'ring-2 ring-primary ring-offset-1 animate-pulse'
       )}
       style={bgColor ? { backgroundColor: bgColor, color: 'white' } : undefined}
     >

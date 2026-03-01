@@ -13,6 +13,9 @@ interface DailyCalendarProps {
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onSlotClick: (date: string, time: string) => void;
   onDrop: (orderId: string, date: string, time: string) => void;
+  movingOrderId?: string | null;
+  onTouchPickUp?: (orderId: string) => void;
+  onTouchDrop?: (date: string, time: string) => void;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
@@ -87,7 +90,7 @@ function layoutOverlapping(
   return items;
 }
 
-export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: DailyCalendarProps) {
+export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isMobile = useIsMobile();
 
@@ -155,6 +158,10 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               className="flex transition-colors hover:bg-accent/30 cursor-pointer"
               style={{ height: SLOT_HEIGHT }}
               onClick={() => {
+                if (isMobile && movingOrderId && onTouchDrop) {
+                  onTouchDrop(dateKey, `${String(hour).padStart(2, '0')}:00`);
+                  return;
+                }
                 const hasOrders = dayOrders.some(o => {
                   const h = parseInt(o.scheduled_time!.split(':')[0], 10);
                   return h === hour;
@@ -193,9 +200,16 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                   >
                     <EventCard
                       order={order}
-                      onClick={() => onOrderSelect(order)}
+                      onClick={() => {
+                        if (onTouchPickUp) {
+                          onTouchPickUp(order.id);
+                        } else {
+                          onOrderSelect(order);
+                        }
+                      }}
                       fillHeight
                       colorShift={col}
+                      isMoving={movingOrderId === order.id}
                     />
                   </div>
                 );

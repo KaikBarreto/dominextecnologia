@@ -14,6 +14,7 @@ import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -115,6 +116,8 @@ export default function Schedule() {
     });
   };
 
+  const touchDrag = useTouchDragDrop(handleDrop);
+
   const handleCloseForm = (open: boolean) => {
     if (!open) {
       setIsFormOpen(false);
@@ -178,6 +181,14 @@ export default function Schedule() {
           </Tabs>
         </div>
 
+        {/* Moving indicator */}
+        {touchDrag.movingOrderId && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 border border-primary/30">
+            <span className="text-xs font-medium text-primary">Toque no horário para mover a OS</span>
+            <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={touchDrag.cancel}>Cancelar</Button>
+          </div>
+        )}
+
         {/* Calendar */}
         <div className="rounded-xl border bg-card overflow-hidden">
           {viewMode === 'month' && (
@@ -196,6 +207,9 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              movingOrderId={touchDrag.movingOrderId}
+              onTouchPickUp={touchDrag.pickUp}
+              onTouchDrop={touchDrag.dropOn}
             />
           )}
           {viewMode === 'day' && (
@@ -205,6 +219,9 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              movingOrderId={touchDrag.movingOrderId}
+              onTouchPickUp={touchDrag.pickUp}
+              onTouchDrop={touchDrag.dropOn}
             />
           )}
         </div>
