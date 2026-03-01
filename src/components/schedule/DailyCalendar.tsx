@@ -200,9 +200,16 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                   >
                     <EventCard
                       order={order}
-                      onClick={() => onOrderSelect(order)}
+                      onClick={() => {
+                        if (onTouchPickUp) {
+                          onTouchPickUp(order.id);
+                        } else {
+                          onOrderSelect(order);
+                        }
+                      }}
                       fillHeight
                       colorShift={col}
+                      isMoving={movingOrderId === order.id}
                     />
                   </div>
                 );
