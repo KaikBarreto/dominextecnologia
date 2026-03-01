@@ -11,6 +11,8 @@ import { usePmocPlans, type PmocPlan } from '@/hooks/usePmocPlans';
 import { usePmocContracts, type PmocContract } from '@/hooks/usePmocContracts';
 import { PmocPlanFormDialog } from '@/components/pmoc/PmocPlanFormDialog';
 import { PmocContractFormDialog } from '@/components/pmoc/PmocContractFormDialog';
+import { PmocPostponeDialog } from '@/components/pmoc/PmocPostponeDialog';
+import type { PmocGeneratedOs } from '@/hooks/usePmocPlans';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { format, addMonths, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
