@@ -146,6 +146,10 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                     )}
                     style={{ height: SLOT_HEIGHT }}
                     onClick={() => {
+                      if (isMobile && movingOrderId && onTouchDrop) {
+                        onTouchDrop(dateKey, `${String(hour).padStart(2, '0')}:00`);
+                        return;
+                      }
                       const cellOrders = (ordersByDate[dateKey] || []).filter(o => {
                         const h = parseInt(o.scheduled_time!.split(':')[0], 10);
                         return h === hour;
