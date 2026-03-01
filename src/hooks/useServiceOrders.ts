@@ -55,7 +55,7 @@ export function useServiceOrders() {
         .from('service_orders')
         .select(`
           *,
-          customer:customers(id, name, phone, address, city),
+          customer:customers(id, name, phone, email, document, address, complement, city, state, zip_code, company_name, customer_type),
           equipment:equipment(id, name, brand, model),
           form_template:form_templates(id, name),
           service_type:service_types(id, name, color, number_prefix)
