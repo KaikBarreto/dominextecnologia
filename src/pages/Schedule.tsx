@@ -116,6 +116,8 @@ export default function Schedule() {
     });
   };
 
+  const touchDrag = useTouchDragDrop(handleDrop);
+
   const handleCloseForm = (open: boolean) => {
     if (!open) {
       setIsFormOpen(false);
