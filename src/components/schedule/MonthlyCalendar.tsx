@@ -11,6 +11,7 @@ import {
   isSameMonth,
   isSameDay,
 } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { EventCard } from './EventCard';
 
@@ -43,6 +44,8 @@ export function MonthlyCalendar({
   onOrderSelect,
   onDrop,
 }: MonthlyCalendarProps) {
+  const isMobile = useIsMobile();
+
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -82,8 +85,82 @@ export function MonthlyCalendar({
     if (orderId && onDrop) onDrop(orderId, dateKey, time);
   };
 
-  const weekDays = ['DOM.', 'SEG.', 'TER.', 'QUA.', 'QUI.', 'SEX.', 'SÁB.'];
+  const weekDaysMobile = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const weekDaysDesktop = ['DOM.', 'SEG.', 'TER.', 'QUA.', 'QUI.', 'SEX.', 'SÁB.'];
+  const weekDays = isMobile ? weekDaysMobile : weekDaysDesktop;
 
+  // Mobile: compact dot-based calendar like reference
+  if (isMobile) {
+    return (
+      <div className="flex flex-col bg-card rounded-xl border shadow-sm overflow-hidden">
+        {/* Week Days Header */}
+        <div className="grid grid-cols-7 border-b bg-muted/50">
+          {weekDays.map((day, i) => (
+            <div
+              key={i}
+              className="py-2 text-center text-xs font-semibold text-muted-foreground uppercase"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar Grid - compact */}
+        <div className="grid grid-cols-7">
+          {calendarDays.map((day, idx) => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const dayOrders = ordersByDate[dateKey] || [];
+            const isCurrentMonth = isSameMonth(day, currentDate);
+            const isToday = isSameDay(day, new Date());
+            const isSelected = isSameDay(day, currentDate);
+
+            return (
+              <div
+                key={idx}
+                onClick={() => onDateSelect?.(day)}
+                className={cn(
+                  'flex flex-col items-center justify-center py-2.5 cursor-pointer transition-colors',
+                  !isCurrentMonth && 'opacity-30',
+                  'hover:bg-accent/50'
+                )}
+              >
+                <span
+                  className={cn(
+                    'text-sm font-medium w-8 h-8 flex items-center justify-center rounded-lg',
+                    isToday && !isSelected && 'text-primary font-bold',
+                    isSelected && 'bg-primary text-primary-foreground rounded-lg'
+                  )}
+                >
+                  {format(day, 'd')}
+                </span>
+                {/* Dots for orders */}
+                {dayOrders.length > 0 && (
+                  <div className="flex gap-0.5 mt-1 h-2">
+                    {dayOrders.slice(0, 3).map((order) => {
+                      const color = (order as any).service_type?.color || 'hsl(var(--primary))';
+                      return (
+                        <div
+                          key={order.id}
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                      );
+                    })}
+                    {dayOrders.length > 3 && (
+                      <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
+                    )}
+                  </div>
+                )}
+                {dayOrders.length === 0 && <div className="h-2 mt-1" />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: full calendar with EventCards
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
       {/* Week Days Header */}
@@ -157,8 +234,6 @@ export function MonthlyCalendar({
           );
         })}
       </div>
-
-      {/* Legend removed - now in ScheduleHeader */}
     </div>
   );
 }
