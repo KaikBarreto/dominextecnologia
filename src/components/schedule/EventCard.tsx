@@ -63,7 +63,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         className={cn(
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
-          !serviceTypeColor && statusBadge.className
+          !serviceTypeColor && statusBadge.className,
+          isMoving && 'ring-2 ring-primary ring-offset-1 animate-pulse'
         )}
         style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
       >
