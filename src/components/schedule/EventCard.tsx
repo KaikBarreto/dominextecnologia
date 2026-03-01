@@ -10,7 +10,8 @@ interface EventCardProps {
   onClick?: () => void;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
-  colorShift?: number; // 0-based index to vary color for same-type overlapping events
+  colorShift?: number;
+  isMoving?: boolean;
 }
 
 const osTypeLabels: Record<OsType, string> = {
