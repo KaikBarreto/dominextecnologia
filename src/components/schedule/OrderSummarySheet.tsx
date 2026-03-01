@@ -106,6 +106,16 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
             <span className="break-words min-w-0">{order.customer?.name || 'Cliente não informado'}</span>
           </div>
 
+          {(order.customer?.company_name || order.customer?.customer_type) && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground pl-6">
+              <Building2 className="h-3 w-3 shrink-0" />
+              <span>
+                {order.customer?.company_name || 'Pessoa Física'}
+                {order.customer?.customer_type && ` • ${String(order.customer.customer_type).toUpperCase()}`}
+              </span>
+            </div>
+          )}
+
           {order.customer?.document && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground pl-6">
               <Building2 className="h-3 w-3 shrink-0" />
