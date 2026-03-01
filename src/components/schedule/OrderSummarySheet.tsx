@@ -44,23 +44,31 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
   useEffect(() => {
     const fetchEquipment = async () => {
-      // Fetch from service_order_equipment junction table
-      const { data } = await supabase
+      const { data: links } = await supabase
         .from('service_order_equipment')
-        .select('equipment_id, equipment:equipment(*)')
+        .select('equipment_id')
         .eq('service_order_id', order.id);
-      
-      if (data && data.length > 0) {
-        setAllEquipment(data.map((d: any) => d.equipment));
-      } else if (order.equipment) {
-        // Fallback to single equipment from FK
-        setAllEquipment([order.equipment]);
-      } else {
+
+      const linkIds = (links || []).map((l: any) => l.equipment_id).filter(Boolean);
+      const fallbackIds = order.equipment?.id ? [order.equipment.id] : [];
+      const uniqueIds = Array.from(new Set([...linkIds, ...fallbackIds]));
+
+      if (uniqueIds.length === 0) {
         setAllEquipment([]);
+        return;
       }
+
+      const { data: equipmentRows } = await supabase
+        .from('equipment')
+        .select('*')
+        .in('id', uniqueIds);
+
+      const byId = new Map((equipmentRows || []).map((eq: any) => [eq.id, eq]));
+      setAllEquipment(uniqueIds.map((id) => byId.get(id)).filter(Boolean));
     };
+
     fetchEquipment();
-  }, [order.id, order.equipment]);
+  }, [order.id, order.equipment?.id]);
 
   const mapsUrl = buildGoogleMapsUrl(order.customer);
   const fullAddress = [
