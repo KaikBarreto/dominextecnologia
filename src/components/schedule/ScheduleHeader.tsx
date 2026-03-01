@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Plus, Filter } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -56,6 +57,7 @@ export function ScheduleHeader({
 }: ScheduleHeaderProps) {
   const hasActiveFilters = technicianFilter !== 'all' || customerFilter !== 'all' || statusFilter !== 'all';
   const { serviceTypes } = useServiceTypes();
+  const isMobile = useIsMobile();
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -79,7 +81,7 @@ export function ScheduleHeader({
           <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as ViewMode)}>
             <TabsList className="h-9">
               <TabsTrigger value="month" className="text-xs px-3">Mês</TabsTrigger>
-              <TabsTrigger value="week" className="text-xs px-3">Semana</TabsTrigger>
+              {!isMobile && <TabsTrigger value="week" className="text-xs px-3">Semana</TabsTrigger>}
               <TabsTrigger value="day" className="text-xs px-3">Dia</TabsTrigger>
             </TabsList>
           </Tabs>
