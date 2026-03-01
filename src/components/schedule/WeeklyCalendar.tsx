@@ -205,11 +205,18 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                       <EventCard
                         order={order}
                         compact
-                        onClick={() => onOrderSelect(order)}
-                        draggable
+                        onClick={() => {
+                          if (isMobile && onTouchPickUp) {
+                            onTouchPickUp(order.id);
+                          } else {
+                            onOrderSelect(order);
+                          }
+                        }}
+                        draggable={!isMobile}
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
                         fillHeight
                         colorShift={index}
+                        isMoving={movingOrderId === order.id}
                       />
                     </div>
                   );
