@@ -90,7 +90,7 @@ function layoutOverlapping(
   return items;
 }
 
-export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: DailyCalendarProps) {
+export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isMobile = useIsMobile();
 
