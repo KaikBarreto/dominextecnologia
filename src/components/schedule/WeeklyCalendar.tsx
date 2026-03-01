@@ -54,7 +54,7 @@ function layoutCascade(
 }
 
 export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: WeeklyCalendarProps) {
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const ordersByDate = useMemo(() => {

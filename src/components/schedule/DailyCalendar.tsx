@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
 
@@ -16,6 +17,7 @@ interface DailyCalendarProps {
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
 const SLOT_HEIGHT = 80; // px per hour
+const CASCADE_OFFSET = 28; // px offset for each overlapping card in cascade mode
 
 type PositionedOrder = {
   order: (ServiceOrder & { customer: any; equipment: any });
@@ -26,7 +28,8 @@ type PositionedOrder = {
 };
 
 function layoutOverlapping(
-  dayOrders: (ServiceOrder & { customer: any; equipment: any })[]
+  dayOrders: (ServiceOrder & { customer: any; equipment: any })[],
+  useCascade: boolean
 ): PositionedOrder[] {
   const items = dayOrders.map((order) => {
     const [h, m] = order.scheduled_time!.split(':').map(Number);
@@ -49,26 +52,36 @@ function layoutOverlapping(
     if (!placed) clusters.push([item]);
   }
 
-  // Assign columns within each cluster
-  for (const cluster of clusters) {
-    const cols: number[][] = []; // cols[colIndex] = array of endMin
-    for (const item of cluster) {
-      let assigned = false;
-      for (let c = 0; c < cols.length; c++) {
-        if (cols[c].every(end => end <= item.startMin)) {
-          item.col = c;
-          cols[c].push(item.endMin);
-          assigned = true;
-          break;
+  if (useCascade) {
+    // Cascade: assign col as depth index
+    for (const cluster of clusters) {
+      cluster.forEach((item, i) => {
+        item.col = i;
+        item.totalCols = cluster.length;
+      });
+    }
+  } else {
+    // Side-by-side columns
+    for (const cluster of clusters) {
+      const cols: number[][] = [];
+      for (const item of cluster) {
+        let assigned = false;
+        for (let c = 0; c < cols.length; c++) {
+          if (cols[c].every(end => end <= item.startMin)) {
+            item.col = c;
+            cols[c].push(item.endMin);
+            assigned = true;
+            break;
+          }
+        }
+        if (!assigned) {
+          item.col = cols.length;
+          cols.push([item.endMin]);
         }
       }
-      if (!assigned) {
-        item.col = cols.length;
-        cols.push([item.endMin]);
-      }
+      const totalCols = cols.length;
+      for (const item of cluster) item.totalCols = totalCols;
     }
-    const totalCols = cols.length;
-    for (const item of cluster) item.totalCols = totalCols;
   }
 
   return items;
@@ -76,12 +89,13 @@ function layoutOverlapping(
 
 export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
+  const isMobile = useIsMobile();
 
   const dayOrders = useMemo(() => {
     return orders.filter(o => o.scheduled_date === dateKey && o.scheduled_time);
   }, [orders, dateKey]);
 
-  const positionedOrders = useMemo(() => layoutOverlapping(dayOrders), [dayOrders]);
+  const positionedOrders = useMemo(() => layoutOverlapping(dayOrders, isMobile), [dayOrders, isMobile]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -102,7 +116,6 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
   };
 
   const getHourFromY = (e: React.DragEvent) => {
-    // Walk up to find the grid container (the relative div)
     const grid = (e.currentTarget.closest('.relative') || e.currentTarget) as HTMLElement;
     const rect = grid.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -166,6 +179,29 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               const minute = startMin % 60;
               const duration = endMin - startMin;
 
+              if (isMobile) {
+                // Cascade layout: full width, offset vertically
+                const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT + (col * CASCADE_OFFSET);
+                const height = Math.max((duration / 60) * SLOT_HEIGHT - (col * CASCADE_OFFSET), 28);
+                return (
+                  <div
+                    key={order.id}
+                    className="absolute left-0.5 right-0.5 pointer-events-auto"
+                    style={{ top: topOffset, height, zIndex: col + 1 }}
+                    onDragOver={handleCardDragOver}
+                    onDrop={handleCardDrop}
+                  >
+                    <EventCard
+                      order={order}
+                      onClick={() => onOrderSelect(order)}
+                      fillHeight
+                      colorShift={col}
+                    />
+                  </div>
+                );
+              }
+
+              // Desktop: side-by-side columns
               const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT;
               const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
               const widthPercent = 100 / totalCols;
