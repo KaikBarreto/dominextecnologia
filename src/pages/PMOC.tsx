@@ -396,22 +396,37 @@ export default function PMOC() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                      {generatedHistory.slice(0, 20).map(g => (
-                        <div key={g.id} className="flex items-center justify-between rounded-lg border p-3">
-                          <div>
-                            <p className="text-sm font-medium">{g.planName}</p>
-                            <p className="text-xs text-muted-foreground">{g.customerName} • Agendada para {format(new Date(g.scheduled_for), 'dd/MM/yyyy')}</p>
+                      {generatedHistory.slice(0, 20).map(g => {
+                        const isPending = g.service_orders?.status === 'pendente';
+                        const parentPlan = plans.find(p => p.id === g.plan_id);
+                        return (
+                          <div key={g.id} className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                              <p className="text-sm font-medium">{g.planName}</p>
+                              <p className="text-xs text-muted-foreground">{g.customerName} • Agendada para {format(new Date(g.scheduled_for), 'dd/MM/yyyy')}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">OS #{g.service_orders?.order_number || '?'}</Badge>
+                              {isPending && parentPlan && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-warning hover:text-warning"
+                                  title="Adiar esta OS"
+                                  onClick={() => setPostponeData({ plan: parentPlan, os: g })}
+                                >
+                                  <CalendarPlus className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                <a href={`/os-tecnico/${g.service_order_id}`} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">OS #{g.service_orders?.order_number || '?'}</Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                              <a href={`/os-tecnico/${g.service_order_id}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
