@@ -94,8 +94,8 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden max-w-full">
+      <div className="overflow-x-auto max-w-full">
       {/* Days header */}
       <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] border-b bg-muted/30 min-w-[820px]">
         <div className="py-3 text-center text-xs font-medium text-muted-foreground" />
