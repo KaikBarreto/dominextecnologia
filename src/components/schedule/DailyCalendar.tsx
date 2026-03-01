@@ -158,6 +158,10 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               className="flex transition-colors hover:bg-accent/30 cursor-pointer"
               style={{ height: SLOT_HEIGHT }}
               onClick={() => {
+                if (isMobile && movingOrderId && onTouchDrop) {
+                  onTouchDrop(dateKey, `${String(hour).padStart(2, '0')}:00`);
+                  return;
+                }
                 const hasOrders = dayOrders.some(o => {
                   const h = parseInt(o.scheduled_time!.split(':')[0], 10);
                   return h === hour;
