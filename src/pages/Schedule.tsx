@@ -179,7 +179,7 @@ export default function Schedule() {
         </div>
 
         {/* Calendar */}
-        <div className="rounded-xl border bg-card overflow-x-auto">
+        <div className="rounded-xl border bg-card overflow-hidden">
           {viewMode === 'month' && (
             <MonthlyCalendar
               currentDate={currentDate}

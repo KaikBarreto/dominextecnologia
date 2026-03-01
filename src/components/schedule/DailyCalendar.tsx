@@ -17,7 +17,7 @@ interface DailyCalendarProps {
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
 const SLOT_HEIGHT = 80; // px per hour
-const CASCADE_OFFSET = 28; // px offset for each overlapping card in cascade mode
+const CASCADE_OFFSET = 48; // px offset for each overlapping card in cascade mode
 
 type PositionedOrder = {
   order: (ServiceOrder & { customer: any; equipment: any });
