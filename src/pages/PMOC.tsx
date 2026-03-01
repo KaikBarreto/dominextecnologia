@@ -45,6 +45,7 @@ export default function PMOC() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteFutureOsDialog, setDeleteFutureOsDialog] = useState<PmocPlan | null>(null);
   const [deletingFutureOs, setDeletingFutureOs] = useState(false);
+  const [postponeData, setPostponeData] = useState<{ plan: PmocPlan; os: PmocGeneratedOs } | null>(null);
 
   const filteredPlans = plans.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
