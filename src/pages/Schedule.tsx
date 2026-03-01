@@ -14,6 +14,7 @@ import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
