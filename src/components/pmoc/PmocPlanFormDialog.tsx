@@ -140,8 +140,8 @@ export function PmocPlanFormDialog({ open, onOpenChange, plan }: PmocPlanFormDia
   // Calculate preview dates for bulk generation
   const previewDates = useMemo(() => {
     const dates: Date[] = [];
-    let current = new Date(startDate);
-    const end = addMonthsFn(new Date(startDate), horizonMonths);
+    let current = new Date(startDate + 'T00:00:00');
+    const end = addMonthsFn(new Date(startDate + 'T00:00:00'), horizonMonths);
     while (current <= end && dates.length < 60) {
       dates.push(new Date(current));
       if (frequencyType === 'days') {

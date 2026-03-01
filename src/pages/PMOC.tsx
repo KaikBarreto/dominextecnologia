@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Plus, Search, Calendar, DollarSign, CheckCircle, XCircle, Edit, Trash2, Pause, Play, ClipboardList, CalendarClock, ExternalLink, LayoutList, ScrollText, Clock } from 'lucide-react';
+import { FileText, Plus, Search, Calendar, DollarSign, CheckCircle, XCircle, Edit, Trash2, Pause, Play, ClipboardList, CalendarClock, ExternalLink, LayoutList, ScrollText, Clock, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { usePmocPlans, type PmocPlan } from '@/hooks/usePmocPlans';
 import { usePmocContracts, type PmocContract } from '@/hooks/usePmocContracts';
 import { PmocPlanFormDialog } from '@/components/pmoc/PmocPlanFormDialog';
 import { PmocContractFormDialog } from '@/components/pmoc/PmocContractFormDialog';
+import { PmocPostponeDialog } from '@/components/pmoc/PmocPostponeDialog';
+import type { PmocGeneratedOs } from '@/hooks/usePmocPlans';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { format, addMonths, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,6 +45,7 @@ export default function PMOC() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteFutureOsDialog, setDeleteFutureOsDialog] = useState<PmocPlan | null>(null);
   const [deletingFutureOs, setDeletingFutureOs] = useState(false);
+  const [postponeData, setPostponeData] = useState<{ plan: PmocPlan; os: PmocGeneratedOs } | null>(null);
 
   const filteredPlans = plans.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -393,22 +396,37 @@ export default function PMOC() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                      {generatedHistory.slice(0, 20).map(g => (
-                        <div key={g.id} className="flex items-center justify-between rounded-lg border p-3">
-                          <div>
-                            <p className="text-sm font-medium">{g.planName}</p>
-                            <p className="text-xs text-muted-foreground">{g.customerName} • Agendada para {format(new Date(g.scheduled_for), 'dd/MM/yyyy')}</p>
+                      {generatedHistory.slice(0, 20).map(g => {
+                        const isPending = g.service_orders?.status === 'pendente';
+                        const parentPlan = plans.find(p => p.id === g.plan_id);
+                        return (
+                          <div key={g.id} className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                              <p className="text-sm font-medium">{g.planName}</p>
+                              <p className="text-xs text-muted-foreground">{g.customerName} • Agendada para {format(new Date(g.scheduled_for), 'dd/MM/yyyy')}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">OS #{g.service_orders?.order_number || '?'}</Badge>
+                              {isPending && parentPlan && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-warning hover:text-warning"
+                                  title="Adiar esta OS"
+                                  onClick={() => setPostponeData({ plan: parentPlan, os: g })}
+                                >
+                                  <CalendarPlus className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                <a href={`/os-tecnico/${g.service_order_id}`} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">OS #{g.service_orders?.order_number || '?'}</Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                              <a href={`/os-tecnico/${g.service_order_id}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -421,6 +439,14 @@ export default function PMOC() {
       {/* Dialogs */}
       <PmocPlanFormDialog open={planDialogOpen} onOpenChange={setPlanDialogOpen} plan={editingPlan} />
       <PmocContractFormDialog open={contractDialogOpen} onOpenChange={setContractDialogOpen} contract={editingContract} />
+      {postponeData && (
+        <PmocPostponeDialog
+          open={!!postponeData}
+          onOpenChange={(open) => !open && setPostponeData(null)}
+          plan={postponeData.plan}
+          generatedOs={postponeData.os}
+        />
+      )}
 
       {/* Delete future OSs confirmation */}
       <AlertDialog open={!!deleteFutureOsDialog} onOpenChange={() => setDeleteFutureOsDialog(null)}>
