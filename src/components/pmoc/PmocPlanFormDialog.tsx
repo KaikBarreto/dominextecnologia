@@ -186,39 +186,52 @@ export function PmocPlanFormDialog({ open, onOpenChange, plan }: PmocPlanFormDia
 
       // Bulk generate OSs if creating (not editing)
       if (!isEditing && planId && status === 'ativo') {
-        const activeEquipIds = selectedEquipmentIds.length > 0 ? selectedEquipmentIds : [null];
-        
         for (const date of previewDates) {
-          for (const equipId of activeEquipIds) {
-            const equipName = equipId ? equipment.find(e => e.id === equipId)?.name : '';
-            const { data: os, error: osError } = await supabase
-              .from('service_orders')
-              .insert({
-                customer_id: customerId,
-                equipment_id: equipId,
-                technician_id: technicianId || null,
-                os_type: 'manutencao_preventiva' as const,
-                service_type_id: serviceTypeId || null,
-                form_template_id: formTemplateId || null,
-                scheduled_date: format(date, 'yyyy-MM-dd'),
-                description: `PMOC automático: ${name}${equipName ? ` - ${equipName}` : ''}`,
-                require_tech_signature: true,
-                status: 'pendente' as const,
-              })
-              .select('id')
-              .single();
+          const equipNames = selectedEquipmentIds
+            .map(id => equipment.find(e => e.id === id)?.name)
+            .filter(Boolean);
+          const description = `PMOC automático: ${name}${equipNames.length > 0 ? ` - ${equipNames.join(', ')}` : ''}`;
 
-            if (osError) {
-              console.error('Error creating OS:', osError);
-              continue;
-            }
+          const { data: os, error: osError } = await supabase
+            .from('service_orders')
+            .insert({
+              customer_id: customerId,
+              equipment_id: selectedEquipmentIds.length === 1 ? selectedEquipmentIds[0] : null,
+              technician_id: technicianId || null,
+              os_type: 'manutencao_preventiva' as const,
+              service_type_id: serviceTypeId || null,
+              form_template_id: formTemplateId || null,
+              scheduled_date: format(date, 'yyyy-MM-dd'),
+              description,
+              require_tech_signature: true,
+              status: 'pendente' as const,
+            })
+            .select('id')
+            .single();
 
-            await supabase.from('pmoc_generated_os').insert({
-              plan_id: planId,
-              service_order_id: os.id,
-              scheduled_for: format(date, 'yyyy-MM-dd'),
-            });
+          if (osError) {
+            console.error('Error creating OS:', osError);
+            continue;
           }
+
+          // Link all equipment via service_order_equipment junction table
+          if (selectedEquipmentIds.length > 0) {
+            const eqLinks = selectedEquipmentIds.map(eqId => ({
+              service_order_id: os.id,
+              equipment_id: eqId,
+              form_template_id: formTemplateId || null,
+            }));
+            const { error: linkError } = await supabase
+              .from('service_order_equipment')
+              .insert(eqLinks);
+            if (linkError) console.error('Error linking equipment:', linkError);
+          }
+
+          await supabase.from('pmoc_generated_os').insert({
+            plan_id: planId,
+            service_order_id: os.id,
+            scheduled_for: format(date, 'yyyy-MM-dd'),
+          });
         }
 
         queryClient.invalidateQueries({ queryKey: ['pmoc-plans'] });
