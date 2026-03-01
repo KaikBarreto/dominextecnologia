@@ -28,7 +28,8 @@ type PositionedOrder = {
 };
 
 function layoutOverlapping(
-  dayOrders: (ServiceOrder & { customer: any; equipment: any })[]
+  dayOrders: (ServiceOrder & { customer: any; equipment: any })[],
+  useCascade: boolean
 ): PositionedOrder[] {
   const items = dayOrders.map((order) => {
     const [h, m] = order.scheduled_time!.split(':').map(Number);
@@ -51,26 +52,36 @@ function layoutOverlapping(
     if (!placed) clusters.push([item]);
   }
 
-  // Assign columns within each cluster
-  for (const cluster of clusters) {
-    const cols: number[][] = []; // cols[colIndex] = array of endMin
-    for (const item of cluster) {
-      let assigned = false;
-      for (let c = 0; c < cols.length; c++) {
-        if (cols[c].every(end => end <= item.startMin)) {
-          item.col = c;
-          cols[c].push(item.endMin);
-          assigned = true;
-          break;
+  if (useCascade) {
+    // Cascade: assign col as depth index
+    for (const cluster of clusters) {
+      cluster.forEach((item, i) => {
+        item.col = i;
+        item.totalCols = cluster.length;
+      });
+    }
+  } else {
+    // Side-by-side columns
+    for (const cluster of clusters) {
+      const cols: number[][] = [];
+      for (const item of cluster) {
+        let assigned = false;
+        for (let c = 0; c < cols.length; c++) {
+          if (cols[c].every(end => end <= item.startMin)) {
+            item.col = c;
+            cols[c].push(item.endMin);
+            assigned = true;
+            break;
+          }
+        }
+        if (!assigned) {
+          item.col = cols.length;
+          cols.push([item.endMin]);
         }
       }
-      if (!assigned) {
-        item.col = cols.length;
-        cols.push([item.endMin]);
-      }
+      const totalCols = cols.length;
+      for (const item of cluster) item.totalCols = totalCols;
     }
-    const totalCols = cols.length;
-    for (const item of cluster) item.totalCols = totalCols;
   }
 
   return items;
