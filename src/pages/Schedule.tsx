@@ -181,6 +181,14 @@ export default function Schedule() {
           </Tabs>
         </div>
 
+        {/* Moving indicator */}
+        {touchDrag.movingOrderId && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 border border-primary/30">
+            <span className="text-xs font-medium text-primary">Toque no horário para mover a OS</span>
+            <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={touchDrag.cancel}>Cancelar</Button>
+          </div>
+        )}
+
         {/* Calendar */}
         <div className="rounded-xl border bg-card overflow-hidden">
           {viewMode === 'month' && (
