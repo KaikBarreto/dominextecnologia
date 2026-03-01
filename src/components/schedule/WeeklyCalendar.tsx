@@ -3,6 +3,7 @@ import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
 
@@ -12,6 +13,9 @@ interface WeeklyCalendarProps {
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onSlotClick: (date: string, time: string) => void;
   onDrop: (orderId: string, date: string, time: string) => void;
+  movingOrderId?: string | null;
+  onTouchPickUp?: (orderId: string) => void;
+  onTouchDrop?: (date: string, time: string) => void;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00

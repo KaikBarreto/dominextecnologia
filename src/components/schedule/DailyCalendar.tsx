@@ -13,6 +13,9 @@ interface DailyCalendarProps {
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onSlotClick: (date: string, time: string) => void;
   onDrop: (orderId: string, date: string, time: string) => void;
+  movingOrderId?: string | null;
+  onTouchPickUp?: (orderId: string) => void;
+  onTouchDrop?: (date: string, time: string) => void;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
