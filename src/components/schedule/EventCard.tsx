@@ -96,7 +96,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         <span className="font-semibold text-sm">
           {order.scheduled_time?.slice(0, 5) || '--:--'}
         </span>
-        <Badge className={cn('text-[10px] px-1.5 h-5', !bgColor && statusBadge.className)} style={bgColor ? { backgroundColor: 'rgba(255,255,255,0.25)', color: 'white' } : undefined}>
+        <Badge className={cn('text-[10px] px-1.5 h-5 shadow-sm shadow-black/20', statusBadge.className)}>
           {statusBadge.label}
         </Badge>
       </div>

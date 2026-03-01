@@ -44,23 +44,31 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
   useEffect(() => {
     const fetchEquipment = async () => {
-      // Fetch from service_order_equipment junction table
-      const { data } = await supabase
+      const { data: links } = await supabase
         .from('service_order_equipment')
-        .select('equipment_id, equipment:equipment(*)')
+        .select('equipment_id')
         .eq('service_order_id', order.id);
-      
-      if (data && data.length > 0) {
-        setAllEquipment(data.map((d: any) => d.equipment));
-      } else if (order.equipment) {
-        // Fallback to single equipment from FK
-        setAllEquipment([order.equipment]);
-      } else {
+
+      const linkIds = (links || []).map((l: any) => l.equipment_id).filter(Boolean);
+      const fallbackIds = order.equipment?.id ? [order.equipment.id] : [];
+      const uniqueIds = Array.from(new Set([...linkIds, ...fallbackIds]));
+
+      if (uniqueIds.length === 0) {
         setAllEquipment([]);
+        return;
       }
+
+      const { data: equipmentRows } = await supabase
+        .from('equipment')
+        .select('*')
+        .in('id', uniqueIds);
+
+      const byId = new Map((equipmentRows || []).map((eq: any) => [eq.id, eq]));
+      setAllEquipment(uniqueIds.map((id) => byId.get(id)).filter(Boolean));
     };
+
     fetchEquipment();
-  }, [order.id, order.equipment]);
+  }, [order.id, order.equipment?.id]);
 
   const mapsUrl = buildGoogleMapsUrl(order.customer);
   const fullAddress = [
@@ -75,7 +83,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
       <div className="space-y-4 p-1 overflow-hidden">
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge className={cn('text-xs', statusBadge.className)}>{statusBadge.label}</Badge>
+          <Badge className={cn('text-xs shadow-sm shadow-black/15', statusBadge.className)}>{statusBadge.label}</Badge>
           <Badge variant="outline" className="text-xs">{osTypeLabels[order.os_type]}</Badge>
           <Badge variant="secondary" className="text-xs">OS #{order.order_number}</Badge>
         </div>
@@ -97,6 +105,16 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
             <User className="h-4 w-4 text-primary shrink-0" />
             <span className="break-words min-w-0">{order.customer?.name || 'Cliente não informado'}</span>
           </div>
+
+          {(order.customer?.company_name || order.customer?.customer_type) && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground pl-6">
+              <Building2 className="h-3 w-3 shrink-0" />
+              <span>
+                {order.customer?.company_name || 'Pessoa Física'}
+                {order.customer?.customer_type && ` • ${String(order.customer.customer_type).toUpperCase()}`}
+              </span>
+            </div>
+          )}
 
           {order.customer?.document && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground pl-6">
