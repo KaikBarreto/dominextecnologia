@@ -49,7 +49,7 @@ function getShiftedColor(hex: string, shift: number): string {
   return `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`;
 }
 
-export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0 }: EventCardProps) {
+export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false }: EventCardProps) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
 
   const serviceTypeColor = (order as any).service_type?.color;
