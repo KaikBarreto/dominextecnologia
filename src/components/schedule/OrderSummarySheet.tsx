@@ -75,7 +75,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
       <div className="space-y-4 p-1 overflow-hidden">
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge className={cn('text-xs', statusBadge.className)}>{statusBadge.label}</Badge>
+          <Badge className={cn('text-xs shadow-sm shadow-black/15', statusBadge.className)}>{statusBadge.label}</Badge>
           <Badge variant="outline" className="text-xs">{osTypeLabels[order.os_type]}</Badge>
           <Badge variant="secondary" className="text-xs">OS #{order.order_number}</Badge>
         </div>
