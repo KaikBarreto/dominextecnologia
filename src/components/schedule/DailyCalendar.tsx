@@ -89,12 +89,13 @@ function layoutOverlapping(
 
 export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
+  const isMobile = useIsMobile();
 
   const dayOrders = useMemo(() => {
     return orders.filter(o => o.scheduled_date === dateKey && o.scheduled_time);
   }, [orders, dateKey]);
 
-  const positionedOrders = useMemo(() => layoutOverlapping(dayOrders), [dayOrders]);
+  const positionedOrders = useMemo(() => layoutOverlapping(dayOrders, isMobile), [dayOrders, isMobile]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -115,7 +116,6 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
   };
 
   const getHourFromY = (e: React.DragEvent) => {
-    // Walk up to find the grid container (the relative div)
     const grid = (e.currentTarget.closest('.relative') || e.currentTarget) as HTMLElement;
     const rect = grid.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -179,6 +179,29 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               const minute = startMin % 60;
               const duration = endMin - startMin;
 
+              if (isMobile) {
+                // Cascade layout: full width, offset vertically
+                const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT + (col * CASCADE_OFFSET);
+                const height = Math.max((duration / 60) * SLOT_HEIGHT - (col * CASCADE_OFFSET), 28);
+                return (
+                  <div
+                    key={order.id}
+                    className="absolute left-0.5 right-0.5 pointer-events-auto"
+                    style={{ top: topOffset, height, zIndex: col + 1 }}
+                    onDragOver={handleCardDragOver}
+                    onDrop={handleCardDrop}
+                  >
+                    <EventCard
+                      order={order}
+                      onClick={() => onOrderSelect(order)}
+                      fillHeight
+                      colorShift={col}
+                    />
+                  </div>
+                );
+              }
+
+              // Desktop: side-by-side columns
               const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT;
               const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
               const widthPercent = 100 / totalCols;
