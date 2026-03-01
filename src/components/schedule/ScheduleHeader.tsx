@@ -81,7 +81,7 @@ export function ScheduleHeader({
           <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as ViewMode)}>
             <TabsList className="h-9">
               <TabsTrigger value="month" className="text-xs px-3">Mês</TabsTrigger>
-              <TabsTrigger value="week" className="text-xs px-3">Semana</TabsTrigger>
+              {!isMobile && <TabsTrigger value="week" className="text-xs px-3">Semana</TabsTrigger>}
               <TabsTrigger value="day" className="text-xs px-3">Dia</TabsTrigger>
             </TabsList>
           </Tabs>
