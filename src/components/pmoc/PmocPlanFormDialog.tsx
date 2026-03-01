@@ -153,7 +153,7 @@ export function PmocPlanFormDialog({ open, onOpenChange, plan }: PmocPlanFormDia
     return dates;
   }, [startDate, horizonMonths, frequencyType, frequencyValue]);
 
-  const totalOsToGenerate = previewDates.length * Math.max(selectedEquipmentIds.length, 1);
+  const totalOsToGenerate = previewDates.length;
 
   const handleSubmit = async () => {
     setSubmitting(true);
