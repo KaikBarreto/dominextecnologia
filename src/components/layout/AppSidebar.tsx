@@ -39,48 +39,46 @@ interface MenuItem {
   title: string;
   icon: any;
   path?: string;
-  roles: string[];
-  children?: { title: string; icon: any; path: string; roles: string[] }[];
+  screenKey?: string;
+  children?: { title: string; icon: any; path: string; screenKey?: string }[];
 }
 
 const menuItems: MenuItem[] = [
-  { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'gestor', 'tecnico', 'comercial', 'financeiro'] },
+  { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', screenKey: 'screen:dashboard' },
   {
     title: 'Serviços',
     icon: Wrench,
-    roles: ['admin', 'gestor', 'tecnico'],
     children: [
-      { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', roles: ['admin', 'gestor', 'tecnico'] },
-      { title: 'Serviços', icon: Wrench, path: '/servicos', roles: ['admin', 'gestor', 'tecnico'] },
-      { title: 'Questionários', icon: FileText, path: '/questionarios', roles: ['admin', 'gestor', 'tecnico'] },
-      { title: 'PMOC', icon: FileText, path: '/pmoc', roles: ['admin', 'gestor'] },
+      { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
+      { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
+      { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
+      { title: 'PMOC', icon: FileText, path: '/pmoc', screenKey: 'screen:pmoc' },
     ],
   },
-  { title: 'Agenda', icon: Calendar, path: '/agenda', roles: ['admin', 'gestor', 'tecnico'] },
-  { title: 'Clientes', icon: Users, path: '/clientes', roles: ['admin', 'gestor', 'comercial'] },
-  { title: 'Equipamentos', icon: Package, path: '/equipamentos', roles: ['admin', 'gestor', 'tecnico'] },
-  { title: 'CRM', icon: TrendingUp, path: '/crm', roles: ['admin', 'gestor', 'comercial'] },
-  { title: 'Estoque', icon: Package, path: '/estoque', roles: ['admin', 'gestor'] },
-  { title: 'Financeiro', icon: DollarSign, path: '/financeiro', roles: ['admin', 'gestor', 'financeiro'] },
-  { title: 'Usuários', icon: UserCircle, path: '/usuarios', roles: ['admin'] },
-  { title: 'Configurações', icon: Settings, path: '/configuracoes', roles: ['admin'] },
+  { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
+  { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
+  { title: 'Equipamentos', icon: Package, path: '/equipamentos', screenKey: 'screen:equipment' },
+  { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
+  { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
+  { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
+  { title: 'Usuários', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
+  { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
 
 const activeClass = 'bg-primary text-white hover:bg-primary hover:text-white font-semibold transition-all duration-200';
 const inactiveClass = 'text-foreground/70 hover:bg-primary hover:text-white transition-all duration-200';
 
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000'; // TODO: replace with real support number
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
 
 export function AppSidebar() {
-  const { profile, roles, hasRole } = useAuth();
+  const { profile, roles, hasRole, hasScreenAccess } = useAuth();
   const location = useLocation();
 
-  const filterByRole = (items: { roles: string[] }[]) => {
-    if (roles.length === 0) return items;
-    return items.filter((item) => item.roles.some((role) => hasRole(role as any)));
+  const filterByAccess = <T extends { screenKey?: string }>(items: T[]): T[] => {
+    return items.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
   };
 
-  const filteredMenu = filterByRole(menuItems) as MenuItem[];
+  const filteredMenu = filterByAccess(menuItems);
 
   const isChildActive = (children?: MenuItem['children']) =>
     children?.some((c) => location.pathname === c.path) ?? false;
@@ -99,7 +97,6 @@ export function AppSidebar() {
         <img src={logoDark} alt="Glacial Cold Brasil" className="h-9 w-auto mx-auto" />
       </SidebarHeader>
 
-      {/* User profile */}
       {profile && (
         <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
           <Avatar className="h-10 w-10">
@@ -121,7 +118,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {filteredMenu.map((item) => {
                 if (item.children) {
-                  const visibleChildren = filterByRole(item.children) as NonNullable<MenuItem['children']>;
+                  const visibleChildren = filterByAccess(item.children);
                   if (visibleChildren.length === 0) return null;
                   const childActive = isChildActive(visibleChildren);
 

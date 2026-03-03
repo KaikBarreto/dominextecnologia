@@ -8,12 +8,15 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   roles: AppRole[];
+  permissions: string[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
   isAdminOrGestor: () => boolean;
+  hasPermission: (key: string) => boolean;
+  hasScreenAccess: (screenKey: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,16 +26,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer profile/roles fetch with setTimeout
         if (session?.user) {
           setTimeout(() => {
             fetchUserData(session.user.id);
@@ -40,11 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setProfile(null);
           setRoles([]);
+          setPermissions([]);
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -80,30 +82,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (rolesData) {
         setRoles(rolesData.map(r => r.role as AppRole));
       }
+
+      // Fetch permissions
+      const { data: permData } = await supabase
+        .from('user_permissions')
+        .select('permissions, is_active')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (permData && permData.is_active) {
+        setPermissions((permData.permissions as any) || []);
+      } else {
+        setPermissions([]);
+      }
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-        },
+        data: { full_name: fullName },
       },
     });
     return { error: error as Error | null };
@@ -115,11 +124,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setProfile(null);
     setRoles([]);
+    setPermissions([]);
   };
 
   const hasRole = (role: AppRole) => roles.includes(role);
-  
   const isAdminOrGestor = () => hasRole('admin') || hasRole('gestor');
+  
+  // Permission check: admin role always has full access.
+  // If user has no user_permissions row, fall back to role-based legacy access.
+  const hasPermission = (key: string) => {
+    if (hasRole('admin')) return true;
+    if (permissions.length > 0) return permissions.includes(key);
+    // Legacy fallback: if no permissions configured, allow based on roles
+    return roles.length > 0;
+  };
+
+  const hasScreenAccess = (screenKey: string) => {
+    if (hasRole('admin')) return true;
+    if (permissions.length > 0) return permissions.includes(screenKey);
+    // Legacy fallback
+    return roles.length > 0;
+  };
 
   return (
     <AuthContext.Provider
@@ -128,12 +153,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         profile,
         roles,
+        permissions,
         loading,
         signIn,
         signUp,
         signOut,
         hasRole,
         isAdminOrGestor,
+        hasPermission,
+        hasScreenAccess,
       }}
     >
       {children}

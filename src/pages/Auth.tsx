@@ -166,7 +166,7 @@ export default function Auth() {
                       )}
                     />
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3">
                       <FormField
                         control={form.control}
                         name="rememberMe"
@@ -189,7 +189,7 @@ export default function Auth() {
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors"
+                        className="text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors text-left"
                         disabled={isLoading}
                       >
                         Esqueci minha senha
