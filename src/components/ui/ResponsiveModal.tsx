@@ -5,10 +5,11 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-interface ResponsiveModalProps {
+export interface ResponsiveModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  description?: string;
   children: React.ReactNode;
   className?: string;
 }
