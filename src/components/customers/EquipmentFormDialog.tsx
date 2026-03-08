@@ -15,6 +15,7 @@ import {
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { supabase } from '@/integrations/supabase/client';
+import { processImageFile } from '@/utils/imageConvert';
 import type { Equipment, Customer } from '@/types/database';
 import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
 
@@ -167,11 +168,12 @@ export function EquipmentFormDialog({
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
+      const processed = await processImageFile(file);
+      setPhotoFile(processed);
+      setPhotoPreview(URL.createObjectURL(processed));
     }
   };
 

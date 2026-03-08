@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
 
@@ -164,6 +165,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionId: string) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
+    const file = await processImageFile(files[0]);
 
     setUploadingPhoto(questionId);
     try {

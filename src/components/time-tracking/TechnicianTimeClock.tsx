@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Camera, Check, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { processImageFile } from '@/utils/imageConvert';
 
 const ACTION_CONFIG: Record<PunchType, { label: string; className: string; icon: string }> = {
   clock_in: { label: 'REGISTRAR ENTRADA', className: 'bg-success hover:bg-success/90 text-white', icon: '📍' },
@@ -83,9 +84,10 @@ export function TechnicianTimeClock() {
     }
   }, [settings]);
 
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0];
     if (file) {
+      file = await processImageFile(file);
       setPhoto(file);
       setPhotoPreview(URL.createObjectURL(file));
       setFlowStep('confirm');
