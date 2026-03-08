@@ -1,96 +1,85 @@
 
 
-## Plano: Cor da equipe no seletor + Configurações estilo EcoSistema
+## Plan: Login Layout Fix + Full Permissions System
 
-### 1. Mostrar cor da equipe no seletor de Técnico/Equipe
+### 1. Login Mobile Layout Fix
+In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
 
-**Arquivo**: `src/components/service-orders/ServiceOrderFormDialog.tsx`
+### 2. Permissions System - Database Changes
 
-Nos dois locais onde as equipes aparecem no `SelectItem` (linhas ~316 e ~448), adicionar um `<span>` com `backgroundColor` igual a `t.color` à esquerda do nome:
+Create 2 new tables via migration:
 
-```tsx
-<SelectItem key={t.id} value={`team:${t.id}`}>
-  <div className="flex items-center gap-2">
-    <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-    {t.name}
-  </div>
-</SelectItem>
+**`permission_presets`** (cargos/kits de permissão):
+- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, authenticated can view
+
+**`user_permissions`** (permissões individuais por usuário):
+- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, users can view own
+
+The permissions will be a flat list of string keys covering:
+
+**Screen permissions (telas):**
+- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+
+**Function permissions (funções):**
+- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
+- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
+- `fn:manage_equipment`, `fn:manage_inventory`
+- `fn:manage_finance`, `fn:view_finance_totals`
+- `fn:manage_users`, `fn:manage_settings`
+- `fn:manage_crm`, `fn:manage_pmoc`
+
+### 3. Users Page Redesign (`src/pages/Users.tsx`)
+
+Redesign as a full CRUD inspired by the reference screenshots:
+- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
+- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
+- **Search bar** at the top
+
+### 4. New Components
+
+**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
+- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
+- "Perfil de Acesso" select: choose a preset or "Personalizado"
+- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
+- **Funções section**: Checkboxes for action permissions
+- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+
+**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
+- Name, description, and same checkbox structure as above
+- Accessible from a gear icon on the Users page header
+
+### 5. New Hook: `usePermissions.ts`
+- Fetch user's permissions from `user_permissions` table
+- Provide `hasPermission(key: string)` helper
+- Provide `hasScreenAccess(screenKey: string)` helper
+
+### 6. Auth Context Updates
+- Add `permissions: string[]` to AuthContext state
+- Fetch from `user_permissions` table on login
+- Expose `hasPermission()` method
+
+### 7. Sidebar & Menu Filtering
+- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
+- Each menu item maps to a `screen:*` permission
+- Fallback: if user has no `user_permissions` row, use legacy role-based access
+- Update `MobileNav.tsx` similarly
+
+### 8. Edge Function for User Creation
+Create `supabase/functions/create-user/index.ts`:
+- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
+- Also creates the profile and user_permissions records
+- This is needed because client-side `signUp` sends a confirmation email and logs in
+
+### Technical Details
+
+The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
+```json
+["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
 ```
 
----
+Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
 
-### 2. Refatorar Configurações no estilo EcoSistema
-
-#### 2a. Criar componente `SettingsSidebarLayout`
-
-**Novo arquivo**: `src/components/SettingsSidebarLayout.tsx`
-
-Replicar o componente do EcoSistema:
-- Desktop: sidebar fixa à esquerda (w-56) com botões de aba (bg-primary quando ativo, hover com bg-primary)
-- Mobile: `Select` dropdown com ícones
-- Suporte a `group` nas tabs (para agrupamento visual)
-- Tipografia: `text-[13px]`, `font-medium` no ativo
-
-#### 2b. Separar conteúdo em componentes
-
-**Novo arquivo**: `src/components/settings/SettingsAppearanceContent.tsx`
-
-Conteúdo da aba "Aparência" com estilo visual do EcoSistema:
-- **Estilo de Navegação**: RadioGroup com duas opções visuais (cards com ícone e descrição)
-  - `sidebar` — "Menu Lateral" com ícone `PanelLeft`
-  - `topbar` — "Menu Superior" com ícone `PanelTop`
-  - Persistido via localStorage key `navigation-style`
-- **Tema do Sistema**: Dois cards visuais com preview (claro/escuro)
-  - Card claro: fundo branco com mockup de interface
-  - Card escuro: fundo `#111827` com mockup
-  - Checkmark verde no selecionado
-  - Usa `document.documentElement.classList` + localStorage
-
-#### 2c. Criar hook `useNavigationPreference`
-
-**Novo arquivo**: `src/hooks/useNavigationPreference.ts`
-
-- Persiste em localStorage (sem necessidade de coluna no banco)
-- Exporta `navigationStyle: 'sidebar' | 'topbar'` e `setNavigationStyle`
-- Dispara `window.dispatchEvent(new Event('navigation-style-changed'))` para atualizar layouts reativamente
-
-#### 2d. Refatorar `Settings.tsx`
-
-- Remover a aba "Aparência" antiga e usar `SettingsAppearanceContent`
-- Usar `SettingsSidebarLayout` para o layout de abas
-- Manter abas: Empresa, Usabilidade, Aparência
-- Conteúdo de Usabilidade segue mesmo formato (seções com ícone + toggles)
-
-#### 2e. Implementar layout Topbar
-
-**Novo arquivo**: `src/components/layout/TopbarLayout.tsx`
-
-- Header horizontal com logo + menu items inline (dropdowns para submenus)
-- Em mobile: fallback para sidebar (topbar não faz sentido em mobile)
-
-**Modificar**: `src/components/layout/AppLayout.tsx`
-
-- Importar `useNavigationPreference`
-- Condicionalmente renderizar `AppSidebar` ou `TopbarLayout` baseado na preferência
-- Listener no `storage` event para reagir a mudanças
-
-#### 2f. Validações e tratamento de erros
-
-- Se localStorage corrompido, fallback para `sidebar`
-- Se tema inválido, fallback para `light`
-- Transição suave entre temas (já existe no CSS)
-- Topbar em mobile: ignorar, sempre usar bottom nav / sidebar mobile
-
-### Arquivos
-
-**Criar**:
-- `src/components/SettingsSidebarLayout.tsx`
-- `src/components/settings/SettingsAppearanceContent.tsx`
-- `src/hooks/useNavigationPreference.ts`
-- `src/components/layout/TopbarLayout.tsx`
-
-**Modificar**:
-- `src/pages/Settings.tsx` — refatorar com novo layout
-- `src/components/service-orders/ServiceOrderFormDialog.tsx` — cor da equipe
-- `src/components/layout/AppLayout.tsx` — suporte topbar/sidebar
+The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
 
