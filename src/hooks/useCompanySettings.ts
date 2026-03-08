@@ -9,6 +9,7 @@ export interface CompanySettings {
   phone?: string;
   email?: string;
   address?: string;
+  address_number?: string;
   neighborhood?: string;
   complement?: string;
   city?: string;
