@@ -240,4 +240,5 @@ export const roleLabels: Record<AppRole, string> = {
   tecnico: 'Técnico',
   comercial: 'Comercial',
   financeiro: 'Financeiro',
+  super_admin: 'Super Admin',
 };
