@@ -363,7 +363,7 @@ export default function CustomerDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {customerOrders.map((os) => (
+                    {ordersPagination.paginatedItems.map((os) => (
                       <TableRow key={os.id}>
                         <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span></TableCell>
                         <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
@@ -380,6 +380,7 @@ export default function CustomerDetail() {
                   </TableBody>
                 </Table>
               </div>
+              <DataTablePagination page={ordersPagination.page} totalPages={ordersPagination.totalPages} totalItems={ordersPagination.totalItems} from={ordersPagination.from} to={ordersPagination.to} pageSize={ordersPagination.pageSize} onPageChange={ordersPagination.setPage} onPageSizeChange={ordersPagination.setPageSize} />
             </CardContent></Card>
           )}
         </div>
@@ -406,7 +407,7 @@ export default function CustomerDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {customerTransactions.map((t) => (
+                    {transactionsPagination.paginatedItems.map((t) => (
                       <TableRow key={t.id}>
                         <TableCell><p className="font-medium">{t.description}</p></TableCell>
                         <TableCell>
@@ -427,6 +428,7 @@ export default function CustomerDetail() {
                   </TableBody>
                 </Table>
               </div>
+              <DataTablePagination page={transactionsPagination.page} totalPages={transactionsPagination.totalPages} totalItems={transactionsPagination.totalItems} from={transactionsPagination.from} to={transactionsPagination.to} pageSize={transactionsPagination.pageSize} onPageChange={transactionsPagination.setPage} onPageSizeChange={transactionsPagination.setPageSize} />
             </CardContent></Card>
           )}
         </div>

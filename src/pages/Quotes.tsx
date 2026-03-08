@@ -171,7 +171,7 @@ export default function Quotes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((q) => (
+              {pagination.paginatedItems.map((q) => (
                 <TableRow key={q.id}>
                   <TableCell className="font-medium">#{q.quote_number}</TableCell>
                   <TableCell>
@@ -280,6 +280,7 @@ export default function Quotes() {
               ))}
             </TableBody>
           </Table>
+          <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
         </Card>
       )}
 

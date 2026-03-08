@@ -442,7 +442,7 @@ export default function EquipmentDetail() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {equipmentOrders.map((os) => (
+                      {ordersPagination.paginatedItems.map((os) => (
                         <TableRow key={os.id}>
                           <TableCell>
                             <span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span>
@@ -464,6 +464,7 @@ export default function EquipmentDetail() {
                     </TableBody>
                   </Table>
                 </div>
+                <DataTablePagination page={ordersPagination.page} totalPages={ordersPagination.totalPages} totalItems={ordersPagination.totalItems} from={ordersPagination.from} to={ordersPagination.to} pageSize={ordersPagination.pageSize} onPageChange={ordersPagination.setPage} onPageSizeChange={ordersPagination.setPageSize} />
               </CardContent></Card>
             )}
           </div>
