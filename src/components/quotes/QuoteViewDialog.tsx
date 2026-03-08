@@ -23,7 +23,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
 
   if (!quote) return null;
 
-  const templateSlug = (quote as any).proposal_templates?.slug ?? 'classico';
+  const templateSlug = quote.proposal_templates?.slug ?? 'classico';
 
   const handlePDF = async () => {
     if (!printRef.current) return;

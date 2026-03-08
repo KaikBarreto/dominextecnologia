@@ -312,7 +312,7 @@ export default function Quotes() {
       )}
 
       <QuoteFormDialog open={formOpen} onOpenChange={setFormOpen} quote={editQuote} />
-      <QuoteViewDialog open={!!viewQuote} onOpenChange={(o) => !o && setViewQuote(null)} quote={viewQuote} />
+      <QuoteViewDialog open={!!viewQuote} onOpenChange={(o) => !o && setViewQuote(null)} quote={viewQuote ? (quotes.find(q => q.id === viewQuote.id) ?? viewQuote) : null} />
       <ProposalConfigDialog open={configOpen} onOpenChange={setConfigOpen} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
