@@ -306,6 +306,7 @@ export function ServiceOrderFormDialog({
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
                     <SelectContent>
+                      <SelectItem value="all">👥 Todos (empresa inteira)</SelectItem>
                       <SelectGroup>
                         <SelectLabel>Técnicos</SelectLabel>
                         {technicians?.map((t) => <SelectItem key={t.user_id} value={`user:${t.user_id}`}>{t.full_name}</SelectItem>)}
@@ -445,6 +446,7 @@ export function ServiceOrderFormDialog({
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
                     <SelectContent>
+                      <SelectItem value="all">👥 Todos (empresa inteira)</SelectItem>
                       <SelectGroup>
                         <SelectLabel>Técnicos</SelectLabel>
                         {technicians?.map((t) => <SelectItem key={t.user_id} value={`user:${t.user_id}`}>{t.full_name}</SelectItem>)}

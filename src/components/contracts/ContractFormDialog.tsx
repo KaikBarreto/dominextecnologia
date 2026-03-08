@@ -305,6 +305,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     <SelectTrigger><SelectValue placeholder="Nenhum (define na OS)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum</SelectItem>
+                      <SelectItem value="all">👥 Todos (empresa inteira)</SelectItem>
                       {(technicians?.length ?? 0) > 0 && (
                         <>
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Técnicos</div>
