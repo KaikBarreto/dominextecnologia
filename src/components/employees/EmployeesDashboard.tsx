@@ -38,13 +38,13 @@ export function EmployeesDashboard({ employees, balances }: EmployeesDashboardPr
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(s => (
           <Card key={s.label}>
-            <CardContent className="p-4 flex items-center gap-3">
+            <CardContent className="p-4 flex flex-col items-center text-center gap-2">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <s.icon className="h-5 w-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0 w-full">
                 <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className={`text-lg font-bold ${s.color || ''}`}>{s.value}</p>
+                <p className={`text-lg font-bold truncate ${s.color || ''}`}>{s.value}</p>
               </div>
             </CardContent>
           </Card>

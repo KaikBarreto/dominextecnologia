@@ -134,8 +134,9 @@ export function TimeSettingsPanel() {
       {/* Individual schedules */}
       <Card>
         <CardHeader><CardTitle className="text-base">Jornada Individual</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+        <CardContent className="p-0 sm:p-0">
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
@@ -177,6 +178,37 @@ export function TimeSettingsPanel() {
               </tbody>
             </table>
           </div>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2 p-3">
+            {employees.map(emp => {
+              const empScheds = schedules.filter(s => s.employee_id === emp.id);
+              const workDays = WEEKDAYS.filter((_, i) => {
+                const sched = empScheds.find(s => s.weekday === i);
+                return sched?.is_work_day;
+              });
+              return (
+                <Card key={emp.id}>
+                  <CardContent className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={emp.photo_url || undefined} />
+                        <AvatarFallback className="text-xs">{emp.name[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{emp.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {workDays.length > 0 ? workDays.join(', ') : 'Sem jornada definida'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => openScheduleEdit(emp.id)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
@@ -189,20 +221,20 @@ export function TimeSettingsPanel() {
       >
         <div className="space-y-3 py-2">
           {WEEKDAYS.map((day, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+            <div key={i} className="flex flex-wrap items-center gap-2 sm:gap-3 rounded-lg border p-3">
               <Switch
                 checked={scheduleForm[i]?.work ?? false}
                 onCheckedChange={v => setScheduleForm(f => ({ ...f, [i]: { ...f[i], work: v } }))}
               />
               <span className="w-10 text-sm font-medium">{day}</span>
               {scheduleForm[i]?.work ? (
-                <>
-                  <Input type="time" value={scheduleForm[i]?.in || ''} className="w-[110px]"
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Input type="time" value={scheduleForm[i]?.in || ''} className="flex-1 min-w-[90px]"
                     onChange={e => setScheduleForm(f => ({ ...f, [i]: { ...f[i], in: e.target.value } }))} />
                   <span className="text-muted-foreground">–</span>
-                  <Input type="time" value={scheduleForm[i]?.out || ''} className="w-[110px]"
+                  <Input type="time" value={scheduleForm[i]?.out || ''} className="flex-1 min-w-[90px]"
                     onChange={e => setScheduleForm(f => ({ ...f, [i]: { ...f[i], out: e.target.value } }))} />
-                </>
+                </div>
               ) : (
                 <span className="text-sm text-muted-foreground">Folga</span>
               )}
