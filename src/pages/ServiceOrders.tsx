@@ -132,6 +132,13 @@ export default function ServiceOrders() {
         <p className="text-muted-foreground">Gerencie suas ordens de serviço</p>
       </div>
 
+      <DateRangeFilter
+        value={range}
+        preset={preset}
+        onPresetChange={setPreset}
+        onRangeChange={setRange}
+      />
+
       {/* Actions bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row flex-1">
