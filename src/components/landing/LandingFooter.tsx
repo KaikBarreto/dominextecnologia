@@ -1,4 +1,4 @@
-import logoWhite from '@/assets/logo-white.png';
+import logoWhite from '@/assets/logo-horizontal-verde.png';
 
 const columns = [
   {
