@@ -89,9 +89,20 @@ export default function Users() {
   const handleEditUser = async (data: any) => {
     if (!editingUser) return;
     try {
+      // Handle photo
+      let avatarUrl: string | null | undefined = undefined;
+      if (data.removePhoto) {
+        avatarUrl = null;
+      } else if (data.photo) {
+        avatarUrl = await uploadPhoto(editingUser.user_id, data.photo);
+      }
+
+      const profileUpdate: any = { full_name: data.full_name, phone: data.phone || null };
+      if (avatarUrl !== undefined) profileUpdate.avatar_url = avatarUrl;
+
       await supabase
         .from('profiles')
-        .update({ full_name: data.full_name, phone: data.phone || null })
+        .update(profileUpdate)
         .eq('user_id', editingUser.user_id);
 
       if (data.role) {
@@ -129,6 +140,7 @@ export default function Users() {
       role: userProfile.role,
       permissions: perm?.permissions || [],
       preset_id: perm?.preset_id || null,
+      avatar_url: userProfile.avatar_url,
     });
     setUserFormOpen(true);
   };
