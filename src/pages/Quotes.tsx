@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, Send, CheckCircle2, XCircle, Copy,
-  CopyPlus, Share2, ClipboardList, DollarSign,
+  CopyPlus, Share2, ClipboardList, DollarSign, Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
