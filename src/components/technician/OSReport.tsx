@@ -226,7 +226,18 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
             <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
           ) : (
-            <p className="text-sm text-slate-600 break-words">{response.response_value?.includes('|||') ? response.response_value.split('|||').join(', ') : (response.response_value || '-')}</p>
+            response.response_value?.includes('|||') ? (
+              <div className="flex flex-wrap gap-1.5 mt-0.5">
+                {response.response_value.split('|||').filter(Boolean).map((val, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    <Check className="h-3 w-3" />
+                    {val.trim()}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600 break-words">{response.response_value || '-'}</p>
+            )
           )}
         </div>
       </div>
