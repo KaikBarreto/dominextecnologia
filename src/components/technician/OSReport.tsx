@@ -226,7 +226,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
             <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
           ) : (
-            <p className="text-sm text-slate-600 break-words">{response.response_value || '-'}</p>
+            <p className="text-sm text-slate-600 break-words">{response.response_value?.includes('|||') ? response.response_value.split('|||').join(', ') : (response.response_value || '-')}</p>
           )}
         </div>
       </div>
