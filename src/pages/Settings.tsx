@@ -340,25 +340,6 @@ export default function Settings() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Buscar endereço</Label>
-                  <AddressAutocomplete
-                    value={companyAddress}
-                    onChange={setCompanyAddress}
-                    onAddressSelected={(addr) => {
-                      setCompanyAddress(addr.logradouro);
-                      setCompanyNumber(addr.numero);
-                      setCompanyNeighborhood(addr.bairro);
-                      setCompanyCity(addr.cidade);
-                      setCompanyState(addr.estado);
-                      if (addr.cep) {
-                        const c = addr.cep.replace(/\D/g, '');
-                        setCompanyZip(c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
-                      }
-                    }}
-                    placeholder="Digite o endereço para buscar..."
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label>CEP</Label>
                   <CepLookup
@@ -373,8 +354,23 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Logradouro</Label>
-                  <Input value={companyAddress} onChange={e => setCompanyAddress(e.target.value)} placeholder="Rua, Avenida..." />
+                  <Label>Endereço</Label>
+                  <AddressAutocomplete
+                    value={companyAddress}
+                    onChange={setCompanyAddress}
+                    onAddressSelected={(addr) => {
+                      setCompanyAddress(addr.logradouro);
+                      setCompanyNumber(addr.numero);
+                      setCompanyNeighborhood(addr.bairro);
+                      setCompanyCity(addr.cidade);
+                      setCompanyState(addr.estado);
+                      if (addr.cep) {
+                        const c = addr.cep.replace(/\D/g, '');
+                        setCompanyZip(c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+                      }
+                    }}
+                    placeholder="Rua, Avenida..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Número</Label>
@@ -388,7 +384,7 @@ export default function Settings() {
                   <Label>Bairro</Label>
                   <Input value={companyNeighborhood} onChange={e => setCompanyNeighborhood(e.target.value)} placeholder="Bairro" />
                 </div>
-                <div className="sm:col-span-2">
+                <div className="space-y-2">
                   <Label>UF / Cidade</Label>
                   <StateCitySelector
                     selectedState={companyState}

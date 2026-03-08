@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { StateCitySelector } from '@/components/StateCitySelector';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -507,7 +508,21 @@ export function ServiceOrderFormDialog({
                     </div>
                     <div className="sm:col-span-2">
                       <Label>Endereço</Label>
-                      <Input value={adhocAddress} onChange={e => setAdhocAddress(e.target.value)} placeholder="Rua, número" />
+                      <AddressAutocomplete
+                        value={adhocAddress}
+                        onChange={setAdhocAddress}
+                        onAddressSelected={(addr) => {
+                          setAdhocAddress(addr.logradouro);
+                          setAdhocNeighborhood(addr.bairro);
+                          setAdhocCity(addr.cidade);
+                          setAdhocState(addr.estado);
+                          if (addr.cep) {
+                            const c = addr.cep.replace(/\D/g, '');
+                            setAdhocCep(c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+                          }
+                        }}
+                        placeholder="Rua, Avenida..."
+                      />
                     </div>
                     <div>
                       <Label>Bairro</Label>

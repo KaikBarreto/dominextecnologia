@@ -36,7 +36,6 @@ interface NominatimResult {
   };
 }
 
-// Map full state names to UF codes
 const STATE_MAP: Record<string, string> = {
   'acre': 'AC', 'alagoas': 'AL', 'amapá': 'AP', 'amazonas': 'AM',
   'bahia': 'BA', 'ceará': 'CE', 'distrito federal': 'DF', 'espírito santo': 'ES',
@@ -67,7 +66,6 @@ export function AddressAutocomplete({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
@@ -79,10 +77,7 @@ export function AddressAutocomplete({
   }, []);
 
   const searchAddress = async (query: string) => {
-    if (query.length < 4) {
-      setSuggestions([]);
-      return;
-    }
+    if (query.length < 4) { setSuggestions([]); return; }
     setLoading(true);
     try {
       const res = await fetch(
