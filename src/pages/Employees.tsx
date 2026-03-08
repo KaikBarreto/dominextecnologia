@@ -40,6 +40,8 @@ export default function Employees() {
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { user } = useAuth();
+  const { currentUserRole } = useUsers();
+  const isTecnico = currentUserRole === 'tecnico';
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
@@ -196,6 +198,8 @@ export default function Employees() {
               </div>
             )}
           </div>
+        ) : activeTab === 'timeclock' ? (
+          isTecnico ? <TechnicianTimeClock /> : <AdminTimePanel />
         ) : (
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}
