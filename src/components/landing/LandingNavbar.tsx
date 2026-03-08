@@ -31,7 +31,7 @@ export default function LandingNavbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <img src={logoWhite} alt="Dominex" className="h-8 w-auto" />
+            <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
           </Link>
 
           {/* Desktop links */}

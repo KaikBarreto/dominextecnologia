@@ -23,7 +23,7 @@ export default function LandingFooter() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <img src={logoWhite} alt="Dominex" className="h-8 w-auto" />
+              <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
             </div>
             <p className="text-sm text-white/30 mb-4">
               Gestão de equipes de campo e ordens de serviço.
