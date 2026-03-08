@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building, Shield, Palette, Loader2, Upload, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
+import { Building, Palette, Loader2, Upload, SlidersHorizontal } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,14 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const tabs = [
   { key: 'empresa', label: 'Empresa', icon: Building },
   { key: 'usabilidade', label: 'Usabilidade', icon: SlidersHorizontal },
-  { key: 'seguranca', label: 'Segurança', icon: Shield },
   { key: 'aparencia', label: 'Aparência', icon: Palette },
 ];
 
