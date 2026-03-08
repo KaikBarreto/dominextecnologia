@@ -25,6 +25,8 @@ import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog'
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { cn } from '@/lib/utils';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { osStatusLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
