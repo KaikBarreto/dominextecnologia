@@ -51,18 +51,18 @@ export function SettingsAppearanceContent() {
             htmlFor="sidebar-nav"
             className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
               navigationStyle === 'sidebar'
-                ? 'border-primary bg-primary/10'
+                ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border hover:border-primary/50 hover:bg-muted/50'
             }`}
           >
-            <RadioGroupItem value="sidebar" id="sidebar-nav" />
+            <RadioGroupItem value="sidebar" id="sidebar-nav" className={navigationStyle === 'sidebar' ? 'border-white text-white' : ''} />
             <div className="flex items-center gap-3 flex-1">
-              <div className={`p-2 rounded-md ${navigationStyle === 'sidebar' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              <div className={`p-2 rounded-md ${navigationStyle === 'sidebar' ? 'bg-white/20 text-primary-foreground' : 'bg-muted'}`}>
                 <PanelLeft className="h-5 w-5" />
               </div>
               <div>
                 <p className="font-medium">Menu Lateral</p>
-                <p className="text-xs text-muted-foreground">Sidebar tradicional à esquerda</p>
+                <p className={`text-xs ${navigationStyle === 'sidebar' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>Sidebar tradicional à esquerda</p>
               </div>
             </div>
           </Label>
@@ -71,18 +71,18 @@ export function SettingsAppearanceContent() {
             htmlFor="topbar-nav"
             className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
               navigationStyle === 'topbar'
-                ? 'border-primary bg-primary/10'
+                ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border hover:border-primary/50 hover:bg-muted/50'
             }`}
           >
-            <RadioGroupItem value="topbar" id="topbar-nav" />
+            <RadioGroupItem value="topbar" id="topbar-nav" className={navigationStyle === 'topbar' ? 'border-white text-white' : ''} />
             <div className="flex items-center gap-3 flex-1">
-              <div className={`p-2 rounded-md ${navigationStyle === 'topbar' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              <div className={`p-2 rounded-md ${navigationStyle === 'topbar' ? 'bg-white/20 text-primary-foreground' : 'bg-muted'}`}>
                 <PanelTop className="h-5 w-5" />
               </div>
               <div>
                 <p className="font-medium">Menu Superior</p>
-                <p className="text-xs text-muted-foreground">Barra horizontal no topo</p>
+                <p className={`text-xs ${navigationStyle === 'topbar' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>Barra horizontal no topo</p>
               </div>
             </div>
           </Label>
