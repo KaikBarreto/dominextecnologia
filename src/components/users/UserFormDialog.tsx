@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Monitor, Settings2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2, Monitor, Settings2, Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   SCREEN_PERMISSIONS,
@@ -19,7 +20,7 @@ import {
 } from '@/hooks/usePermissions';
 import { type AppRole } from '@/hooks/useUsers';
 
-interface UserFormData {
+export interface UserFormData {
   full_name: string;
   email: string;
   password: string;
@@ -27,6 +28,8 @@ interface UserFormData {
   role: AppRole | '';
   permissions: string[];
   preset_id: string | null;
+  photo?: File | null;
+  removePhoto?: boolean;
 }
 
 interface UserFormDialogProps {
@@ -41,12 +44,15 @@ interface UserFormDialogProps {
     role?: AppRole;
     permissions: string[];
     preset_id?: string | null;
+    avatar_url?: string | null;
   } | null;
 }
 
 export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingUser }: UserFormDialogProps) {
   const isEditing = !!editingUser;
   const [loading, setLoading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<UserFormData>({
     full_name: '',
     email: '',
@@ -55,6 +61,8 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     role: '',
     permissions: [],
     preset_id: null,
+    photo: null,
+    removePhoto: false,
   });
 
   useEffect(() => {
@@ -67,9 +75,13 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
         role: editingUser.role || '',
         permissions: editingUser.permissions || [],
         preset_id: editingUser.preset_id || null,
+        photo: null,
+        removePhoto: false,
       });
+      setPhotoPreview(editingUser.avatar_url || null);
     } else {
-      setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null });
+      setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null, photo: null, removePhoto: false });
+      setPhotoPreview(null);
     }
   }, [editingUser, open]);
 
@@ -98,6 +110,21 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     }));
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setForm(f => ({ ...f, photo: file, removePhoto: false }));
+      const url = URL.createObjectURL(file);
+      setPhotoPreview(url);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setForm(f => ({ ...f, photo: null, removePhoto: true }));
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     try {
@@ -108,7 +135,9 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     }
   };
 
-  // Group screens by category
+  const getInitials = (name: string) =>
+    name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
+
   const screenCategories = Object.keys(SCREEN_CATEGORIES);
 
   return (
@@ -120,8 +149,53 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     >
       <ScrollArea className="max-h-[70vh] pr-4">
         <div className="space-y-6 pb-4">
-          {/* Basic Info */}
+          {/* Photo + Basic Info */}
           <div className="grid grid-cols-1 gap-4">
+            {/* Photo Upload */}
+            <div>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">Foto do Usuário</Label>
+              <div className="flex items-center gap-4 mt-2">
+                <div className="relative group shrink-0">
+                  <Avatar className="h-16 w-16 border-2 border-border">
+                    {photoPreview ? (
+                      <AvatarImage src={photoPreview} alt="Preview" />
+                    ) : null}
+                    <AvatarFallback className="bg-muted text-muted-foreground text-lg">
+                      <Camera className="h-6 w-6" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  >
+                    <Camera className="h-4 w-4 text-white" />
+                  </button>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                      {photoPreview ? 'Substituir' : 'Selecionar foto'}
+                    </Button>
+                    {photoPreview && (
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRemovePhoto} className="text-destructive hover:text-destructive">
+                        <X className="h-4 w-4 mr-1" />
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Foto opcional do usuário</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelect}
+                />
+              </div>
+            </div>
+
             <div>
               <Label className="text-[13px] font-normal uppercase tracking-wider">Nome Completo *</Label>
               <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Nome do usuário" />
