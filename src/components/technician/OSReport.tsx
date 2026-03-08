@@ -83,6 +83,15 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (data) setCompany(data);
   };
 
+  const fetchContract = async (contractId: string) => {
+    const { data } = await supabase
+      .from('contracts')
+      .select('id, name')
+      .eq('id', contractId)
+      .maybeSingle();
+    if (data) setContractInfo(data);
+  };
+
   const fetchEquipmentItems = async () => {
     const { data } = await supabase
       .from('service_order_equipment')
