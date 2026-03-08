@@ -1,46 +1,85 @@
 
 
-## Plano: Corrigir template na visualizacao + Modal "Configurar Proposta"
+## Plan: Login Layout Fix + Full Permissions System
 
-### Problemas identificados
+### 1. Login Mobile Layout Fix
+In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
 
-1. **Template nao muda na visualizacao**: O `QuoteViewDialog` le `quote.proposal_templates?.slug` do objeto em memoria. Apos editar e salvar, o `queryClient.invalidateQueries` recarrega os dados, mas o usuario precisa fechar e reabrir. O dado deve estar correto apos o refetch — vou garantir que o slug e lido corretamente do join.
+### 2. Permissions System - Database Changes
 
-2. **Template selector esta dentro do form de orcamento** — o usuario quer que isso va para um modal separado "Configurar Proposta".
+Create 2 new tables via migration:
 
-### Alteracoes
+**`permission_presets`** (cargos/kits de permissão):
+- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, authenticated can view
 
-**1. Novo componente: `ProposalConfigDialog.tsx`**
-- Modal acessivel pelo botao "Configurar Proposta" ao lado de "Novo Orcamento"
-- Mostra os 3 templates lado a lado como cards com preview visual (miniatura estilizada, nao imagem)
-- Cada card mostra: nome, descricao curta, cor de preview, badge "selecionado"
-- Ao clicar em um template, uma preview maior aparece ao lado (ou abaixo em mobile)
-- Nao salva nada globalmente — apenas serve para o usuario visualizar os templates disponiveis
-- Pode ter um botao "Usar este template" que copia o ID para o clipboard ou simplesmente mostra informacao
+**`user_permissions`** (permissões individuais por usuário):
+- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, users can view own
 
-**2. Remover selector de template do `QuoteFormDialog.tsx`**
-- Mover o campo de template para dentro do form porem simplificado, OU manter no form mas com visual melhor (radio cards em vez de select dropdown)
-- Na verdade, manter o select no form faz sentido para vincular ao orcamento. Vou mante-lo mas adicionar o modal de configuracao como preview/catalogo.
+The permissions will be a flat list of string keys covering:
 
-**3. Corrigir leitura do template no `QuoteViewDialog`**
-- Garantir que `quote.proposal_templates?.slug` funciona corretamente apos o refetch
-- O tipo `Quote` ja inclui `proposal_templates?: { slug: string; name: string } | null` — preciso verificar se o cast esta correto
+**Screen permissions (telas):**
+- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
 
-**4. Melhorar os 3 templates visuais**
-- **ClassicTemplate**: Redesenhar com visual corporativo mais elaborado — header com linha dupla, tipografia serif, tabelas com alternating rows
-- **ModernTemplate**: Header com gradiente, cards com sombras, tipografia bold moderna, cores vibrantes
-- **MinimalTemplate**: Ultra clean, muito espaco branco, tipografia fina, sem bordas, estilo editorial
+**Function permissions (funções):**
+- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
+- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
+- `fn:manage_equipment`, `fn:manage_inventory`
+- `fn:manage_finance`, `fn:view_finance_totals`
+- `fn:manage_users`, `fn:manage_settings`
+- `fn:manage_crm`, `fn:manage_pmoc`
 
-### Arquivos
+### 3. Users Page Redesign (`src/pages/Users.tsx`)
 
-- **Novo**: `src/components/quotes/ProposalConfigDialog.tsx`
-- **Editar**: `src/pages/Quotes.tsx` (botao configurar proposta)
-- **Editar**: `src/components/quotes/QuoteViewDialog.tsx` (fix slug reading)
-- **Editar**: `src/components/quotes/templates/ClassicTemplate.tsx` (redesign)
-- **Editar**: `src/components/quotes/templates/ModernTemplate.tsx` (redesign)
-- **Editar**: `src/components/quotes/templates/MinimalTemplate.tsx` (redesign)
+Redesign as a full CRUD inspired by the reference screenshots:
+- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
+- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
+- **Search bar** at the top
 
-### Sem alteracoes de banco
+### 4. New Components
 
-Tudo ja existe na tabela `proposal_templates`.
+**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
+- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
+- "Perfil de Acesso" select: choose a preset or "Personalizado"
+- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
+- **Funções section**: Checkboxes for action permissions
+- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+
+**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
+- Name, description, and same checkbox structure as above
+- Accessible from a gear icon on the Users page header
+
+### 5. New Hook: `usePermissions.ts`
+- Fetch user's permissions from `user_permissions` table
+- Provide `hasPermission(key: string)` helper
+- Provide `hasScreenAccess(screenKey: string)` helper
+
+### 6. Auth Context Updates
+- Add `permissions: string[]` to AuthContext state
+- Fetch from `user_permissions` table on login
+- Expose `hasPermission()` method
+
+### 7. Sidebar & Menu Filtering
+- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
+- Each menu item maps to a `screen:*` permission
+- Fallback: if user has no `user_permissions` row, use legacy role-based access
+- Update `MobileNav.tsx` similarly
+
+### 8. Edge Function for User Creation
+Create `supabase/functions/create-user/index.ts`:
+- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
+- Also creates the profile and user_permissions records
+- This is needed because client-side `signUp` sends a confirmation email and logs in
+
+### Technical Details
+
+The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
+```json
+["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
+```
+
+Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
+
+The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
 
