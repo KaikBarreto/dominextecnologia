@@ -19,6 +19,7 @@ interface MonthlyCalendarProps {
   currentDate: Date;
   serviceOrders: (ServiceOrder & { customer: any; equipment: any })[];
   onDateSelect?: (date: Date) => void;
+  onDateDoubleClick?: (date: Date) => void;
   onOrderSelect?: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onDrop?: (orderId: string, newDate: string, newTime: string) => void;
 }
@@ -41,6 +42,7 @@ export function MonthlyCalendar({
   currentDate,
   serviceOrders,
   onDateSelect,
+  onDateDoubleClick,
   onOrderSelect,
   onDrop,
 }: MonthlyCalendarProps) {
@@ -118,6 +120,7 @@ export function MonthlyCalendar({
               <div
                 key={idx}
                 onClick={() => onDateSelect?.(day)}
+                onDoubleClick={() => onDateDoubleClick?.(day)}
                 className={cn(
                   'flex flex-col items-center justify-center py-2.5 cursor-pointer transition-colors',
                   !isCurrentMonth && 'opacity-30',
@@ -187,6 +190,7 @@ export function MonthlyCalendar({
             <div
               key={idx}
               onClick={() => onDateSelect?.(day)}
+              onDoubleClick={() => onDateDoubleClick?.(day)}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDropOnDay(e, dateKey)}

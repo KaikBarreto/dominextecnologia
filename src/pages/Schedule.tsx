@@ -99,13 +99,15 @@ export default function Schedule() {
   const handleDateSelect = (date: Date) => {
     setCurrentDate(date);
     setSummaryOrder(null);
-    // On month view, open new OS form with selected date
-    if (viewMode === 'month') {
-      setSelectedOrder(null);
-      setDefaultDate(format(date, 'yyyy-MM-dd'));
-      setDefaultTime(undefined);
-      setIsFormOpen(true);
-    }
+  };
+
+  const handleDateDoubleClick = (date: Date) => {
+    setCurrentDate(date);
+    setSummaryOrder(null);
+    setSelectedOrder(null);
+    setDefaultDate(format(date, 'yyyy-MM-dd'));
+    setDefaultTime(undefined);
+    setIsFormOpen(true);
   };
 
   const handleDrop = async (orderId: string, newDate: string, newTime: string) => {
@@ -196,6 +198,7 @@ export default function Schedule() {
               currentDate={currentDate}
               serviceOrders={filteredOrders}
               onDateSelect={handleDateSelect}
+              onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
             />
@@ -321,6 +324,7 @@ export default function Schedule() {
               currentDate={currentDate}
               serviceOrders={filteredOrders}
               onDateSelect={handleDateSelect}
+              onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
             />
