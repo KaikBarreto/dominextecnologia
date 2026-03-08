@@ -40,6 +40,58 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.3.0',
+    date: '08 de março de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Portal do Cliente (Self-Service)',
+        description: 'Página pública acessível via link gerado na tela do cliente. Abertura de chamados, acompanhamento de OS em tempo real e histórico de equipamentos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Editar e excluir contratos',
+        description: 'Botões de editar e excluir no topo da tela de contrato, com modal de confirmação listando tudo que será apagado (OSs, ocorrências, transações).',
+        category: 'recurso',
+      },
+      {
+        title: 'Renovar contrato',
+        description: 'Botão de renovação no resumo do contrato que clona as configurações com nova data de início.',
+        category: 'recurso',
+      },
+      {
+        title: 'Câmera obrigatória em fotos',
+        description: 'Toggle para exigir que a foto seja tirada com a câmera do dispositivo, bloqueando upload da galeria.',
+        category: 'recurso',
+      },
+      {
+        title: 'Edição de perguntas por modal',
+        description: 'Ao editar uma pergunta do questionário, abre um modal completo ao invés de edição inline.',
+        category: 'melhoria',
+      },
+      {
+        title: 'WhatsApp nos contatos do cliente',
+        description: 'Botão com ícone oficial do WhatsApp nos responsáveis no local, quando há telefone preenchido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Scrollbar personalizada',
+        description: 'Scroll customizado com cor da marca em todas as áreas roláveis do sistema.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Paginação padrão de 10 itens',
+        description: 'Todas as tabelas paginadas agora exibem 10 itens por padrão.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção na edição de contrato',
+        description: 'Ao clicar em editar contrato, agora os dados reais do contrato são carregados no formulário.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.2.10',
     date: '08 de março de 2026',
     type: 'patch',
