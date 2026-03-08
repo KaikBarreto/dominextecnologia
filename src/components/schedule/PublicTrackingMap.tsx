@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
@@ -15,10 +15,12 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
   const markerRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
   const destMarkerRef = useRef<any>(null);
+  const LRef = useRef<any>(null);
   const [latestLoc, setLatestLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeInfo, setRouteInfo] = useState<OSRMRoute | null>(null);
   const [isEnRoute, setIsEnRoute] = useState(false);
+  const mapInitialized = useRef(false);
 
   // Fetch customer coords for this OS
   useEffect(() => {
@@ -84,14 +86,41 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
       .then(r => setRouteInfo(r));
   }, [latestLoc?.lat, latestLoc?.lng, customerCoords?.lat, customerCoords?.lng, isEnRoute]);
 
-  // Init map
+  // Fit bounds helper
+  const fitMapBounds = useCallback(() => {
+    const map = leafletMapRef.current;
+    const L = LRef.current;
+    if (!map || !L) return;
+
+    if (latestLoc && customerCoords) {
+      const bounds = L.latLngBounds(
+        [latestLoc.lat, latestLoc.lng],
+        [customerCoords.lat, customerCoords.lng]
+      );
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    } else if (latestLoc) {
+      map.setView([latestLoc.lat, latestLoc.lng], 15);
+    } else if (customerCoords) {
+      map.setView([customerCoords.lat, customerCoords.lng], 15);
+    }
+  }, [latestLoc, customerCoords]);
+
+  // Init map once
   useEffect(() => {
+    if (mapInitialized.current || !mapRef.current) return;
+
     const initMap = async () => {
       const L = await import('leaflet');
-      if (!mapRef.current || leafletMapRef.current) return;
+      if (!mapRef.current || mapInitialized.current) return;
+      LRef.current = L;
+      mapInitialized.current = true;
 
-      const center = latestLoc ? [latestLoc.lat, latestLoc.lng] : [-15.78, -47.93];
-      const zoom = latestLoc ? 15 : 4;
+      const center = latestLoc
+        ? [latestLoc.lat, latestLoc.lng]
+        : customerCoords
+        ? [customerCoords.lat, customerCoords.lng]
+        : [-15.78, -47.93];
+      const zoom = latestLoc || customerCoords ? 14 : 4;
 
       const map = L.map(mapRef.current).setView(center as [number, number], zoom);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -99,67 +128,105 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
       }).addTo(map);
       leafletMapRef.current = map;
 
+      // Add technician marker
       if (latestLoc) {
         const icon = L.divIcon({
           className: '',
-          html: `<div style="width:16px;height:16px;border-radius:50%;background:#6366f1;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          html: `<div style="width:18px;height:18px;border-radius:50%;background:#6366f1;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
         });
         markerRef.current = L.marker([latestLoc.lat, latestLoc.lng], { icon }).addTo(map);
       }
+
+      // Add destination marker
+      if (customerCoords) {
+        const destIcon = L.divIcon({
+          className: '',
+          html: `<div style="width:22px;height:22px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3" fill="#ef4444"/></svg>
+          </div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        });
+        destMarkerRef.current = L.marker([customerCoords.lat, customerCoords.lng], { icon: destIcon }).addTo(map);
+      }
+
+      // Fit bounds to show both
+      if (latestLoc && customerCoords) {
+        const bounds = L.latLngBounds(
+          [latestLoc.lat, latestLoc.lng],
+          [customerCoords.lat, customerCoords.lng]
+        );
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      }
     };
 
-    if (latestLoc !== null || mapRef.current) {
-      initMap();
-    }
+    initMap();
 
     return () => {
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
+        mapInitialized.current = false;
       }
     };
-  }, [latestLoc?.lat, latestLoc?.lng]);
+  }, []);
 
-  // Draw route + destination
+  // Update markers when data arrives after map init
+  useEffect(() => {
+    const L = LRef.current;
+    const map = leafletMapRef.current;
+    if (!L || !map) return;
+
+    // Update tech marker
+    if (latestLoc) {
+      if (markerRef.current) {
+        markerRef.current.setLatLng([latestLoc.lat, latestLoc.lng]);
+      } else {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:18px;height:18px;border-radius:50%;background:#6366f1;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+        });
+        markerRef.current = L.marker([latestLoc.lat, latestLoc.lng], { icon }).addTo(map);
+      }
+    }
+
+    // Update dest marker
+    if (customerCoords && !destMarkerRef.current) {
+      const destIcon = L.divIcon({
+        className: '',
+        html: `<div style="width:22px;height:22px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3" fill="#ef4444"/></svg>
+        </div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      destMarkerRef.current = L.marker([customerCoords.lat, customerCoords.lng], { icon: destIcon }).addTo(map);
+    }
+
+    fitMapBounds();
+  }, [latestLoc?.lat, latestLoc?.lng, customerCoords?.lat, customerCoords?.lng, fitMapBounds]);
+
+  // Draw route
   useEffect(() => {
     const drawRoute = async () => {
-      const L = await import('leaflet');
+      const L = LRef.current;
       const map = leafletMapRef.current;
-      if (!map) return;
+      if (!L || !map) return;
 
-      // Clear previous route
       if (routeLayerRef.current) { map.removeLayer(routeLayerRef.current); routeLayerRef.current = null; }
-      if (destMarkerRef.current) { map.removeLayer(destMarkerRef.current); destMarkerRef.current = null; }
 
-      if (!routeInfo || !customerCoords) return;
+      if (!routeInfo) return;
 
       routeLayerRef.current = L.geoJSON(routeInfo.geometry, {
         style: { color: '#6366f1', weight: 4, opacity: 0.8 },
       }).addTo(map);
-
-      const destIcon = L.divIcon({
-        className: '',
-        html: `<div style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3" fill="#ef4444"/></svg>
-        </div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-      });
-      destMarkerRef.current = L.marker([customerCoords.lat, customerCoords.lng], { icon: destIcon }).addTo(map);
-
-      // Fit bounds to include tech + destination
-      if (latestLoc) {
-        const bounds = L.latLngBounds(
-          [latestLoc.lat, latestLoc.lng],
-          [customerCoords.lat, customerCoords.lng]
-        );
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-      }
     };
     drawRoute();
-  }, [routeInfo, customerCoords?.lat, customerCoords?.lng]);
+  }, [routeInfo]);
 
   // Realtime updates
   useEffect(() => {
@@ -174,13 +241,6 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
             const enRoute = payload.new.event_type === 'en_route' || payload.new.event_type === 'tracking';
             setLatestLoc(newLoc);
             setIsEnRoute(enRoute);
-
-            if (leafletMapRef.current && markerRef.current) {
-              markerRef.current.setLatLng([newLoc.lat, newLoc.lng]);
-              if (!enRoute) {
-                leafletMapRef.current.panTo([newLoc.lat, newLoc.lng]);
-              }
-            }
           }
         }
       )
@@ -207,7 +267,7 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
           </div>
         )}
 
-        <div ref={mapRef} className="h-[250px] w-full" />
+        <div ref={mapRef} className="h-[300px] w-full" />
       </CardContent>
     </Card>
   );

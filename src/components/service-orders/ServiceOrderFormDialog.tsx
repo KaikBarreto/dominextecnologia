@@ -32,7 +32,7 @@ import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 const serviceOrderSchema = z.object({
-  customer_id: z.string().min(1, 'Selecione um cliente'),
+  customer_id: z.string().optional(),
   equipment_id: z.string().optional(),
   technician_id: z.string().optional(),
   os_type: z.enum(['manutencao_preventiva', 'manutencao_corretiva', 'instalacao', 'visita_tecnica']),
