@@ -28,6 +28,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import MobileMenu from "./pages/MobileMenu";
+import Teams from "./pages/Teams";
 import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
 import Changelog from "./pages/Changelog";
@@ -130,6 +131,7 @@ const AppRoutes = () => (
       <Route path="/usuarios" element={<Users />} />
       <Route path="/configuracoes" element={<Settings />} />
       <Route path="/perfil" element={<Profile />} />
+      <Route path="/equipes" element={<Teams />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Tutorials />} />
