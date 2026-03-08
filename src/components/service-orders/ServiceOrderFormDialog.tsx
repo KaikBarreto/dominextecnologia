@@ -201,6 +201,7 @@ export function ServiceOrderFormDialog({
 
     const baseData = {
       ...data,
+      customer_id: customerId,
       technician_id: techId,
       team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
