@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Wrench,
   ChevronDown,
+  GraduationCap,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -62,6 +63,7 @@ const menuItems: MenuItem[] = [
   { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
   { title: 'Usuários', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
+  { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
 

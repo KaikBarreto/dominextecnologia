@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import {
   BarChart,
   Bar,
@@ -24,7 +25,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from 'recharts';
 
 function formatCurrency(value: number) {
@@ -60,6 +60,7 @@ const PIE_COLORS = ['#0ea5e9', '#22c55e', '#f59e0b', '#8b5cf6'];
 export default function Dashboard() {
   const { profile } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
+  const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
   const pieData = stats?.osByType
     ? Object.entries(stats.osByType)
@@ -81,6 +82,13 @@ export default function Dashboard() {
           Aqui está o resumo do seu dia
         </p>
       </div>
+
+      <DateRangeFilter
+        value={range}
+        preset={preset}
+        onPresetChange={setPreset}
+        onRangeChange={setRange}
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -167,7 +175,6 @@ export default function Dashboard() {
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Financial Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
@@ -208,7 +215,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* OS by Type Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
@@ -255,9 +261,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent OS and Schedule */}
+      {/* Recent OS and Status */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent OS */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">
@@ -313,7 +318,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Status Summary */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/70">

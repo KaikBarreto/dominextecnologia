@@ -29,6 +29,7 @@ import MobileMenu from "./pages/MobileMenu";
 import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
 import Changelog from "./pages/Changelog";
+import Tutorials from "./pages/Tutorials";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -124,6 +125,7 @@ const AppRoutes = () => (
       <Route path="/configuracoes" element={<Settings />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
+      <Route path="/tutoriais" element={<Tutorials />} />
     </Route>
 
     {/* Catch-all */}

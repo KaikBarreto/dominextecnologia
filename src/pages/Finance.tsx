@@ -10,6 +10,7 @@ import { TransactionListPanel } from '@/components/financial/TransactionListPane
 import { FinanceCategorias } from '@/components/financial/FinanceCategorias';
 import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const tabs = [
@@ -27,11 +28,14 @@ export default function Finance() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
+  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
 
   const {
     transactions, summary, isLoading,
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
+
+  const filteredTransactions = filterByDate(transactions, 'transaction_date');
 
   const handleSubmit = async (data: any) => {
     if (editingTransaction) {
@@ -61,6 +65,13 @@ export default function Finance() {
         <p className="text-muted-foreground">Controle completo de receitas, despesas e resultados</p>
       </div>
 
+      <DateRangeFilter
+        value={range}
+        preset={preset}
+        onPresetChange={setPreset}
+        onRangeChange={setRange}
+      />
+
       <div className="flex flex-col lg:flex-row gap-6">
         <nav className="lg:w-52 shrink-0">
           <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
@@ -88,7 +99,7 @@ export default function Finance() {
         <div className="flex-1 min-w-0">
           {activeTab === 'visao-geral' && (
             <FinanceOverview
-              transactions={transactions}
+              transactions={filteredTransactions}
               summary={summary}
               onNavigate={setActiveTab}
               onNewReceita={() => handleNew('entrada')}
@@ -100,7 +111,7 @@ export default function Finance() {
             <TransactionListPanel
               title="Receitas"
               type="entrada"
-              transactions={transactions}
+              transactions={filteredTransactions}
               isLoading={isLoading}
               onNew={() => handleNew('entrada')}
               onEdit={handleEdit}
@@ -114,7 +125,7 @@ export default function Finance() {
             <TransactionListPanel
               title="Despesas"
               type="saida"
-              transactions={transactions}
+              transactions={filteredTransactions}
               isLoading={isLoading}
               onNew={() => handleNew('saida')}
               onEdit={handleEdit}
@@ -128,7 +139,7 @@ export default function Finance() {
             <TransactionListPanel
               title="Histórico"
               type="all"
-              transactions={transactions}
+              transactions={filteredTransactions}
               isLoading={isLoading}
               onEdit={handleEdit}
               onDelete={(id) => deleteTransaction.mutateAsync(id)}
@@ -138,7 +149,7 @@ export default function Finance() {
 
           {activeTab === 'contas' && (
             <FinanceContas
-              transactions={transactions}
+              transactions={filteredTransactions}
               isLoading={isLoading}
               onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
             />
@@ -146,7 +157,7 @@ export default function Finance() {
 
           {activeTab === 'categorias' && <FinanceCategorias />}
 
-          {activeTab === 'dre' && <FinanceDRE transactions={transactions} />}
+          {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
         </div>
       </div>
 
