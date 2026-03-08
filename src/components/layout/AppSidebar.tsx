@@ -64,6 +64,11 @@ const menuItems: MenuItem[] = [
   { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
 
+const adminMenuItems: MenuItem[] = [
+  { title: 'Empresas', icon: Building2, path: '/admin/empresas' },
+  { title: 'Configurações', icon: Settings, path: '/configuracoes' },
+];
+
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
 
 export function AppSidebar() {
@@ -71,11 +76,14 @@ export function AppSidebar() {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
+  const isSuperAdmin = roles.includes('super_admin');
+
   const filterByAccess = <T extends { screenKey?: string }>(items: T[]): T[] => {
     return items.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
   };
 
-  const filteredMenu = filterByAccess(menuItems);
+  const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems);
+  const filteredMenu = activeMenu;
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
     children?.some((c) => location.pathname === c.path) ?? false;
@@ -86,7 +94,7 @@ export function AppSidebar() {
     );
   };
 
-  const roleLabel = roles.length > 0 ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS] : 'Usuário';
+  const roleLabel = isSuperAdmin ? 'Administrador' : (roles.length > 0 ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS] : 'Usuário');
   const initials = profile?.full_name
     ?.split(' ')
     .map((n) => n[0])
