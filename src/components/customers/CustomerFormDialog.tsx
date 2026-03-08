@@ -263,9 +263,16 @@ export function CustomerFormDialog({
                 </FormItem>
               )} />
               <FormField control={form.control} name="address" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
+                <FormItem>
                   <FormLabel>Endereço</FormLabel>
-                  <FormControl><Input placeholder="Rua, número" {...field} /></FormControl>
+                  <FormControl><Input placeholder="Rua, Avenida..." {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="address_number" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Número</FormLabel>
+                  <FormControl><Input placeholder="Nº" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
