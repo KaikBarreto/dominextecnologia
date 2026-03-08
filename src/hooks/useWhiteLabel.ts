@@ -29,11 +29,15 @@ export function useWhiteLabel() {
   const enabled = !!(settings as any)?.white_label_enabled;
   const primaryColor = (settings as any)?.white_label_primary_color || null;
   const customLogoUrl = (settings as any)?.white_label_logo_url || null;
+  const customIconUrl = (settings as any)?.white_label_icon_url || null;
 
   // When WL is enabled: use custom WL logo, or fall back to company logo
   const logoUrl = enabled
     ? (customLogoUrl || settings?.logo_url || null)
     : null; // null means use default static logos
+
+  // Icon for collapsed sidebar - only when WL enabled
+  const iconUrl = enabled ? customIconUrl : null;
 
   const defaultLogoDark = logoDark;
   const defaultLogoWhite = logoWhite;
@@ -60,8 +64,11 @@ export function useWhiteLabel() {
     enabled,
     primaryColor,
     customLogoUrl,
+    customIconUrl,
     /** The resolved logo URL, or null if default Dominex logos should be used */
     logoUrl,
+    /** The resolved icon URL for collapsed sidebar, or null */
+    iconUrl,
     defaultLogoDark,
     defaultLogoWhite,
     isLoading,
