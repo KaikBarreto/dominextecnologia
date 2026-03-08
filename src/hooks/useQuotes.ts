@@ -139,7 +139,7 @@ export function useQuotes() {
     mutationFn: async ({ id, items, ...quoteData }: QuoteInput & { id: string }) => {
       const { error } = await supabase
         .from('quotes')
-        .update(quoteData)
+        .update(quoteData as any)
         .eq('id', id);
 
       if (error) throw error;
