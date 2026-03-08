@@ -60,6 +60,7 @@ export default function TechnicianOS() {
   const [company, setCompany] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
