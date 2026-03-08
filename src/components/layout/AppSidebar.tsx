@@ -34,6 +34,7 @@ import { ROLE_LABELS } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import iconePreto from '@/assets/icone_preto.png';
 
 interface MenuItem {
   title: string;
@@ -54,7 +55,6 @@ const menuItems: MenuItem[] = [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
-      
       { title: 'Rastreamento', icon: MapPin, path: '/rastreamento' },
       { title: 'Mapa ao Vivo', icon: Map, path: '/mapa-ao-vivo' },
     ],
@@ -89,7 +89,7 @@ const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
 export function AppSidebar() {
   const { profile, roles, hasScreenAccess } = useAuth();
   const { logoUrl, defaultLogoDark } = useWhiteLabel();
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>(() => {
@@ -124,26 +124,42 @@ export function AppSidebar() {
     .join('')
     .toUpperCase() || '?';
 
+  // Consistent icon size for all menu items
+  const iconClass = "h-5 w-5 shrink-0";
+  // Consistent collapsed item container
+  const collapsedItemClass = "flex items-center justify-center w-10 h-10 rounded-lg transition-colors mx-auto";
+
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-background">
       <SidebarContent className="flex flex-1 flex-col p-0 overflow-hidden">
         {/* Logo */}
-        <NavLink to="/dashboard" className="h-14 flex items-center justify-center bg-white border-b border-border shrink-0 cursor-pointer">
-          <img src={logoUrl || defaultLogoDark} alt="Logo" className={cn("w-auto mx-auto transition-all", collapsed ? "h-6" : "h-8")} />
+        <NavLink
+          to="/dashboard"
+          className={cn(
+            "h-14 flex items-center justify-center bg-white border-b border-border shrink-0 cursor-pointer"
+          )}
+        >
+          {collapsed ? (
+            <img src={iconePreto} alt="Logo" className="h-8 w-8 object-contain" />
+          ) : (
+            <img src={logoUrl || defaultLogoDark} alt="Logo" className="h-8 w-auto mx-auto" />
+          )}
         </NavLink>
 
         {/* Scrollable content */}
-        <div className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto", collapsed ? "p-2" : "p-4")}>
+        <div className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto", collapsed ? "px-1 py-2" : "p-4")}>
           {/* Profile Section */}
-          <div className={cn("mb-5 pb-4 border-b border-border", collapsed ? "flex justify-center min-h-[48px]" : "min-h-[72px]")}>
+          <div className={cn("mb-4 pb-3 border-b border-border", collapsed && "flex flex-col items-center")}>
             {profile ? (
               collapsed ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
-                    </Avatar>
+                    <div className={collapsedItemClass}>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
+                      </Avatar>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">{profile.full_name}</TooltipContent>
                 </Tooltip>
@@ -183,40 +199,22 @@ export function AppSidebar() {
                 const hasActiveSubmenu = isSubmenuActive(visibleChildren);
 
                 if (collapsed) {
-                  // In collapsed mode, show only the group icon (or the active child icon)
-                  const activeChild = visibleChildren.find(c => location.pathname === c.path);
-                  const DisplayIcon = activeChild?.icon || item.icon;
                   return (
                     <Tooltip key={item.title}>
                       <TooltipTrigger asChild>
-                        <div
+                        <button
+                          onClick={toggleSidebar}
                           className={cn(
-                            'flex items-center justify-center rounded-lg p-2.5 transition-colors cursor-default',
+                            collapsedItemClass,
                             hasActiveSubmenu
                               ? 'bg-primary text-primary-foreground'
-                              : 'text-sidebar-foreground'
+                              : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
                           )}
                         >
-                          <DisplayIcon className="h-[18px] w-[18px]" />
-                        </div>
+                          <item.icon className={iconClass} />
+                        </button>
                       </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-semibold text-xs">{item.title}</span>
-                          {visibleChildren.map(child => (
-                            <NavLink
-                              key={child.path}
-                              to={child.path}
-                              className={({ isActive }) => cn(
-                                "text-xs px-2 py-1 rounded hover:bg-accent",
-                                isActive && "font-medium text-primary"
-                              )}
-                            >
-                              {child.title}
-                            </NavLink>
-                          ))}
-                        </div>
-                      </TooltipContent>
+                      <TooltipContent side="right">{item.title}</TooltipContent>
                     </Tooltip>
                   );
                 }
@@ -236,7 +234,7 @@ export function AppSidebar() {
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <item.icon className="h-[18px] w-[18px]" />
+                        <item.icon className={iconClass} />
                         <span>{item.title}</span>
                       </div>
                       <ChevronDown
@@ -278,14 +276,14 @@ export function AppSidebar() {
                         to={item.path!}
                         className={({ isActive }) =>
                           cn(
-                            'flex items-center justify-center rounded-lg p-2.5 transition-colors',
+                            collapsedItemClass,
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
                           )
                         }
                       >
-                        <item.icon className="h-[18px] w-[18px]" />
+                        <item.icon className={iconClass} />
                       </NavLink>
                     </TooltipTrigger>
                     <TooltipContent side="right">{item.title}</TooltipContent>
@@ -306,7 +304,7 @@ export function AppSidebar() {
                     )
                   }
                 >
-                  <item.icon className="h-[18px] w-[18px]" />
+                  <item.icon className={iconClass} />
                   <span>{item.title}</span>
                 </NavLink>
               );
@@ -315,18 +313,36 @@ export function AppSidebar() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border h-[52px] flex items-center p-3 shrink-0">
-          <Button
-            asChild
-            className={cn("justify-start bg-[#25D366] text-white hover:bg-[#1da851]", collapsed ? "w-auto px-2" : "w-full")}
-          >
-            <a href={WHATSAPP_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
-              <svg viewBox="0 0 24 24" className={cn("h-5 w-5 fill-current", collapsed ? "" : "mr-3")}>
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-              </svg>
-              {!collapsed && <span>Suporte</span>}
-            </a>
-          </Button>
+        <div className={cn("border-t border-border shrink-0", collapsed ? "p-1 flex justify-center" : "p-3")}>
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={WHATSAPP_SUPPORT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(collapsedItemClass, "bg-[#25D366] text-white hover:bg-[#1da851]")}
+                >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="right">Suporte</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              asChild
+              className="w-full justify-start bg-[#25D366] text-white hover:bg-[#1da851]"
+            >
+              <a href={WHATSAPP_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current mr-3">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                <span>Suporte</span>
+              </a>
+            </Button>
+          )}
         </div>
       </SidebarContent>
     </Sidebar>
