@@ -146,17 +146,26 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
                 {order.customer?.zip_code && (
                   <span className="block text-xs">CEP: {order.customer.zip_code}</span>
                 )}
-                {mapsUrl && (
+                <div className="flex items-center gap-3 mt-1.5">
                   <a
-                    href={mapsUrl}
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                   >
-                    <ExternalLink className="h-3 w-3" />
-                    Abrir no Google Maps
+                    <img src="/icons/google-maps.png" alt="Maps" className="h-3.5 w-3.5" />
+                    Abrir com Maps
                   </a>
-                )}
+                  <a
+                    href={`https://waze.com/ul?q=${encodeURIComponent(fullAddress)}&navigate=yes`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <img src="/icons/waze.png" alt="Waze" className="h-3.5 w-3.5" />
+                    Abrir com Waze
+                  </a>
+                </div>
               </div>
             </div>
           )}
