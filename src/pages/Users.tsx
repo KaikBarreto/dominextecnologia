@@ -163,9 +163,19 @@ export default function Users() {
     }
   };
 
-  const openEditUser = (userProfile: UserWithRole) => {
+  const openEditUser = async (userProfile: UserWithRole) => {
     const perm = getUserPermission(userProfile.user_id);
     const linkedEmployee = employees.find(e => e.user_id === userProfile.user_id);
+    
+    // Fetch current email from auth
+    let currentEmail = '';
+    try {
+      const { data: emailData } = await supabase.functions.invoke('manage-user', {
+        body: { action: 'get_email', user_id: userProfile.user_id },
+      });
+      currentEmail = emailData?.email || '';
+    } catch {}
+
     setEditingUser({
       user_id: userProfile.user_id,
       full_name: userProfile.full_name,
@@ -175,6 +185,7 @@ export default function Users() {
       preset_id: perm?.preset_id || null,
       avatar_url: userProfile.avatar_url,
       employee_id: linkedEmployee?.id || null,
+      email: currentEmail,
     });
     setUserFormOpen(true);
   };
