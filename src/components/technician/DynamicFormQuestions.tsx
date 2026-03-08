@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Camera, Upload, Check, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -286,23 +287,39 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
 
       case 'select':
         const options = (question.options as string[]) || [];
+        const selectedValues = value ? value.split('|||').filter(Boolean) : [];
+        
+        const toggleOption = (opt: string) => {
+          let next: string[];
+          if (selectedValues.includes(opt)) {
+            next = selectedValues.filter(v => v !== opt);
+          } else {
+            next = [...selectedValues, opt];
+          }
+          const newValue = next.join('|||');
+          setResponses((prev) => ({
+            ...prev,
+            [question.id]: { ...prev[question.id], question_id: question.id, response_value: newValue, response_photo_url: prev[question.id]?.response_photo_url || null },
+          }));
+          saveResponse(question.id, newValue);
+        };
+
         return (
-          <Select
-            value={value}
-            onValueChange={(val) => saveResponse(question.id, val)}
-            disabled={isSaving}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione uma opção" />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((opt, idx) => (
-                <SelectItem key={idx} value={opt}>
-                  {opt}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            {options.map((opt, idx) => (
+              <label key={idx} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
+                <Checkbox
+                  checked={selectedValues.includes(opt)}
+                  onCheckedChange={() => toggleOption(opt)}
+                  disabled={isSaving}
+                />
+                {opt}
+              </label>
+            ))}
+            {selectedValues.length > 0 && (
+              <p className="text-xs text-muted-foreground">{selectedValues.length} selecionada{selectedValues.length > 1 ? 's' : ''}</p>
+            )}
+          </div>
         );
 
       case 'photo':
