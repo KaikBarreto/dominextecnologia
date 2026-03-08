@@ -1,175 +1,218 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
-  ArrowLeft,
-  ArrowRight,
-  Loader2,
-  Check,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  User,
-  Phone,
-  Building2,
-  PartyPopper,
+  ArrowLeft, ArrowRight, Loader2, Check, PartyPopper,
+  Phone, Mail, Building2, User, Lock, Eye, EyeOff,
+  Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 
-// Step 1 + Step 2 combined schema
-const registrationSchema = z.object({
-  fullName: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  phone: z.string().min(14, 'Telefone inválido'),
-  document: z.string().optional(),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: 'Senhas não conferem',
-  path: ['confirmPassword'],
-});
+const ORIGIN_ICONS: Record<string, LucideIcon> = {
+  Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
+  Facebook: Globe, // fallback
+};
 
-type RegistrationForm = z.infer<typeof registrationSchema>;
+interface RegistrationFormData {
+  company_name: string;
+  contact_name: string;
+  company_email: string;
+  company_phone: string;
+  company_cnpj?: string;
+  password: string;
+  confirm_password: string;
+}
 
-const STEP_LABELS = ['Dados', 'Acesso', 'Sucesso'];
+const STEP_LABELS = ['Dados', 'Origem', 'Acesso', 'Sucesso'];
 
 export default function Registration() {
-  const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const [step, setStep] = useState(1);
+  const [selectedOrigin, setSelectedOrigin] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const form = useForm<RegistrationForm>({
-    resolver: zodResolver(registrationSchema),
-    defaultValues: {
-      fullName: '',
-      email: '',
-      phone: '',
-      document: '',
-      password: '',
-      confirmPassword: '',
+  const originFromUrl = searchParams.get('origem');
+
+  useEffect(() => {
+    if (originFromUrl) {
+      setSelectedOrigin(originFromUrl);
+    }
+  }, [originFromUrl]);
+
+  const { register, handleSubmit, watch, formState: { errors }, trigger } = useForm<RegistrationFormData>();
+  const emailValue = watch('company_email');
+
+  // Fetch origins
+  const { data: origins = [] } = useQuery({
+    queryKey: ['company-origins'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_origins')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data;
     },
   });
 
-  const handleNextStep = async () => {
-    if (step === 1) {
-      const valid = await form.trigger(['fullName', 'email', 'phone']);
-      if (valid) setStep(2);
-    }
-  };
+  const registerMutation = useMutation({
+    mutationFn: async (data: RegistrationFormData) => {
+      const { data: result, error } = await supabase.functions.invoke('self-register', {
+        body: {
+          company_name: data.company_name,
+          company_cnpj: data.company_cnpj,
+          company_email: data.company_email,
+          company_phone: data.company_phone,
+          contact_name: data.contact_name,
+          password: data.password,
+          origin: selectedOrigin || null,
+        },
+      });
 
-  const handleSubmit = async (data: RegistrationForm) => {
-    if (step === 1) {
-      handleNextStep();
-      return;
-    }
-    if (step !== 2) return;
-
-    setIsLoading(true);
-    try {
-      const { error } = await signUp(data.email, data.password, data.fullName);
+      if (result?.error) throw new Error(result.error);
       if (error) {
-        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
-          toast({
-            variant: 'destructive',
-            title: 'Usuário já existe',
-            description: 'Este email já está cadastrado. Tente fazer login.',
-          });
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Erro no cadastro',
-            description: error.message,
-          });
-        }
+        let msg = 'Erro ao realizar cadastro';
+        try {
+          const parsed = typeof (error as any)?.context?.body === 'string'
+            ? JSON.parse((error as any).context.body)
+            : (error as any)?.context?.body;
+          if (parsed?.error) msg = parsed.error;
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      if (!result?.success) throw new Error('Erro inesperado ao realizar cadastro');
+      return result;
+    },
+    onSuccess: async (_, variables) => {
+      toast({ title: 'Cadastro realizado!', description: 'Redirecionando...' });
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: variables.company_email,
+        password: variables.password,
+      });
+      if (loginError) {
+        navigate('/login');
+      } else {
+        setTimeout(() => navigate('/dashboard'), 500);
+      }
+    },
+    onError: (error: any) => {
+      const msg = error?.message || 'Erro ao realizar cadastro';
+      if (msg.includes('já está cadastrado') || msg.includes('already registered')) {
+        toast({ variant: 'destructive', title: 'Email já cadastrado', description: 'Faça login ou use outro email.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Erro no cadastro', description: msg });
+      }
+    },
+  });
+
+  const onSubmit = async (data: RegistrationFormData) => {
+    if (step === 1) {
+      const valid = await trigger(['company_name', 'contact_name', 'company_email', 'company_phone']);
+      if (!valid) return;
+      // If origin came from URL, skip origin step
+      if (originFromUrl) {
+        setStep(3);
+      } else {
+        setStep(2);
+      }
+    } else if (step === 2) {
+      if (!selectedOrigin) {
+        toast({ variant: 'destructive', title: 'Selecione uma origem', description: 'Como você nos conheceu?' });
         return;
       }
       setStep(3);
-    } catch {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Ocorreu um erro inesperado',
-      });
-    } finally {
-      setIsLoading(false);
+    } else if (step === 3) {
+      const valid = await trigger(['password', 'confirm_password']);
+      if (!valid) return;
+      if (data.password !== data.confirm_password) {
+        toast({ variant: 'destructive', title: 'Senhas não coincidem' });
+        return;
+      }
+      if (data.password.length < 6) {
+        toast({ variant: 'destructive', title: 'Senha deve ter no mínimo 6 caracteres' });
+        return;
+      }
+      registerMutation.mutate(data);
     }
   };
 
+  const handlePrevious = () => {
+    if (step === 3 && originFromUrl) setStep(1);
+    else if (step > 1) setStep(step - 1);
+  };
+
+  // Dynamic step labels
+  const displayLabels = originFromUrl
+    ? ['Dados', 'Acesso', 'Sucesso']
+    : STEP_LABELS;
+  const displayStep = originFromUrl && step >= 3 ? step - 1 : step;
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
-      <div className="absolute inset-0 z-0">
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden">
+      <div className="fixed inset-0 z-0">
         <DarkVeil hueShift={53} speed={0.5} />
       </div>
-      <div className="w-full max-w-lg relative z-10">
-        {/* Logo */}
-        <div className="mb-8 flex flex-col items-center">
-          <img src={logoWhite} alt="Glacial Cold Brasil" className="h-16 w-auto mb-2" />
-        </div>
 
-        <Card className="border-0 bg-black/60 backdrop-blur-md shadow-2xl">
-          <CardContent className="p-8">
+      <div className="relative z-10 w-full max-w-2xl">
+        <Card className="border-0 sm:border sm:border-white/15 bg-black/60 sm:bg-black/40 backdrop-blur-xl shadow-2xl rounded-none sm:rounded-xl">
+          <CardContent className="p-6 xl:p-8">
             <div className="space-y-6">
+              {/* Logo */}
+              <div className="flex justify-center">
+                <img src={logoWhite} alt="Dominex" className="h-12" />
+              </div>
+
               {/* Header */}
               <div className="text-center space-y-2">
-                <h1 className="text-xl font-semibold text-white uppercase tracking-widest">
-                  {step === 3 ? 'Cadastro Realizado' : 'Cadastro'}
+                <h1 className="text-xl font-medium text-white uppercase tracking-[0.15em]">
+                  Cadastro
                 </h1>
-                {step < 3 && (
-                  <p className="text-xs text-white/60 uppercase tracking-widest">
-                    Preencha seus dados para criar sua conta
-                  </p>
-                )}
+                <p className="text-white/50 text-xs uppercase tracking-[0.1em]">
+                  Teste grátis por 14 dias · Sem compromisso · Acesso total
+                </p>
               </div>
 
               {/* Step Indicators */}
               <div className="flex items-start justify-center">
-                {STEP_LABELS.map((label, i) => {
+                {displayLabels.map((label, i) => {
                   const s = i + 1;
                   return (
                     <div key={s} className="flex items-center">
                       <div className="flex flex-col items-center gap-1.5">
-                        <div
-                          className={cn(
-                            'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors',
-                            s < step && 'bg-primary text-primary-foreground',
-                            s === step && 'bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2 ring-offset-transparent',
-                            s > step && 'bg-white/10 text-white/40'
-                          )}
-                        >
-                          {s < step ? <Check className="h-4 w-4" /> : s}
+                        <div className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors',
+                          s < displayStep && 'bg-primary text-primary-foreground',
+                          s === displayStep && 'bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2 ring-offset-transparent',
+                          s > displayStep && 'bg-white/10 text-white/40'
+                        )}>
+                          {s < displayStep ? <Check className="h-4 w-4" /> : s}
                         </div>
-                        <span
-                          className={cn(
-                            'text-[10px] whitespace-nowrap uppercase tracking-widest',
-                            s <= step ? 'text-primary font-medium' : 'text-white/40'
-                          )}
-                        >
+                        <span className={cn(
+                          'text-[10px] whitespace-nowrap uppercase tracking-widest',
+                          s <= displayStep ? 'text-primary font-medium' : 'text-white/40'
+                        )}>
                           {label}
                         </span>
                       </div>
-                      {s < STEP_LABELS.length && (
-                        <div
-                          className={cn(
-                            'w-10 h-0.5 mx-1 mt-4 self-start',
-                            s < step ? 'bg-primary' : 'bg-white/15'
-                          )}
-                        />
+                      {s < displayLabels.length && (
+                        <div className={cn(
+                          'w-8 h-0.5 mx-1 mt-4 self-start',
+                          s < displayStep ? 'bg-primary' : 'bg-white/15'
+                        )} />
                       )}
                     </div>
                   );
@@ -177,264 +220,215 @@ export default function Registration() {
               </div>
 
               {/* Form */}
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                  {/* Step 1: Data */}
-                  {step === 1 && (
-                    <div className="space-y-4 animate-in fade-in duration-300">
-                      <FormField
-                        control={form.control}
-                        name="fullName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">
-                              Nome Completo*
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                                <Input
-                                  {...field}
-                                  placeholder="Seu nome"
-                                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">
-                              Email*
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                                <Input
-                                  {...field}
-                                  type="email"
-                                  placeholder="seu@email.com"
-                                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">
-                                Telefone*
-                              </FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                                  <Input
-                                    {...field}
-                                    placeholder="(21) 98765-4321"
-                                    maxLength={15}
-                                    onChange={(e) => {
-                                      field.onChange(phoneMask(e.target.value));
-                                    }}
-                                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Step 1: Company Data */}
+                {step === 1 && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Nome da Empresa*</Label>
+                      <div className="relative mt-1">
+                        <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                        <Input
+                          {...register('company_name', { required: 'Nome da empresa é obrigatório' })}
+                          placeholder="Ex: Minha Empresa Ltda"
+                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                         />
+                      </div>
+                      {errors.company_name && <p className="text-sm text-destructive mt-1">{errors.company_name.message}</p>}
+                    </div>
 
-                        <FormField
-                          control={form.control}
-                          name="document"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">
-                                CPF/CNPJ
-                              </FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                                  <Input
-                                    {...field}
-                                    placeholder="Opcional"
-                                    maxLength={18}
-                                    onChange={(e) => {
-                                      field.onChange(cpfCnpjMask(e.target.value));
-                                    }}
-                                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                    <div>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Seu Nome Completo*</Label>
+                      <div className="relative mt-1">
+                        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                        <Input
+                          {...register('contact_name', { required: 'Nome é obrigatório' })}
+                          placeholder="Ex: João Silva"
+                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                        />
+                      </div>
+                      {errors.contact_name && <p className="text-sm text-destructive mt-1">{errors.contact_name.message}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Email*</Label>
+                        <div className="relative mt-1">
+                          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                          <Input
+                            type="email"
+                            {...register('company_email', {
+                              required: 'Email é obrigatório',
+                              pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: 'Email inválido' },
+                            })}
+                            placeholder="email@exemplo.com"
+                            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                          />
+                        </div>
+                        {errors.company_email && <p className="text-sm text-destructive mt-1">{errors.company_email.message}</p>}
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Telefone*</Label>
+                        <div className="relative mt-1">
+                          <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                          <Input
+                            {...register('company_phone', {
+                              required: 'Telefone é obrigatório',
+                              onChange: (e) => { e.target.value = phoneMask(e.target.value); },
+                            })}
+                            placeholder="(21) 98765-4321"
+                            maxLength={15}
+                            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                          />
+                        </div>
+                        {errors.company_phone && <p className="text-sm text-destructive mt-1">{errors.company_phone.message}</p>}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">CNPJ (opcional)</Label>
+                      <div className="relative mt-1">
+                        <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                        <Input
+                          {...register('company_cnpj', {
+                            onChange: (e) => { e.target.value = cpfCnpjMask(e.target.value); },
+                          })}
+                          placeholder="00.000.000/0000-00"
+                          maxLength={18}
+                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Step 2: Access */}
-                  {step === 2 && (
-                    <div className="space-y-4 animate-in fade-in duration-300">
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
-                        <p className="text-sm text-white/70">
-                          <strong className="text-white">Email de acesso:</strong> {form.getValues('email')}
-                        </p>
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">
-                              Senha*
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                                <Input
-                                  {...field}
-                                  type={showPassword ? 'text' : 'password'}
-                                  placeholder="Mínimo 6 caracteres"
-                                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowPassword(!showPassword)}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
-                                >
-                                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="confirmPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">
-                              Confirmar Senha*
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                                <Input
-                                  {...field}
-                                  type="password"
-                                  placeholder="Repita a senha"
-                                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                {/* Step 2: Origin */}
+                {step === 2 && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <p className="text-sm text-white/60 text-center">Como você nos conheceu?</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {origins.map((o: any) => {
+                        const IconComp = ORIGIN_ICONS[o.icon] || Globe;
+                        const isSelected = selectedOrigin === o.name;
+                        return (
+                          <button
+                            key={o.id}
+                            type="button"
+                            onClick={() => setSelectedOrigin(o.name)}
+                            className={cn(
+                              'flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-center',
+                              isSelected
+                                ? 'border-primary bg-primary/20 text-white'
+                                : 'border-white/10 bg-white/5 text-white/60 hover:border-white/30 hover:bg-white/10'
+                            )}
+                          >
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: isSelected ? o.color + '30' : 'rgba(255,255,255,0.1)' }}
+                            >
+                              <IconComp className="h-5 w-5" style={{ color: isSelected ? o.color : 'rgba(255,255,255,0.5)' }} />
+                            </div>
+                            <span className="text-xs font-medium">{o.name}</span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Step 3: Success */}
-                  {step === 3 && (
-                    <div className="space-y-6 text-center animate-in fade-in duration-500 py-4">
-                      <div className="mx-auto w-16 h-16 rounded-full bg-primary flex items-center justify-center">
-                        <PartyPopper className="h-8 w-8 text-white" />
+                {/* Step 3: Access */}
+                {step === 3 && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
+                      <p className="text-sm text-white/70">
+                        <strong className="text-white">Email de acesso:</strong> {emailValue}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Senha*</Label>
+                      <div className="relative mt-1">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          {...register('password', { required: 'Senha é obrigatória', minLength: { value: 6, message: 'Mínimo 6 caracteres' } })}
+                          placeholder="Mínimo 6 caracteres"
+                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white">
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-white">Conta criada com sucesso!</h3>
-                        <p className="text-sm text-white/70">
-                          Enviamos um email de confirmação para <strong className="text-primary">{form.getValues('email')}</strong>.
-                          Verifique sua caixa de entrada para ativar sua conta.
-                        </p>
+                      {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Confirmar Senha*</Label>
+                      <div className="relative mt-1">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                        <Input
+                          type="password"
+                          {...register('confirm_password', { required: 'Confirme a senha' })}
+                          placeholder="Repita a senha"
+                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                        />
                       </div>
+                      {errors.confirm_password && <p className="text-sm text-destructive mt-1">{errors.confirm_password.message}</p>}
+                    </div>
+
+                    {/* Trial info box */}
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 text-center">
+                      <p className="text-sm text-primary font-medium">🎉 14 dias grátis com acesso total</p>
+                      <p className="text-xs text-white/50 mt-1">Sem cartão de crédito, sem compromisso</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                {step <= 3 && (
+                  <div className="flex gap-2 pt-2">
+                    {step > 1 && (
                       <Button
                         type="button"
-                        onClick={() => navigate('/login')}
-                        className="uppercase tracking-widest text-sm font-semibold"
+                        variant="outline"
+                        onClick={handlePrevious}
+                        className="gap-2 border-white/20 text-white hover:bg-white/20 bg-white/10 uppercase tracking-widest text-xs"
                       >
-                        Ir para o Login
+                        <ArrowLeft className="h-4 w-4" /> Voltar
                       </Button>
-                    </div>
-                  )}
-
-                  {/* Navigation Buttons */}
-                  {step < 3 && (
-                    <div className="flex gap-2 pt-2">
-                      {step > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setStep(step - 1)}
-                          className="gap-2 border-white/20 text-white hover:bg-white/20 bg-white/10 uppercase tracking-widest text-xs"
-                        >
-                          <ArrowLeft className="h-4 w-4" />
-                          Voltar
-                        </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      className="flex-1 gap-2 uppercase tracking-widest text-sm font-semibold"
+                      disabled={registerMutation.isPending}
+                    >
+                      {registerMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" /> Cadastrando...</>
+                      ) : step === 3 ? (
+                        'Criar Conta'
+                      ) : (
+                        <>Continuar <ArrowRight className="h-4 w-4" /></>
                       )}
-                      <Button
-                        type={step === 2 ? "submit" : "button"}
-                        onClick={step === 1 ? handleNextStep : undefined}
-                        className="flex-1 gap-2 uppercase tracking-widest text-sm font-semibold"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Cadastrando...
-                          </>
-                        ) : step === 2 ? (
-                          'Criar Conta'
-                        ) : (
-                          <>
-                            Continuar
-                            <ArrowRight className="h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </form>
-              </Form>
+                    </Button>
+                  </div>
+                )}
+              </form>
 
-              {/* Login Link */}
-              {step < 3 && (
-                <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
-                  Já tem uma conta?{' '}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/login')}
-                    className="text-white font-bold hover:text-primary transition-colors"
-                  >
-                    FAZER LOGIN
-                  </button>
+              {/* Login link */}
+              {step <= 3 && (
+                <div className="text-center pt-2">
+                  <p className="text-xs text-white/40">
+                    Já tem uma conta?{' '}
+                    <Link to="/login" className="text-primary hover:underline font-medium">Fazer login</Link>
+                  </p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <div className="mt-6">
-          <SystemFooter variant="dark" />
-        </div>
+        <SystemFooter />
       </div>
     </div>
   );
