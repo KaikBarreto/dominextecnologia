@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const sessionToken = localStorage.getItem('session_token');
     if (sessionToken && user) {
       await supabase
-        .from('active_sessions' as any)
+        .from('active_sessions')
         .delete()
         .eq('user_id', user.id)
         .eq('session_token', sessionToken);

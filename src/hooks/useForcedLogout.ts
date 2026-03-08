@@ -60,7 +60,7 @@ export const useForcedLogout = () => {
 
     const updateActivity = async () => {
       await supabase
-        .from("active_sessions" as any)
+        .from("active_sessions")
         .update({ last_activity: new Date().toISOString() })
         .eq("user_id", user.id)
         .eq("session_token", currentToken);
