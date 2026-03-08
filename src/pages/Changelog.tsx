@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.1',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Persistência dos dados da empresa',
+        description: 'Corrigido salvamento dos campos bairro, complemento e white label nas configurações. Valores vazios agora limpam corretamente no banco de dados.',
+        category: 'correcao',
+      },
+      {
+        title: 'Menu topbar alinhado ao sidebar',
+        description: 'O menu superior (topbar) agora possui a mesma estrutura do sidebar, com os grupos "Operacional" e "Gestão" e todos os itens idênticos.',
+        category: 'correcao',
+      },
+      {
+        title: 'Aba de configurações persistente',
+        description: 'Ao trocar entre sidebar e topbar na aba Aparência, a aba ativa das configurações é mantida via URL, sem resetar para "Empresa".',
+        category: 'correcao',
+      },
+      {
+        title: 'Loading skeleton nos logos',
+        description: 'Adicionado skeleton animado no sidebar, topbar e headers mobile enquanto os dados da empresa carregam, evitando piscadas de logo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botão único de salvar na empresa',
+        description: 'Removido botão separado "Salvar White Label". Todas as configurações da empresa e white label são salvas por um único botão.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Remoção de botão duplicado no sidebar',
+        description: 'Removido botão duplicado de collapse/expand do sidebar, mantendo apenas o do cabeçalho.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.4.0',
     date: '08 de março de 2026',
     type: 'major',
