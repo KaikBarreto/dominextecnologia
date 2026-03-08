@@ -1009,6 +1009,7 @@ export type Database = {
       }
       form_questions: {
         Row: {
+          answer_types: Json | null
           created_at: string
           description: string | null
           id: string
@@ -1021,6 +1022,7 @@ export type Database = {
           template_id: string
         }
         Insert: {
+          answer_types?: Json | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1033,6 +1035,7 @@ export type Database = {
           template_id: string
         }
         Update: {
+          answer_types?: Json | null
           created_at?: string
           description?: string | null
           id?: string
