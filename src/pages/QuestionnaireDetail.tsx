@@ -410,7 +410,7 @@ export default function QuestionnaireDetail() {
                     key={t.value}
                     className={cn(
                       'flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors',
-                      isSelected ? 'border-primary bg-primary/5 text-primary' : 'hover:bg-muted/50'
+                      isSelected ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted/50'
                     )}
                   >
                     <Checkbox
