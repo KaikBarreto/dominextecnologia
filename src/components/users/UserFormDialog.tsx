@@ -219,6 +219,30 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
             </div>
           </div>
 
+          {/* Técnico / Interno Toggle */}
+          <div className="space-y-2">
+            <Label className="text-[13px] font-normal uppercase tracking-wider">Tipo de Usuário</Label>
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+              <div className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${form.role !== 'tecnico' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                <Building2 className="h-4 w-4" />
+                Interno
+              </div>
+              <Switch
+                checked={form.role === 'tecnico'}
+                onCheckedChange={(checked) => setForm(f => ({ ...f, role: checked ? 'tecnico' : '' }))}
+              />
+              <div className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${form.role === 'tecnico' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                <Wrench className="h-4 w-4" />
+                Técnico
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {form.role === 'tecnico'
+                ? 'Aparece na listagem de técnicos da OS e pode ser adicionado a equipes'
+                : 'Usuário interno do sistema, não aparece como técnico nas OS'}
+            </p>
+          </div>
+
           <Separator />
 
           {/* Preset Selection */}
