@@ -43,7 +43,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', screenKey: 'screen:dashboard' },
   {
-    title: 'Serviços',
+    title: 'Operacional',
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
@@ -51,6 +51,8 @@ const menuItems: MenuItem[] = [
       { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
       { title: 'PMOC', icon: FileText, path: '/pmoc', screenKey: 'screen:pmoc' },
+      { title: 'Rastreamento', icon: MapPin, path: '/rastreamento' },
+      { title: 'Mapa ao Vivo', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
   { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
@@ -60,8 +62,6 @@ const menuItems: MenuItem[] = [
   { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
   { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
-  { title: 'Rastreamento', icon: MapPin, path: '/rastreamento' },
-  { title: 'Mapa ao Vivo', icon: Map, path: '/mapa-ao-vivo' },
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
   { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
   { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },
