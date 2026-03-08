@@ -257,9 +257,10 @@ export function ServiceOrderFormDialog({
 
   const activeSteps = useMemo(() => {
     if (serviceOrder) return STEPS;
+    if (customerMode === 'adhoc') return STEPS.filter(s => s.key !== 'equipment');
     if (!showEquipmentStep) return STEPS.filter(s => s.key !== 'equipment');
     return STEPS;
-  }, [showEquipmentStep, serviceOrder]);
+  }, [showEquipmentStep, serviceOrder, customerMode]);
 
   const currentStepKey = activeSteps[step]?.key || 'client';
 
