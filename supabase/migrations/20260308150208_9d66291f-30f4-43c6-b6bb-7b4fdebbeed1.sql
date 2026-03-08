@@ -1,0 +1,1 @@
+ALTER TABLE public.active_sessions REPLICA IDENTITY FULL;
