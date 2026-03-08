@@ -43,6 +43,8 @@ import Billing from "./pages/Billing";
 import TechnicianTracking from "./pages/TechnicianTracking";
 import LiveMap from "./pages/LiveMap";
 import Checkout from "./pages/Checkout";
+import Quotes from "./pages/Quotes";
+import QuotePublic from "./pages/QuotePublic";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
 
@@ -116,6 +118,8 @@ const AppRoutes = () => (
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />
     {/* Public rating page */}
     <Route path="/avaliacao/:token" element={<ServiceRating />} />
+    {/* Public quote page */}
+    <Route path="/orcamento/:token" element={<QuotePublic />} />
 
     {/* Protected Routes */}
     <Route
@@ -136,6 +140,7 @@ const AppRoutes = () => (
       <Route path="/equipamentos" element={<EquipmentPage />} />
       <Route path="/equipamentos/:id" element={<EquipmentDetail />} />
       <Route path="/crm" element={<CRM />} />
+      <Route path="/orcamentos" element={<Quotes />} />
       <Route path="/estoque" element={<Inventory />} />
       <Route path="/financeiro" element={<Finance />} />
       <Route path="/pmoc" element={<PMOC />} />

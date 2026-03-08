@@ -47,6 +47,7 @@ const menuItems: MenuItem[] = [
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
+      { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
