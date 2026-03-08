@@ -28,6 +28,7 @@ interface ContractFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreated?: (contractId: string) => void;
   editContract?: any;
+  defaultCustomerId?: string;
 }
 
 const STEPS = [
