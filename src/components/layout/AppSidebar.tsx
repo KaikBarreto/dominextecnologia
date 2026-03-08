@@ -94,7 +94,7 @@ export function AppSidebar() {
     );
   };
 
-  const roleLabel = roles.length > 0 ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS] : 'Usuário';
+  const roleLabel = isSuperAdmin ? 'Administrador' : (roles.length > 0 ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS] : 'Usuário');
   const initials = profile?.full_name
     ?.split(' ')
     .map((n) => n[0])
