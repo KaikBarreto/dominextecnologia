@@ -18,6 +18,7 @@ export interface FormQuestionInsert {
   is_required?: boolean;
   position?: number;
   description?: string;
+  require_camera?: boolean;
 }
 
 export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[] = [

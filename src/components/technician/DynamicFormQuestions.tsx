@@ -298,6 +298,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
 
       case 'photo':
         const photoUrl = response?.response_photo_url;
+        const cameraOnly = !!(question as any).require_camera;
         return (
           <div className="space-y-2">
             {photoUrl ? (
@@ -317,7 +318,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
+                {...(cameraOnly ? { capture: "environment" as const } : {})}
                 className="hidden"
                 onChange={(e) => handlePhotoUpload(e, question.id)}
                 disabled={uploadingPhoto === question.id}
@@ -325,7 +326,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
               <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhoto === question.id}>
                 <span>
                   <Upload className="h-3 w-3 mr-1" />
-                  {uploadingPhoto === question.id ? 'Enviando...' : photoUrl ? 'Trocar Foto' : 'Enviar Foto'}
+                  {uploadingPhoto === question.id ? 'Enviando...' : photoUrl ? 'Trocar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
                 </span>
               </Button>
             </label>

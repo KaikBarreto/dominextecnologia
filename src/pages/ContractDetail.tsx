@@ -580,8 +580,8 @@ export default function ContractDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit contract - reuses the create form as a sheet (navigates to new contract if re-created) */}
-      <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} onCreated={(newId) => navigate(`/contratos/${newId}`)} />
+      {/* Edit contract */}
+      <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} editContract={contract} onCreated={(newId) => { if (newId !== id) navigate(`/contratos/${newId}`); else queryClient.invalidateQueries({ queryKey: ['contract-detail'] }); }} />
     </div>
   );
 }
