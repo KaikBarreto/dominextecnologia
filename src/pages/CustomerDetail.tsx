@@ -481,6 +481,45 @@ export default function CustomerDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Contact Form Dialog */}
+      <ContactFormDialog
+        open={contactFormOpen}
+        onOpenChange={(open) => { setContactFormOpen(open); if (!open) setEditingContact(null); }}
+        contact={editingContact}
+        onSubmit={async (data) => {
+          if (editingContact) {
+            await updateContact.mutateAsync({ id: editingContact.id, ...data });
+          } else {
+            await createContact.mutateAsync({ customer_id: id!, ...data });
+          }
+        }}
+        isLoading={createContact.isPending || updateContact.isPending}
+      />
+
+      {/* Delete Contact Confirmation */}
+      <AlertDialog open={!!deleteContactId} onOpenChange={(open) => { if (!open) setDeleteContactId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir contato</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir este contato?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (deleteContactId) {
+                  await deleteContact.mutateAsync(deleteContactId);
+                  setDeleteContactId(null);
+                }
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
