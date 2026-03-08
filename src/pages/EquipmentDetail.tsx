@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRef, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,27 @@ export default function EquipmentDetail() {
   const equipment = allEquipment.find(eq => eq.id === id);
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
   const ordersPagination = useDataPagination(equipmentOrders);
-  const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
+  // Fetch portal token for this customer to generate proper QR URL
+  const { data: portalToken } = useQuery({
+    queryKey: ['portalToken', equipment?.customer_id],
+    queryFn: async () => {
+      if (!equipment?.customer_id) return null;
+      const { data } = await supabase
+        .from('customer_portals')
+        .select('token')
+        .eq('customer_id', equipment.customer_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      return data?.token || null;
+    },
+    enabled: !!equipment?.customer_id,
+  });
+
+  const qrValue = equipment
+    ? portalToken
+      ? `${window.location.origin}/portal/${portalToken}?eq=${equipment.id}`
+      : `EQ-${equipment.identifier || equipment.id}`
+    : '';
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
