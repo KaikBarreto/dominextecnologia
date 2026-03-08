@@ -51,6 +51,9 @@ export default function CustomerDetail() {
   const [contactFormOpen, setContactFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<typeof contacts[0] | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [generatingPortal, setGeneratingPortal] = useState(false);
+  const { toast } = useToast();
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
