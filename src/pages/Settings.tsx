@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building, Shield, Palette, Loader2, Upload, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
+import { Building, Palette, Loader2, Upload, SlidersHorizontal } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,21 +8,18 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const tabs = [
   { key: 'empresa', label: 'Empresa', icon: Building },
   { key: 'usabilidade', label: 'Usabilidade', icon: SlidersHorizontal },
-  { key: 'seguranca', label: 'Segurança', icon: Shield },
   { key: 'aparencia', label: 'Aparência', icon: Palette },
 ];
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('empresa');
   const { settings, isLoading, updateSettings } = useCompanySettings();
-  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   // Company form
@@ -36,12 +33,6 @@ export default function Settings() {
   const [companyZip, setCompanyZip] = useState('');
   const [uploading, setUploading] = useState(false);
 
-  // Security form
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [showNewPass, setShowNewPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
 
   // Appearance
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
@@ -100,29 +91,6 @@ export default function Settings() {
       toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: err.message });
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ variant: 'destructive', title: 'As senhas não coincidem' });
-      return;
-    }
-    setChangingPassword(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      toast({ title: 'Senha alterada com sucesso!' });
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao alterar senha', description: err.message });
-    } finally {
-      setChangingPassword(false);
     }
   };
 
@@ -318,91 +286,6 @@ export default function Settings() {
             </Card>
           )}
 
-          {/* SEGURANÇA */}
-          {activeTab === 'seguranca' && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Dados da Conta
-                  </CardTitle>
-                  <CardDescription>Informações do seu perfil de usuário</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Nome</Label>
-                      <Input value={profile?.full_name || ''} disabled className="bg-muted" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input value={user?.email || ''} disabled className="bg-muted" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Telefone</Label>
-                      <Input value={profile?.phone || 'Não informado'} disabled className="bg-muted" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Conta criada em</Label>
-                      <Input value={user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : ''} disabled className="bg-muted" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Alterar Senha</CardTitle>
-                  <CardDescription>Defina uma nova senha para sua conta</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">Nova Senha</Label>
-                    <div className="relative">
-                      <Input
-                        id="new-password"
-                        type={showNewPass ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        onClick={() => setShowNewPass(!showNewPass)}
-                      >
-                        {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
-                    <div className="relative">
-                      <Input
-                        id="confirm-password"
-                        type={showConfirmPass ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repita a nova senha"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        onClick={() => setShowConfirmPass(!showConfirmPass)}
-                      >
-                        {showConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button onClick={handleChangePassword} disabled={changingPassword}>
-                    {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Alterar Senha
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           {/* APARÊNCIA */}
           {activeTab === 'aparencia' && (

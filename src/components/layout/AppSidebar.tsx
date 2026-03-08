@@ -97,11 +97,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="relative overflow-hidden px-4 py-4 bg-black">
+      <SidebarHeader className="relative overflow-hidden h-14 flex items-center justify-center bg-black px-4">
         <div className="absolute inset-0">
           <DarkVeil hueShift={53} speed={0.3} resolutionScale={0.3} />
         </div>
-        <img src={logoWhite} alt="Dominex" className="h-9 w-auto mx-auto relative z-10" />
+        <img src={logoWhite} alt="Dominex" className="h-8 w-auto mx-auto relative z-10" />
       </SidebarHeader>
 
       {profile && (
@@ -191,7 +191,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border">
+      <SidebarFooter className="border-t border-border h-[52px] flex items-center justify-center p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
