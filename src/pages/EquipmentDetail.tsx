@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -247,12 +247,6 @@ export default function EquipmentDetail() {
               </CardContent></Card>
             )}
           </div>
-          {equipment.notes && (
-            <Card><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
-              <p className="text-sm mt-1">{equipment.notes}</p>
-            </CardContent></Card>
-          )}
           {/* Custom fields */}
           {(() => {
             const customFields = (equipment as any).custom_fields as Record<string, any> | null;
@@ -277,6 +271,13 @@ export default function EquipmentDetail() {
               </div>
             );
           })()}
+          {/* Notes after custom fields */}
+          {equipment.notes && (
+            <Card><CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
+              <p className="text-sm mt-1">{equipment.notes}</p>
+            </CardContent></Card>
+          )}
         </div>
       )}
 

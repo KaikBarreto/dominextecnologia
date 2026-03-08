@@ -9,11 +9,12 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useContractDetail } from '@/hooks/useContractDetail';
 import { getFrequencyLabel } from '@/hooks/useContracts';
 import { useFinancial } from '@/hooks/useFinancial';
-import { format, isBefore, parseISO } from 'date-fns';
+import { format, isBefore, parseISO, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
@@ -37,6 +38,15 @@ const OCC_STATUS: Record<string, { label: string; variant: 'success' | 'outline'
   rescheduled: { label: 'Reagendada', variant: 'outline' },
 };
 
+const FREQUENCY_OPTIONS = [
+  { value: 'unica', label: 'Única', months: 0 },
+  { value: 'mensal', label: 'Mensal', months: 1 },
+  { value: 'bimestral', label: 'Bimestral', months: 2 },
+  { value: 'trimestral', label: 'Trimestral', months: 3 },
+  { value: 'semestral', label: 'Semestral', months: 6 },
+  { value: 'anual', label: 'Anual', months: 12 },
+];
+
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -47,27 +57,43 @@ export default function ContractDetail() {
   const [recDescription, setRecDescription] = useState('');
   const [recAmount, setRecAmount] = useState('');
   const [recDueDate, setRecDueDate] = useState('');
+  const [recFrequency, setRecFrequency] = useState('unica');
+  const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
 
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
     setRecSaving(true);
     try {
-      await createTransaction.mutateAsync({
-        transaction_type: 'entrada',
-        description: recDescription,
-        amount: parseFloat(recAmount),
-        transaction_date: new Date().toISOString().split('T')[0],
-        due_date: recDueDate || undefined,
-        is_paid: false,
-        customer_id: contract.customer_id,
-        notes: `Vinculado ao contrato: ${contract.name}`,
-        contract_id: id,
-      } as any);
+      const freqOption = FREQUENCY_OPTIONS.find(f => f.value === recFrequency);
+      const numInstallments = recFrequency === 'unica' ? 1 : Math.max(1, parseInt(recInstallments) || 1);
+      const amount = parseFloat(recAmount);
+      const baseDate = recDueDate ? parseISO(recDueDate) : new Date();
+
+      for (let i = 0; i < numInstallments; i++) {
+        const dueDate = addMonths(baseDate, i * (freqOption?.months || 0));
+        const suffix = numInstallments > 1 ? ` (${i + 1}/${numInstallments})` : '';
+        const monthLabel = numInstallments > 1 ? ` - ${format(dueDate, 'MMM/yyyy', { locale: ptBR })}` : '';
+        
+        await createTransaction.mutateAsync({
+          transaction_type: 'entrada',
+          description: `${recDescription}${monthLabel}${suffix}`,
+          amount,
+          transaction_date: new Date().toISOString().split('T')[0],
+          due_date: format(dueDate, 'yyyy-MM-dd'),
+          is_paid: false,
+          customer_id: contract.customer_id,
+          notes: `Vinculado ao contrato: ${contract.name}`,
+          contract_id: id,
+        } as any);
+      }
+
       setShowReceivableModal(false);
       setRecDescription('');
       setRecAmount('');
       setRecDueDate('');
+      setRecFrequency('unica');
+      setRecInstallments('1');
     } finally {
       setRecSaving(false);
     }
@@ -359,12 +385,31 @@ export default function ContractDetail() {
             <Input type="number" step="0.01" value={recAmount} onChange={e => setRecAmount(e.target.value)} placeholder="0,00" />
           </div>
           <div>
-            <Label>Data de Vencimento</Label>
+            <Label>Data de Vencimento (1ª parcela)</Label>
             <Input type="date" value={recDueDate} onChange={e => setRecDueDate(e.target.value)} />
           </div>
+          <div>
+            <Label>Recorrência</Label>
+            <Select value={recFrequency} onValueChange={setRecFrequency}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FREQUENCY_OPTIONS.map(f => (
+                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {recFrequency !== 'unica' && (
+            <div>
+              <Label>Quantidade de parcelas</Label>
+              <Input type="number" min="1" max="60" value={recInstallments} onChange={e => setRecInstallments(e.target.value)} placeholder="12" />
+            </div>
+          )}
           <Button className="w-full" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
             {recSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-            Criar Conta a Receber
+            {recFrequency !== 'unica' ? `Criar ${recInstallments || 1} Parcelas` : 'Criar Conta a Receber'}
           </Button>
         </div>
       </ResponsiveModal>
