@@ -13,7 +13,7 @@ import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { Employee } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
-import { cpfCnpjMask, phoneMask } from '@/utils/masks';
+import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 
 interface EmployeeFormDialogProps {
@@ -166,7 +166,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Chave PIX</Label>
-            <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, email, telefone ou chave aleatória" />
+            <Input value={pixKey} onChange={e => setPixKey(pixKeyMask(e.target.value))} placeholder="CPF, email, telefone ou chave aleatória" />
           </div>
         </div>
 
