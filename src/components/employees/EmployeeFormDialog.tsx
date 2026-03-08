@@ -196,22 +196,38 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         {!employee && (
           <div className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center gap-2">
-              <Switch checked={createAccess} onCheckedChange={setCreateAccess} />
+              <Switch checked={createAccess} onCheckedChange={(v) => { setCreateAccess(v); if (v && !password) setPassword(''); }} />
               <div>
                 <Label className="text-sm cursor-pointer">Criar acesso ao sistema</Label>
                 <p className="text-xs text-muted-foreground">Cria automaticamente um usuário com perfil Técnico</p>
               </div>
             </div>
             {createAccess && (
-              <div className="space-y-2">
+              <div className="space-y-3 pt-1">
                 {!email && <p className="text-xs text-destructive">Preencha o email acima para criar o acesso</p>}
-                <div className="space-y-1.5">
-                  <Label>Senha temporária</Label>
-                  <div className="flex gap-2">
-                    <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
-                    <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
+                {email && (
+                  <div className="rounded-md bg-muted/50 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">Login de acesso</p>
+                    <p className="text-sm font-medium">{email}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">Anote a senha — ela será exibida apenas uma vez</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Switch checked={useTemporaryPassword} onCheckedChange={(v) => { setUseTemporaryPassword(v); if (v) setPassword(generatePassword()); else setPassword(''); }} />
+                  <Label className="text-xs cursor-pointer">Senha temporária (gerada automaticamente)</Label>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{useTemporaryPassword ? 'Senha temporária' : 'Senha *'}</Label>
+                  {useTemporaryPassword ? (
+                    <div className="flex gap-2">
+                      <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
+                      <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
+                    </div>
+                  ) : (
+                    <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {useTemporaryPassword ? 'Anote a senha — ela será exibida apenas uma vez' : 'Defina a senha que o funcionário usará para acessar o sistema'}
+                  </p>
                 </div>
               </div>
             )}
