@@ -94,29 +94,6 @@ export default function Settings() {
     }
   };
 
-  const handleChangePassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ variant: 'destructive', title: 'As senhas não coincidem' });
-      return;
-    }
-    setChangingPassword(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      toast({ title: 'Senha alterada com sucesso!' });
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao alterar senha', description: err.message });
-    } finally {
-      setChangingPassword(false);
-    }
-  };
-
   const handleDarkModeToggle = (checked: boolean) => {
     setDarkMode(checked);
     if (checked) {
