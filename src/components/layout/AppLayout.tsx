@@ -58,8 +58,10 @@ function SidebarAppLayout() {
         <AppSidebar />
         <SidebarInset className="flex flex-col">
           <HeaderContent />
-          <main className="flex-1 overflow-auto p-4 md:p-6">
-            <Outlet />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+            <div className="min-w-0">
+              <Outlet />
+            </div>
           </main>
           <footer className="border-t px-4 h-[52px] flex items-center justify-center">
             <SystemFooter />
@@ -99,8 +101,10 @@ function TopbarAppLayout() {
           )}
         </div>
       </header>
-      <main className="flex-1 overflow-auto p-4 md:p-6">
-        <Outlet />
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+        <div className="min-w-0">
+          <Outlet />
+        </div>
       </main>
       <footer className="border-t px-4 h-[52px] flex items-center justify-center">
         <SystemFooter />
