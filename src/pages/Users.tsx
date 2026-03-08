@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { UserCircle, Search, Shield, Settings2, UserPlus, Power } from 'lucide-react';
+import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUsers, ROLE_LABELS, ROLE_COLORS, type AppRole, type UserWithRole } from '@/hooks/useUsers';
+import { useUsers, type UserWithRole } from '@/hooks/useUsers';
 import { useUserPermissions, usePermissionPresets } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -54,7 +54,6 @@ export default function Users() {
       if (result?.error) throw new Error(result.error);
 
       toast({ title: 'Usuário criado com sucesso!' });
-      // Refetch
       window.location.reload();
     } catch (e: any) {
       toast({ title: 'Erro ao criar usuário', description: e.message, variant: 'destructive' });
@@ -65,18 +64,15 @@ export default function Users() {
   const handleEditUser = async (data: any) => {
     if (!editingUser) return;
     try {
-      // Update profile name/phone
       await supabase
         .from('profiles')
         .update({ full_name: data.full_name, phone: data.phone || null })
         .eq('user_id', editingUser.user_id);
 
-      // Update role
       if (data.role) {
         await updateUserRole.mutateAsync({ userId: editingUser.user_id, role: data.role });
       }
 
-      // Update permissions
       await upsertPermissions.mutateAsync({
         user_id: editingUser.user_id,
         permissions: data.permissions,
@@ -95,7 +91,6 @@ export default function Users() {
     if (perm) {
       await toggleActive.mutateAsync({ user_id: userId, is_active: !currentActive });
     } else {
-      // Create a permissions record with is_active = false
       await upsertPermissions.mutateAsync({ user_id: userId, permissions: [], is_active: false });
     }
   };
@@ -124,16 +119,19 @@ export default function Users() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">Usuários e Permissões</h1>
-            <p className="text-muted-foreground">{users.length} usuários • {activeCount} ativos</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <ShieldCheck className="h-6 w-6" />
+            Usuários e Permissões
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {users.length} usuários • {activeCount} ativos
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
-            Cargos
+            Configurações
           </Button>
           {canManageRoles && (
             <Button size="sm" onClick={() => { setEditingUser(null); setUserFormOpen(true); }}>
@@ -148,7 +146,7 @@ export default function Users() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar usuário..."
+          placeholder="Buscar por nome ou telefone..."
           className="pl-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -156,115 +154,129 @@ export default function Users() {
       </div>
 
       {/* Users List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Equipe
-          </CardTitle>
-          <CardDescription>Gerencie usuários, permissões e acessos do sistema</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center gap-4">
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
                   <Skeleton className="h-12 w-12 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-40" />
                     <Skeleton className="h-3 w-24" />
                   </div>
-                  <Skeleton className="h-9 w-32" />
                 </div>
-              ))}
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <UserCircle className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">
-                {searchQuery ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
-              </h3>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredUsers.map((userProfile) => {
-                const perm = getUserPermission(userProfile.user_id);
-                const isActive = !perm || perm.is_active;
-                const permCount = perm?.permissions?.length || 0;
-                const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <p className="text-center text-muted-foreground">
+              {searchQuery ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredUsers.map((userProfile) => {
+            const perm = getUserPermission(userProfile.user_id);
+            const isActive = !perm || perm.is_active;
+            const permCount = perm?.permissions?.length || 0;
+            const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
+            const isAllPerms = permCount >= 27; // all permissions
 
-                return (
-                  <div
-                    key={userProfile.id}
-                    className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg border bg-card hover:shadow-card-hover transition-shadow ${
-                      isCurrentUser(userProfile) ? 'ring-2 ring-primary/20' : ''
-                    } ${!isActive ? 'opacity-50' : ''}`}
-                  >
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name} />
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {getInitials(userProfile.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-medium truncate">{userProfile.full_name}</h4>
-                        {isCurrentUser(userProfile) && (
-                          <Badge variant="outline" className="text-xs">Você</Badge>
+            return (
+              <Card key={userProfile.id} className={`hover:shadow-md transition-shadow ${!isActive ? 'opacity-60' : ''}`}>
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* Avatar + Info */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="relative group shrink-0">
+                        <Avatar className="h-12 w-12 border-2 border-border">
+                          <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name} />
+                          <AvatarFallback className="bg-muted text-muted-foreground">
+                            {getInitials(userProfile.full_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {canManageRoles && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <Camera className="h-4 w-4 text-white" />
+                          </div>
                         )}
-                        <Badge variant={isActive ? 'default' : 'secondary'} className="text-xs">
-                          {isActive ? 'Ativo' : 'Inativo'}
-                        </Badge>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        {userProfile.role && (
-                          <Badge variant="secondary" className={`text-xs ${ROLE_COLORS[userProfile.role]}`}>
-                            {ROLE_LABELS[userProfile.role]}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-base truncate">{userProfile.full_name}</h3>
+                          {isCurrentUser(userProfile) && (
+                            <Badge variant="outline" className="text-xs">Você</Badge>
+                          )}
+                          {isActive ? (
+                            <Badge className="bg-primary text-primary-foreground text-xs">Ativo</Badge>
+                          ) : (
+                            <Badge className="bg-destructive hover:bg-destructive text-white text-xs">Inativo</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{userProfile.phone || '—'}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <Badge className="bg-gradient-to-r from-gray-800 to-gray-900 text-white border-0 text-xs">
+                            <Shield className="h-3 w-3 mr-1.5" />
+                            {preset ? preset.name : isAllPerms ? 'Acesso Total' : `${permCount} permissões`}
                           </Badge>
-                        )}
-                        {preset && (
-                          <Badge variant="outline" className="text-xs">
-                            {preset.name}
-                          </Badge>
-                        )}
-                        {permCount > 0 && !preset && (
-                          <Badge variant="outline" className="text-xs">
-                            {permCount} permissões
-                          </Badge>
-                        )}
+                        </div>
                       </div>
                     </div>
 
+                    {/* Actions */}
                     {canManageRoles && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex gap-2 shrink-0 self-end sm:self-center">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => openEditUser(userProfile)}
+                          title="Editar usuário"
+                          className="hover:bg-yellow-500 hover:text-white hover:border-yellow-500"
                         >
-                          Editar
+                          <Pencil className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Editar</span>
                         </Button>
                         {!isCurrentUser(userProfile) && (
-                          <Button
-                            variant={isActive ? 'ghost' : 'outline'}
-                            size="icon"
-                            className="h-9 w-9"
-                            onClick={() => handleToggleActive(userProfile.user_id, isActive)}
-                            title={isActive ? 'Desativar' : 'Ativar'}
-                          >
-                            <Power className={`h-4 w-4 ${isActive ? 'text-muted-foreground' : 'text-primary'}`} />
-                          </Button>
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleActive(userProfile.user_id, isActive)}
+                              title={isActive ? 'Desativar usuário' : 'Ativar usuário'}
+                              className={isActive
+                                ? 'hover:bg-orange-500 hover:text-white hover:border-orange-500'
+                                : 'hover:bg-green-600 hover:text-white hover:border-green-600'
+                              }
+                            >
+                              {isActive ? (
+                                <>
+                                  <UserX className="h-4 w-4 sm:mr-2" />
+                                  <span className="hidden sm:inline">Desativar</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="h-4 w-4 sm:mr-2" />
+                                  <span className="hidden sm:inline">Ativar</span>
+                                </>
+                              )}
+                            </Button>
+                          </>
                         )}
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Dialogs */}
       <UserFormDialog

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Monitor, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,8 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
-  PERMISSION_GROUPS,
-  getPermissionsByGroup,
+  SCREEN_CATEGORIES,
+  FUNCTION_PERMISSIONS,
+  getScreensByCategory,
   type PermissionPreset,
 } from '@/hooks/usePermissions';
 
@@ -46,15 +47,6 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
     }));
   };
 
-  const toggleGroup = (group: string) => {
-    const groupPerms = getPermissionsByGroup(group).map(p => p.key);
-    const allSelected = groupPerms.every(k => form.permissions.includes(k));
-    setForm(f => ({
-      ...f,
-      permissions: allSelected ? f.permissions.filter(p => !groupPerms.includes(p)) : [...new Set([...f.permissions, ...groupPerms])],
-    }));
-  };
-
   const handleSave = async () => {
     setLoading(true);
     try {
@@ -84,11 +76,13 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
 
   const showForm = isCreating || editing;
 
+  const screenCategories = Object.keys(SCREEN_CATEGORIES);
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Gerenciar Cargos"
+      title="Configurações de Cargos"
       description="Crie e edite perfis de acesso com permissões pré-definidas"
     >
       <ScrollArea className="max-h-[70vh] pr-4">
@@ -135,34 +129,70 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
 
             <Separator />
 
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Permissões</Label>
-              {PERMISSION_GROUPS.map(group => {
-                const groupPerms = getPermissionsByGroup(group);
-                const allSelected = groupPerms.every(p => form.permissions.includes(p.key));
-                const someSelected = groupPerms.some(p => form.permissions.includes(p.key));
+            {/* Telas Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-primary" />
+                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Telas</Label>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                {screenCategories.map(catKey => {
+                  const category = SCREEN_CATEGORIES[catKey];
+                  const screens = getScreensByCategory(catKey);
+                  if (screens.length === 0) return null;
+                  const CategoryIcon = category.icon;
 
-                return (
-                  <div key={group} className="rounded-lg border p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={allSelected}
-                        onCheckedChange={() => toggleGroup(group)}
-                        className={someSelected && !allSelected ? 'opacity-50' : ''}
-                      />
-                      <span className="text-sm font-semibold">{group}</span>
+                  return (
+                    <div key={catKey} className="border rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                        <CategoryIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">{category.label}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {screens.map(screen => (
+                          <div key={screen.key} className="flex items-start space-x-2">
+                            <Checkbox
+                              checked={form.permissions.includes(screen.key)}
+                              onCheckedChange={() => togglePermission(screen.key)}
+                              className="mt-0.5"
+                            />
+                            <label className="text-sm leading-tight cursor-pointer" onClick={() => togglePermission(screen.key)}>
+                              {screen.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-6">
-                      {groupPerms.map(perm => (
-                        <label key={perm.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1">
-                          <Checkbox checked={form.permissions.includes(perm.key)} onCheckedChange={() => togglePermission(perm.key)} />
-                          <span className="text-muted-foreground">{perm.label}</span>
-                        </label>
-                      ))}
+                  );
+                })}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Funções Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Settings2 className="h-5 w-5 text-primary" />
+                <Label className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Funções</Label>
+              </div>
+              <div className="border rounded-lg p-4 space-y-3">
+                {FUNCTION_PERMISSIONS.map(action => (
+                  <div key={action.key} className="flex items-start space-x-2 p-2 rounded hover:bg-muted/50 transition-colors">
+                    <Checkbox
+                      checked={form.permissions.includes(action.key)}
+                      onCheckedChange={() => togglePermission(action.key)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <label className="text-sm font-medium cursor-pointer block" onClick={() => togglePermission(action.key)}>
+                        {action.label}
+                      </label>
+                      <p className="text-xs text-muted-foreground">{action.description}</p>
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

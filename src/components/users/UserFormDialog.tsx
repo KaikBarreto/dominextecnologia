@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Monitor, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,14 +11,13 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   SCREEN_PERMISSIONS,
   FUNCTION_PERMISSIONS,
-  PERMISSION_GROUPS,
-  getPermissionsByGroup,
+  SCREEN_CATEGORIES,
+  getScreensByCategory,
+  getFunctionsByCategory,
   getAllPermissionKeys,
   type PermissionPreset,
 } from '@/hooks/usePermissions';
-import { ROLE_LABELS, type AppRole } from '@/hooks/useUsers';
-
-const ROLES: AppRole[] = ['admin', 'gestor', 'tecnico', 'comercial', 'financeiro'];
+import { type AppRole } from '@/hooks/useUsers';
 
 interface UserFormData {
   full_name: string;
@@ -92,22 +91,10 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   const togglePermission = (key: string) => {
     setForm(f => ({
       ...f,
-      preset_id: null, // custom when manually toggling
+      preset_id: null,
       permissions: f.permissions.includes(key)
         ? f.permissions.filter(p => p !== key)
         : [...f.permissions, key],
-    }));
-  };
-
-  const toggleGroup = (group: string) => {
-    const groupPerms = getPermissionsByGroup(group).map(p => p.key);
-    const allSelected = groupPerms.every(k => form.permissions.includes(k));
-    setForm(f => ({
-      ...f,
-      preset_id: null,
-      permissions: allSelected
-        ? f.permissions.filter(p => !groupPerms.includes(p))
-        : [...new Set([...f.permissions, ...groupPerms])],
     }));
   };
 
@@ -121,6 +108,9 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     }
   };
 
+  // Group screens by category
+  const screenCategories = Object.keys(SCREEN_CATEGORIES);
+
   return (
     <ResponsiveModal
       open={open}
@@ -131,38 +121,26 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
       <ScrollArea className="max-h-[70vh] pr-4">
         <div className="space-y-6 pb-4">
           {/* Basic Info */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
-              <Label>Nome Completo *</Label>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">Nome Completo *</Label>
               <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Nome do usuário" />
             </div>
             {!isEditing && (
               <>
                 <div>
-                  <Label>Email *</Label>
+                  <Label className="text-[13px] font-normal uppercase tracking-wider">Email *</Label>
                   <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@exemplo.com" />
                 </div>
                 <div>
-                  <Label>Senha *</Label>
+                  <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
                   <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
                 </div>
               </>
             )}
             <div>
-              <Label>Telefone</Label>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">Telefone</Label>
               <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(00) 00000-0000" />
-            </div>
-            <div>
-              <Label>Papel (Role)</Label>
-              <Select value={form.role || 'none'} onValueChange={v => setForm(f => ({ ...f, role: v === 'none' ? '' : v as AppRole }))}>
-                <SelectTrigger><SelectValue placeholder="Selecionar papel" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem papel</SelectItem>
-                  {ROLES.map(r => (
-                    <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
@@ -170,63 +148,102 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
 
           {/* Preset Selection */}
           <div>
-            <Label>Perfil de Acesso</Label>
+            <Label className="text-[13px] font-normal uppercase tracking-wider">Perfil de Acesso</Label>
             <Select value={form.preset_id || 'custom'} onValueChange={handlePresetChange}>
-              <SelectTrigger><SelectValue placeholder="Selecionar perfil" /></SelectTrigger>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Selecione um perfil" />
+              </SelectTrigger>
               <SelectContent>
+                <SelectItem value="custom">Personalizado</SelectItem>
                 <SelectItem value="all">Acesso Total</SelectItem>
                 {presets.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{p.description ? ` - ${p.description}` : ''}
+                  </SelectItem>
                 ))}
-                <SelectItem value="custom">Personalizado</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <Separator />
-
-          {/* Permissions by Group */}
+          {/* Telas Section */}
           <div className="space-y-4">
-            <Label className="text-base font-semibold">Permissões</Label>
-            {PERMISSION_GROUPS.map(group => {
-              const groupPerms = getPermissionsByGroup(group);
-              const allSelected = groupPerms.every(p => form.permissions.includes(p.key));
-              const someSelected = groupPerms.some(p => form.permissions.includes(p.key));
+            <div className="flex items-center gap-2">
+              <Monitor className="h-5 w-5 text-primary" />
+              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Telas</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Selecione quais telas este usuário pode acessar
+            </p>
+            <div className="grid grid-cols-1 gap-4">
+              {screenCategories.map(catKey => {
+                const category = SCREEN_CATEGORIES[catKey];
+                const screens = getScreensByCategory(catKey);
+                if (screens.length === 0) return null;
+                const CategoryIcon = category.icon;
 
-              return (
-                <div key={group} className="rounded-lg border p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={allSelected}
-                      ref={undefined}
-                      onCheckedChange={() => toggleGroup(group)}
-                      className={someSelected && !allSelected ? 'opacity-50' : ''}
-                    />
-                    <span className="text-sm font-semibold text-foreground">{group}</span>
+                return (
+                  <div key={catKey} className="border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+                      <CategoryIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">{category.label}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {screens.map(screen => (
+                        <div key={screen.key} className="flex items-start space-x-2">
+                          <Checkbox
+                            id={screen.key}
+                            checked={form.permissions.includes(screen.key)}
+                            onCheckedChange={() => togglePermission(screen.key)}
+                            className="mt-0.5"
+                          />
+                          <label htmlFor={screen.key} className="text-sm leading-tight cursor-pointer">
+                            {screen.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-6">
-                    {groupPerms.map(perm => (
-                      <label key={perm.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1">
-                        <Checkbox
-                          checked={form.permissions.includes(perm.key)}
-                          onCheckedChange={() => togglePermission(perm.key)}
-                        />
-                        <span className="text-muted-foreground">{perm.label}</span>
-                      </label>
-                    ))}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Funções Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-primary" />
+              <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">Funções</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Selecione quais ações este usuário pode realizar
+            </p>
+            <div className="border rounded-lg p-4 space-y-3">
+              {FUNCTION_PERMISSIONS.map(action => (
+                <div key={action.key} className="flex items-start space-x-2 p-2 rounded hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id={action.key}
+                    checked={form.permissions.includes(action.key)}
+                    onCheckedChange={() => togglePermission(action.key)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor={action.key} className="text-sm font-medium cursor-pointer block">
+                      {action.label}
+                    </label>
+                    <p className="text-xs text-muted-foreground">{action.description}</p>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
       </ScrollArea>
 
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-        <Button onClick={handleSubmit} disabled={loading || (!isEditing && (!form.full_name || !form.email || !form.password))}>
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t">
+        <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Cancelar</Button>
+        <Button onClick={handleSubmit} disabled={loading || (!isEditing && (!form.full_name || !form.email || !form.password))} className="w-full sm:w-auto">
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isEditing ? 'Salvar' : 'Criar Usuário'}
+          {isEditing ? 'Atualizar' : 'Criar Usuário'}
         </Button>
       </div>
     </ResponsiveModal>
