@@ -625,6 +625,7 @@ export type Database = {
           position: string | null
           salary: number | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           address?: string | null
@@ -641,6 +642,7 @@ export type Database = {
           position?: string | null
           salary?: number | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           address?: string | null
@@ -657,6 +659,7 @@ export type Database = {
           position?: string | null
           salary?: number | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1009,6 +1012,7 @@ export type Database = {
       }
       form_questions: {
         Row: {
+          answer_mode: string | null
           answer_types: Json | null
           created_at: string
           description: string | null
@@ -1022,6 +1026,7 @@ export type Database = {
           template_id: string
         }
         Insert: {
+          answer_mode?: string | null
           answer_types?: Json | null
           created_at?: string
           description?: string | null
@@ -1035,6 +1040,7 @@ export type Database = {
           template_id: string
         }
         Update: {
+          answer_mode?: string | null
           answer_types?: Json | null
           created_at?: string
           description?: string | null
