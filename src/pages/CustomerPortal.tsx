@@ -354,7 +354,7 @@ export default function CustomerPortal() {
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <a
-                                href={`${window.location.origin}/os-tecnico/${os.id}`}
+                              href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title="Ver detalhes"
@@ -447,7 +447,7 @@ export default function CustomerPortal() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>{statusCfg.label}</Badge>
-                                <a href={`${window.location.origin}/os-tecnico/${os.id}`} target="_blank" rel="noopener noreferrer">
+                                <a href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`} target="_blank" rel="noopener noreferrer">
                                   <Button variant="ghost" size="icon" className="h-7 w-7">
                                     <ExternalLink className="h-3.5 w-3.5" />
                                   </Button>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ClipboardList, 
   MapPin, 
@@ -50,6 +50,8 @@ interface EquipmentItem {
 
 export default function TechnicianOS() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const forceReadOnly = searchParams.get('modo') === 'cliente';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -76,9 +78,9 @@ export default function TechnicianOS() {
   // Check if user is authenticated
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setIsAuthenticated(!!data.user);
+      setIsAuthenticated(forceReadOnly ? false : !!data.user);
     });
-  }, []);
+  }, [forceReadOnly]);
 
   useEffect(() => {
     if (id) {
