@@ -47,18 +47,43 @@ export default function QuestionnaireDetail() {
   const serviceTypeIds = ((template as any)?.service_type_ids ?? []) as string[];
   const appliesToAll = serviceTypeIds.length === 0;
 
-  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
   const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
 
-  // New question modal state
-  const [newQuestionOpen, setNewQuestionOpen] = useState(false);
-  const [newQ, setNewQ] = useState<Partial<FormQuestionInsert> & { options?: string[] }>({
-    question: '', question_type: 'boolean', is_required: true, description: '', options: [],
+  // Question modal state (create or edit)
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<FormQuestion | null>(null);
+  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean }>({
+    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false,
   });
   const [newOption, setNewOption] = useState('');
+
+  const resetQuestionForm = () => {
+    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false });
+    setNewOption('');
+    setEditingQuestion(null);
+  };
+
+  const openCreateModal = () => {
+    resetQuestionForm();
+    setQuestionModalOpen(true);
+  };
+
+  const openEditModal = (question: FormQuestion) => {
+    setEditingQuestion(question);
+    setQForm({
+      question: question.question,
+      question_type: question.question_type,
+      is_required: question.is_required,
+      description: question.description || '',
+      options: (question.options as string[]) || [],
+      require_camera: (question as any).require_camera || false,
+    });
+    setNewOption('');
+    setQuestionModalOpen(true);
+  };
 
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -73,34 +98,54 @@ export default function QuestionnaireDetail() {
     );
   }
 
-  const handleAddQuestion = () => {
-    if (!newQ.question?.trim()) return;
-    const position = template.questions?.length || 0;
-    createQuestion.mutate({
-      template_id: template.id,
-      question: newQ.question,
-      question_type: newQ.question_type as any,
-      is_required: newQ.is_required ?? true,
-      description: newQ.description || undefined,
-      options: newQ.question_type === 'select' && newQ.options?.length ? newQ.options : undefined,
-      position,
-    }, {
-      onSuccess: () => {
-        setNewQ({ question: '', question_type: 'boolean', is_required: true, description: '', options: [] });
-        setNewOption('');
-        setNewQuestionOpen(false);
-      },
-    });
+  const handleSaveQuestion = () => {
+    if (!qForm.question?.trim()) return;
+
+    if (editingQuestion) {
+      // Update existing
+      updateQuestion.mutate({
+        id: editingQuestion.id,
+        question: qForm.question,
+        question_type: qForm.question_type as any,
+        is_required: qForm.is_required ?? true,
+        description: qForm.description || null,
+        options: qForm.question_type === 'select' && qForm.options?.length ? qForm.options : null,
+        require_camera: qForm.require_camera || false,
+      } as any, {
+        onSuccess: () => {
+          setQuestionModalOpen(false);
+          resetQuestionForm();
+        },
+      });
+    } else {
+      // Create new
+      const position = template.questions?.length || 0;
+      createQuestion.mutate({
+        template_id: template.id,
+        question: qForm.question!,
+        question_type: qForm.question_type as any,
+        is_required: qForm.is_required ?? true,
+        description: qForm.description || undefined,
+        options: qForm.question_type === 'select' && qForm.options?.length ? qForm.options : undefined,
+        position,
+        require_camera: qForm.require_camera || false,
+      }, {
+        onSuccess: () => {
+          setQuestionModalOpen(false);
+          resetQuestionForm();
+        },
+      });
+    }
   };
 
   const handleAddOption = () => {
     if (!newOption.trim()) return;
-    setNewQ(prev => ({ ...prev, options: [...(prev.options || []), newOption.trim()] }));
+    setQForm(prev => ({ ...prev, options: [...(prev.options || []), newOption.trim()] }));
     setNewOption('');
   };
 
   const handleRemoveOption = (index: number) => {
-    setNewQ(prev => ({ ...prev, options: (prev.options || []).filter((_, i) => i !== index) }));
+    setQForm(prev => ({ ...prev, options: (prev.options || []).filter((_, i) => i !== index) }));
   };
 
   const handleDragStart = (e: React.DragEvent, qId: string) => {
@@ -210,7 +255,7 @@ export default function QuestionnaireDetail() {
       {/* Questions header with button */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Perguntas</h2>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNewQuestionOpen(true)}>
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
           <Plus className="mr-2 h-4 w-4" />
           Nova Pergunta
         </Button>
@@ -225,66 +270,111 @@ export default function QuestionnaireDetail() {
         </div>
       ) : (
         <div className="space-y-2">
-          {sortedQuestions.map((question, index) => (
-            <QuestionRow
-              key={question.id}
-              question={question}
-              index={index}
-              isEditing={editingQuestionId === question.id}
-              onEdit={() => setEditingQuestionId(question.id)}
-              onCancelEdit={() => setEditingQuestionId(null)}
-              onSave={(data) => { updateQuestion.mutate({ id: question.id, ...data }); setEditingQuestionId(null); }}
-              onDelete={() => setDeleteQuestionId(question.id)}
-              isDragged={draggedQuestionId === question.id}
-              isDragOver={dragOverQuestionId === question.id}
-              onDragStart={(e) => handleDragStart(e, question.id)}
-              onDragOver={(e) => handleDragOver(e, question.id)}
-              onDragLeave={() => setDragOverQuestionId(null)}
-              onDrop={(e) => handleDrop(e, question.id)}
-              onDragEnd={() => { setDraggedQuestionId(null); setDragOverQuestionId(null); }}
-            />
-          ))}
+          {sortedQuestions.map((question, index) => {
+            const Icon = getQTypeIcon(question.question_type);
+            const questionOptions = (question.options as string[]) || [];
+
+            return (
+              <div key={question.id} className="flex items-start gap-2">
+                <span className="text-xs font-medium text-muted-foreground mt-3 w-6">{index + 1}.</span>
+                <div
+                  className={cn(
+                    "flex-1 flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors group",
+                    draggedQuestionId === question.id && "opacity-50",
+                    dragOverQuestionId === question.id && "border-primary border-2"
+                  )}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, question.id)}
+                  onDragOver={(e) => handleDragOver(e, question.id)}
+                  onDragLeave={() => setDragOverQuestionId(null)}
+                  onDrop={(e) => handleDrop(e, question.id)}
+                  onDragEnd={() => { setDraggedQuestionId(null); setDragOverQuestionId(null); }}
+                >
+                  <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab active:cursor-grabbing shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-medium leading-tight">{question.question}</p>
+                    {question.description && (
+                      <p className="text-xs text-muted-foreground">{question.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <Icon className="h-3 w-3" />
+                        {getQTypeLabel(question.question_type)}
+                      </Badge>
+                      {question.is_required && (
+                        <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
+                      )}
+                      {question.question_type === 'photo' && (question as any).require_camera && (
+                        <Badge variant="outline" className="text-xs">Câmera obrigatória</Badge>
+                      )}
+                      {question.question_type === 'select' && questionOptions.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {questionOptions.length} opções
+                        </span>
+                      )}
+                    </div>
+                    {question.question_type === 'select' && questionOptions.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {questionOptions.map((opt, i) => (
+                          <Badge key={i} variant="outline" className="text-xs font-normal">{opt}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => openEditModal(question)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteQuestionId(question.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* New question modal */}
-      <ResponsiveModal open={newQuestionOpen} onOpenChange={setNewQuestionOpen} title="Nova Pergunta">
+      {/* Question modal (create or edit) */}
+      <ResponsiveModal open={questionModalOpen} onOpenChange={(o) => { setQuestionModalOpen(o); if (!o) resetQuestionForm(); }} title={editingQuestion ? 'Editar Pergunta' : 'Nova Pergunta'}>
         <div className="space-y-4">
           <div>
             <Label>Pergunta</Label>
             <Input
-              value={newQ.question || ''}
-              onChange={(e) => setNewQ({ ...newQ, question: e.target.value })}
+              value={qForm.question || ''}
+              onChange={(e) => setQForm({ ...qForm, question: e.target.value })}
               placeholder="Texto da pergunta..."
               className="mt-1"
             />
           </div>
           <div>
-            <Label>Descrição (opcional)</Label>
+            <Label>Descrição interna (opcional)</Label>
             <Textarea
-              value={newQ.description || ''}
-              onChange={(e) => setNewQ({ ...newQ, description: e.target.value })}
-              placeholder="Descrição ou instrução adicional..."
+              value={qForm.description || ''}
+              onChange={(e) => setQForm({ ...qForm, description: e.target.value })}
+              placeholder="Instrução interna para o técnico (não aparece no relatório)..."
               className="mt-1"
               rows={2}
             />
+            <p className="text-xs text-muted-foreground mt-1">Visível apenas durante o preenchimento. Não aparece no relatório nem no portal do cliente.</p>
           </div>
           <div>
             <Label>Tipo de resposta</Label>
             <Select
-              value={newQ.question_type || 'boolean'}
-              onValueChange={(v) => setNewQ({ ...newQ, question_type: v as any, options: v === 'select' ? (newQ.options || []) : [] })}
+              value={qForm.question_type || 'boolean'}
+              onValueChange={(v) => setQForm({ ...qForm, question_type: v as any, options: v === 'select' ? (qForm.options || []) : [], require_camera: v === 'photo' ? (qForm.require_camera || false) : false })}
             >
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {QUESTION_TYPES.map((t) => {
-                  const Icon = t.icon;
+                  const QIcon = t.icon;
                   return (
                     <SelectItem key={t.value} value={t.value}>
                       <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
+                        <QIcon className="h-4 w-4" />
                         {t.label}
                       </span>
                     </SelectItem>
@@ -294,8 +384,22 @@ export default function QuestionnaireDetail() {
             </Select>
           </div>
 
+          {/* Camera-only toggle for photo type */}
+          {qForm.question_type === 'photo' && (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={qForm.require_camera ?? false}
+                onCheckedChange={(checked) => setQForm({ ...qForm, require_camera: checked })}
+              />
+              <div>
+                <Label className="text-sm cursor-pointer">Exigir foto da câmera</Label>
+                <p className="text-xs text-muted-foreground">Bloqueia upload da galeria, exige foto tirada na hora</p>
+              </div>
+            </div>
+          )}
+
           {/* Select options config */}
-          {newQ.question_type === 'select' && (
+          {qForm.question_type === 'select' && (
             <div className="space-y-2">
               <Label>Opções de resposta</Label>
               <div className="flex gap-2">
@@ -310,13 +414,13 @@ export default function QuestionnaireDetail() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              {(newQ.options || []).length > 0 && (
+              {(qForm.options || []).length > 0 && (
                 <div className="space-y-1">
-                  {(newQ.options || []).map((opt, i) => (
+                  {(qForm.options || []).map((opt, i) => (
                     <EditableOption
                       key={i}
                       value={opt}
-                      onChange={(newVal) => setNewQ(prev => ({ ...prev, options: (prev.options || []).map((o, idx) => idx === i ? newVal : o) }))}
+                      onChange={(newVal) => setQForm(prev => ({ ...prev, options: (prev.options || []).map((o, idx) => idx === i ? newVal : o) }))}
                       onRemove={() => handleRemoveOption(i)}
                     />
                   ))}
@@ -327,20 +431,20 @@ export default function QuestionnaireDetail() {
 
           <div className="flex items-center gap-2">
             <Switch
-              checked={newQ.is_required ?? true}
-              onCheckedChange={(checked) => setNewQ({ ...newQ, is_required: checked })}
+              checked={qForm.is_required ?? true}
+              onCheckedChange={(checked) => setQForm({ ...qForm, is_required: checked })}
             />
             <Label className="text-sm cursor-pointer">Campo obrigatório</Label>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setNewQuestionOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setQuestionModalOpen(false); resetQuestionForm(); }}>Cancelar</Button>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleAddQuestion}
-              disabled={!newQ.question?.trim() || createQuestion.isPending}
+              onClick={handleSaveQuestion}
+              disabled={!qForm.question?.trim() || createQuestion.isPending || updateQuestion.isPending}
             >
-              Criar Pergunta
+              {editingQuestion ? 'Salvar Alterações' : 'Criar Pergunta'}
             </Button>
           </div>
         </div>
@@ -379,194 +483,6 @@ export default function QuestionnaireDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-// Sub-component for each question row
-function QuestionRow({
-  question, index, isEditing, onEdit, onCancelEdit, onSave, onDelete,
-  isDragged, isDragOver,
-  onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd,
-}: {
-  question: FormQuestion; index: number;
-  isEditing: boolean; onEdit: () => void; onCancelEdit: () => void;
-  onSave: (data: Partial<FormQuestion>) => void; onDelete: () => void;
-  isDragged: boolean; isDragOver: boolean;
-  onDragStart: (e: React.DragEvent) => void; onDragOver: (e: React.DragEvent) => void;
-  onDragLeave: () => void; onDrop: (e: React.DragEvent) => void; onDragEnd: () => void;
-}) {
-  const [text, setText] = useState(question.question);
-  const [type, setType] = useState<string>(question.question_type);
-  const [required, setRequired] = useState(question.is_required);
-  const [options, setOptions] = useState<string[]>((question.options as string[]) || []);
-  const [editOption, setEditOption] = useState('');
-
-  useEffect(() => {
-    setText(question.question);
-    setType(question.question_type);
-    setRequired(question.is_required);
-    setOptions((question.options as string[]) || []);
-  }, [question]);
-
-  const Icon = getQTypeIcon(type);
-
-  if (isEditing) {
-    return (
-      <div className="flex items-start gap-2">
-        <span className="text-xs font-medium text-muted-foreground mt-3 w-6">{index + 1}.</span>
-        <div className="flex-1 p-4 rounded-lg border bg-muted/30 space-y-3">
-          <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} />
-          <div className="flex items-center gap-3 flex-wrap">
-            <Select value={type} onValueChange={(v) => { setType(v); if (v !== 'select') setOptions([]); }}>
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {QUESTION_TYPES.map((t) => {
-                  const TIcon = t.icon;
-                  return (
-                    <SelectItem key={t.value} value={t.value}>
-                      <span className="flex items-center gap-2"><TIcon className="h-4 w-4" />{t.label}</span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2">
-              <Switch checked={required} onCheckedChange={setRequired} />
-              <Label className="text-xs">Obrigatória</Label>
-            </div>
-          </div>
-
-          {/* Edit options for select type */}
-          {type === 'select' && (
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">Opções de resposta</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={editOption}
-                  onChange={(e) => setEditOption(e.target.value)}
-                  placeholder="Adicionar opção..."
-                  className="flex-1 h-8"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (editOption.trim()) {
-                        setOptions([...options, editOption.trim()]);
-                        setEditOption('');
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (editOption.trim()) {
-                      setOptions([...options, editOption.trim()]);
-                      setEditOption('');
-                    }
-                  }}
-                  disabled={!editOption.trim()}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-              {options.length > 0 && (
-                <div className="space-y-1">
-                  {options.map((opt, i) => (
-                    <EditableOption
-                      key={i}
-                      value={opt}
-                      onChange={(newVal) => setOptions(options.map((o, idx) => idx === i ? newVal : o))}
-                      onRemove={() => setOptions(options.filter((_, idx) => idx !== i))}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-1">
-            <Button variant="ghost" size="sm" onClick={onCancelEdit}>
-              <X className="h-4 w-4 mr-1" /> Cancelar
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSave({
-                question: text,
-                question_type: type as any,
-                is_required: required,
-                options: type === 'select' ? options : null,
-              })}
-            >
-              <Check className="h-4 w-4 mr-1 text-green-600" /> Salvar
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const questionOptions = (question.options as string[]) || [];
-
-  return (
-    <div className="flex items-start gap-2">
-      <span className="text-xs font-medium text-muted-foreground mt-3 w-6">{index + 1}.</span>
-      <div
-        className={cn(
-          "flex-1 flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors group",
-          isDragged && "opacity-50",
-          isDragOver && "border-primary border-2"
-        )}
-        draggable
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab active:cursor-grabbing shrink-0" />
-        <div className="flex-1 min-w-0 space-y-1">
-          <p className="text-sm font-medium leading-tight">{question.question}</p>
-          {question.description && (
-            <p className="text-xs text-muted-foreground">{question.description}</p>
-          )}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="text-xs gap-1">
-              <Icon className="h-3 w-3" />
-              {getQTypeLabel(question.question_type)}
-            </Badge>
-            {question.is_required && (
-              <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
-            )}
-            {question.question_type === 'select' && questionOptions.length > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {questionOptions.length} opções
-              </span>
-            )}
-          </div>
-          {/* Show options inline for select type */}
-          {question.question_type === 'select' && questionOptions.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {questionOptions.map((opt, i) => (
-                <Badge key={i} variant="outline" className="text-xs font-normal">{opt}</Badge>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={onDelete}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

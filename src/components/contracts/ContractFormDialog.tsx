@@ -17,6 +17,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ interface ContractFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (contractId: string) => void;
+  editContract?: any;
 }
 
 const STEPS = [
@@ -52,14 +54,16 @@ const QUICK_DAYS = [
   { label: '90 dias', value: 90 },
 ];
 
-export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFormDialogProps) {
-  const { createContract } = useContracts();
+export function ContractFormDialog({ open, onOpenChange, onCreated, editContract }: ContractFormDialogProps) {
+  const { createContract, updateContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { teams } = useTeams();
   const { serviceTypes } = useServiceTypes();
   const { templates } = useFormTemplates();
   const { toast } = useToast();
+
+  const isEditing = !!editContract;
 
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -92,12 +96,42 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
   useEffect(() => {
     if (!open) {
       setStep(0);
+      setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
+      return;
+    }
+
+    if (editContract) {
+      setName(editContract.name || '');
+      setCustomerId(editContract.customer_id || '');
+      // Handle technician or team
+      if (editContract.team_id) {
+        setTechnicianId(`team:${editContract.team_id}`);
+      } else {
+        setTechnicianId(editContract.technician_id || '');
+      }
+      setServiceTypeId(editContract.service_type_id || '');
+      setFormTemplateId(editContract.form_template_id || '');
+      setNotes(editContract.notes || '');
+      setIsActive(editContract.status === 'active');
+      setFreqType(editContract.frequency_type || 'months');
+      setFreqValue(editContract.frequency_value || 1);
+      setStartDate(editContract.start_date || format(new Date(), 'yyyy-MM-dd'));
+      setHorizonMonths(editContract.horizon_months || 12);
+      setSelectedItems(
+        (editContract.contract_items || []).map((i: any) => ({
+          equipment_id: i.equipment_id || undefined,
+          item_name: i.item_name,
+          item_description: i.item_description || undefined,
+          form_template_id: i.form_template_id || undefined,
+        }))
+      );
+    } else {
       setName(''); setCustomerId(''); setTechnicianId(''); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
-      setSelectedItems([]); setItemSearch(''); setShowManualItem(false); setManualName(''); setManualDesc('');
+      setSelectedItems([]);
     }
-  }, [open]);
+  }, [open, editContract]);
 
   const customerOptions = useMemo(() =>
     customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
@@ -152,32 +186,54 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
       const actualTechnicianId = isTeam ? null : (technicianId || null);
       const actualTeamId = isTeam ? technicianId.replace('team:', '') : null;
 
-      const result = await createContract.mutateAsync({
-        name,
-        customer_id: customerId,
-        technician_id: actualTechnicianId,
-        team_id: actualTeamId,
-        service_type_id: serviceTypeId || null,
-        form_template_id: formTemplateId || null,
-        status: isActive ? 'active' : 'paused',
-        notes: notes || null,
-        frequency_type: freqType,
-        frequency_value: freqValue,
-        start_date: startDate,
-        horizon_months: horizonMonths,
-        items: selectedItems.map(i => ({
-          equipment_id: i.equipment_id || null,
-          item_name: i.item_name,
-          item_description: i.item_description || null,
-          form_template_id: i.form_template_id || null,
-        })),
-      });
+      if (isEditing) {
+        // Update existing contract metadata only
+        const { error } = await supabase.from('contracts').update({
+          name,
+          customer_id: customerId,
+          technician_id: actualTechnicianId,
+          team_id: actualTeamId,
+          service_type_id: serviceTypeId || null,
+          form_template_id: formTemplateId || null,
+          status: isActive ? 'active' : 'paused',
+          notes: notes || null,
+          frequency_type: freqType,
+          frequency_value: freqValue,
+          start_date: startDate,
+          horizon_months: horizonMonths,
+        }).eq('id', editContract.id);
+        if (error) throw error;
+        toast({ title: '✅ Contrato atualizado!' });
+        onOpenChange(false);
+        if (onCreated) onCreated(editContract.id);
+      } else {
+        const result = await createContract.mutateAsync({
+          name,
+          customer_id: customerId,
+          technician_id: actualTechnicianId,
+          team_id: actualTeamId,
+          service_type_id: serviceTypeId || null,
+          form_template_id: formTemplateId || null,
+          status: isActive ? 'active' : 'paused',
+          notes: notes || null,
+          frequency_type: freqType,
+          frequency_value: freqValue,
+          start_date: startDate,
+          horizon_months: horizonMonths,
+          items: selectedItems.map(i => ({
+            equipment_id: i.equipment_id || null,
+            item_name: i.item_name,
+            item_description: i.item_description || null,
+            form_template_id: i.form_template_id || null,
+          })),
+        });
 
-      toast({
-        title: `✅ Contrato criado com ${occurrences.length} OSs geradas na agenda`,
-      });
-      onOpenChange(false);
-      if (onCreated && result) onCreated((result as any).id);
+        toast({
+          title: `✅ Contrato criado com ${occurrences.length} OSs geradas na agenda`,
+        });
+        onOpenChange(false);
+        if (onCreated && result) onCreated((result as any).id);
+      }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
     } finally {
@@ -192,7 +248,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-[700px] overflow-y-auto flex flex-col">
         <SheetHeader>
-          <SheetTitle>Novo Contrato</SheetTitle>
+          <SheetTitle>{isEditing ? 'Editar Contrato' : 'Novo Contrato'}</SheetTitle>
         </SheetHeader>
 
         {/* Stepper */}
@@ -237,7 +293,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
                   <SearchableSelect
                     options={customerOptions}
                     value={customerId}
-                    onValueChange={v => { setCustomerId(v); setSelectedItems([]); }}
+                    onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
                     placeholder="Selecione o cliente"
                     searchPlaceholder="Buscar cliente..."
                   />
@@ -389,10 +445,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
                       );
                     })}
                     {occurrences.length > 30 && (
-                      <p className="px-3 py-2 text-xs text-muted-foreground italic">... e mais {occurrences.length - 30} datas</p>
+                      <div className="text-center py-2 text-xs text-muted-foreground">
+                        +{occurrences.length - 30} datas adicionais
+                      </div>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">OSs serão criadas automaticamente nessas datas</p>
+                  {weekendDates.length > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-warning">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      {weekendDates.length} ocorrência(s) caem em fim de semana
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -401,91 +464,79 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
           {/* STEP 3: Items */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">Itens do Contrato</Label>
-                <Badge variant="secondary">{selectedItems.length} selecionado(s)</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground -mt-2">
-                Selecione os itens que serão atendidos em cada visita. Uma única OS será gerada por data, contendo todos os itens.
+              <p className="text-sm text-muted-foreground">
+                Selecione os equipamentos do cliente e/ou adicione itens manuais que farão parte deste contrato.
               </p>
 
-              {customerId ? (
-                <>
+              {customerId && activeEquipment.length > 0 && (
+                <div className="space-y-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="Buscar equipamentos..." className="pl-10" value={itemSearch} onChange={e => setItemSearch(e.target.value)} />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar equipamento..."
+                      value={itemSearch}
+                      onChange={e => setItemSearch(e.target.value)}
+                      className="pl-8"
+                    />
                   </div>
-
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {filteredEquipment.length === 0 && !itemSearch ? (
-                      <p className="text-sm text-muted-foreground text-center py-6">Nenhum equipamento ativo para este cliente.</p>
-                    ) : filteredEquipment.map(eq => (
-                      <div
-                        key={eq.id}
-                        onClick={() => toggleEquipment(eq)}
-                        className={cn(
-                          'flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-all',
-                          isEquipmentSelected(eq.id) ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30 hover:bg-muted/50'
-                        )}
-                      >
-                        <div className={cn(
-                          'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                          isEquipmentSelected(eq.id) ? 'border-primary bg-primary' : 'border-muted-foreground/40'
-                        )}>
-                          {isEquipmentSelected(eq.id) && <Check className="h-3 w-3 text-primary-foreground" />}
-                        </div>
+                  <div className="rounded-md border max-h-52 overflow-y-auto divide-y">
+                    {filteredEquipment.map(eq => (
+                      <label key={eq.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          className="rounded border-border"
+                          checked={isEquipmentSelected(eq.id)}
+                          onChange={() => toggleEquipment(eq)}
+                        />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{eq.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {[eq.brand, eq.model].filter(Boolean).join(' - ') || 'Sem detalhes'}
+                            {[eq.brand, eq.model].filter(Boolean).join(' - ')}
                           </p>
                         </div>
-                      </div>
+                      </label>
                     ))}
                   </div>
-
-                  <button
-                    onClick={() => setShowManualItem(true)}
-                    className="text-sm text-primary hover:underline flex items-center gap-1"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Adicionar item manualmente
-                  </button>
-
-                  {showManualItem && (
-                    <div className="grid grid-cols-2 gap-3 p-3 bg-muted/50 rounded-md border">
-                      <Input placeholder="Nome do item" value={manualName} onChange={e => setManualName(e.target.value)} />
-                      <Input placeholder="Descrição (opcional)" value={manualDesc} onChange={e => setManualDesc(e.target.value)} />
-                      <Button variant="outline" size="sm" onClick={addManualItem} className="col-span-2" disabled={!manualName.trim()}>
-                        Adicionar
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Manual items list */}
-                  {selectedItems.filter(i => !i.equipment_id).map((item, idx) => (
-                    <div key={`manual-${idx}`} className="flex items-center justify-between p-3 rounded-md border border-primary/20 bg-primary/5">
-                      <div>
-                        <p className="text-sm font-medium">{item.item_name}</p>
-                        {item.item_description && <p className="text-xs text-muted-foreground">{item.item_description}</p>}
-                      </div>
-                      <Button variant="ghost" size="sm" className="text-destructive h-7" onClick={() =>
-                        setSelectedItems(prev => prev.filter((_, i) => i !== prev.findIndex(p => p.item_name === item.item_name && !p.equipment_id)))
-                      }>×</Button>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">Selecione um cliente na etapa 1 primeiro.</p>
+                </div>
               )}
 
+              {/* Manual items */}
+              {!showManualItem ? (
+                <Button variant="outline" className="w-full" onClick={() => setShowManualItem(true)}>
+                  <Plus className="h-4 w-4 mr-2" /> Adicionar item manual
+                </Button>
+              ) : (
+                <div className="rounded-lg border p-3 space-y-3">
+                  <div className="space-y-2">
+                    <Label>Nome do item</Label>
+                    <Input value={manualName} onChange={e => setManualName(e.target.value)} placeholder="Ex: Limpeza de dutos" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descrição (opcional)</Label>
+                    <Input value={manualDesc} onChange={e => setManualDesc(e.target.value)} placeholder="Detalhes adicionais" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setShowManualItem(false)}>Cancelar</Button>
+                    <Button size="sm" onClick={addManualItem} disabled={!manualName.trim()}>Adicionar</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Selected summary */}
               {selectedItems.length > 0 && (
-                <div className="p-3 bg-primary/5 border border-primary/20 rounded-md">
-                  <p className="text-sm font-medium text-primary">
-                    {selectedItems.length} {selectedItems.length === 1 ? 'item' : 'itens'} selecionado(s)
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Cada OS gerada conterá todos esses itens para atendimento
-                  </p>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Itens selecionados ({selectedItems.length})</Label>
+                  {selectedItems.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 rounded border px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{item.item_name}</p>
+                        {item.item_description && <p className="text-xs text-muted-foreground truncate">{item.item_description}</p>}
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setSelectedItems(prev => prev.filter((_, idx) => idx !== i))}>
+                        ×
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -493,127 +544,39 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
 
           {/* STEP 4: Review */}
           {step === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-lg border p-4">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">CONTRATO</p>
-                    <p className="font-medium mt-0.5">{name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">CLIENTE</p>
-                    <p className="font-medium mt-0.5">{clientName}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">FREQUÊNCIA</p>
-                    <p className="font-medium mt-0.5">{getFrequencyLabel(freqType, freqValue)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">INÍCIO</p>
-                    <p className="font-medium mt-0.5">{format(new Date(startDate), 'dd/MM/yyyy')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">ITENS</p>
-                    <p className="font-medium mt-0.5">{selectedItems.length === 0 ? 'Nenhum item vinculado' : `${selectedItems.length} item(ns)`}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">STATUS</p>
-                    <Badge variant={isActive ? 'success' : 'outline'} className="mt-0.5">
-                      {isActive ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </div>
-                </div>
+            <div className="space-y-4 rounded-lg border p-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <CalendarCheck className="h-5 w-5 text-primary" />
+                Revisão do Contrato
+              </h3>
+              <div className="grid gap-3 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Nome</span><span className="font-medium text-right">{name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{clientName}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Frequência</span><span className="font-medium">{getFrequencyLabel(freqType, freqValue)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Início</span><span className="font-medium">{format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy')}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Horizonte</span><span className="font-medium">{horizonMonths} meses</span></div>
+                {!isEditing && (
+                  <div className="flex justify-between"><span className="text-muted-foreground">Ocorrências</span><span className="font-medium">{occurrences.length} datas</span></div>
+                )}
+                <div className="flex justify-between"><span className="text-muted-foreground">Itens</span><span className="font-medium">{selectedItems.length}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={isActive ? 'success' : 'outline'}>{isActive ? 'Ativo' : 'Pausado'}</Badge></div>
               </div>
-
-              {/* Per-item questionnaire review */}
-              {selectedItems.length > 1 && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Questionário por item</Label>
-                  <p className="text-xs text-muted-foreground">Altere o questionário individualmente se necessário</p>
-                  <div className="rounded-md border divide-y max-h-52 overflow-y-auto">
-                    {selectedItems.map((item, idx) => {
-                      const currentTemplate = item.form_template_id || formTemplateId || '';
-                      const templateName = templates.find(t => t.id === currentTemplate)?.name;
-                      return (
-                        <div key={idx} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{item.item_name}</p>
-                            {item.item_description && <p className="text-xs text-muted-foreground truncate">{item.item_description}</p>}
-                          </div>
-                          <Select
-                            value={item.form_template_id || 'default'}
-                            onValueChange={v => {
-                              setSelectedItems(prev => prev.map((it, i) =>
-                                i === idx ? { ...it, form_template_id: v === 'default' ? undefined : v } : it
-                              ));
-                            }}
-                          >
-                            <SelectTrigger className="w-[180px] h-8 text-xs">
-                              <SelectValue placeholder={templateName || 'Padrão do contrato'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="default">
-                                {formTemplateId ? `Padrão: ${templates.find(t => t.id === formTemplateId)?.name || 'Questionário'}` : 'Nenhum'}
-                              </SelectItem>
-                              {templates.filter(t => t.is_active).map(t => (
-                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {isActive && (
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-start gap-3">
-                  <CalendarCheck className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-primary">
-                      {occurrences.length} OS{occurrences.length !== 1 ? 's' : ''} serão geradas automaticamente
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {occurrences.length} datas nos próximos {horizonMonths} meses
-                      {occurrences.length > 0 && ` • Primeira em ${format(occurrences[0], 'dd/MM/yyyy')}`}
-                    </p>
-                    {selectedItems.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Cada OS incluirá {selectedItems.length} item(ns) para atendimento
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {weekendDates.length > 0 && (
-                <div className="p-3 bg-warning/5 border border-warning/20 rounded-md flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
-                  <p className="text-xs text-warning">
-                    {weekendDates.length} data(s) caem em fim de semana. Confirme se os atendimentos são realizados nesses dias.
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <SheetFooter className="flex-row gap-2 mt-4 pt-4 border-t">
-          {step > 0 && (
-            <Button type="button" variant="ghost" onClick={() => setStep(s => s - 1)}>
-              <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
-            </Button>
-          )}
-          <div className="flex-1" />
+        {/* Footer navigation */}
+        <SheetFooter className="mt-4 flex flex-row justify-between gap-2 border-t pt-4">
+          <Button variant="outline" onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)} disabled={submitting}>
+            {step === 0 ? 'Cancelar' : <><ChevronLeft className="h-4 w-4 mr-1" /> Voltar</>}
+          </Button>
           {step < STEPS.length - 1 ? (
-            <Button type="button" onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
+            <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
               Próximo <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
-            <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Criando...' : `Criar Contrato e ${occurrences.length} OSs`}
+            <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              {submitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : `Criar Contrato (${occurrences.length} OSs)`}
             </Button>
           )}
         </SheetFooter>
