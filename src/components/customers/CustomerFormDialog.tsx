@@ -174,7 +174,7 @@ export function CustomerFormDialog({
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
                         const processed = await processImageFile(file);
