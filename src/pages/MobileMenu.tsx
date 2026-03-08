@@ -27,7 +27,7 @@ const menuItems = [
   { title: 'CRM', icon: TrendingUp, path: '/crm' },
   { title: 'Estoque', icon: Package, path: '/estoque' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro' },
-  { title: 'PMOC', icon: FileText, path: '/pmoc' },
+  { title: 'Contratos', icon: FileText, path: '/contratos' },
   { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes' },
 ];

@@ -28,6 +28,8 @@ import CRM from "./pages/CRM";
 import Inventory from "./pages/Inventory";
 import Finance from "./pages/Finance";
 import PMOC from "./pages/PMOC";
+import Contracts from "./pages/Contracts";
+import ContractDetail from "./pages/ContractDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -145,7 +147,9 @@ const AppRoutes = () => (
       <Route path="/orcamentos" element={<Quotes />} />
       <Route path="/estoque" element={<Inventory />} />
       <Route path="/financeiro" element={<Finance />} />
-      <Route path="/pmoc" element={<PMOC />} />
+      <Route path="/pmoc" element={<Navigate to="/contratos" replace />} />
+      <Route path="/contratos" element={<Contracts />} />
+      <Route path="/contratos/:id" element={<ContractDetail />} />
       <Route path="/usuarios" element={<Users />} />
       <Route path="/configuracoes" element={<Settings />} />
       <Route path="/perfil" element={<Profile />} />

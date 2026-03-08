@@ -1,0 +1,298 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { addDays, addMonths } from 'date-fns';
+
+export interface Contract {
+  id: string;
+  company_id: string;
+  name: string;
+  customer_id: string;
+  technician_id: string | null;
+  service_type_id: string | null;
+  form_template_id: string | null;
+  status: string;
+  notes: string | null;
+  frequency_type: string;
+  frequency_value: number;
+  start_date: string;
+  horizon_months: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  customers?: { id: string; name: string } | null;
+  contract_items?: ContractItem[];
+  contract_occurrences?: ContractOccurrence[];
+}
+
+export interface ContractItem {
+  id: string;
+  contract_id: string;
+  equipment_id: string | null;
+  item_name: string;
+  item_description: string | null;
+  form_template_id: string | null;
+  sort_order: number;
+  equipment?: { id: string; name: string; brand: string | null; model: string | null } | null;
+}
+
+export interface ContractOccurrence {
+  id: string;
+  contract_id: string;
+  scheduled_date: string;
+  service_order_id: string | null;
+  status: string;
+  occurrence_number: number;
+  service_orders?: { id: string; order_number: number; status: string; scheduled_date: string | null } | null;
+}
+
+export function generateOccurrences(
+  startDate: Date,
+  frequencyType: 'days' | 'months',
+  frequencyValue: number,
+  horizonMonths: number
+): Date[] {
+  const dates: Date[] = [];
+  const endDate = addMonths(startDate, horizonMonths);
+  let current = new Date(startDate);
+  while (current <= endDate && dates.length < 120) {
+    dates.push(new Date(current));
+    if (frequencyType === 'months') {
+      current = addMonths(current, frequencyValue);
+    } else {
+      current = addDays(current, frequencyValue);
+    }
+  }
+  return dates;
+}
+
+export function getFrequencyLabel(type: string, value: number): string {
+  if (type === 'months') {
+    const labels: Record<number, string> = { 1: 'Mensal', 2: 'Bimestral', 3: 'Trimestral', 6: 'Semestral', 12: 'Anual' };
+    return labels[value] || `A cada ${value} meses`;
+  }
+  const dayLabels: Record<number, string> = { 7: 'Semanal', 15: 'Quinzenal', 30: 'A cada 30 dias', 45: 'A cada 45 dias', 60: 'A cada 60 dias', 90: 'A cada 90 dias' };
+  return dayLabels[value] || `A cada ${value} dias`;
+}
+
+export function useContracts() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: contracts = [], isLoading } = useQuery({
+    queryKey: ['contracts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          customers (id, name),
+          contract_items (id, contract_id, equipment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
+          contract_occurrences (id, contract_id, scheduled_date, service_order_id, status, occurrence_number, service_orders:service_orders(id, order_number, status, scheduled_date))
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as unknown as Contract[];
+    },
+  });
+
+  const createContract = useMutation({
+    mutationFn: async (input: {
+      name: string;
+      customer_id: string;
+      technician_id?: string | null;
+      service_type_id?: string | null;
+      form_template_id?: string | null;
+      status: string;
+      notes?: string | null;
+      frequency_type: string;
+      frequency_value: number;
+      start_date: string;
+      horizon_months: number;
+      items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
+    }) => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user?.id || '')
+        .single();
+
+      if (!profile?.company_id) throw new Error('Empresa não encontrada');
+
+      const { data: contract, error } = await supabase
+        .from('contracts')
+        .insert({
+          company_id: profile.company_id,
+          name: input.name,
+          customer_id: input.customer_id,
+          technician_id: input.technician_id || null,
+          service_type_id: input.service_type_id || null,
+          form_template_id: input.form_template_id || null,
+          status: input.status,
+          notes: input.notes || null,
+          frequency_type: input.frequency_type,
+          frequency_value: input.frequency_value,
+          start_date: input.start_date,
+          horizon_months: input.horizon_months,
+          created_by: user?.id || null,
+        } as any)
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      // Create items
+      if (input.items.length > 0) {
+        const { error: itemError } = await supabase.from('contract_items').insert(
+          input.items.map((item, i) => ({
+            contract_id: (contract as any).id,
+            equipment_id: item.equipment_id || null,
+            item_name: item.item_name,
+            item_description: item.item_description || null,
+            form_template_id: item.form_template_id || null,
+            sort_order: i,
+          })) as any
+        );
+        if (itemError) throw itemError;
+      }
+
+      // Generate OSs and occurrences
+      if (input.status === 'active') {
+        const occurrenceDates = generateOccurrences(
+          new Date(input.start_date + 'T00:00:00'),
+          input.frequency_type as 'days' | 'months',
+          input.frequency_value,
+          input.horizon_months
+        );
+
+        const equipmentIds = input.items
+          .filter(i => i.equipment_id)
+          .map(i => i.equipment_id!);
+
+        for (let i = 0; i < occurrenceDates.length; i++) {
+          const date = occurrenceDates[i];
+          const dateStr = date.toISOString().split('T')[0];
+
+          const description = `${input.name} — Ocorrência ${i + 1}`;
+
+          const { data: os, error: osError } = await supabase
+            .from('service_orders')
+            .insert({
+              customer_id: input.customer_id,
+              equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
+              technician_id: input.technician_id || null,
+              os_type: 'manutencao_preventiva' as const,
+              service_type_id: input.service_type_id || null,
+              form_template_id: input.form_template_id || null,
+              scheduled_date: dateStr,
+              description,
+              require_tech_signature: true,
+              status: 'pendente' as const,
+              contract_id: (contract as any).id,
+              origin: 'contract',
+            })
+            .select('id')
+            .single();
+
+          if (osError) { console.error('Error creating OS:', osError); continue; }
+
+          // Link equipment via junction table
+          if (equipmentIds.length > 0) {
+            await supabase.from('service_order_equipment').insert(
+              equipmentIds.map(eqId => ({
+                service_order_id: os.id,
+                equipment_id: eqId,
+                form_template_id: input.form_template_id || null,
+              }))
+            );
+          }
+
+          await supabase.from('contract_occurrences').insert({
+            contract_id: (contract as any).id,
+            scheduled_date: dateStr,
+            service_order_id: os.id,
+            occurrence_number: i + 1,
+            status: 'scheduled',
+          } as any);
+        }
+      }
+
+      return contract;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      toast({ title: 'Contrato criado com sucesso!' });
+    },
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: e.message }),
+  });
+
+  const updateContractStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from('contracts').update({ status } as any).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      toast({ title: 'Status do contrato atualizado!' });
+    },
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+  });
+
+  const deleteContract = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('contracts').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      toast({ title: 'Contrato excluído!' });
+    },
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+  });
+
+  // Stats
+  const now = new Date();
+  const activeContracts = contracts.filter(c => c.status === 'active');
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const osGeneratedThisMonth = contracts.flatMap(c => c.contract_occurrences || []).filter(o => {
+    if (!o.service_order_id) return false;
+    const d = new Date(o.scheduled_date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  }).length;
+
+  const sevenDaysFromNow = addDays(now, 7);
+  const upcomingOccurrences = contracts.flatMap(c => c.contract_occurrences || []).filter(o => {
+    if (o.status !== 'scheduled') return false;
+    const d = new Date(o.scheduled_date);
+    return d >= now && d <= sevenDaysFromNow;
+  }).length;
+
+  const thirtyDaysFromNow = addDays(now, 30);
+  const expiringContracts = activeContracts.filter(c => {
+    const lastOccurrence = (c.contract_occurrences || [])
+      .sort((a, b) => b.occurrence_number - a.occurrence_number)[0];
+    if (!lastOccurrence) return false;
+    const lastDate = new Date(lastOccurrence.scheduled_date);
+    return lastDate <= thirtyDaysFromNow;
+  }).length;
+
+  return {
+    contracts,
+    isLoading,
+    createContract,
+    updateContractStatus,
+    deleteContract,
+    stats: {
+      active: activeContracts.length,
+      osGeneratedThisMonth,
+      upcomingOccurrences,
+      expiringContracts,
+    },
+  };
+}

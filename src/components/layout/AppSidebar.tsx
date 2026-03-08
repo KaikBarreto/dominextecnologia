@@ -20,6 +20,7 @@ import {
   Map,
   FolderOpen,
   Boxes,
+  ScrollText,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -53,7 +54,7 @@ const menuItems: MenuItem[] = [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
-      { title: 'PMOC', icon: FileText, path: '/pmoc', screenKey: 'screen:pmoc' },
+      { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
       { title: 'Rastreamento', icon: MapPin, path: '/rastreamento' },
       { title: 'Mapa ao Vivo', icon: Map, path: '/mapa-ao-vivo' },
     ],

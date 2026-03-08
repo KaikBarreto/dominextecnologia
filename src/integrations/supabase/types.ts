@@ -185,6 +185,192 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_items: {
+        Row: {
+          contract_id: string
+          created_at: string
+          equipment_id: string | null
+          form_template_id: string | null
+          id: string
+          item_description: string | null
+          item_name: string
+          sort_order: number | null
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          equipment_id?: string | null
+          form_template_id?: string | null
+          id?: string
+          item_description?: string | null
+          item_name: string
+          sort_order?: number | null
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          equipment_id?: string | null
+          form_template_id?: string | null
+          id?: string
+          item_description?: string | null
+          item_name?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_items_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_items_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_items_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_occurrences: {
+        Row: {
+          contract_id: string
+          created_at: string
+          id: string
+          occurrence_number: number
+          scheduled_date: string
+          service_order_id: string | null
+          status: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          id?: string
+          occurrence_number: number
+          scheduled_date: string
+          service_order_id?: string | null
+          status?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          id?: string
+          occurrence_number?: number
+          scheduled_date?: string
+          service_order_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_occurrences_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_occurrences_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          form_template_id: string | null
+          frequency_type: string
+          frequency_value: number
+          horizon_months: number
+          id: string
+          name: string
+          notes: string | null
+          service_type_id: string | null
+          start_date: string
+          status: string
+          technician_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          form_template_id?: string | null
+          frequency_type?: string
+          frequency_value?: number
+          horizon_months?: number
+          id?: string
+          name: string
+          notes?: string | null
+          service_type_id?: string | null
+          start_date: string
+          status?: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          form_template_id?: string | null
+          frequency_type?: string
+          frequency_value?: number
+          horizon_months?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          service_type_id?: string | null
+          start_date?: string
+          status?: string
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           color: string
@@ -1854,6 +2040,7 @@ export type Database = {
           check_out_location: Json | null
           check_out_time: string | null
           client_signature: string | null
+          contract_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string
@@ -1867,6 +2054,7 @@ export type Database = {
           labor_value: number | null
           notes: string | null
           order_number: number
+          origin: string
           os_type: Database["public"]["Enums"]["os_type"]
           parts_used: Json | null
           parts_value: number | null
@@ -1889,6 +2077,7 @@ export type Database = {
           check_out_location?: Json | null
           check_out_time?: string | null
           client_signature?: string | null
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id: string
@@ -1902,6 +2091,7 @@ export type Database = {
           labor_value?: number | null
           notes?: string | null
           order_number?: number
+          origin?: string
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
@@ -1924,6 +2114,7 @@ export type Database = {
           check_out_location?: Json | null
           check_out_time?: string | null
           client_signature?: string | null
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string
@@ -1937,6 +2128,7 @@ export type Database = {
           labor_value?: number | null
           notes?: string | null
           order_number?: number
+          origin?: string
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
@@ -1954,6 +2146,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_orders_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_orders_customer_id_fkey"
             columns: ["customer_id"]
