@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool } from 'lucide-react';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -480,23 +481,11 @@ export default function Settings() {
                     <Separator className="opacity-50" />
 
                     {/* WL Color */}
-                    <div className="space-y-2">
+                     <div className="space-y-2">
                       <Label>Cor primária</Label>
                       <p className="text-xs text-muted-foreground">Substitui a cor verde padrão do sistema</p>
                       <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={wlColor}
-                          onChange={e => setWlColor(e.target.value)}
-                          className="h-10 w-14 rounded-md border border-input cursor-pointer bg-transparent"
-                        />
-                        <Input
-                          value={wlColor}
-                          onChange={e => setWlColor(e.target.value)}
-                          placeholder="#00C597"
-                          className="w-32 uppercase font-mono"
-                          maxLength={7}
-                        />
+                        <ColorPicker value={wlColor} onChange={setWlColor} />
                         <div
                           className="h-10 flex-1 rounded-md border"
                           style={{ backgroundColor: wlColor }}
