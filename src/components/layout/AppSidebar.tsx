@@ -64,6 +64,11 @@ const menuItems: MenuItem[] = [
   { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
 
+const adminMenuItems: MenuItem[] = [
+  { title: 'Empresas', icon: Building2, path: '/admin/empresas' },
+  { title: 'Configurações', icon: Settings, path: '/configuracoes' },
+];
+
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
 
 export function AppSidebar() {
