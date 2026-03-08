@@ -131,6 +131,50 @@ export default function Settings() {
     }
   };
 
+  const handleWlLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
+    file = await processImageFile(file);
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      return;
+    }
+    setWlUploading(true);
+    try {
+      const currentWlLogo = (settings as any)?.white_label_logo_url;
+      if (currentWlLogo) {
+        try {
+          const oldPath = currentWlLogo.split('/company-logos/')[1];
+          if (oldPath) await supabase.storage.from('company-logos').remove([oldPath]);
+        } catch {}
+      }
+      const filePath = `wl_logo_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+      updateSettings.mutate({ white_label_logo_url: publicUrl } as any);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: err.message });
+    } finally {
+      setWlUploading(false);
+    }
+  };
+
+  const handleRemoveWlLogo = () => {
+    updateSettings.mutate({ white_label_logo_url: null } as any);
+  };
+
+  const handleSaveWhiteLabel = () => {
+    updateSettings.mutate({
+      white_label_enabled: wlEnabled,
+      white_label_primary_color: wlColor || null,
+    } as any);
+  };
+
   const updateUsability = (key: string, value: boolean) => {
     const updated = { ...usabilitySettings, [key]: value };
     setUsabilitySettings(updated);
