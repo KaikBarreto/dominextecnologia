@@ -518,7 +518,7 @@ export function useTimeSchedules() {
   });
 
   const upsertSchedule = useMutation({
-    mutationFn: async (items: Omit<TimeSchedule, 'id'>[]) => {
+    mutationFn: async (items: Array<Omit<TimeSchedule, 'id' | 'user_id'>>) => {
       if (items.length === 0) return;
       const employeeId = items[0].employee_id;
       if (employeeId) {
