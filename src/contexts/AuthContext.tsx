@@ -119,6 +119,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Clean up active session
+    const sessionToken = localStorage.getItem('session_token');
+    if (sessionToken && user) {
+      await supabase
+        .from('active_sessions' as any)
+        .delete()
+        .eq('user_id', user.id)
+        .eq('session_token', sessionToken);
+      localStorage.removeItem('session_token');
+    }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,9 +13,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
+import { SessionConfirmDialog } from '@/components/SessionConfirmDialog';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
+import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
@@ -25,11 +27,30 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+const generateSessionToken = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+};
+
+const getDeviceInfo = () => {
+  const ua = navigator.userAgent;
+  const isMobile = /Mobile|Android|iPhone|iPad/.test(ua);
+  const browser = /Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "Outro";
+  return `${isMobile ? "Mobile" : "Desktop"} - ${browser}`;
+};
+
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Session management state
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+  const [existingSessionsInfo, setExistingSessionsInfo] = useState<{ device_info: string | null; last_activity: string }[]>([]);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingLoginData, setPendingLoginData] = useState<LoginForm | null>(null);
+  const [disconnectOthers, setDisconnectOthers] = useState(false);
+
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -42,6 +63,41 @@ export default function Auth() {
       rememberMe: !!localStorage.getItem('rememberedEmail'),
     },
   });
+
+  const registerSession = useCallback(async (userId: string) => {
+    const sessionToken = generateSessionToken();
+    await supabase
+      .from('active_sessions' as any)
+      .insert({
+        user_id: userId,
+        session_token: sessionToken,
+        device_info: getDeviceInfo(),
+        last_activity: new Date().toISOString(),
+      });
+    localStorage.setItem("session_token", sessionToken);
+    return sessionToken;
+  }, []);
+
+  const disconnectOtherSessions = useCallback(async (userId: string) => {
+    const currentToken = localStorage.getItem("session_token");
+    if (!currentToken) return;
+    await supabase
+      .from('active_sessions' as any)
+      .delete()
+      .eq("user_id", userId)
+      .neq("session_token", currentToken);
+  }, []);
+
+  const completeLogin = async (data: LoginForm, userId: string) => {
+    if (data.rememberMe) {
+      localStorage.setItem('rememberedEmail', data.email);
+    } else {
+      localStorage.removeItem('rememberedEmail');
+    }
+    await registerSession(userId);
+    toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
+    navigate('/dashboard');
+  };
 
   const handleLogin = async (data: LoginForm) => {
     setIsLoading(true);
@@ -60,20 +116,72 @@ export default function Auth() {
         return;
       }
 
-      // Remember email
-      if (data.rememberMe) {
-        localStorage.setItem('rememberedEmail', data.email);
-      } else {
-        localStorage.removeItem('rememberedEmail');
+      // Get current user
+      const { data: sessionData } = await supabase.auth.getUser();
+      if (!sessionData.user) throw new Error('Falha na autenticação');
+
+      // Check for existing sessions
+      const currentToken = localStorage.getItem("session_token");
+      const { data: otherSessions } = await supabase
+        .from('active_sessions' as any)
+        .select("device_info, last_activity, session_token")
+        .eq("user_id", sessionData.user.id)
+        .neq("session_token", currentToken || "none");
+
+      // Filter recent sessions (last 60 min)
+      const recentSessions = ((otherSessions as any[]) || []).filter((s: any) => {
+        const diff = (Date.now() - new Date(s.last_activity).getTime()) / 60000;
+        return diff < 60;
+      });
+
+      if (recentSessions.length > 0) {
+        setPendingUserId(sessionData.user.id);
+        setPendingLoginData(data);
+        setExistingSessionsInfo(recentSessions.map((s: any) => ({ device_info: s.device_info, last_activity: s.last_activity })));
+        setDisconnectOthers(false);
+        setSessionDialogOpen(true);
+        setIsLoading(false);
+        return;
       }
 
-      toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
-      navigate('/dashboard');
+      // No other sessions - login directly
+      await completeLogin(data, sessionData.user.id);
     } catch {
       setAuthError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSessionContinue = async () => {
+    if (!pendingLoginData || !pendingUserId) return;
+    setIsLoading(true);
+    try {
+      await completeLogin(pendingLoginData, pendingUserId);
+      
+      if (disconnectOthers) {
+        await disconnectOtherSessions(pendingUserId);
+        toast({ title: 'Outras sessões desconectadas' });
+      }
+
+      setSessionDialogOpen(false);
+      setPendingLoginData(null);
+      setPendingUserId(null);
+      setExistingSessionsInfo([]);
+    } catch {
+      setAuthError('Erro ao continuar login.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSessionCancel = () => {
+    setSessionDialogOpen(false);
+    setPendingLoginData(null);
+    setPendingUserId(null);
+    setExistingSessionsInfo([]);
+    supabase.auth.signOut();
+    toast({ title: 'Login cancelado' });
   };
 
   return (
@@ -225,6 +333,18 @@ export default function Auth() {
           <SystemFooter variant="dark" />
         </div>
       </div>
+
+      {/* Session Dialog */}
+      <SessionConfirmDialog
+        open={sessionDialogOpen}
+        onOpenChange={setSessionDialogOpen}
+        existingSessions={existingSessionsInfo}
+        disconnectOthers={disconnectOthers}
+        onDisconnectOthersChange={setDisconnectOthers}
+        onConfirm={handleSessionContinue}
+        onCancel={handleSessionCancel}
+        isLoading={isLoading}
+      />
     </div>
   );
 }
