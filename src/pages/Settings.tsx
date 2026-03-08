@@ -54,6 +54,7 @@ export default function Settings() {
   const [wlUploading, setWlUploading] = useState(false);
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
+  const [wlIconUploading, setWlIconUploading] = useState(false);
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
@@ -184,6 +185,43 @@ export default function Settings() {
 
   const handleRemoveWlLogo = () => {
     updateSettings.mutate({ white_label_logo_url: null } as any);
+  };
+
+  const handleWlIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
+    file = await processImageFile(file);
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      return;
+    }
+    setWlIconUploading(true);
+    try {
+      const currentIcon = (settings as any)?.white_label_icon_url;
+      if (currentIcon) {
+        try {
+          const oldPath = currentIcon.split('/company-logos/')[1];
+          if (oldPath) await supabase.storage.from('company-logos').remove([oldPath]);
+        } catch {}
+      }
+      const filePath = `wl_icon_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+      updateSettings.mutate({ white_label_icon_url: publicUrl } as any);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao enviar ícone', description: err.message });
+    } finally {
+      setWlIconUploading(false);
+    }
+  };
+
+  const handleRemoveWlIcon = () => {
+    updateSettings.mutate({ white_label_icon_url: null } as any);
   };
 
   const handleSaveWhiteLabel = () => {
@@ -476,6 +514,49 @@ export default function Settings() {
                             </>
                           )}
                           <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
+                        </label>
+                      )}
+                    </div>
+
+                    <Separator className="opacity-50" />
+
+                    {/* WL Icon */}
+                    <div className="space-y-2">
+                      <Label>Ícone (1:1)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Ícone quadrado exibido no topo do menu lateral quando recolhido. Recomendado: 128×128px.
+                      </p>
+                      {(settings as any)?.white_label_icon_url ? (
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={(settings as any).white_label_icon_url}
+                            alt="WL Icon"
+                            className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
+                          />
+                          <div className="flex flex-col gap-2">
+                            <Button variant="outline" size="sm" asChild disabled={wlIconUploading}>
+                              <label className="cursor-pointer">
+                                {wlIconUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                Substituir
+                                <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} />
+                              </label>
+                            </Button>
+                            <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlIcon}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Remover
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer flex flex-col items-center justify-center h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
+                          {wlIconUploading ? (
+                            <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                          ) : (
+                            <>
+                              <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                              <span className="text-[10px] text-muted-foreground text-center">Enviar ícone</span>
+                            </>
+                          )}
+                          <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} disabled={wlIconUploading} />
                         </label>
                       )}
                     </div>

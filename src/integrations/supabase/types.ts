@@ -149,6 +149,7 @@ export type Database = {
           state: string | null
           updated_at: string
           white_label_enabled: boolean
+          white_label_icon_url: string | null
           white_label_logo_url: string | null
           white_label_primary_color: string | null
           zip_code: string | null
@@ -170,6 +171,7 @@ export type Database = {
           state?: string | null
           updated_at?: string
           white_label_enabled?: boolean
+          white_label_icon_url?: string | null
           white_label_logo_url?: string | null
           white_label_primary_color?: string | null
           zip_code?: string | null
@@ -191,6 +193,7 @@ export type Database = {
           state?: string | null
           updated_at?: string
           white_label_enabled?: boolean
+          white_label_icon_url?: string | null
           white_label_logo_url?: string | null
           white_label_primary_color?: string | null
           zip_code?: string | null
