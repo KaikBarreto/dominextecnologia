@@ -4,6 +4,7 @@ import {
   LayoutDashboard, ClipboardList, Calendar, Users, UsersRound, Package,
   DollarSign, FileText, Settings, UserCircle, TrendingUp, Wrench,
   ChevronDown, GraduationCap, LogOut, Menu, Briefcase, CreditCard, Building2,
+  MapPin, Map, FolderOpen, Boxes, ScrollText,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -26,23 +27,32 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', screenKey: 'screen:dashboard' },
   {
-    title: 'Serviços',
+    title: 'Operacional',
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
+      { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
-      { title: 'Contratos', icon: FileText, path: '/contratos', screenKey: 'screen:contracts' },
+      { title: 'Rastreamento', icon: MapPin, path: '/rastreamento' },
+      { title: 'Mapa ao Vivo', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
   { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
-  { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
-  { title: 'Equipamentos', icon: Package, path: '/equipamentos', screenKey: 'screen:equipment' },
+  {
+    title: 'Gestão',
+    icon: FolderOpen,
+    children: [
+      { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
+      { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
+      { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
+      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
+      { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
+    ],
+  },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
-  { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
-  { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
 ];
 
