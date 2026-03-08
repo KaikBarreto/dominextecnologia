@@ -31,6 +31,7 @@ const equipmentSchema = z.object({
   capacity: z.string().optional(),
   location: z.string().optional(),
   install_date: z.string().optional(),
+  warranty_until: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -70,7 +71,7 @@ export function EquipmentFormDialog({
     defaultValues: {
       customer_id: '', name: '', category_id: '', identifier: '',
       brand: '', model: '', serial_number: '', capacity: '',
-      location: '', install_date: '', notes: '',
+      location: '', install_date: '', warranty_until: '', notes: '',
     },
   });
 
@@ -130,6 +131,7 @@ export function EquipmentFormDialog({
           capacity: equipment?.capacity ?? '',
           location: equipment?.location ?? '',
           install_date: equipment?.install_date ?? '',
+          warranty_until: (equipment as any)?.warranty_until ?? '',
           notes: equipment?.notes ?? '',
         });
         // Restore custom field values from equipment.custom_fields
@@ -180,8 +182,9 @@ export function EquipmentFormDialog({
     }
 
     const cleaned: any = { ...data, photo_url };
+    // Convert empty strings to null so updates actually clear values
     Object.keys(cleaned).forEach(key => {
-      if (cleaned[key] === '') cleaned[key] = undefined;
+      if (cleaned[key] === '') cleaned[key] = null;
     });
     cleaned.customer_id = data.customer_id;
     cleaned.name = data.name;
@@ -413,6 +416,18 @@ export function EquipmentFormDialog({
                 )}
               </div>
             ))}
+
+            <FormField
+              control={form.control}
+              name="warranty_until"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Validade da Garantia</FormLabel>
+                  <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

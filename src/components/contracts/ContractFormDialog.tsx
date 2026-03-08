@@ -148,10 +148,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      const isTeam = technicianId.startsWith('team:');
+      const actualTechnicianId = isTeam ? null : (technicianId || null);
+      const actualTeamId = isTeam ? technicianId.replace('team:', '') : null;
+
       const result = await createContract.mutateAsync({
         name,
         customer_id: customerId,
-        technician_id: technicianId || null,
+        technician_id: actualTechnicianId,
+        team_id: actualTeamId,
         service_type_id: serviceTypeId || null,
         form_template_id: formTemplateId || null,
         status: isActive ? 'active' : 'paused',

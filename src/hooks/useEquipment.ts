@@ -12,6 +12,7 @@ export interface EquipmentInput {
   capacity?: string;
   location?: string;
   install_date?: string;
+  warranty_until?: string;
   notes?: string;
   category_id?: string;
   identifier?: string;

@@ -301,6 +301,7 @@ export type Database = {
           service_type_id: string | null
           start_date: string
           status: string
+          team_id: string | null
           technician_id: string | null
           updated_at: string
         }
@@ -319,6 +320,7 @@ export type Database = {
           service_type_id?: string | null
           start_date: string
           status?: string
+          team_id?: string | null
           technician_id?: string | null
           updated_at?: string
         }
@@ -337,6 +339,7 @@ export type Database = {
           service_type_id?: string | null
           start_date?: string
           status?: string
+          team_id?: string | null
           technician_id?: string | null
           updated_at?: string
         }
@@ -367,6 +370,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
