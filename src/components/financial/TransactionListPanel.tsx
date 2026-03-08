@@ -29,8 +29,8 @@ interface TransactionListPanelProps {
   isLoading: boolean;
   onNew: () => void;
   onEdit: (t: FinancialTransaction) => void;
-  onDelete: (id: string) => Promise<void>;
-  onMarkAsPaid: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<any>;
+  onMarkAsPaid: (id: string) => Promise<any>;
   buttonColor?: string;
 }
 
