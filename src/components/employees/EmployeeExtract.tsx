@@ -1,0 +1,101 @@
+import { Trash2 } from 'lucide-react';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { BalanceSummary, formatMovementType, getMovementBadgeVariant, EmployeeMovement } from '@/utils/employeeCalculations';
+import { format } from 'date-fns';
+
+interface EmployeeExtractProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  employeeName: string;
+  movements: EmployeeMovement[];
+  balance: BalanceSummary;
+  onDeleteMovement: (id: string) => void;
+}
+
+export function EmployeeExtract({ open, onOpenChange, employeeName, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`}>
+      <div className="space-y-4">
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="rounded-lg border p-3 text-center">
+            <p className="text-xs text-muted-foreground">Bônus</p>
+            <p className="text-sm font-semibold text-green-600">{fmt(balance.totalBonus)}</p>
+          </div>
+          <div className="rounded-lg border p-3 text-center">
+            <p className="text-xs text-muted-foreground">Vales</p>
+            <p className="text-sm font-semibold text-destructive">{fmt(balance.totalVales)}</p>
+          </div>
+          <div className="rounded-lg border p-3 text-center">
+            <p className="text-xs text-muted-foreground">Faltas</p>
+            <p className="text-sm font-semibold text-destructive">{fmt(balance.totalFaltas)}</p>
+          </div>
+          <div className="rounded-lg border p-3 text-center">
+            <p className="text-xs text-muted-foreground">Saldo</p>
+            <p className={`text-sm font-semibold ${balance.currentBalance >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+              {fmt(balance.currentBalance)}
+            </p>
+          </div>
+        </div>
+
+        {/* Movements table */}
+        <div className="max-h-[400px] overflow-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="text-right">Saldo</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {movements.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma movimentação</TableCell></TableRow>
+              ) : movements.map(m => (
+                <TableRow key={m.id}>
+                  <TableCell className="text-xs whitespace-nowrap">{format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
+                  <TableCell>
+                    <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px]">
+                      {formatMovementType(m.type)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs max-w-[150px] truncate">{m.description || '—'}</TableCell>
+                  <TableCell className={`text-right text-xs font-medium ${['vale', 'falta'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
+                    {['vale', 'falta'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
+                  </TableCell>
+                  <TableCell className="text-right text-xs">{fmt(m.balance_after)}</TableCell>
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+                          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => onDeleteMovement(m.id)}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </ResponsiveModal>
+  );
+}
