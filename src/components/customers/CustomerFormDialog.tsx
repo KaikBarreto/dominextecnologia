@@ -28,6 +28,7 @@ const customerSchema = z.object({
   phone: z.string().optional(),
   birth_date: z.string().optional(),
   address: z.string().optional(),
+  address_number: z.string().optional(),
   complement: z.string().optional(),
   neighborhood: z.string().optional(),
   city: z.string().optional(),
@@ -64,8 +65,8 @@ export function CustomerFormDialog({
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: '', customer_type: 'pj', company_name: '', document: '',
-      email: '', phone: '', birth_date: '', address: '', complement: '',
-      neighborhood: '', city: '', state: '', zip_code: '', notes: '',
+      email: '', phone: '', birth_date: '', address: '', address_number: '',
+      complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '',
     },
   });
 
@@ -83,6 +84,7 @@ export function CustomerFormDialog({
         phone: customer?.phone ?? '',
         birth_date: (customer as any)?.birth_date ?? '',
         address: customer?.address ?? '',
+        address_number: (customer as any)?.address_number ?? '',
         complement: (customer as any)?.complement ?? '',
         neighborhood: (customer as any)?.neighborhood ?? '',
         city: customer?.city ?? '',
@@ -261,9 +263,16 @@ export function CustomerFormDialog({
                 </FormItem>
               )} />
               <FormField control={form.control} name="address" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
+                <FormItem>
                   <FormLabel>Endereço</FormLabel>
-                  <FormControl><Input placeholder="Rua, número" {...field} /></FormControl>
+                  <FormControl><Input placeholder="Rua, Avenida..." {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="address_number" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Número</FormLabel>
+                  <FormControl><Input placeholder="Nº" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
