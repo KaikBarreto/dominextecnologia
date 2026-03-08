@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2 } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,10 +11,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { useContractDetail } from '@/hooks/useContractDetail';
-import { getFrequencyLabel } from '@/hooks/useContracts';
+import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
 import { useFinancial } from '@/hooks/useFinancial';
-import { format, isBefore, parseISO, addMonths } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { format, isBefore, parseISO, addMonths, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
@@ -55,7 +61,16 @@ export default function ContractDetail() {
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
 
+  const { createContract } = useContracts();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const [showReceivableModal, setShowReceivableModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRenewDialog, setShowRenewDialog] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenewing, setIsRenewing] = useState(false);
   const [recDescription, setRecDescription] = useState('');
   const [recAmount, setRecAmount] = useState('');
   const [recDueDate, setRecDueDate] = useState('');
@@ -108,6 +123,78 @@ export default function ContractDetail() {
     }
   };
 
+  const handleDeleteContract = async () => {
+    if (!contract || !id) return;
+    setIsDeleting(true);
+    try {
+      // Delete linked financial transactions
+      await supabase.from('financial_transactions').delete().eq('contract_id', id);
+      // Delete service orders linked to this contract
+      const osIds = (contract.contract_occurrences || []).filter(o => o.service_order_id).map(o => o.service_order_id!);
+      if (osIds.length > 0) {
+        // Delete related service_order_equipment
+        await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
+        await supabase.from('service_orders').delete().in('id', osIds);
+      }
+      // Delete occurrences
+      await supabase.from('contract_occurrences').delete().eq('contract_id', id);
+      // Delete items
+      await supabase.from('contract_items').delete().eq('contract_id', id);
+      // Delete contract
+      const { error } = await supabase.from('contracts').delete().eq('id', id);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      toast({ title: 'Contrato excluído com sucesso!' });
+      navigate('/contratos');
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: err.message });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  const handleRenewContract = async () => {
+    if (!contract) return;
+    setIsRenewing(true);
+    try {
+      const lastOcc = sortedOccurrences[sortedOccurrences.length - 1];
+      const newStartDate = lastOcc
+        ? format(addDays(parseISO(lastOcc.scheduled_date), 1), 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd');
+
+      const result = await createContract.mutateAsync({
+        name: contract.name,
+        customer_id: contract.customer_id,
+        technician_id: contract.technician_id || null,
+        team_id: (contract as any).team_id || null,
+        service_type_id: contract.service_type_id || null,
+        form_template_id: contract.form_template_id || null,
+        status: 'active',
+        notes: contract.notes || null,
+        frequency_type: contract.frequency_type,
+        frequency_value: contract.frequency_value,
+        start_date: newStartDate,
+        horizon_months: contract.horizon_months,
+        items: (contract.contract_items || []).map(i => ({
+          equipment_id: i.equipment_id || null,
+          item_name: i.item_name,
+          item_description: i.item_description || null,
+          form_template_id: i.form_template_id || null,
+        })),
+      });
+      toast({ title: 'Contrato renovado com sucesso!' });
+      if (result) navigate(`/contratos/${(result as any).id}`);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao renovar', description: err.message });
+    } finally {
+      setIsRenewing(false);
+      setShowRenewDialog(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -153,6 +240,14 @@ export default function ContractDetail() {
             <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
           </div>
           <p className="text-muted-foreground">{contract.customers?.name || 'Cliente'}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="edit-ghost" size="sm" onClick={() => setShowEditForm(true)}>
+            <Pencil className="h-4 w-4 mr-1" /> Editar
+          </Button>
+          <Button variant="destructive-ghost" size="sm" onClick={() => setShowDeleteDialog(true)}>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          </Button>
         </div>
       </div>
 
@@ -351,6 +446,9 @@ export default function ContractDetail() {
                   <span className="font-medium">{format(parseLocalDate(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
                 </div>
               )}
+              <Button variant="outline" className="w-full mt-2" onClick={() => setShowRenewDialog(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Renovar Contrato
+              </Button>
             </CardContent>
           </Card>
 
@@ -424,6 +522,66 @@ export default function ContractDetail() {
           </Button>
         </div>
       </ResponsiveModal>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Tem certeza que deseja excluir o contrato <strong>{contract.name}</strong>?</p>
+                <p className="text-sm">Serão excluídos junto com o contrato:</p>
+                <ul className="text-sm list-disc pl-5 space-y-1">
+                  <li>{occurrences.length} ocorrências</li>
+                  <li>{occurrences.filter(o => o.service_order_id).length} ordens de serviço vinculadas</li>
+                  <li>{(linkedTransactions || []).length} transações financeiras vinculadas</li>
+                  <li>{items.length} itens do contrato</li>
+                </ul>
+                <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteContract} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Excluir tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Renew confirmation dialog */}
+      <AlertDialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Renovar contrato</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Será criado um novo contrato com as mesmas configurações:</p>
+                <ul className="text-sm list-disc pl-5 space-y-1">
+                  <li>Cliente: {contract.customers?.name}</li>
+                  <li>Frequência: {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</li>
+                  <li>Horizonte: {contract.horizon_months} meses</li>
+                  <li>{items.length} itens</li>
+                </ul>
+                <p className="text-sm">A data de início será o dia seguinte à última ocorrência do contrato atual.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRenewing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRenewContract} disabled={isRenewing}>
+              {isRenewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Renovar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit contract - reuses the create form as a sheet (navigates to new contract if re-created) */}
+      <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} onCreated={(newId) => navigate(`/contratos/${newId}`)} />
     </div>
   );
 }

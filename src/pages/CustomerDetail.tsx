@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, QrCode, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useCustomers } from '@/hooks/useCustomers';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -49,12 +51,51 @@ export default function CustomerDetail() {
   const [contactFormOpen, setContactFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<typeof contacts[0] | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [generatingPortal, setGeneratingPortal] = useState(false);
+  const { toast } = useToast();
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
   const customerTransactions = transactions.filter(t => t.customer_id === id);
   const ordersPagination = useDataPagination(customerOrders);
   const transactionsPagination = useDataPagination(customerTransactions);
+
+  // Load existing portal link
+  useEffect(() => {
+    if (!id) return;
+    supabase
+      .from('customer_portals')
+      .select('token')
+      .eq('customer_id', id)
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) setPortalLink(`${window.location.origin}/portal/${(data as any).token}`);
+      });
+  }, [id]);
+
+  const handleGeneratePortal = async () => {
+    if (!id) return;
+    setGeneratingPortal(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_portals')
+        .insert({ customer_id: id } as any)
+        .select('token')
+        .single();
+      if (error) throw error;
+      const link = `${window.location.origin}/portal/${(data as any).token}`;
+      setPortalLink(link);
+      navigator.clipboard.writeText(link);
+      toast({ title: 'Link do portal gerado e copiado!' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    } finally {
+      setGeneratingPortal(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -100,7 +141,17 @@ export default function CustomerDetail() {
             )}
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
+          {portalLink ? (
+            <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(portalLink); toast({ title: 'Link copiado!' }); }}>
+              <Copy className="h-4 w-4 mr-1" /> Portal
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleGeneratePortal} disabled={generatingPortal}>
+              {generatingPortal ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
+              Gerar Portal
+            </Button>
+          )}
           <Button variant="edit-ghost" size="sm" onClick={() => setEditCustomerOpen(true)}>
             <Edit className="h-4 w-4 mr-1" /> Editar
           </Button>

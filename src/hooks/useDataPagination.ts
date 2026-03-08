@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
-export type PageSizeOption = 25 | 50 | 100 | 'all';
+export type PageSizeOption = 10 | 25 | 50 | 100 | 'all';
 
-export function useDataPagination<T>(items: T[], defaultPageSize: PageSizeOption = 25) {
+export function useDataPagination<T>(items: T[], defaultPageSize: PageSizeOption = 10) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSizeOption>(defaultPageSize);
 
