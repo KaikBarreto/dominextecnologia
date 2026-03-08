@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -182,13 +182,34 @@ export default function Settings() {
     toast({ title: 'Preferência salva!' });
   };
 
-  const usabilityItems = [
-    { key: 'autoSaveOS', title: 'Salvamento Automático de OS', description: 'Salvar automaticamente rascunhos de ordens de serviço ao editar' },
-    { key: 'confirmDelete', title: 'Confirmar Exclusões', description: 'Exibir diálogo de confirmação antes de excluir registros' },
-    { key: 'showOSValues', title: 'Exibir Valores nas OS', description: 'Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço' },
-    { key: 'requireSignature', title: 'Exigir Assinatura do Cliente', description: 'Tornar obrigatória a assinatura do cliente ao finalizar OS' },
-    { key: 'compactTables', title: 'Tabelas Compactas', description: 'Reduzir espaçamento nas tabelas para exibir mais dados por página' },
-    { key: 'showEquipmentPhotos', title: 'Fotos de Equipamentos', description: 'Exibir miniaturas de fotos dos equipamentos nas listagens' },
+  const usabilitySections = [
+    {
+      title: 'Ordens de Serviço',
+      icon: ClipboardList,
+      description: 'Comportamentos relacionados às ordens de serviço',
+      items: [
+        { key: 'autoSaveOS', title: 'Salvamento Automático', description: 'Salvar automaticamente rascunhos de ordens de serviço ao editar' },
+        { key: 'showOSValues', title: 'Exibir Valores', description: 'Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço' },
+        { key: 'requireSignature', title: 'Exigir Assinatura', description: 'Tornar obrigatória a assinatura do cliente ao finalizar OS' },
+      ],
+    },
+    {
+      title: 'Interface',
+      icon: TableProperties,
+      description: 'Preferências visuais de listagens e tabelas',
+      items: [
+        { key: 'compactTables', title: 'Tabelas Compactas', description: 'Reduzir espaçamento nas tabelas para exibir mais dados por página' },
+        { key: 'showEquipmentPhotos', title: 'Fotos de Equipamentos', description: 'Exibir miniaturas de fotos dos equipamentos nas listagens' },
+      ],
+    },
+    {
+      title: 'Segurança',
+      icon: ShieldCheck,
+      description: 'Confirmações e validações de segurança',
+      items: [
+        { key: 'confirmDelete', title: 'Confirmar Exclusões', description: 'Exibir diálogo de confirmação antes de excluir registros' },
+      ],
+    },
   ];
 
   const renderContent = () => {
