@@ -48,8 +48,14 @@ export default function Billing() {
 
   if (!company) {
     return (
-      <div className="p-6 text-center text-muted-foreground">
-        Nenhuma empresa vinculada à sua conta.
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
+        <AlertTriangle className="h-12 w-12 text-muted-foreground" />
+        <div>
+          <h2 className="text-lg font-semibold">Nenhuma empresa vinculada</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Sua conta ainda não está vinculada a uma empresa. Caso tenha se cadastrado recentemente, entre em contato com o administrador.
+          </p>
+        </div>
       </div>
     );
   }

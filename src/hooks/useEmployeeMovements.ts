@@ -36,6 +36,7 @@ export function useEmployeeMovements(employeeId?: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['employee-movements'] });
+      qc.invalidateQueries({ queryKey: ['all-employee-movements'] });
       toast({ title: 'Movimentação registrada!' });
     },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
@@ -48,6 +49,7 @@ export function useEmployeeMovements(employeeId?: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['employee-movements'] });
+      qc.invalidateQueries({ queryKey: ['all-employee-movements'] });
       toast({ title: 'Movimentação excluída!' });
     },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),

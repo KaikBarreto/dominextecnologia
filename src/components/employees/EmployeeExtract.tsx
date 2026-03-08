@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useDataPagination } from '@/hooks/useDataPagination';
 import { BalanceSummary, formatMovementType, getMovementBadgeVariant, EmployeeMovement } from '@/utils/employeeCalculations';
 import { format } from 'date-fns';
 
@@ -18,9 +20,10 @@ interface EmployeeExtractProps {
 
 export function EmployeeExtract({ open, onOpenChange, employeeName, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const pagination = useDataPagination(movements, 25);
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`} className="sm:max-w-[900px]">
       <div className="space-y-4">
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -45,22 +48,22 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, movements, b
         </div>
 
         {/* Movements table */}
-        <div className="max-h-[400px] overflow-auto rounded-lg border">
+        <div className="overflow-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
+                <TableHead className="whitespace-nowrap">Data</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Valor</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Saldo</TableHead>
                 <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {movements.length === 0 ? (
+              {pagination.paginatedItems.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma movimentação</TableCell></TableRow>
-              ) : movements.map(m => (
+              ) : pagination.paginatedItems.map(m => (
                 <TableRow key={m.id}>
                   <TableCell className="text-xs whitespace-nowrap">{format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
                   <TableCell>
@@ -68,7 +71,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, movements, b
                       {formatMovementType(m.type)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs max-w-[150px] truncate">{m.description || '—'}</TableCell>
+                  <TableCell className="text-xs max-w-[200px] truncate">{m.description || '—'}</TableCell>
                   <TableCell className={`text-right text-xs font-medium ${['vale', 'falta'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
                     {['vale', 'falta'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
                   </TableCell>
@@ -95,6 +98,19 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, movements, b
             </TableBody>
           </Table>
         </div>
+
+        {movements.length > 0 && (
+          <DataTablePagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            from={pagination.from}
+            to={pagination.to}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        )}
       </div>
     </ResponsiveModal>
   );
