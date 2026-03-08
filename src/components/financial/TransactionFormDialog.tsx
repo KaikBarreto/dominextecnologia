@@ -97,7 +97,11 @@ export function TransactionFormDialog({
   const transactionType = form.watch('transaction_type');
 
   const handleSubmit = async (data: TransactionFormData) => {
-    await onSubmit(data);
+    const payload = {
+      ...data,
+      paid_date: data.is_paid ? data.transaction_date : undefined,
+    };
+    await onSubmit(payload);
     form.reset();
     onOpenChange(false);
   };
