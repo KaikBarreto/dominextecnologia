@@ -248,7 +248,7 @@ export default function ContractDetail() {
                     <span className="text-muted-foreground">Total: R$ {formatBRL(totalReceivable)}</span>
                     <span className="text-muted-foreground">Recebido: R$ {formatBRL(totalPaid)}</span>
                   </div>
-                  <DataTablePagination pagination={recPagination} />
+                  <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
                 </div>
               )}
             </CardContent>
@@ -319,7 +319,7 @@ export default function ContractDetail() {
                   </TableBody>
                 </Table>
               </div>
-              <DataTablePagination pagination={occPagination} />
+              <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
             </CardContent>
           </Card>
         </div>
