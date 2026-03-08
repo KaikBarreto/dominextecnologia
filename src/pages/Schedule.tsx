@@ -198,6 +198,7 @@ export default function Schedule() {
               currentDate={currentDate}
               serviceOrders={filteredOrders}
               onDateSelect={handleDateSelect}
+              onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
             />
@@ -323,6 +324,7 @@ export default function Schedule() {
               currentDate={currentDate}
               serviceOrders={filteredOrders}
               onDateSelect={handleDateSelect}
+              onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
             />
