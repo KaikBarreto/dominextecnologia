@@ -233,3 +233,24 @@ Design Premium com Verde da Marca #00C597
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Custom scrollbar for Landing Page */
+.landing-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+.landing-scrollbar::-webkit-scrollbar-track {
+  background: hsl(0 0% 10%);
+  border-radius: 5px;
+}
+.landing-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(160 100% 39%);
+  border-radius: 5px;
+  border: 2px solid hsl(0 0% 10%);
+}
+.landing-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(160 100% 48%);
+}
+.landing-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(160, 100%, 39%) hsl(0, 0%, 10%);
+}
