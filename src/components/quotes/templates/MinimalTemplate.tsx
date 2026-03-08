@@ -7,81 +7,83 @@ export function MinimalTemplate({ quote, company, items }: ProposalTemplateProps
   const allItems = [...items].sort((a, b) => a.position - b.position);
 
   return (
-    <div className="bg-white text-gray-900 p-10 min-h-[800px]" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      {/* Minimal header */}
-      <div className="mb-16">
-        <div className="flex justify-between items-start">
-          <div>
-            {company?.logo_url ? (
-              <img src={company.logo_url} alt="Logo" className="h-10 mb-4 object-contain" crossOrigin="anonymous" />
-            ) : (
-              <p className="text-sm font-medium text-gray-400 mb-4">{company?.name || 'Empresa'}</p>
-            )}
-          </div>
-          <p className="text-xs text-gray-400">
-            {format(new Date(quote.created_at), 'dd MMM yyyy', { locale: ptBR })}
-          </p>
-        </div>
-        
-        <h1 className="text-4xl font-extralight text-gray-900 mt-8 tracking-tight">
-          Proposta <span className="font-bold">#{quote.quote_number}</span>
-        </h1>
-        <p className="text-lg text-gray-400 mt-2">Para {clientName}</p>
+    <div className="bg-white text-gray-900 px-12 py-14 min-h-[800px]" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+      {/* Minimal header — just logo and date */}
+      <div className="flex justify-between items-center mb-20">
+        {company?.logo_url ? (
+          <img src={company.logo_url} alt="Logo" className="h-8 object-contain opacity-60" crossOrigin="anonymous" />
+        ) : (
+          <p className="text-xs font-medium text-gray-300 uppercase tracking-[0.3em]">{company?.name || 'Empresa'}</p>
+        )}
+        <p className="text-xs text-gray-300 tracking-wider">
+          {format(new Date(quote.created_at), 'dd MMM yyyy', { locale: ptBR }).toUpperCase()}
+        </p>
       </div>
 
-      {/* Items — simple list */}
-      <div className="space-y-6 mb-16">
+      {/* Title */}
+      <div className="mb-20">
+        <h1 className="text-5xl font-extralight text-gray-900 tracking-tight leading-tight">
+          Proposta
+        </h1>
+        <div className="flex items-baseline gap-4 mt-2">
+          <span className="text-5xl font-bold text-gray-900">#{quote.quote_number}</span>
+        </div>
+        <p className="text-xl text-gray-300 mt-4 font-light">Para {clientName}</p>
+      </div>
+
+      {/* Items — ultra clean list */}
+      <div className="mb-20">
         {allItems.map((item, i) => (
-          <div key={i} className="flex justify-between items-baseline pb-4 border-b border-gray-100">
-            <div>
-              <p className="text-base font-medium">{item.description}</p>
-              <p className="text-sm text-gray-400 mt-0.5">
+          <div key={i} className="flex justify-between items-baseline py-5" style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <div className="flex-1">
+              <p className="text-base font-normal text-gray-800">{item.description}</p>
+              <p className="text-xs text-gray-300 mt-1 tracking-wide">
                 {item.quantity} × R$ {(item.unit_price || 0).toFixed(2)}
               </p>
             </div>
-            <p className="text-lg font-semibold tabular-nums">
+            <p className="text-xl font-light text-gray-900 tabular-nums ml-8">
               R$ {(item.total_price || 0).toFixed(2)}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Total */}
-      <div className="text-right mb-16">
+      {/* Total — large and centered */}
+      <div className="text-right mb-20">
         {(quote.discount_amount ?? 0) > 0 && (
-          <div className="space-y-1 mb-3">
-            <p className="text-sm text-gray-400">Subtotal R$ {(quote.subtotal ?? 0).toFixed(2)}</p>
-            <p className="text-sm text-gray-400">Desconto −R$ {(quote.discount_amount ?? 0).toFixed(2)}</p>
+          <div className="space-y-1 mb-4">
+            <p className="text-sm text-gray-300">Subtotal R$ {(quote.subtotal ?? 0).toFixed(2)}</p>
+            <p className="text-sm text-gray-300">Desconto −R$ {(quote.discount_amount ?? 0).toFixed(2)}</p>
           </div>
         )}
-        <p className="text-5xl font-extralight tracking-tight">
+        <p className="text-6xl font-extralight tracking-tight text-gray-900">
           R$ {(quote.total_value ?? 0).toFixed(2)}
         </p>
         {quote.valid_until && (
-          <p className="text-xs text-gray-400 mt-3">
-            Válido até {format(new Date(quote.valid_until), 'dd MMM yyyy', { locale: ptBR })}
+          <p className="text-xs text-gray-300 mt-4 tracking-wider">
+            VÁLIDO ATÉ {format(new Date(quote.valid_until), 'dd MMM yyyy', { locale: ptBR }).toUpperCase()}
           </p>
         )}
       </div>
 
-      {/* Terms & Notes */}
+      {/* Terms & Notes — minimal dividers */}
       {quote.terms && (
-        <div className="mb-8">
-          <p className="text-xs uppercase tracking-widest text-gray-300 mb-2">Condições</p>
-          <p className="text-sm text-gray-500 whitespace-pre-wrap leading-relaxed">{quote.terms}</p>
+        <div className="mb-10">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-gray-300 mb-3">Condições</p>
+          <p className="text-sm text-gray-400 whitespace-pre-wrap leading-relaxed font-light">{quote.terms}</p>
         </div>
       )}
 
       {quote.notes && (
-        <div>
-          <p className="text-xs uppercase tracking-widest text-gray-300 mb-2">Observações</p>
-          <p className="text-sm text-gray-500 whitespace-pre-wrap leading-relaxed">{quote.notes}</p>
+        <div className="mb-10">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-gray-300 mb-3">Observações</p>
+          <p className="text-sm text-gray-400 whitespace-pre-wrap leading-relaxed font-light">{quote.notes}</p>
         </div>
       )}
 
-      {/* Footer */}
-      <div className="mt-20 pt-6 border-t border-gray-100 text-xs text-gray-300 flex justify-between">
-        <span>{company?.name}</span>
+      {/* Footer — barely visible */}
+      <div className="mt-24 pt-8 text-[10px] text-gray-200 flex justify-between tracking-wider" style={{ borderTop: '1px solid #f3f4f6' }}>
+        <span>{company?.name?.toUpperCase()}</span>
         <span>{company?.phone}{company?.email ? ` · ${company.email}` : ''}</span>
       </div>
     </div>
