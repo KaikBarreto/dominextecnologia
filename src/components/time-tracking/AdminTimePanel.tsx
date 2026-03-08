@@ -12,7 +12,7 @@ export function AdminTimePanel() {
   return (
     <div className="space-y-4">
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-4 max-w-lg">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg h-auto">
           <TabsTrigger value="today" className="gap-1.5 text-xs sm:text-sm">
             <CalendarClock className="h-4 w-4 hidden sm:block" /> Hoje
           </TabsTrigger>

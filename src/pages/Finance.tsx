@@ -91,7 +91,7 @@ export default function Finance() {
 
       <div className="flex flex-col lg:flex-row gap-6">
         <nav className="lg:w-52 shrink-0">
-          <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+          <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0">
             {tabs.map((item) => {
               const isActive = activeTab === item.key;
               return (
