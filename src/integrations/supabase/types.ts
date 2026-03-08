@@ -18,12 +18,14 @@ export type Database = {
         Row: {
           address: string | null
           city: string | null
+          complement: string | null
           created_at: string
           document: string | null
           email: string | null
           id: string
           logo_url: string | null
           name: string
+          neighborhood: string | null
           phone: string | null
           state: string | null
           updated_at: string
@@ -32,12 +34,14 @@ export type Database = {
         Insert: {
           address?: string | null
           city?: string | null
+          complement?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           name?: string
+          neighborhood?: string | null
           phone?: string | null
           state?: string | null
           updated_at?: string
@@ -46,12 +50,14 @@ export type Database = {
         Update: {
           address?: string | null
           city?: string | null
+          complement?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           name?: string
+          neighborhood?: string | null
           phone?: string | null
           state?: string | null
           updated_at?: string
@@ -149,6 +155,104 @@ export type Database = {
           state?: string | null
           updated_at?: string
           zip_code?: string | null
+        }
+        Relationships: []
+      }
+      employee_movements: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          employee_id: string
+          id: string
+          payment_details: Json | null
+          payment_method: string | null
+          type: string
+        }
+        Insert: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id: string
+          id?: string
+          payment_details?: Json | null
+          payment_method?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id?: string
+          id?: string
+          payment_details?: Json | null
+          payment_method?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_movements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          address: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          hire_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          photo_url: string | null
+          pix_key: string | null
+          position: string | null
+          salary: number | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          hire_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          photo_url?: string | null
+          pix_key?: string | null
+          position?: string | null
+          salary?: number | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          hire_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          photo_url?: string | null
+          pix_key?: string | null
+          position?: string | null
+          salary?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
