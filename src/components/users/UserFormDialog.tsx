@@ -333,7 +333,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
           {/* Preset Selection */}
           <div>
             <Label className="text-[13px] font-normal uppercase tracking-wider">Perfil de Acesso</Label>
-            <Select value={form.preset_id || 'custom'} onValueChange={handlePresetChange}>
+            <Select value={accessProfile} onValueChange={handlePresetChange}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Selecione um perfil" />
               </SelectTrigger>
