@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.2.10";
 
-export const VERSION_NOTES = "Rebrand Dominex, módulo financeiro completo com contas a pagar/receber, histórico e categorias com ícones";
+export const VERSION_NOTES = "Contatos do cliente, correção de sessões ativas, remoção do banner de instalação PWA";
