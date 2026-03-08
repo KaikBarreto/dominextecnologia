@@ -217,6 +217,12 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                 <div>
                   <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
                   <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
+                </div>
+              </>
+            )}
+            <div>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">Telefone</Label>
+              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: phoneMask(e.target.value) }))} placeholder="(00) 00000-0000" />
             </div>
 
             {/* Link to employee */}
@@ -238,22 +244,6 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">Vincula este usuário a um funcionário cadastrado</p>
-            </div>
-            {!isEditing && (
-              <>
-                <div>
-                  <Label className="text-[13px] font-normal uppercase tracking-wider">Email *</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@exemplo.com" />
-                </div>
-                <div>
-                  <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
-                  <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
-                </div>
-              </>
-            )}
-            <div>
-              <Label className="text-[13px] font-normal uppercase tracking-wider">Telefone</Label>
-              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: phoneMask(e.target.value) }))} placeholder="(00) 00000-0000" />
             </div>
           </div>
 
