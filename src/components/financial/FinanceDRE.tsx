@@ -226,23 +226,23 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
         <Card className={cn('border-0', dre.margem >= 0 ? 'bg-success' : 'bg-destructive')}>
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Margem de Lucro</p>
-            <p className="text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
+            <p className="text-2xl sm:text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Receita Líquida</p>
-            <p className="text-3xl font-bold mt-1">{formatCurrency(dre.receitaLiquida)}</p>
+            <p className="text-xl sm:text-3xl font-bold mt-1 truncate">{formatCurrency(dre.receitaLiquida)}</p>
           </CardContent>
         </Card>
         <Card className={cn('border-0', dre.resultadoLiquido >= 0 ? 'bg-success' : 'bg-destructive')}>
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Resultado (EBITDA)</p>
-            <p className="text-3xl font-bold mt-1 text-white">{formatCurrency(dre.resultadoLiquido)}</p>
+            <p className="text-xl sm:text-3xl font-bold mt-1 text-white truncate">{formatCurrency(dre.resultadoLiquido)}</p>
           </CardContent>
         </Card>
       </div>
