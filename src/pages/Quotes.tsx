@@ -201,18 +201,6 @@ export default function Quotes() {
                           <TooltipContent>Visualizar</TooltipContent>
                         </Tooltip>
 
-                        {/* Send */}
-                        {q.status === 'rascunho' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8"
-                                onClick={() => updateStatus.mutate({ id: q.id, status: 'enviado' })}>
-                                <Send className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Enviar</TooltipContent>
-                          </Tooltip>
-                        )}
 
                         {/* Approve / Reject */}
                         {q.status === 'enviado' && (
