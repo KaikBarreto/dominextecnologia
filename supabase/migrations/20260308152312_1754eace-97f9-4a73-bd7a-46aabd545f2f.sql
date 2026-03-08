@@ -1,0 +1,1 @@
+ALTER TABLE public.contracts ADD COLUMN team_id uuid REFERENCES public.teams(id);
