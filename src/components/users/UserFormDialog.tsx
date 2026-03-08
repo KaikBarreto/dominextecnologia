@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -159,9 +159,17 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
       onOpenChange={onOpenChange}
       title={isEditing ? 'Editar Usuário' : 'Criar Usuário'}
       description={isEditing ? 'Atualize os dados e permissões do usuário' : 'Preencha os dados do novo usuário'}
+      footer={
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Cancelar</Button>
+          <Button onClick={handleSubmit} disabled={loading || (!isEditing && (!form.full_name || !form.email || !form.password))} className="w-full sm:w-auto">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isEditing ? 'Atualizar' : 'Criar Usuário'}
+          </Button>
+        </div>
+      }
     >
-      <ScrollArea className="max-h-[70vh] pr-4">
-        <div className="space-y-6 pb-4">
+      <div className="space-y-6 pb-4 pr-1">
           {/* Photo + Basic Info */}
           <div className="grid grid-cols-1 gap-4">
             {/* Photo Upload */}
@@ -403,15 +411,6 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
               ))}
             </div>
           </div>
-        </div>
-      </ScrollArea>
-
-      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t">
-        <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Cancelar</Button>
-        <Button onClick={handleSubmit} disabled={loading || (!isEditing && (!form.full_name || !form.email || !form.password))} className="w-full sm:w-auto">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isEditing ? 'Atualizar' : 'Criar Usuário'}
-        </Button>
       </div>
     </ResponsiveModal>
   );
