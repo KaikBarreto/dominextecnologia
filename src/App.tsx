@@ -48,6 +48,7 @@ import Checkout from "./pages/Checkout";
 import Quotes from "./pages/Quotes";
 import QuotePublic from "./pages/QuotePublic";
 import ProposalPublic from "./pages/ProposalPublic";
+import CustomerPortal from "./pages/CustomerPortal";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
 
@@ -124,6 +125,8 @@ const AppRoutes = () => (
     {/* Public quote page */}
     <Route path="/orcamento/:token" element={<QuotePublic />} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />
+    {/* Public customer portal */}
+    <Route path="/portal/:token" element={<CustomerPortal />} />
 
     {/* Protected Routes */}
     <Route
