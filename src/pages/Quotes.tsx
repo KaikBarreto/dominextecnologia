@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-  FileText, Plus, Search, Pencil, Trash2, Eye, Send, CheckCircle2, XCircle, Copy,
-  CopyPlus, Share2, ClipboardList, DollarSign, Palette,
+  FileText, Plus, Search, Pencil, Trash2, Eye, Send, CheckCircle2, XCircle,
+  ExternalLink, ClipboardList, DollarSign, Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -251,34 +251,14 @@ export default function Quotes() {
                           </Tooltip>
                         )}
 
-                        {/* WhatsApp */}
+                        {/* Abrir em nova guia */}
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => shareWhatsApp(q)}>
-                              <Share2 className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}>
+                              <ExternalLink className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>WhatsApp</TooltipContent>
-                        </Tooltip>
-
-                        {/* Copy Link */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyLink(q.token)}>
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Copiar Link</TooltipContent>
-                        </Tooltip>
-
-                        {/* Duplicate */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateQuote.mutate(q)}>
-                              <CopyPlus className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Duplicar</TooltipContent>
+                          <TooltipContent>Abrir em nova guia</TooltipContent>
                         </Tooltip>
 
                         {/* Edit */}
