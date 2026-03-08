@@ -451,11 +451,11 @@ export default function CRM() {
           </Card>
         ) : (
           <div className="overflow-x-auto pb-4 -mx-1 px-1">
-            <div className="flex gap-4" style={{ minWidth: `${stages.length * 316}px` }}>
+            <div className="flex gap-3 sm:gap-4" style={{ minWidth: `${stages.length * 280}px` }}>
               {stages.map((stage) => (
                 <div
                   key={stage.id}
-                  className="w-[300px] flex-shrink-0"
+                  className="w-[260px] sm:w-[300px] flex-shrink-0"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, stage.id)}
                 >

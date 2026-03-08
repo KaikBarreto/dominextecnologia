@@ -133,44 +133,46 @@ export default function CustomerDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        {customer.photo_url ? (
-          <img src={customer.photo_url} alt="" className="h-12 w-12 rounded-full object-cover border" />
-        ) : (
-          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-            <Package className="h-5 w-5 text-muted-foreground" />
-          </div>
-        )}
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{customer.name}</h1>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
-              {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
-            </Badge>
-            {customer.company_name && (
-              <span className="text-sm text-muted-foreground">{customer.company_name}</span>
-            )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/clientes')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          {customer.photo_url ? (
+            <img src={customer.photo_url} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover border shrink-0" />
+          ) : (
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <Package className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">{customer.name}</h1>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
+                {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
+              </Badge>
+              {customer.company_name && (
+                <span className="text-sm text-muted-foreground truncate">{customer.company_name}</span>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0 flex-wrap">
+        <div className="flex gap-2 shrink-0 flex-wrap pl-11 sm:pl-0">
           {portalLink ? (
             <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(portalLink); toast({ title: 'Link copiado!' }); }}>
-              <Copy className="h-4 w-4 mr-1" /> Portal
+              <Copy className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Portal</span>
             </Button>
           ) : (
             <Button variant="outline" size="sm" onClick={handleGeneratePortal} disabled={generatingPortal}>
-              {generatingPortal ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
-              Gerar Portal
+              {generatingPortal ? <Loader2 className="h-4 w-4 sm:mr-1 animate-spin" /> : <Link2 className="h-4 w-4 sm:mr-1" />}
+              <span className="hidden sm:inline">Gerar Portal</span>
             </Button>
           )}
           <Button variant="edit-ghost" size="sm" onClick={() => setEditCustomerOpen(true)}>
-            <Edit className="h-4 w-4 mr-1" /> Editar
+            <Edit className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Editar</span>
           </Button>
           <Button variant="destructive-ghost" size="sm" onClick={() => setDeleteConfirmOpen(true)}>
-            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+            <Trash2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Excluir</span>
           </Button>
         </div>
       </div>

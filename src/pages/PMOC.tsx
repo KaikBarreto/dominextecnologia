@@ -116,7 +116,7 @@ export default function PMOC() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
         <Card className="bg-gradient-to-br from-card to-muted/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -164,6 +164,22 @@ export default function PMOC() {
       </div>
 
       {/* Sidebar + Content layout */}
+      {/* Mobile horizontal nav */}
+      <div className="sm:hidden flex gap-1 border-b overflow-x-auto no-scrollbar">
+        {SECTIONS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveSection(key)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
+              activeSection === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex gap-6">
         {/* Vertical sidebar */}
         <nav className="hidden sm:flex flex-col gap-1 w-48 shrink-0">
@@ -183,22 +199,6 @@ export default function PMOC() {
             </button>
           ))}
         </nav>
-
-        {/* Mobile horizontal nav */}
-        <div className="sm:hidden flex gap-1 border-b overflow-x-auto no-scrollbar -mt-2 mb-2 w-full">
-          {SECTIONS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveSection(key)}
-              className={cn(
-                'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
-                activeSection === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
 
         {/* Content area */}
         <div className="flex-1 min-w-0 space-y-4">
