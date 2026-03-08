@@ -446,6 +446,9 @@ export default function ContractDetail() {
                   <span className="font-medium">{format(parseLocalDate(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
                 </div>
               )}
+              <Button variant="outline" className="w-full mt-2" onClick={() => setShowRenewDialog(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Renovar Contrato
+              </Button>
             </CardContent>
           </Card>
 
@@ -519,6 +522,66 @@ export default function ContractDetail() {
           </Button>
         </div>
       </ResponsiveModal>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Tem certeza que deseja excluir o contrato <strong>{contract.name}</strong>?</p>
+                <p className="text-sm">Serão excluídos junto com o contrato:</p>
+                <ul className="text-sm list-disc pl-5 space-y-1">
+                  <li>{occurrences.length} ocorrências</li>
+                  <li>{occurrences.filter(o => o.service_order_id).length} ordens de serviço vinculadas</li>
+                  <li>{(linkedTransactions || []).length} transações financeiras vinculadas</li>
+                  <li>{items.length} itens do contrato</li>
+                </ul>
+                <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteContract} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Excluir tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Renew confirmation dialog */}
+      <AlertDialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Renovar contrato</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Será criado um novo contrato com as mesmas configurações:</p>
+                <ul className="text-sm list-disc pl-5 space-y-1">
+                  <li>Cliente: {contract.customers?.name}</li>
+                  <li>Frequência: {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</li>
+                  <li>Horizonte: {contract.horizon_months} meses</li>
+                  <li>{items.length} itens</li>
+                </ul>
+                <p className="text-sm">A data de início será o dia seguinte à última ocorrência do contrato atual.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRenewing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRenewContract} disabled={isRenewing}>
+              {isRenewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Renovar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit contract - reuses the create form as a sheet (navigates to new contract if re-created) */}
+      <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} onCreated={(newId) => navigate(`/contratos/${newId}`)} />
     </div>
   );
 }
