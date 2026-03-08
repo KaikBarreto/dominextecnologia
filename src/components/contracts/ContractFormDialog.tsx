@@ -127,7 +127,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }))
       );
     } else {
-      setName(''); setCustomerId(''); setTechnicianId(''); setServiceTypeId('');
+      setName(''); setCustomerId(defaultCustomerId || ''); setTechnicianId(''); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setSelectedItems([]);
