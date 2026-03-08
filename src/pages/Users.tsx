@@ -18,7 +18,7 @@ import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { TechnicianTimeClock } from '@/components/time-tracking/TechnicianTimeClock';
 
 export default function Users() {
-  const { users, isLoading, updateUserRole, canManageRoles } = useUsers();
+  const { users, isLoading, updateUserRole, canManageRoles, currentUserRole } = useUsers();
   const { userPermissions, upsertPermissions, toggleActive } = useUserPermissions();
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
   const { user } = useAuth();
@@ -27,6 +27,10 @@ export default function Users() {
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('users');
+
+  const isTecnico = currentUserRole === 'tecnico';
+  const isAdminOrGestor = currentUserRole === 'admin' || currentUserRole === 'gestor';
 
   const filteredUsers = users.filter(u =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
