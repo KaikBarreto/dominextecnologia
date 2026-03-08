@@ -63,6 +63,10 @@ export default function ContractDetail() {
   const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
 
+  const occurrences = useMemo(() => contract?.contract_occurrences || [], [contract]);
+  const occPagination = useDataPagination(occurrences);
+  const recPagination = useDataPagination(linkedTransactions || []);
+
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
     setRecSaving(true);
