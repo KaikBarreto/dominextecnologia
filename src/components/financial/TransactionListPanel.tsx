@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -24,10 +24,10 @@ function formatCurrency(value: number) {
 
 interface TransactionListPanelProps {
   title: string;
-  type: TransactionType;
+  type?: TransactionType | 'all';
   transactions: (FinancialTransaction & { customer?: any })[];
   isLoading: boolean;
-  onNew: () => void;
+  onNew?: () => void;
   onEdit: (t: FinancialTransaction) => void;
   onDelete: (id: string) => Promise<any>;
   onMarkAsPaid: (id: string) => Promise<any>;
@@ -35,14 +35,14 @@ interface TransactionListPanelProps {
 }
 
 export function TransactionListPanel({
-  title, type, transactions, isLoading,
+  title, type = 'all', transactions, isLoading,
   onNew, onEdit, onDelete, onMarkAsPaid, buttonColor,
 }: TransactionListPanelProps) {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const filtered = transactions
-    .filter((t) => t.transaction_type === type)
+    .filter((t) => type === 'all' || t.transaction_type === type)
     .filter((t) =>
       t.description.toLowerCase().includes(search.toLowerCase()) ||
       t.category?.toLowerCase().includes(search.toLowerCase())
@@ -57,6 +57,8 @@ export function TransactionListPanel({
     }
   };
 
+  const showTypeColumn = type === 'all';
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -64,10 +66,12 @@ export function TransactionListPanel({
           <h2 className="text-xl font-bold">{title}</h2>
           <p className="text-sm text-muted-foreground">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={onNew} className={buttonColor}>
-          <Plus className="mr-2 h-4 w-4" />
-          {type === 'entrada' ? 'Nova Receita' : 'Nova Despesa'}
-        </Button>
+        {onNew && (
+          <Button onClick={onNew} className={buttonColor}>
+            <Plus className="mr-2 h-4 w-4" />
+            {type === 'entrada' ? 'Nova Receita' : type === 'saida' ? 'Nova Despesa' : 'Nova Transação'}
+          </Button>
+        )}
       </div>
 
       <div className="relative">
@@ -85,7 +89,7 @@ export function TransactionListPanel({
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="text-lg font-medium">Nenhum registro</h3>
-              <p className="text-muted-foreground text-sm">Clique no botão acima para adicionar</p>
+              <p className="text-muted-foreground text-sm">Nenhuma movimentação encontrada</p>
             </div>
           ) : (
             <>
@@ -94,6 +98,7 @@ export function TransactionListPanel({
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs uppercase tracking-wider">Data</TableHead>
+                      {showTypeColumn && <TableHead className="text-xs uppercase tracking-wider">Tipo</TableHead>}
                       <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
                       <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Categoria</TableHead>
                       <TableHead className="text-xs uppercase tracking-wider">Valor</TableHead>
@@ -107,6 +112,16 @@ export function TransactionListPanel({
                         <TableCell className="text-sm">
                           {format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
                         </TableCell>
+                        {showTypeColumn && (
+                          <TableCell>
+                            <Badge className={t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}>
+                              <span className="flex items-center gap-1">
+                                {t.transaction_type === 'entrada' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                {t.transaction_type === 'entrada' ? 'Receita' : 'Despesa'}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div>
                             <p className="font-medium">{t.description}</p>
@@ -117,8 +132,8 @@ export function TransactionListPanel({
                           {t.category && <Badge variant="outline">{t.category}</Badge>}
                         </TableCell>
                         <TableCell>
-                          <span className={`font-medium ${type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
-                            {formatCurrency(t.amount)}
+                          <span className={`font-medium ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
+                            {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                           </span>
                         </TableCell>
                         <TableCell>

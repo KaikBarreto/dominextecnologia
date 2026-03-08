@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  LayoutDashboard, TrendingUp, TrendingDown, Tag, FileBarChart,
+  LayoutDashboard, TrendingUp, TrendingDown, Tag, FileBarChart, History, CalendarClock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFinancial } from '@/hooks/useFinancial';
@@ -9,12 +9,15 @@ import { FinanceOverview } from '@/components/financial/FinanceOverview';
 import { TransactionListPanel } from '@/components/financial/TransactionListPanel';
 import { FinanceCategorias } from '@/components/financial/FinanceCategorias';
 import { FinanceDRE } from '@/components/financial/FinanceDRE';
+import { FinanceContas } from '@/components/financial/FinanceContas';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const tabs = [
   { key: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
   { key: 'receitas', label: 'Receitas', icon: TrendingUp },
   { key: 'despesas', label: 'Despesas', icon: TrendingDown },
+  { key: 'historico', label: 'Histórico', icon: History },
+  { key: 'contas', label: 'Contas', icon: CalendarClock },
   { key: 'categorias', label: 'Categorias', icon: Tag },
   { key: 'dre', label: 'DRE - Resultado', icon: FileBarChart },
 ];
@@ -59,7 +62,6 @@ export default function Finance() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Sidebar */}
         <nav className="lg:w-52 shrink-0">
           <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
             {tabs.map((item) => {
@@ -83,7 +85,6 @@ export default function Finance() {
           </div>
         </nav>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           {activeTab === 'visao-geral' && (
             <FinanceOverview
@@ -120,6 +121,26 @@ export default function Finance() {
               onDelete={(id) => deleteTransaction.mutateAsync(id)}
               onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
               buttonColor="bg-destructive hover:bg-destructive/90 text-white"
+            />
+          )}
+
+          {activeTab === 'historico' && (
+            <TransactionListPanel
+              title="Histórico"
+              type="all"
+              transactions={transactions}
+              isLoading={isLoading}
+              onEdit={handleEdit}
+              onDelete={(id) => deleteTransaction.mutateAsync(id)}
+              onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
+            />
+          )}
+
+          {activeTab === 'contas' && (
+            <FinanceContas
+              transactions={transactions}
+              isLoading={isLoading}
+              onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
             />
           )}
 
