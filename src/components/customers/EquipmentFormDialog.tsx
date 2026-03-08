@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -17,6 +17,8 @@ import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { supabase } from '@/integrations/supabase/client';
 import type { Equipment, Customer } from '@/types/database';
 import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
+
+const CACHE_KEY = 'equipment-form-draft';
 
 const equipmentSchema = z.object({
   customer_id: z.string().min(1, 'Selecione um cliente'),
@@ -42,9 +44,10 @@ interface EquipmentFormDialogProps {
   customers: Customer[];
   categories?: EquipmentCategory[];
   isLoading?: boolean;
-  /** Total equipment count for auto-generating identifier */
   equipmentCount?: number;
 }
+
+const builtInFieldKeys = new Set(['brand', 'model', 'serial_number', 'capacity', 'location', 'install_date']);
 
 export function EquipmentFormDialog({
   open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
@@ -53,11 +56,11 @@ export function EquipmentFormDialog({
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const autoIdentifier = useMemo(() => {
     if (equipment?.identifier) return equipment.identifier;
-    // Generate random 16-digit numeric identifier
     const part1 = Math.floor(Math.random() * 9000000000000000) + 1000000000000000;
     return String(part1);
   }, [equipment]);
@@ -65,39 +68,80 @@ export function EquipmentFormDialog({
   const form = useForm<EquipmentFormData>({
     resolver: zodResolver(equipmentSchema),
     defaultValues: {
-      customer_id: equipment?.customer_id ?? '',
-      name: equipment?.name ?? '',
-      category_id: equipment?.category_id ?? '',
-      identifier: equipment?.identifier ?? autoIdentifier,
-      brand: equipment?.brand ?? '',
-      model: equipment?.model ?? '',
-      serial_number: equipment?.serial_number ?? '',
-      capacity: equipment?.capacity ?? '',
-      location: equipment?.location ?? '',
-      install_date: equipment?.install_date ?? '',
-      notes: equipment?.notes ?? '',
+      customer_id: '', name: '', category_id: '', identifier: '',
+      brand: '', model: '', serial_number: '', capacity: '',
+      location: '', install_date: '', notes: '',
     },
   });
 
+  // Save form data to sessionStorage on every change
+  const saveCache = useCallback(() => {
+    if (!open) return;
+    const values = form.getValues();
+    const cache = { values, customFieldValues, editingId: equipment?.id ?? null };
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  }, [open, form, customFieldValues, equipment]);
+
+  // Watch form changes and cache
+  useEffect(() => {
+    if (!open) return;
+    const subscription = form.watch(() => saveCache());
+    return () => subscription.unsubscribe();
+  }, [open, form, saveCache]);
+
+  // Also cache custom fields when they change
+  useEffect(() => {
+    saveCache();
+  }, [customFieldValues, saveCache]);
+
   useEffect(() => {
     if (open) {
-      // When only one customer is passed and no equipment, auto-select that customer
       const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
-      form.reset({
-        customer_id: defaultCustomerId,
-        name: equipment?.name ?? '',
-        category_id: equipment?.category_id ?? '',
-        identifier: equipment?.identifier ?? autoIdentifier,
-        brand: equipment?.brand ?? '',
-        model: equipment?.model ?? '',
-        serial_number: equipment?.serial_number ?? '',
-        capacity: equipment?.capacity ?? '',
-        location: equipment?.location ?? '',
-        install_date: equipment?.install_date ?? '',
-        notes: equipment?.notes ?? '',
-      });
+
+      // Try to restore from cache if same context (same equipment or new)
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      let restored = false;
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const sameContext = (equipment?.id ?? null) === (parsed.editingId ?? null);
+          if (sameContext && parsed.values) {
+            form.reset(parsed.values);
+            setCustomFieldValues(parsed.customFieldValues ?? {});
+            restored = true;
+          }
+        } catch { /* ignore */ }
+      }
+
+      if (!restored) {
+        form.reset({
+          customer_id: defaultCustomerId,
+          name: equipment?.name ?? '',
+          category_id: equipment?.category_id ?? '',
+          identifier: equipment?.identifier ?? autoIdentifier,
+          brand: equipment?.brand ?? '',
+          model: equipment?.model ?? '',
+          serial_number: equipment?.serial_number ?? '',
+          capacity: equipment?.capacity ?? '',
+          location: equipment?.location ?? '',
+          install_date: equipment?.install_date ?? '',
+          notes: equipment?.notes ?? '',
+        });
+        // Restore custom field values from equipment.custom_fields
+        const cf: Record<string, string> = {};
+        if (equipment?.custom_fields) {
+          Object.entries(equipment.custom_fields).forEach(([k, v]) => {
+            cf[k] = String(v ?? '');
+          });
+        }
+        setCustomFieldValues(cf);
+      }
+
       setPhotoFile(null);
       setPhotoPreview(equipment?.photo_url ?? null);
+    } else {
+      // Clear cache when dialog closes (submitted or cancelled)
+      sessionStorage.removeItem(CACHE_KEY);
     }
   }, [open, equipment, autoIdentifier, customers]);
 
@@ -125,38 +169,46 @@ export function EquipmentFormDialog({
   };
 
   const handleSubmit = async (data: EquipmentFormData) => {
-    // Upload photo if selected
     let photo_url = equipment?.photo_url;
     if (photoFile) {
       photo_url = await uploadPhoto();
     }
 
-    // Clean empty strings to avoid DB errors (especially for date fields)
     const cleaned: any = { ...data, photo_url };
     Object.keys(cleaned).forEach(key => {
-      if (cleaned[key] === '') {
-        cleaned[key] = undefined;
-      }
+      if (cleaned[key] === '') cleaned[key] = undefined;
     });
-    // Ensure required fields stay
     cleaned.customer_id = data.customer_id;
     cleaned.name = data.name;
-    
+
+    // Merge custom fields into custom_fields jsonb
+    const existingCustom = equipment?.custom_fields ?? {};
+    const mergedCustom = { ...existingCustom, ...customFieldValues };
+    // Remove empty values
+    Object.keys(mergedCustom).forEach(k => {
+      if (!mergedCustom[k]) delete mergedCustom[k];
+    });
+    if (Object.keys(mergedCustom).length > 0) {
+      cleaned.custom_fields = mergedCustom;
+    }
+
     await onSubmit(cleaned);
+    sessionStorage.removeItem(CACHE_KEY);
     form.reset();
+    setCustomFieldValues({});
     onOpenChange(false);
   };
 
   const fieldKeyToName: Record<string, keyof EquipmentFormData> = {
-    brand: 'brand',
-    model: 'model',
-    serial_number: 'serial_number',
-    capacity: 'capacity',
-    location: 'location',
-    install_date: 'install_date',
+    brand: 'brand', model: 'model', serial_number: 'serial_number',
+    capacity: 'capacity', location: 'location', install_date: 'install_date',
   };
 
   const visibleFields = fieldConfig.filter(f => f.is_visible);
+
+  // Split into built-in and custom
+  const builtInVisible = visibleFields.filter(f => builtInFieldKeys.has(f.field_key));
+  const customVisible = visibleFields.filter(f => !builtInFieldKeys.has(f.field_key));
 
   return (
     <ResponsiveModal
@@ -275,7 +327,8 @@ export function EquipmentFormDialog({
               />
             )}
 
-            {visibleFields.map((fc) => {
+            {/* Built-in configurable fields */}
+            {builtInVisible.map((fc) => {
               const fieldName = fieldKeyToName[fc.field_key];
               if (!fieldName) return null;
               return (
@@ -301,6 +354,60 @@ export function EquipmentFormDialog({
                 />
               );
             })}
+
+            {/* Custom user-created fields (stored in custom_fields jsonb) */}
+            {customVisible.map((fc) => (
+              <div key={fc.id} className="space-y-2">
+                <FormLabel>{fc.label}{fc.is_required && ' *'}</FormLabel>
+                {fc.field_type === 'date' ? (
+                  <Input
+                    type="date"
+                    value={customFieldValues[fc.field_key] ?? ''}
+                    onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: e.target.value }))}
+                  />
+                ) : fc.field_type === 'number' ? (
+                  <Input
+                    type="number"
+                    placeholder={fc.label}
+                    value={customFieldValues[fc.field_key] ?? ''}
+                    onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: e.target.value }))}
+                  />
+                ) : fc.field_type === 'boolean' ? (
+                  <Select
+                    value={customFieldValues[fc.field_key] ?? ''}
+                    onValueChange={(v) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sim">Sim</SelectItem>
+                      <SelectItem value="nao">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : fc.field_type === 'select' && fc.options?.length ? (
+                  <Select
+                    value={customFieldValues[fc.field_key] ?? ''}
+                    onValueChange={(v) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fc.options.map((opt) => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    placeholder={fc.label}
+                    value={customFieldValues[fc.field_key] ?? ''}
+                    onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [fc.field_key]: e.target.value }))}
+                  />
+                )}
+              </div>
+            ))}
 
             <FormField
               control={form.control}
