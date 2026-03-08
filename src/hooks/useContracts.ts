@@ -247,12 +247,35 @@ export function useContracts() {
 
   const deleteContract = useMutation({
     mutationFn: async (id: string) => {
-      // Nullify references in service_orders and financial_transactions
-      await supabase.from('service_orders').update({ contract_id: null }).eq('contract_id', id);
+      // Collect service_order IDs linked to this contract (via occurrences)
+      const { data: occurrences } = await supabase
+        .from('contract_occurrences')
+        .select('service_order_id')
+        .eq('contract_id', id);
+
+      const osIds = (occurrences || [])
+        .map(o => o.service_order_id)
+        .filter(Boolean) as string[];
+
+      // Nullify references in financial_transactions
       await supabase.from('financial_transactions').update({ contract_id: null }).eq('contract_id', id);
+
       // Delete related records
       await supabase.from('contract_occurrences').delete().eq('contract_id', id);
       await supabase.from('contract_items').delete().eq('contract_id', id);
+
+      // Delete linked service orders (and their junction rows)
+      if (osIds.length > 0) {
+        await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
+        await supabase.from('form_responses').delete().in('service_order_id', osIds);
+        await supabase.from('os_photos').delete().in('service_order_id', osIds);
+        await supabase.from('service_ratings').delete().in('service_order_id', osIds);
+        await supabase.from('service_orders').delete().in('id', osIds);
+      }
+
+      // Also delete any OS that references this contract directly but wasn't in occurrences
+      await supabase.from('service_orders').delete().eq('contract_id', id);
+
       const { error } = await supabase.from('contracts').delete().eq('id', id);
       if (error) throw error;
     },
