@@ -56,6 +56,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [ratingData, setRatingData] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
+  const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,6 +64,9 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     fetchAllResponses();
     fetchRating();
     fetchEquipmentItems();
+    if ((serviceOrder as any).contract_id) {
+      fetchContract((serviceOrder as any).contract_id);
+    }
   }, [serviceOrder.id]);
 
   const fetchRating = async () => {
