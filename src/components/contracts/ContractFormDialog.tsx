@@ -183,9 +183,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const isTeam = technicianId.startsWith('team:');
-      const actualTechnicianId = isTeam ? null : (technicianId || null);
-      const actualTeamId = isTeam ? technicianId.replace('team:', '') : null;
+      const isAll = technicianId === 'all';
+      const isTeam = !isAll && technicianId.startsWith('team:');
+      const actualTechnicianId = isAll ? null : (isTeam ? null : (technicianId || null));
+      const actualTeamId = isAll ? null : (isTeam ? technicianId.replace('team:', '') : null);
 
       if (isEditing) {
         // Update existing contract metadata only
@@ -305,6 +306,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     <SelectTrigger><SelectValue placeholder="Nenhum (define na OS)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum</SelectItem>
+                      <SelectItem value="all">👥 Todos (empresa inteira)</SelectItem>
                       {(technicians?.length ?? 0) > 0 && (
                         <>
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Técnicos</div>
