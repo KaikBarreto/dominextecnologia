@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +9,7 @@ import { EventCard, getStatusBadgeClass } from './EventCard';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
+import { buildCustomerAddress } from '@/utils/geolocation';
 
 
 const osTypeLabels: Record<OsType, string> = {
@@ -75,12 +76,34 @@ function OrderDetail({
               </div>
             )}
             {order.customer?.address && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" />
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 mt-0.5" />
                 <span className="truncate">
                   {order.customer.address}
                   {order.customer.city && `, ${order.customer.city}`}
                 </span>
+              </div>
+            )}
+            {order.customer?.address && (
+              <div className="flex items-center gap-2 mt-1.5 pl-5">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(buildCustomerAddress(order.customer))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <img src="/icons/google-maps.png" alt="Maps" className="h-3.5 w-3.5" />
+                  Abrir com Maps
+                </a>
+                <a
+                  href={`https://waze.com/ul?q=${encodeURIComponent(buildCustomerAddress(order.customer))}&navigate=yes`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <img src="/icons/waze.png" alt="Waze" className="h-3.5 w-3.5" />
+                  Abrir com Waze
+                </a>
               </div>
             )}
           </div>
