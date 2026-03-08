@@ -30,7 +30,7 @@ export default function CtaFinalSection() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-10 py-6 text-base shadow-brand-glow"
             asChild
           >
-            <Link to="/cadastro">
+            <Link to="/cadastro?origem=Site">
               Criar minha conta grátis <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -40,7 +40,7 @@ export default function CtaFinalSection() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white rounded-full px-8 py-6"
             asChild
           >
-            <Link to="/cadastro">Ou agendar uma demo</Link>
+            <Link to="/cadastro?origem=Site">Ou agendar uma demo</Link>
           </Button>
         </div>
       </div>

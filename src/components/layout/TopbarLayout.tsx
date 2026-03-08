@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, ClipboardList, Calendar, Users, UsersRound, Package,
   DollarSign, FileText, Settings, UserCircle, TrendingUp, Wrench,
-  ChevronDown, GraduationCap, LogOut, Menu, Briefcase,
+  ChevronDown, GraduationCap, LogOut, Menu, Briefcase, CreditCard, Building2,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -44,6 +44,7 @@ const menuItems: MenuItem[] = [
   { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
   { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
+  { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
 ];
 
 const userMenuPaths = ['/usuarios', '/tutoriais', '/configuracoes'];

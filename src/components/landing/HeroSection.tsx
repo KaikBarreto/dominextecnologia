@@ -48,7 +48,7 @@ export default function HeroSection() {
                 className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 rounded-full shadow-brand-glow animate-[pulse_3s_ease-in-out_infinite] w-full sm:w-auto"
                 asChild
               >
-                <Link to="/cadastro">Começar grátis por 14 dias</Link>
+                <Link to="/cadastro?origem=Site">Começar grátis por 14 dias</Link>
               </Button>
               <Button
                 size="lg"

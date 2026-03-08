@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.cep-lookup]
 verify_jwt = false
+
+[functions.self-register]
+verify_jwt = false

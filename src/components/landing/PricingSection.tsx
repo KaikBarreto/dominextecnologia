@@ -13,7 +13,7 @@ const plans = [
     popular: false,
     features: ['OS ilimitadas', 'App para técnicos', 'Painel do gestor', 'Relatórios básicos', 'Suporte por email'],
     cta: 'Começar grátis',
-    ctaLink: '/cadastro',
+    ctaLink: '/cadastro?origem=Site',
   },
   {
     name: 'Pro',
@@ -30,7 +30,7 @@ const plans = [
       'Suporte prioritário',
     ],
     cta: 'Começar grátis',
-    ctaLink: '/cadastro',
+    ctaLink: '/cadastro?origem=Site',
   },
   {
     name: 'Enterprise',
@@ -47,7 +47,7 @@ const plans = [
       'Gestor de conta',
     ],
     cta: 'Falar com especialista',
-    ctaLink: '/cadastro',
+    ctaLink: '/cadastro?origem=Site',
   },
 ];
 

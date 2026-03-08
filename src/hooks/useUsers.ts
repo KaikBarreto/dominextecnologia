@@ -18,6 +18,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   tecnico: 'Técnico',
   comercial: 'Comercial',
   financeiro: 'Financeiro',
+  super_admin: 'Super Admin',
 };
 
 export const ROLE_COLORS: Record<AppRole, string> = {
@@ -26,6 +27,7 @@ export const ROLE_COLORS: Record<AppRole, string> = {
   tecnico: 'bg-info text-white',
   comercial: 'bg-success text-white',
   financeiro: 'bg-warning text-white',
+  super_admin: 'bg-purple-600 text-white',
 };
 
 export function useUsers() {
