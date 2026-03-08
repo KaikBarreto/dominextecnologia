@@ -339,6 +339,7 @@ export function AppSidebar() {
           : <ChevronLeft className="h-3 w-3" />
         }
       </button>
+      </div>
     </Sidebar>
   );
 }
