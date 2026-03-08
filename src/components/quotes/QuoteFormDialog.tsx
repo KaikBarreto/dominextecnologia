@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, type QuoteInput, type QuoteItem, type Quote } from '@/hooks/useQuotes';
 import { QuoteItemsTable } from './QuoteItemsTable';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { User, UserPlus } from 'lucide-react';
 
 interface QuoteFormDialogProps {
   open: boolean;
@@ -23,7 +25,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { customers } = useCustomers();
   const { createQuote, updateQuote } = useQuotes();
 
+  const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
   const [customerId, setCustomerId] = useState('');
+  const [prospectName, setProspectName] = useState('');
+  const [prospectPhone, setProspectPhone] = useState('');
+  const [prospectEmail, setProspectEmail] = useState('');
   const [validUntil, setValidUntil] = useState('');
   const [discountType, setDiscountType] = useState('valor');
   const [discountValue, setDiscountValue] = useState(0);
@@ -33,7 +39,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   useEffect(() => {
     if (quote) {
-      setCustomerId(quote.customer_id);
+      setCustomerId(quote.customer_id || '');
+      setCustomerMode(quote.customer_id ? 'existing' : 'prospect');
+      setProspectName((quote as any).prospect_name ?? '');
+      setProspectPhone((quote as any).prospect_phone ?? '');
+      setProspectEmail((quote as any).prospect_email ?? '');
       setValidUntil(quote.valid_until ?? '');
       setDiscountType(quote.discount_type ?? 'valor');
       setDiscountValue(quote.discount_value ?? 0);
@@ -41,7 +51,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setTerms(quote.terms ?? '');
       setItems(quote.quote_items ?? []);
     } else {
+      setCustomerMode('existing');
       setCustomerId('');
+      setProspectName('');
+      setProspectPhone('');
+      setProspectEmail('');
       setValidUntil('');
       setDiscountType('valor');
       setDiscountValue(0);
@@ -62,11 +76,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     [customers]
   );
 
+  const hasCustomerInfo = customerMode === 'existing' ? !!customerId : !!prospectName;
+
   const handleSubmit = () => {
-    if (!customerId || items.length === 0) return;
+    if (!hasCustomerInfo || items.length === 0) return;
 
     const payload: QuoteInput = {
-      customer_id: customerId,
+      customer_id: customerMode === 'existing' ? customerId : undefined,
+      prospect_name: customerMode === 'prospect' ? prospectName : undefined,
+      prospect_phone: customerMode === 'prospect' ? prospectPhone : undefined,
+      prospect_email: customerMode === 'prospect' ? prospectEmail : undefined,
       valid_until: validUntil || undefined,
       discount_type: discountType,
       discount_value: discountValue,
@@ -86,15 +105,59 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   };
 
   const content = (
-    <div className="space-y-5 p-1 max-h-[70vh] overflow-y-auto">
-      <div className="space-y-2">
-        <Label>Cliente *</Label>
-        <SearchableSelect
-          options={customerOptions}
-          value={customerId}
-          onValueChange={setCustomerId}
-          placeholder="Selecione o cliente"
-        />
+    <div className="space-y-5 p-1 max-h-[75vh] overflow-y-auto">
+      {/* Cliente / Prospect */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Destinatário</Label>
+        <Tabs value={customerMode} onValueChange={(v) => setCustomerMode(v as 'existing' | 'prospect')}>
+          <TabsList className="w-full">
+            <TabsTrigger value="existing" className="flex-1 gap-1.5">
+              <User className="h-3.5 w-3.5" />
+              Cliente Cadastrado
+            </TabsTrigger>
+            <TabsTrigger value="prospect" className="flex-1 gap-1.5">
+              <UserPlus className="h-3.5 w-3.5" />
+              Novo Prospecto
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="existing" className="mt-3">
+            <SearchableSelect
+              options={customerOptions}
+              value={customerId}
+              onValueChange={setCustomerId}
+              placeholder="Selecione o cliente"
+            />
+          </TabsContent>
+          <TabsContent value="prospect" className="mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Nome *</Label>
+                <Input
+                  placeholder="Nome do prospecto"
+                  value={prospectName}
+                  onChange={(e) => setProspectName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Telefone</Label>
+                <Input
+                  placeholder="(00) 00000-0000"
+                  value={prospectPhone}
+                  onChange={(e) => setProspectPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">E-mail</Label>
+                <Input
+                  placeholder="email@exemplo.com"
+                  type="email"
+                  value={prospectEmail}
+                  onChange={(e) => setProspectEmail(e.target.value)}
+                />
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -152,7 +215,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
         <Button
           onClick={handleSubmit}
-          disabled={!customerId || items.length === 0 || createQuote.isPending || updateQuote.isPending}
+          disabled={!hasCustomerInfo || items.length === 0 || createQuote.isPending || updateQuote.isPending}
         >
           {quote ? 'Salvar Alterações' : 'Criar Orçamento'}
         </Button>

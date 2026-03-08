@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { Plus, Trash2, Wrench, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -16,12 +15,7 @@ interface QuoteItemsTableProps {
   readOnly?: boolean;
 }
 
-const SERVICE_SUB_TYPES = [
-  { value: 'servico', label: 'Serviço' },
-  { value: 'mao_de_obra', label: 'Mão de Obra' },
-];
-
-/* ─── Input row for services ─── */
+/* ─── Input row: Serviços / Mão de Obra ─── */
 function ServiceInputRow({
   serviceOptions,
   serviceTypes,
@@ -31,7 +25,6 @@ function ServiceInputRow({
   serviceTypes: { id: string; name: string }[];
   onAdd: (item: QuoteItem) => void;
 }) {
-  const [subType, setSubType] = useState('servico');
   const [serviceId, setServiceId] = useState('');
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -51,7 +44,7 @@ function ServiceInputRow({
     if (!description || qtyNum <= 0) return;
     onAdd({
       position: 0,
-      item_type: subType,
+      item_type: 'servico',
       description,
       quantity: qtyNum,
       unit_price: priceNum,
@@ -59,7 +52,6 @@ function ServiceInputRow({
       service_type_id: serviceId || null,
       inventory_id: null,
     });
-    setSubType('servico');
     setServiceId('');
     setDescription('');
     setQuantity('');
@@ -69,34 +61,14 @@ function ServiceInputRow({
   return (
     <TableRow className="bg-muted/50 border-b-2 border-border">
       <TableCell>
-        <Select value={subType} onValueChange={setSubType}>
-          <SelectTrigger className="h-8 text-xs bg-background">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SERVICE_SUB_TYPES.map(t => (
-              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </TableCell>
-      <TableCell>
         <SearchableSelect
           options={serviceOptions}
           value={serviceId}
           onValueChange={handleSelectService}
-          placeholder="Buscar serviço..."
-          searchPlaceholder="Buscar serviço pré-cadastrado..."
+          placeholder="Selecionar serviço..."
+          searchPlaceholder="Buscar serviço..."
           emptyMessage="Nenhum serviço encontrado"
           className="h-8 text-xs"
-        />
-      </TableCell>
-      <TableCell>
-        <Input
-          placeholder="Descrição"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="h-8 text-xs bg-background"
         />
       </TableCell>
       <TableCell>
@@ -137,7 +109,7 @@ function ServiceInputRow({
                 <Plus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Incluir item</TooltipContent>
+            <TooltipContent>Incluir</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </TableCell>
@@ -145,7 +117,7 @@ function ServiceInputRow({
   );
 }
 
-/* ─── Input row for materials ─── */
+/* ─── Input row: Materiais ─── */
 function MaterialInputRow({
   materialOptions,
   inventoryItems,
@@ -199,18 +171,10 @@ function MaterialInputRow({
           options={materialOptions}
           value={inventoryId}
           onValueChange={handleSelectMaterial}
-          placeholder="Buscar material..."
+          placeholder="Selecionar material..."
           searchPlaceholder="Buscar material do estoque..."
           emptyMessage="Nenhum material encontrado"
           className="h-8 text-xs"
-        />
-      </TableCell>
-      <TableCell>
-        <Input
-          placeholder="Descrição"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="h-8 text-xs bg-background"
         />
       </TableCell>
       <TableCell>
@@ -251,7 +215,7 @@ function MaterialInputRow({
                 <Plus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Incluir item</TooltipContent>
+            <TooltipContent>Incluir</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </TableCell>
@@ -259,7 +223,7 @@ function MaterialInputRow({
   );
 }
 
-/* ─── Main component ─── */
+/* ─── Main ─── */
 export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTableProps) {
   const { serviceTypes } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
@@ -313,12 +277,10 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px] text-xs">Tipo</TableHead>
                 <TableHead className="text-xs">Serviço</TableHead>
-                <TableHead className="text-xs">Descrição</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
-                <TableHead className="w-[100px] text-xs">Valor Unit.</TableHead>
-                <TableHead className="w-[100px] text-xs">Total</TableHead>
+                <TableHead className="w-[110px] text-xs">Valor Unit.</TableHead>
+                <TableHead className="w-[110px] text-xs">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -332,7 +294,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
               )}
               {serviceItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-4">
                     Nenhum serviço adicionado.
                   </TableCell>
                 </TableRow>
@@ -341,12 +303,6 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                   const idx = getGlobalIndex(item);
                   return (
                     <TableRow key={idx}>
-                      <TableCell className="text-xs">
-                        {item.item_type === 'mao_de_obra' ? 'Mão de Obra' : 'Serviço'}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {serviceTypes?.find(s => s.id === item.service_type_id)?.name || '—'}
-                      </TableCell>
                       <TableCell className="text-xs font-medium">{item.description}</TableCell>
                       <TableCell className="text-xs">{item.quantity}</TableCell>
                       <TableCell className="text-xs">R$ {(item.unit_price || 0).toFixed(2)}</TableCell>
@@ -370,7 +326,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
               )}
               {serviceItems.length > 0 && (
                 <TableRow className="bg-muted/30">
-                  <TableCell colSpan={5} className="text-right text-xs font-medium text-muted-foreground">
+                  <TableCell colSpan={3} className="text-right text-xs font-medium text-muted-foreground">
                     Subtotal Serviços
                   </TableCell>
                   <TableCell className="text-xs font-bold text-foreground">
@@ -398,10 +354,9 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs">Material</TableHead>
-                <TableHead className="text-xs">Descrição</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
-                <TableHead className="w-[100px] text-xs">Valor Unit.</TableHead>
-                <TableHead className="w-[100px] text-xs">Total</TableHead>
+                <TableHead className="w-[110px] text-xs">Valor Unit.</TableHead>
+                <TableHead className="w-[110px] text-xs">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -415,7 +370,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
               )}
               {materialItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-4">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-4">
                     Nenhum material adicionado.
                   </TableCell>
                 </TableRow>
@@ -424,9 +379,6 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                   const idx = getGlobalIndex(item);
                   return (
                     <TableRow key={idx}>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {inventoryItems?.find(m => m.id === item.inventory_id)?.name || '—'}
-                      </TableCell>
                       <TableCell className="text-xs font-medium">{item.description}</TableCell>
                       <TableCell className="text-xs">{item.quantity}</TableCell>
                       <TableCell className="text-xs">R$ {(item.unit_price || 0).toFixed(2)}</TableCell>
@@ -450,7 +402,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
               )}
               {materialItems.length > 0 && (
                 <TableRow className="bg-muted/30">
-                  <TableCell colSpan={4} className="text-right text-xs font-medium text-muted-foreground">
+                  <TableCell colSpan={3} className="text-right text-xs font-medium text-muted-foreground">
                     Subtotal Materiais
                   </TableCell>
                   <TableCell className="text-xs font-bold text-foreground">

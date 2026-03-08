@@ -40,6 +40,7 @@ export default function Quotes() {
       list = list.filter(
         (q) =>
           q.customers?.name?.toLowerCase().includes(s) ||
+          q.prospect_name?.toLowerCase().includes(s) ||
           String(q.quote_number).includes(s)
       );
     }
@@ -152,7 +153,12 @@ export default function Quotes() {
               {filtered.map((q) => (
                 <TableRow key={q.id}>
                   <TableCell className="font-medium">#{q.quote_number}</TableCell>
-                  <TableCell>{q.customers?.name ?? '—'}</TableCell>
+                  <TableCell>
+                    {q.customers?.name ?? q.prospect_name ?? '—'}
+                    {!q.customer_id && q.prospect_name && (
+                      <span className="ml-1.5 text-[10px] text-muted-foreground">(prospecto)</span>
+                    )}
+                  </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
                     {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
                   </TableCell>
