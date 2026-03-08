@@ -1,85 +1,74 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Plan: NPS and Post-Service Satisfaction System
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+### Overview
+Add a complete NPS (Net Promoter Score) and post-service satisfaction survey system. Customers receive a feedback link after service completion; responses feed a dashboard tab inside Service Orders.
 
-### 2. Permissions System - Database Changes
+### Database Changes
 
-Create 2 new tables via migration:
+**New table: `service_ratings`**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| service_order_id | uuid FK | unique, one rating per OS |
+| nps_score | integer | 0-10 |
+| quality_rating | integer | 1-5 stars (service quality) |
+| punctuality_rating | integer | 1-5 stars |
+| professionalism_rating | integer | 1-5 stars |
+| comment | text | optional free text |
+| rated_by_name | text | who filled it |
+| rated_at | timestamptz | default now() |
+| token | text unique | public access token for the form |
+| created_at | timestamptz | |
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+RLS: Public INSERT/UPDATE via token (no auth needed — customer fills it). Authenticated SELECT for dashboard.
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+### Components
 
-The permissions will be a flat list of string keys covering:
+**1. Public Rating Page — `src/pages/ServiceRating.tsx`**
+- Route: `/avaliacao/:token` (no auth required)
+- Shows: company logo, OS summary, NPS slider (0-10 with emoji faces), 3 star ratings, comment textarea, submit button
+- After submit: thank-you screen
+- Mobile-first design
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+**2. Rating link generation**
+- When OS status changes to `concluida`, auto-generate a `token` row in `service_ratings` (via mutation in `useServiceOrders`)
+- Show "Enviar Avaliação" button in `OSReport.tsx` and `ServiceOrderViewDialog` that copies the rating link
 
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
+**3. NPS Section in OSReport**
+- After signatures section, if rating exists, show: NPS score badge, star ratings, comment
 
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
+**4. New tab "NPS e Satisfação" in `ServiceOrders.tsx`**
+- Add a Tabs wrapper: "Ordens de Serviço" | "NPS e Satisfação"
+- Dashboard content (`NpsDashboard.tsx`):
+  - **KPI cards**: NPS score (with Promoters/Neutrals/Detractors %), average quality/punctuality/professionalism stars, total responses, response rate
+  - **NPS gauge chart** (recharts): -100 to +100 scale
+  - **NPS trend line chart**: monthly NPS over time
+  - **Star distribution bar chart**: per category
+  - **Recent comments list**: with OS number, customer name, date, scores, comment
+  - **Date range filter** (reuse existing `DateRangeFilter`)
 
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
+**5. Hook — `src/hooks/useServiceRatings.ts`**
+- Queries `service_ratings` joined with `service_orders` + `customers`
+- Computes NPS classification (0-6 detractor, 7-8 passive, 9-10 promoter)
 
-### 4. New Components
+### Files to Create/Modify
 
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+| File | Action |
+|------|--------|
+| Migration | Create `service_ratings` table + RLS |
+| `src/hooks/useServiceRatings.ts` | New hook for CRUD + NPS calculations |
+| `src/pages/ServiceRating.tsx` | New public rating page |
+| `src/components/service-orders/NpsDashboard.tsx` | New dashboard component |
+| `src/pages/ServiceOrders.tsx` | Add tabs wrapper with NPS tab |
+| `src/components/technician/OSReport.tsx` | Show rating data + copy link button |
+| `src/components/service-orders/ServiceOrderViewDialog.tsx` | Add "Enviar Avaliação" button |
+| `src/hooks/useServiceOrders.ts` | Auto-create rating token on `concluida` |
+| `src/App.tsx` | Add public route `/avaliacao/:token` |
 
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
-
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
-
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
-
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
-
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
-
-### Technical Details
-
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
-```
-
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
-
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+### NPS Calculation Logic
+- **Promoters** (9-10): % of total
+- **Detractors** (0-6): % of total
+- **NPS** = % Promoters − % Detractors (range -100 to +100)
 
