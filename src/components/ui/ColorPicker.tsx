@@ -119,6 +119,10 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
   };
 
   const handleEyeDropper = async () => {
+    // Close popover first so it doesn't block scroll/interaction
+    setOpen(false);
+    // Small delay to let popover close before eyedropper opens
+    await new Promise(r => setTimeout(r, 100));
     try {
       // @ts-ignore - EyeDropper API
       const eyeDropper = new window.EyeDropper();
