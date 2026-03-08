@@ -58,29 +58,31 @@ export default function TechnicianTracking() {
       });
   }, [selectedUserId, selectedDate]);
 
+  const sortedAsc = useMemo(() => [...locations].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [locations]);
+
   const stats = useMemo(() => {
-    if (locations.length === 0) return { checkIns: 0, checkOuts: 0, totalDistance: 0, timeInField: 0 };
+    if (sortedAsc.length === 0) return { checkIns: 0, checkOuts: 0, totalDistance: 0, timeInField: 0 };
 
     let totalDistance = 0;
-    for (let i = 1; i < locations.length; i++) {
+    for (let i = 1; i < sortedAsc.length; i++) {
       totalDistance += haversineDistance(
-        locations[i - 1].lat, locations[i - 1].lng,
-        locations[i].lat, locations[i].lng
+        sortedAsc[i - 1].lat, sortedAsc[i - 1].lng,
+        sortedAsc[i].lat, sortedAsc[i].lng
       );
     }
 
-    const checkIns = locations.filter(l => l.event_type === 'check_in').length;
-    const checkOuts = locations.filter(l => l.event_type === 'check_out').length;
+    const checkIns = sortedAsc.filter(l => l.event_type === 'check_in').length;
+    const checkOuts = sortedAsc.filter(l => l.event_type === 'check_out').length;
 
     let timeInField = 0;
-    const firstCheckIn = locations.find(l => l.event_type === 'check_in');
-    const lastCheckOut = [...locations].reverse().find(l => l.event_type === 'check_out');
+    const firstCheckIn = sortedAsc.find(l => l.event_type === 'check_in');
+    const lastCheckOut = [...sortedAsc].reverse().find(l => l.event_type === 'check_out');
     if (firstCheckIn && lastCheckOut) {
       timeInField = (new Date(lastCheckOut.created_at).getTime() - new Date(firstCheckIn.created_at).getTime()) / 60000;
     }
 
     return { checkIns, checkOuts, totalDistance, timeInField };
-  }, [locations]);
+  }, [sortedAsc]);
 
   const eventTypeLabel: Record<string, string> = {
     check_in: 'Check-in',
