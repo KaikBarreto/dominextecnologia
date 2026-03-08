@@ -91,6 +91,7 @@ export function useFinancial() {
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
       toast({ title: 'Transação criada com sucesso!' });
     },
     onError: (error: Error) => {
