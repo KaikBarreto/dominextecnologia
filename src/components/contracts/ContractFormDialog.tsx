@@ -55,7 +55,7 @@ const QUICK_DAYS = [
   { label: '90 dias', value: 90 },
 ];
 
-export function ContractFormDialog({ open, onOpenChange, onCreated, editContract }: ContractFormDialogProps) {
+export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { createContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
@@ -71,7 +71,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   // Step 1
   const [name, setName] = useState('');
-  const [customerId, setCustomerId] = useState('');
+  const [customerId, setCustomerId] = useState(defaultCustomerId || '');
   const [technicianId, setTechnicianId] = useState('');
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [formTemplateId, setFormTemplateId] = useState('');
