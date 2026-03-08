@@ -87,12 +87,12 @@ export default function Quotes() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-              <Palette className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Configurar Proposta</span>
+              <Palette className="h-4 w-4 mr-2" />
+              Configurar
             </Button>
             <Button size="sm" onClick={() => { setEditQuote(null); setFormOpen(true); }}>
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Novo Orçamento</span>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Orçamento
             </Button>
           </div>
         </div>
