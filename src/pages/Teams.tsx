@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTeams, type TeamWithMembers } from '@/hooks/useTeams';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useProfiles } from '@/hooks/useProfiles';
 import { TeamFormDialog } from '@/components/teams/TeamFormDialog';
 import { useToast } from '@/hooks/use-toast';
 
