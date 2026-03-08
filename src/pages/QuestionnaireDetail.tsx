@@ -405,7 +405,7 @@ export default function QuestionnaireDetail() {
           {/* Multi answer types */}
           <div className="space-y-2">
             <Label>Tipos de resposta</Label>
-            <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de responder. Se mais de uma, ao responder por uma forma as demais ficam ocultas.</p>
+            <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de responder.</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {QUESTION_TYPES.map((t) => {
                 const QIcon = t.icon;
@@ -429,6 +429,47 @@ export default function QuestionnaireDetail() {
               })}
             </div>
           </div>
+
+          {/* Answer mode toggle when 2+ types selected */}
+          {selectedAnswerTypes.length >= 2 && (
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-medium">Modo de resposta múltipla</Label>
+              <div className="space-y-2">
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
+                  (qForm as any).answer_mode !== 'combined' ? 'border-primary bg-primary/10' : 'hover:bg-muted/50'
+                )}>
+                  <input
+                    type="radio"
+                    name="answer_mode"
+                    checked={(qForm as any).answer_mode !== 'combined'}
+                    onChange={() => setQForm({ ...qForm, answer_mode: 'exclusive' } as any)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="font-medium">Exclusivo</span>
+                    <p className="text-xs text-muted-foreground">Responder por um tipo oculta os demais</p>
+                  </div>
+                </label>
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
+                  (qForm as any).answer_mode === 'combined' ? 'border-primary bg-primary/10' : 'hover:bg-muted/50'
+                )}>
+                  <input
+                    type="radio"
+                    name="answer_mode"
+                    checked={(qForm as any).answer_mode === 'combined'}
+                    onChange={() => setQForm({ ...qForm, answer_mode: 'combined' } as any)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="font-medium">Cumulativo</span>
+                    <p className="text-xs text-muted-foreground">O técnico pode responder por múltiplas formas simultaneamente</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
 
           {/* Camera-only toggle for photo type */}
           {selectedAnswerTypes.includes('photo') && (
