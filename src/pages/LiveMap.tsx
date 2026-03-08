@@ -26,14 +26,14 @@ interface TrackingPoint {
 const eventColors: Record<string, string> = {
   check_in: '#22c55e',
   en_route: '#6366f1',
-  tracking: '#3b82f6',
+  tracking: '#6366f1',
   check_out: '#ef4444',
 };
 
 const eventLabels: Record<string, { emoji: string; label: string }> = {
   check_in: { emoji: '🟢', label: 'Executando OS' },
   en_route: { emoji: '🔵', label: 'A Caminho' },
-  tracking: { emoji: '📍', label: 'Em deslocamento' },
+  tracking: { emoji: '🔵', label: 'A Caminho' },
   check_out: { emoji: '🔴', label: 'Check-out' },
 };
 
