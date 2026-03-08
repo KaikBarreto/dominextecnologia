@@ -261,7 +261,7 @@ export function useQuotes() {
   const createFinancialFromQuote = useMutation({
     mutationFn: async (q: Quote) => {
       const { error } = await supabase.from('financial_transactions').insert({
-        transaction_type: 'receita',
+        transaction_type: 'receita' as any,
         amount: q.total_value ?? 0,
         description: `Orçamento #${q.quote_number}`,
         customer_id: q.customer_id,
