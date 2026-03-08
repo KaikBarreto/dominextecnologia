@@ -28,6 +28,7 @@ import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog'
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
+import { CepLookup } from '@/components/CepLookup';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
