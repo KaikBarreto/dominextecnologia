@@ -47,11 +47,13 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [generating, setGenerating] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
+  const [ratingData, setRatingData] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCompany();
     fetchAllResponses();
+    fetchRating();
   }, [serviceOrder.id]);
 
   const fetchCompany = async () => {
