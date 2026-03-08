@@ -46,6 +46,7 @@ export interface Customer {
   zip_code?: string;
   birth_date?: string;
   notes?: string;
+  photo_url?: string;
   created_at: string;
   updated_at: string;
 }
