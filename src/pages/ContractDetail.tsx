@@ -16,7 +16,7 @@ import { useFinancial } from '@/hooks/useFinancial';
 import { format, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/currency';
+import { formatBRL } from '@/utils/currency';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
