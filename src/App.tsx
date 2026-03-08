@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 // Pages
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Registration from "./pages/Registration";
 import ResetPassword from "./pages/ResetPassword";
@@ -50,7 +51,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/login" replace />;
   }
   
   return <>{children}</>;
@@ -77,16 +78,20 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 const AppRoutes = () => (
   <Routes>
-    {/* Public Routes */}
-    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    {/* Landing page — public, no redirect */}
+    <Route path="/" element={<Landing />} />
+
+    {/* Auth routes */}
     <Route
-      path="/auth"
+      path="/login"
       element={
         <PublicRoute>
           <Auth />
         </PublicRoute>
       }
     />
+    {/* Legacy /auth redirect */}
+    <Route path="/auth" element={<Navigate to="/login" replace />} />
     <Route
       path="/cadastro"
       element={

@@ -368,7 +368,7 @@ export default function Registration() {
                       </div>
                       <Button
                         type="button"
-                        onClick={() => navigate('/auth')}
+                        onClick={() => navigate('/login')}
                         className="uppercase tracking-widest text-sm font-semibold"
                       >
                         Ir para o Login
@@ -421,7 +421,7 @@ export default function Registration() {
                   Já tem uma conta?{' '}
                   <button
                     type="button"
-                    onClick={() => navigate('/auth')}
+                    onClick={() => navigate('/login')}
                     className="text-white font-bold hover:text-primary transition-colors"
                   >
                     FAZER LOGIN
