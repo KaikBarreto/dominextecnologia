@@ -1,41 +1,17 @@
 
 
-## Plan: Fix collapsed sidebar + use uploaded icon
+## Plan: Módulo Contratos (ex-PMOC) — Implementado ✅
 
-### Problems identified
-1. `SIDEBAR_WIDTH_ICON = "3rem"` (48px) is too narrow for icons + padding. The custom layout inside the sidebar fights with the shadcn sidebar's built-in collapse behavior.
-2. Clicking collapsed items should expand the sidebar back (for groups) or navigate (for links).
-3. Icons are not centered/aligned consistently in collapsed mode.
-4. Logo needs to use the uploaded spartan helmet icon (`icone_preto.png`) when collapsed, full logo when expanded.
+### Implementado
 
-### Changes
+1. **Banco de dados**: Tabelas `contracts`, `contract_items`, `contract_occurrences` criadas com RLS por `company_id`. Colunas `contract_id` e `origin` adicionadas a `service_orders`.
 
-**1. Copy uploaded icon to project**
-- Copy `user-uploads://icone_preto.png` to `src/assets/icone_preto.png`
+2. **Hooks**: `useContracts.ts` (CRUD, stats, geração de OSs em batch) e `useContractDetail.ts` (detalhe, ocorrências, progresso).
 
-**2. `src/components/ui/sidebar.tsx`**
-- Change `SIDEBAR_WIDTH_ICON` from `"3rem"` to `"4rem"` (64px) for proper icon spacing.
+3. **ContractFormDialog**: Sheet lateral com stepper de 4 etapas (Informações → Frequência → Itens → Revisão). Atalhos rápidos de frequência, prévia de datas, aviso de fins de semana, itens manuais.
 
-**3. `src/components/layout/AppSidebar.tsx`** (main rewrite of collapsed behavior)
-- **Logo**: When collapsed, show the spartan helmet icon (small, centered). When expanded, show full logo.
-- **Profile**: When collapsed, show only centered avatar. When expanded, show full profile block.
-- **Menu items (no children)**: When collapsed, show centered icon with tooltip. Clicking navigates normally.
-- **Menu items (with children/groups)**: When collapsed, show the group icon centered with tooltip. Clicking expands the sidebar (`toggleSidebar()`) so user can see the submenu. This is standard UX for grouped items.
-- **Footer WhatsApp button**: When collapsed, show only the icon centered.
-- All icons use consistent `h-5 w-5` size, centered in a fixed-size container (`w-10 h-10 flex items-center justify-center`), ensuring perfect vertical alignment.
-- Remove the custom padding/layout differences between collapsed and expanded. Use a single consistent structure with conditional text visibility.
+4. **Páginas**: `/contratos` (listagem com KPIs, filtros, tabela) e `/contratos/:id` (detalhe 2 colunas com progresso e ocorrências).
 
-**4. Alignment approach**
-All collapsed items will use:
-```
-<div className="flex items-center justify-center w-full h-10">
-  <Icon className="h-5 w-5" />
-</div>
-```
-This ensures every icon row is the same height and perfectly centered.
+5. **Navegação**: PMOC → Contratos em sidebar, topbar, mobile menu. Rota `/pmoc` redireciona para `/contratos`. Permissão `screen:contracts`.
 
-### Files to modify
-- `src/assets/icone_preto.png` (new - copy from upload)
-- `src/components/ui/sidebar.tsx` (line 19: icon width)
-- `src/components/layout/AppSidebar.tsx` (collapsed mode rewrite)
-
+### Tabelas PMOC antigas mantidas (sem perda de dados)
