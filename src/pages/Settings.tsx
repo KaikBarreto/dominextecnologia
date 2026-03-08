@@ -79,10 +79,10 @@ export default function Settings() {
       setCompanyCity(settings.city || '');
       setCompanyState(settings.state || '');
       setCompanyZip(settings.zip_code || '');
-      setCompanyNeighborhood((settings as any).neighborhood || '');
-      setCompanyComplement((settings as any).complement || '');
-      setWlEnabled(!!(settings as any).white_label_enabled);
-      setWlColor((settings as any).white_label_primary_color || '#00C597');
+      setCompanyNeighborhood(settings.neighborhood || '');
+      setCompanyComplement(settings.complement || '');
+      setWlEnabled(!!settings.white_label_enabled);
+      setWlColor(settings.white_label_primary_color || '#00C597');
     }
   }, [settings]);
 
