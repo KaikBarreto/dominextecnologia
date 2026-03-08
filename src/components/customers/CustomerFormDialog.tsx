@@ -28,6 +28,7 @@ const customerSchema = z.object({
   phone: z.string().optional(),
   birth_date: z.string().optional(),
   address: z.string().optional(),
+  address_number: z.string().optional(),
   complement: z.string().optional(),
   neighborhood: z.string().optional(),
   city: z.string().optional(),
