@@ -162,10 +162,7 @@ export function AppSidebar() {
               ? <div className="h-7 w-7 rounded bg-muted animate-pulse" />
               : <div className="h-8 w-28 rounded bg-muted animate-pulse" />
           ) : collapsed
-            ? <>
-                <img src={iconePreto} alt="Logo" className="h-7 w-7 object-contain dark:hidden" />
-                <img src={iconeBranco} alt="Logo" className="h-7 w-7 object-contain hidden dark:block" />
-              </>
+            ? <img src={iconeVerde} alt="Logo" className="h-7 w-7 object-contain" />
             : <>
                 <img src={logoUrl || defaultLogoDark} alt="Logo" className="h-8 w-auto mx-auto dark:hidden" />
                 <img src={logoUrl || logoWhiteHorizontal} alt="Logo" className="h-8 w-auto mx-auto hidden dark:block" />
