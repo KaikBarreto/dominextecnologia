@@ -40,7 +40,38 @@ const OCC_STATUS: Record<string, { label: string; variant: 'success' | 'outline'
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { contract, isLoading, updateOccurrenceStatus, stats } = useContractDetail(id);
+  const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
+  const { createTransaction } = useFinancial();
+
+  const [showReceivableModal, setShowReceivableModal] = useState(false);
+  const [recDescription, setRecDescription] = useState('');
+  const [recAmount, setRecAmount] = useState('');
+  const [recDueDate, setRecDueDate] = useState('');
+  const [recSaving, setRecSaving] = useState(false);
+
+  const handleCreateReceivable = async () => {
+    if (!recDescription || !recAmount || !contract) return;
+    setRecSaving(true);
+    try {
+      await createTransaction.mutateAsync({
+        transaction_type: 'entrada',
+        description: recDescription,
+        amount: parseFloat(recAmount),
+        transaction_date: new Date().toISOString().split('T')[0],
+        due_date: recDueDate || undefined,
+        is_paid: false,
+        customer_id: contract.customer_id,
+        notes: `Vinculado ao contrato: ${contract.name}`,
+        contract_id: id,
+      } as any);
+      setShowReceivableModal(false);
+      setRecDescription('');
+      setRecAmount('');
+      setRecDueDate('');
+    } finally {
+      setRecSaving(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -71,6 +102,9 @@ export default function ContractDetail() {
   const statusCfg = STATUS_LABELS[contract.status] || STATUS_LABELS.active;
   const occurrences = (contract.contract_occurrences || []).sort((a, b) => a.occurrence_number - b.occurrence_number);
   const items = contract.contract_items || [];
+
+  const totalReceivable = (linkedTransactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalPaid = (linkedTransactions || []).filter(t => t.is_paid).reduce((sum, t) => sum + Number(t.amount), 0);
 
   return (
     <div className="space-y-6">
@@ -105,7 +139,7 @@ export default function ContractDetail() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Início</p>
-                  <p className="font-medium mt-0.5">{format(new Date(contract.start_date), 'dd/MM/yyyy')}</p>
+                  <p className="font-medium mt-0.5">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Horizonte</p>
@@ -145,6 +179,45 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
+          {/* Receivables */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Contas a Receber</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => {
+                setRecDescription(`Mensalidade - ${contract.name}`);
+                setShowReceivableModal(true);
+              }}>
+                <Plus className="h-4 w-4 mr-1" /> Nova Receita
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {(linkedTransactions || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma conta vinculada a este contrato</p>
+              ) : (
+                <div className="space-y-2">
+                  {(linkedTransactions || []).map(t => (
+                    <div key={t.id} className="flex items-center justify-between p-3 rounded-md border text-sm">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">{t.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">R$ {formatBRL(Number(t.amount))}</span>
+                        <Badge variant={t.is_paid ? 'success' : 'outline'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-between pt-2 border-t text-sm">
+                    <span className="text-muted-foreground">Total: R$ {formatBRL(totalReceivable)}</span>
+                    <span className="text-muted-foreground">Recebido: R$ {formatBRL(totalPaid)}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Occurrences */}
           <Card>
             <CardHeader><CardTitle>Ocorrências ({occurrences.length})</CardTitle></CardHeader>
@@ -163,7 +236,7 @@ export default function ContractDetail() {
                   </TableHeader>
                   <TableBody>
                     {occurrences.map(occ => {
-                      const occDate = new Date(occ.scheduled_date);
+                      const occDate = parseLocalDate(occ.scheduled_date);
                       const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
                       const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
 
@@ -225,7 +298,7 @@ export default function ContractDetail() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Início</span>
-                <span className="font-medium">{format(new Date(contract.start_date), 'dd/MM/yyyy')}</span>
+                <span className="font-medium">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Horizonte</span>
@@ -238,9 +311,27 @@ export default function ContractDetail() {
               {stats.nextOccurrence && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Próxima OS</span>
-                  <span className="font-medium">{format(new Date(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
+                  <span className="font-medium">{format(parseLocalDate(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Financeiro</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total a receber</span>
+                <span className="font-medium text-green-600">R$ {formatBRL(totalReceivable)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Recebido</span>
+                <span className="font-medium">R$ {formatBRL(totalPaid)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pendente</span>
+                <span className="font-medium text-orange-500">R$ {formatBRL(totalReceivable - totalPaid)}</span>
+              </div>
             </CardContent>
           </Card>
 
@@ -255,6 +346,28 @@ export default function ContractDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Receivable modal */}
+      <ResponsiveModal open={showReceivableModal} onOpenChange={setShowReceivableModal} title="Nova Conta a Receber">
+        <div className="space-y-4 p-1">
+          <div>
+            <Label>Descrição</Label>
+            <Input value={recDescription} onChange={e => setRecDescription(e.target.value)} placeholder="Ex: Mensalidade Março" />
+          </div>
+          <div>
+            <Label>Valor (R$)</Label>
+            <Input type="number" step="0.01" value={recAmount} onChange={e => setRecAmount(e.target.value)} placeholder="0,00" />
+          </div>
+          <div>
+            <Label>Data de Vencimento</Label>
+            <Input type="date" value={recDueDate} onChange={e => setRecDueDate(e.target.value)} />
+          </div>
+          <Button className="w-full" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
+            {recSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+            Criar Conta a Receber
+          </Button>
+        </div>
+      </ResponsiveModal>
     </div>
   );
 }
