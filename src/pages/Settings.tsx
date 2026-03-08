@@ -473,92 +473,93 @@ export default function Settings() {
                   <>
                     <Separator className="opacity-50" />
 
-                    {/* WL Logo */}
-                    <div className="space-y-2">
-                      <Label>Logo personalizado</Label>
-                      <p className="text-xs text-muted-foreground">
-                        {(settings as any)?.white_label_logo_url
-                          ? 'Logo personalizado configurado'
-                          : settings?.logo_url
-                            ? 'Usando o logo da empresa por padrão'
-                            : 'Por padrão, será utilizado o logo da empresa acima'}
-                      </p>
-                      {((settings as any)?.white_label_logo_url || settings?.logo_url) ? (
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={(settings as any)?.white_label_logo_url || settings?.logo_url}
-                            alt="WL Logo"
-                            className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-white p-1"
-                          />
-                          <div className="flex flex-col gap-2">
-                            <Button variant="outline" size="sm" asChild disabled={wlUploading}>
-                              <label className="cursor-pointer">
-                                {wlUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                                Substituir
-                                <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} />
-                              </label>
-                            </Button>
-                            <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlLogo}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Remover
-                            </Button>
+                    {/* WL Logo + Icon side by side on desktop */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {/* WL Logo */}
+                      <div className="space-y-2">
+                        <Label>Logo completo</Label>
+                        <p className="text-xs text-muted-foreground">
+                          {(settings as any)?.white_label_logo_url
+                            ? 'Logo personalizado configurado'
+                            : settings?.logo_url
+                              ? 'Usando o logo da empresa por padrão'
+                              : 'Será utilizado o logo da empresa'}
+                        </p>
+                        {((settings as any)?.white_label_logo_url || settings?.logo_url) ? (
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={(settings as any)?.white_label_logo_url || settings?.logo_url}
+                              alt="WL Logo"
+                              className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-white p-1"
+                            />
+                            <div className="flex flex-col gap-2">
+                              <Button variant="outline" size="sm" asChild disabled={wlUploading}>
+                                <label className="cursor-pointer">
+                                  {wlUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                  Substituir
+                                  <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} />
+                                </label>
+                              </Button>
+                              <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlLogo}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Remover
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <label className="cursor-pointer flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
-                          {wlUploading ? (
-                            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-                          ) : (
-                            <>
-                              <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                              <span className="text-xs text-muted-foreground">Enviar logo personalizado (opcional)</span>
-                            </>
-                          )}
-                          <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
-                        </label>
-                      )}
-                    </div>
+                        ) : (
+                          <label className="cursor-pointer flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
+                            {wlUploading ? (
+                              <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                            ) : (
+                              <>
+                                <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                                <span className="text-xs text-muted-foreground">Enviar logo (opcional)</span>
+                              </>
+                            )}
+                            <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
+                          </label>
+                        )}
+                      </div>
 
-                    <Separator className="opacity-50" />
-
-                    {/* WL Icon */}
-                    <div className="space-y-2">
-                      <Label>Ícone (1:1)</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Ícone quadrado exibido no topo do menu lateral quando recolhido. Recomendado: 128×128px.
-                      </p>
-                      {(settings as any)?.white_label_icon_url ? (
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={(settings as any).white_label_icon_url}
-                            alt="WL Icon"
-                            className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
-                          />
-                          <div className="flex flex-col gap-2">
-                            <Button variant="outline" size="sm" asChild disabled={wlIconUploading}>
-                              <label className="cursor-pointer">
-                                {wlIconUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                                Substituir
-                                <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} />
-                              </label>
-                            </Button>
-                            <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlIcon}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Remover
-                            </Button>
+                      {/* WL Icon */}
+                      <div className="space-y-2">
+                        <Label>Ícone (1:1)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Ícone quadrado para o menu lateral recolhido. 128×128px.
+                        </p>
+                        {(settings as any)?.white_label_icon_url ? (
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={(settings as any).white_label_icon_url}
+                              alt="WL Icon"
+                              className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
+                            />
+                            <div className="flex flex-col gap-2">
+                              <Button variant="outline" size="sm" asChild disabled={wlIconUploading}>
+                                <label className="cursor-pointer">
+                                  {wlIconUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                  Substituir
+                                  <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} />
+                                </label>
+                              </Button>
+                              <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlIcon}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Remover
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <label className="cursor-pointer flex flex-col items-center justify-center h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
-                          {wlIconUploading ? (
-                            <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-                          ) : (
-                            <>
-                              <Upload className="h-5 w-5 text-muted-foreground mb-1" />
-                              <span className="text-[10px] text-muted-foreground text-center">Enviar ícone</span>
-                            </>
-                          )}
-                          <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} disabled={wlIconUploading} />
-                        </label>
-                      )}
+                        ) : (
+                          <label className="cursor-pointer flex flex-col items-center justify-center h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
+                            {wlIconUploading ? (
+                              <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                            ) : (
+                              <>
+                                <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                                <span className="text-[10px] text-muted-foreground text-center">Enviar ícone</span>
+                              </>
+                            )}
+                            <input type="file" accept="image/*" className="hidden" onChange={handleWlIconUpload} disabled={wlIconUploading} />
+                          </label>
+                        )}
+                      </div>
                     </div>
 
                     <Separator className="opacity-50" />
