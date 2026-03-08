@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
