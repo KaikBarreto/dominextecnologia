@@ -181,153 +181,177 @@ export default function Users() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
-            <Settings2 className="h-4 w-4 mr-2" />
-            Configurações
-          </Button>
-          {canManageRoles && (
-            <Button size="sm" onClick={() => { setEditingUser(null); setUserFormOpen(true); }}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Criar Usuário
-            </Button>
+          {activeTab === 'users' && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
+                <Settings2 className="h-4 w-4 mr-2" />
+                Configurações
+              </Button>
+              {canManageRoles && (
+                <Button size="sm" onClick={() => { setEditingUser(null); setUserFormOpen(true); }}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Criar Usuário
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome ou telefone..."
-          className="pl-10"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
+      {/* Tabs: Users | Controle de Ponto */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="users" className="gap-1.5">
+            <ShieldCheck className="h-4 w-4" />
+            Usuários ({users.length})
+          </TabsTrigger>
+          <TabsTrigger value="timeclock" className="gap-1.5">
+            <Clock className="h-4 w-4" />
+            Controle de Ponto
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Users List */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                </div>
+        <TabsContent value="users" className="space-y-4 mt-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou telefone..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Users List */}
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <p className="text-center text-muted-foreground">
+                  {searchQuery ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
+                </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      ) : filteredUsers.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <p className="text-center text-muted-foreground">
-              {searchQuery ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filteredUsers.map((userProfile) => {
-            const perm = getUserPermission(userProfile.user_id);
-            const isActive = !perm || perm.is_active;
-            const permCount = perm?.permissions?.length || 0;
-            const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
-            const isAllPerms = permCount >= 27; // all permissions
+          ) : (
+            <div className="space-y-3">
+              {filteredUsers.map((userProfile) => {
+                const perm = getUserPermission(userProfile.user_id);
+                const isActive = !perm || perm.is_active;
+                const permCount = perm?.permissions?.length || 0;
+                const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
+                const isAllPerms = permCount >= 27;
 
-            return (
-              <Card key={userProfile.id} className={`hover:shadow-md transition-shadow ${!isActive ? 'opacity-60' : ''}`}>
-                <CardContent className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    {/* Avatar + Info */}
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="relative group shrink-0">
-                        <Avatar className="h-12 w-12 border-2 border-border">
-                          <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name} />
-                          <AvatarFallback className="bg-muted text-muted-foreground">
-                            {getInitials(userProfile.full_name)}
-                          </AvatarFallback>
-                        </Avatar>
+                return (
+                  <Card key={userProfile.id} className={`hover:shadow-md transition-shadow ${!isActive ? 'opacity-60' : ''}`}>
+                    <CardContent className="p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        {/* Avatar + Info */}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="relative group shrink-0">
+                            <Avatar className="h-12 w-12 border-2 border-border">
+                              <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name} />
+                              <AvatarFallback className="bg-muted text-muted-foreground">
+                                {getInitials(userProfile.full_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {canManageRoles && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                <Camera className="h-4 w-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-base truncate">{userProfile.full_name}</h3>
+                              {isCurrentUser(userProfile) && (
+                                <Badge variant="outline" className="text-xs">Você</Badge>
+                              )}
+                              {isActive ? (
+                                <Badge className="bg-primary text-primary-foreground text-xs">Ativo</Badge>
+                              ) : (
+                                <Badge className="bg-destructive hover:bg-destructive text-white text-xs">Inativo</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{userProfile.phone || '—'}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge className="bg-gradient-to-r from-gray-800 to-gray-900 text-white border-0 text-xs">
+                                <Shield className="h-3 w-3 mr-1.5" />
+                                {preset ? preset.name : isAllPerms ? 'Acesso Total' : `${permCount} permissões`}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
                         {canManageRoles && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <Camera className="h-4 w-4 text-white" />
+                          <div className="flex gap-2 shrink-0 self-end sm:self-center">
+                            <Button
+                              variant="edit-ghost"
+                              size="sm"
+                              onClick={() => openEditUser(userProfile)}
+                              title="Editar usuário"
+                            >
+                              <Pencil className="h-4 w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Editar</span>
+                            </Button>
+                            {!isCurrentUser(userProfile) && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleToggleActive(userProfile.user_id, isActive)}
+                                  title={isActive ? 'Desativar usuário' : 'Ativar usuário'}
+                                  className={isActive
+                                    ? 'hover:bg-orange-500 hover:text-white hover:border-orange-500'
+                                    : 'hover:bg-green-600 hover:text-white hover:border-green-600'
+                                  }
+                                >
+                                  {isActive ? (
+                                    <>
+                                      <UserX className="h-4 w-4 sm:mr-2" />
+                                      <span className="hidden sm:inline">Desativar</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck className="h-4 w-4 sm:mr-2" />
+                                      <span className="hidden sm:inline">Ativar</span>
+                                    </>
+                                  )}
+                                </Button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-base truncate">{userProfile.full_name}</h3>
-                          {isCurrentUser(userProfile) && (
-                            <Badge variant="outline" className="text-xs">Você</Badge>
-                          )}
-                          {isActive ? (
-                            <Badge className="bg-primary text-primary-foreground text-xs">Ativo</Badge>
-                          ) : (
-                            <Badge className="bg-destructive hover:bg-destructive text-white text-xs">Inativo</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate">{userProfile.phone || '—'}</p>
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <Badge className="bg-gradient-to-r from-gray-800 to-gray-900 text-white border-0 text-xs">
-                            <Shield className="h-3 w-3 mr-1.5" />
-                            {preset ? preset.name : isAllPerms ? 'Acesso Total' : `${permCount} permissões`}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    {canManageRoles && (
-                      <div className="flex gap-2 shrink-0 self-end sm:self-center">
-                        <Button
-                          variant="edit-ghost"
-                          size="sm"
-                          onClick={() => openEditUser(userProfile)}
-                          title="Editar usuário"
-                        >
-                          <Pencil className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Editar</span>
-                        </Button>
-                        {!isCurrentUser(userProfile) && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleActive(userProfile.user_id, isActive)}
-                              title={isActive ? 'Desativar usuário' : 'Ativar usuário'}
-                              className={isActive
-                                ? 'hover:bg-orange-500 hover:text-white hover:border-orange-500'
-                                : 'hover:bg-green-600 hover:text-white hover:border-green-600'
-                              }
-                            >
-                              {isActive ? (
-                                <>
-                                  <UserX className="h-4 w-4 sm:mr-2" />
-                                  <span className="hidden sm:inline">Desativar</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="h-4 w-4 sm:mr-2" />
-                                  <span className="hidden sm:inline">Ativar</span>
-                                </>
-                              )}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+        <TabsContent value="timeclock" className="mt-4">
+          {isTecnico ? <TechnicianTimeClock /> : <AdminTimePanel />}
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <UserFormDialog
