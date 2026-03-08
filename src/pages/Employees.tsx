@@ -265,7 +265,6 @@ export default function Employees() {
                     onExtract={() => setExtractEmployee(emp)}
                     onUpdatePhoto={(url) => handleUpdatePhoto(emp.id, url)}
                   />
-                  />
                 ))}
               </div>
             )}
