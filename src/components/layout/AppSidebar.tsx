@@ -30,8 +30,8 @@ import { Button } from '@/components/ui/button';
 import { Sidebar, SidebarContent } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
+import logoDark from '@/assets/logo-dark.png';
 import logoWhite from '@/assets/logo-white.png';
-import DarkVeil from '@/components/ui/DarkVeil';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
