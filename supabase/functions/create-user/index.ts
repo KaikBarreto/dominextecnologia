@@ -49,7 +49,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, full_name, phone, permissions, preset_id, role } = await req.json();
+    // Get caller's company_id from profiles
+    const { data: callerProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('company_id')
+      .eq('user_id', caller.id)
+      .single();
+
+    const callerCompanyId = callerProfile?.company_id || null;
+
+    const { email, password, full_name, phone, permissions, preset_id, role, avatar_url } = await req.json();
 
     if (!email || !password || !full_name) {
       return new Response(JSON.stringify({ error: 'Missing required fields: email, password, full_name' }), {
@@ -77,11 +86,19 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // Profile is auto-created by trigger, but update phone if provided
-    if (phone) {
+    // Wait briefly for the trigger to create the profile, then update it
+    // The handle_new_user trigger creates the profile but without company_id or phone
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const profileUpdate: Record<string, unknown> = {};
+    if (callerCompanyId) profileUpdate.company_id = callerCompanyId;
+    if (phone) profileUpdate.phone = phone;
+    if (avatar_url) profileUpdate.avatar_url = avatar_url;
+
+    if (Object.keys(profileUpdate).length > 0) {
       await supabaseAdmin
         .from('profiles')
-        .update({ phone })
+        .update(profileUpdate)
         .eq('user_id', userId);
     }
 
@@ -109,6 +126,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error('create-user error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
