@@ -183,6 +183,11 @@ export default function CRM() {
               <Settings2 className="h-4 w-4" />
             </Button>
           </StageManagerDialog>
+          <WebhookManagerDialog>
+            <Button variant="outline" size="icon" title="Configurar Webhooks">
+              <Webhook className="h-4 w-4" />
+            </Button>
+          </WebhookManagerDialog>
           <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
             <Plus className="h-4 w-4" />
             Nova Oportunidade
