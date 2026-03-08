@@ -133,8 +133,8 @@ export function AppSidebar() {
     .toUpperCase() || '?';
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-background relative">
-      <SidebarContent className="flex flex-1 flex-col p-0 overflow-hidden">
+    <Sidebar collapsible="icon" className="border-r border-border bg-background relative h-svh">
+      <SidebarContent className="flex h-full flex-col p-0 overflow-hidden">
 
         {/* ── Logo ── */}
         <NavLink
@@ -183,25 +183,24 @@ export function AppSidebar() {
                 const visibleChildren = filterByAccess(item.children);
                 if (visibleChildren.length === 0) return null;
 
-                // Collapsed: flatten group → show each child as icon
+                // Collapsed: show only the parent icon, click expands sidebar
                 if (collapsed) {
-                  return visibleChildren.map((child) => (
-                    <NavLink
-                      key={child.path}
-                      to={child.path}
-                      title={child.title}
-                      className={({ isActive }) =>
-                        cn(
-                          'flex items-center justify-center rounded-lg py-2.5 transition-colors',
-                          isActive
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
-                        )
-                      }
+                  const hasActiveChild = isSubmenuActive(visibleChildren);
+                  return (
+                    <button
+                      key={item.title}
+                      title={item.title}
+                      onClick={toggleSidebar}
+                      className={cn(
+                        'flex w-full items-center justify-center rounded-lg py-2.5 transition-colors',
+                        hasActiveChild
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
+                      )}
                     >
-                      <child.icon className={ICON_SIZE} />
-                    </NavLink>
-                  ));
+                      <item.icon className={ICON_SIZE} />
+                    </button>
+                  );
                 }
 
                 // Expanded: collapsible group (same as original)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { phoneMask } from '@/utils/masks';
-import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2, Mail } from 'lucide-react';
+import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2, Mail, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -233,7 +233,12 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
             {!isEditing && (
               <div>
                 <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
-                <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
+                <div className="relative">
+                  <Input type={showPwd ? 'text' : 'password'} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
+                  <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             )}
             <div>
