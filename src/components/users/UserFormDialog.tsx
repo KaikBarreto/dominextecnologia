@@ -246,6 +246,42 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">Vincula este usuário a um funcionário cadastrado</p>
+
+              {/* Email conflict resolution */}
+              {!isEditing && form.employee_id && (() => {
+                const selectedEmp = employees.find(e => e.id === form.employee_id);
+                const empEmail = selectedEmp?.email;
+                const userEmail = form.email;
+                if (empEmail && userEmail && empEmail.toLowerCase() !== userEmail.toLowerCase()) {
+                  return (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 space-y-2">
+                      <p className="text-xs font-medium flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
+                        <Mail className="h-3.5 w-3.5" /> Os emails são diferentes. Qual deve prevalecer?
+                      </p>
+                      <RadioGroup
+                        value={form.chosen_email || userEmail}
+                        onValueChange={(v) => setForm(f => ({ ...f, chosen_email: v }))}
+                        className="space-y-1"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value={userEmail} id="email-user" />
+                          <Label htmlFor="email-user" className="text-xs cursor-pointer">
+                            <span className="font-medium">Usuário:</span> {userEmail}
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value={empEmail} id="email-emp" />
+                          <Label htmlFor="email-emp" className="text-xs cursor-pointer">
+                            <span className="font-medium">Funcionário:</span> {empEmail}
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                      <p className="text-[11px] text-muted-foreground">O email escolhido será aplicado em ambos os cadastros</p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
 
