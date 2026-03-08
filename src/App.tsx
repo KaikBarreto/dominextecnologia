@@ -45,6 +45,7 @@ import LiveMap from "./pages/LiveMap";
 import Checkout from "./pages/Checkout";
 import Quotes from "./pages/Quotes";
 import QuotePublic from "./pages/QuotePublic";
+import ProposalPublic from "./pages/ProposalPublic";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
 
@@ -120,6 +121,7 @@ const AppRoutes = () => (
     <Route path="/avaliacao/:token" element={<ServiceRating />} />
     {/* Public quote page */}
     <Route path="/orcamento/:token" element={<QuotePublic />} />
+    <Route path="/proposta/:token" element={<ProposalPublic />} />
 
     {/* Protected Routes */}
     <Route
