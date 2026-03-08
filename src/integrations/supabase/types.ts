@@ -1689,12 +1689,15 @@ export type Database = {
           assigned_to: string | null
           created_at: string
           created_by: string | null
-          customer_id: string
+          customer_id: string | null
           discount_amount: number | null
           discount_type: string | null
           discount_value: number | null
           id: string
           notes: string | null
+          prospect_email: string | null
+          prospect_name: string | null
+          prospect_phone: string | null
           quote_number: number
           status: string
           subtotal: number | null
@@ -1708,12 +1711,15 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           created_by?: string | null
-          customer_id: string
+          customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
           id?: string
           notes?: string | null
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
           quote_number?: number
           status?: string
           subtotal?: number | null
@@ -1727,12 +1733,15 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           created_by?: string | null
-          customer_id?: string
+          customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
           id?: string
           notes?: string | null
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
           quote_number?: number
           status?: string
           subtotal?: number | null
