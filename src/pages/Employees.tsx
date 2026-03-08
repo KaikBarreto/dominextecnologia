@@ -194,6 +194,22 @@ export default function Employees() {
     updateEmployee.mutate({ id: empId, photo_url: url });
   }, [updateEmployee]);
 
+  const handleDeleteWithUser = useCallback(async (employee: Employee) => {
+    if (employee.user_id) {
+      try {
+        const response = await supabase.functions.invoke('manage-user', {
+          body: { action: 'delete_user', user_id: employee.user_id },
+        });
+        if (response.error) throw new Error(response.error.message);
+        const fnData = response.data;
+        if (fnData?.error) throw new Error(fnData.error);
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Erro ao excluir usuário', description: err.message });
+      }
+    }
+    deleteEmployee.mutate(employee.id);
+  }, [deleteEmployee, toast]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -243,10 +259,12 @@ export default function Employees() {
                     balance={balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary)}
                     onEdit={() => { setEditingEmployee(emp); setFormOpen(true); }}
                     onDelete={() => deleteEmployee.mutate(emp.id)}
+                    onDeleteWithUser={emp.user_id ? () => handleDeleteWithUser(emp) : undefined}
                     onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
                     onPayment={() => setPaymentEmployee(emp)}
                     onExtract={() => setExtractEmployee(emp)}
                     onUpdatePhoto={(url) => handleUpdatePhoto(emp.id, url)}
+                  />
                   />
                 ))}
               </div>
