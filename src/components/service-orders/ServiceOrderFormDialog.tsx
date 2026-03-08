@@ -163,9 +163,10 @@ export function ServiceOrderFormDialog({
   const handleCreateSubmit = async () => {
     const data = form.getValues();
     const assignee = data.technician_id || '';
-    const isTechTeam = assignee.startsWith('team:');
-    const techId = isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined;
-    const teamId = isTechTeam ? assignee.slice(5) : undefined;
+    const isAll = assignee === 'all';
+    const isTechTeam = !isAll && assignee.startsWith('team:');
+    const techId = isAll ? undefined : (isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined);
+    const teamId = isAll ? undefined : (isTechTeam ? assignee.slice(5) : undefined);
 
     const baseData = {
       ...data,
@@ -196,9 +197,10 @@ export function ServiceOrderFormDialog({
 
   const handleEditSubmit = async (data: ServiceOrderFormData) => {
     const assignee = data.technician_id || '';
-    const isTechTeam = assignee.startsWith('team:');
-    const techId = isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined;
-    const teamId = isTechTeam ? assignee.slice(5) : undefined;
+    const isAll = assignee === 'all';
+    const isTechTeam = !isAll && assignee.startsWith('team:');
+    const techId = isAll ? undefined : (isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined);
+    const teamId = isAll ? undefined : (isTechTeam ? assignee.slice(5) : undefined);
 
     const cleanedData = {
       ...data,
