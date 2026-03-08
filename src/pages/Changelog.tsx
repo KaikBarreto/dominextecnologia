@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.1.0',
+    date: '08 de março de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Sistema de Permissões Granulares',
+        description: 'Controle de acesso por telas e funções com chaves de permissão individuais por usuário.',
+        category: 'recurso',
+      },
+      {
+        title: 'Gestão de Cargos (Presets)',
+        description: 'Criação de cargos com kits de permissões pré-definidos que podem ser atribuídos aos usuários.',
+        category: 'recurso',
+      },
+      {
+        title: 'CRUD completo de Usuários',
+        description: 'Interface moderna para criar, editar, ativar/desativar usuários e configurar permissões individuais.',
+        category: 'recurso',
+      },
+      {
+        title: 'Criação de usuários via admin',
+        description: 'Administradores podem criar usuários diretamente com e-mail e senha, sem necessidade de confirmação por e-mail.',
+        category: 'recurso',
+      },
+      {
+        title: 'Menu filtrado por permissões',
+        description: 'Itens do menu lateral e da navegação mobile são exibidos dinamicamente conforme as permissões do usuário.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Layout mobile do login corrigido',
+        description: '"Lembrar-me" e "Esqueci minha senha" agora aparecem em linhas separadas no mobile, evitando sobreposição.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.0.15',
     date: '28 de fevereiro de 2026',
     type: 'patch',
@@ -341,7 +378,7 @@ const changelog: ChangelogEntry[] = [
 export default function Changelog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChangeCategory | 'all'>('all');
-  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.0.15']));
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.1.0']));
 
   const filteredChangelog = useMemo(() => {
     return changelog
