@@ -28,6 +28,7 @@ import { osStatusLabels } from '@/types/database';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { cn } from '@/lib/utils';
+import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getFrequencyLabel } from '@/hooks/useContracts';
