@@ -17,13 +17,14 @@ interface EmployeeCardProps {
   balance: BalanceSummary;
   onEdit: () => void;
   onDelete: () => void;
+  onDeleteWithUser?: () => void;
   onMovement: (type: 'vale' | 'bonus' | 'falta') => void;
   onPayment: () => void;
   onExtract: () => void;
   onUpdatePhoto?: (url: string) => void;
 }
 
-export function EmployeeCard({ employee, balance, onEdit, onDelete, onMovement, onPayment, onExtract, onUpdatePhoto }: EmployeeCardProps) {
+export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWithUser, onMovement, onPayment, onExtract, onUpdatePhoto }: EmployeeCardProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,11 +100,25 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onMovement, 
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir funcionário?</AlertDialogTitle>
-                      <AlertDialogDescription>Todos os dados e movimentações serão perdidos.</AlertDialogDescription>
+                      <AlertDialogDescription>
+                        {employee.user_id
+                          ? 'Este funcionário está vinculado a um usuário do sistema. Deseja excluir o usuário também? Isso liberará o email para reutilização.'
+                          : 'Todos os dados e movimentações serão perdidos.'}
+                      </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={onDelete}>Excluir</AlertDialogAction>
+                      {employee.user_id && onDeleteWithUser && (
+                        <AlertDialogAction
+                          onClick={onDeleteWithUser}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir ambos
+                        </AlertDialogAction>
+                      )}
+                      <AlertDialogAction onClick={onDelete}>
+                        {employee.user_id ? 'Só o funcionário' : 'Excluir'}
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
