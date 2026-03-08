@@ -230,7 +230,7 @@ export default function ContractDetail() {
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhuma conta vinculada a este contrato</p>
               ) : (
                 <div className="space-y-2">
-                  {(linkedTransactions || []).map(t => (
+                  {recPagination.paginatedItems.map(t => (
                     <div key={t.id} className="flex items-center justify-between p-3 rounded-md border text-sm">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium">{t.description}</p>
@@ -248,6 +248,7 @@ export default function ContractDetail() {
                     <span className="text-muted-foreground">Total: R$ {formatBRL(totalReceivable)}</span>
                     <span className="text-muted-foreground">Recebido: R$ {formatBRL(totalPaid)}</span>
                   </div>
+                  <DataTablePagination pagination={recPagination} />
                 </div>
               )}
             </CardContent>
@@ -318,8 +319,8 @@ export default function ContractDetail() {
                   </TableBody>
                 </Table>
               </div>
+              <DataTablePagination pagination={occPagination} />
             </CardContent>
-          </Card>
         </div>
 
         {/* Right column */}
