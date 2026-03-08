@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +13,10 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { ContactFormDialog } from '@/components/customers/ContactFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useCustomerContacts } from '@/hooks/useCustomerContacts';
 import { osStatusLabels } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -36,10 +38,15 @@ export default function CustomerDetail() {
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
   const { categories } = useEquipmentCategories();
 
+  const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
+
   const [equipFormOpen, setEquipFormOpen] = useState(false);
   const [osFormOpen, setOsFormOpen] = useState(false);
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [contactFormOpen, setContactFormOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<typeof contacts[0] | null>(null);
+  const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
