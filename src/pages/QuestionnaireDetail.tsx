@@ -71,14 +71,16 @@ export default function QuestionnaireDetail() {
   const openEditModal = (question: FormQuestion) => {
     setEditingQuestion(question);
     const answerTypes = (question as any).answer_types as string[] | null;
+    const effectiveTypes = answerTypes && answerTypes.length > 0 ? answerTypes : [question.question_type];
+    const opts = Array.isArray(question.options) ? (question.options as string[]) : [];
     setQForm({
       question: question.question,
       question_type: question.question_type,
       is_required: question.is_required,
       description: question.description || '',
-      options: (question.options as string[]) || [],
+      options: opts,
       require_camera: (question as any).require_camera || false,
-      answer_types: answerTypes && answerTypes.length > 0 ? answerTypes : [question.question_type],
+      answer_types: effectiveTypes,
     });
     setNewOption('');
     setQuestionModalOpen(true);
@@ -126,8 +128,11 @@ export default function QuestionnaireDetail() {
 
   const handleSaveQuestion = () => {
     if (!qForm.question?.trim()) return;
-    const answerTypes = qForm.answer_types && qForm.answer_types.length > 1 ? qForm.answer_types : null;
-    const primaryType = qForm.answer_types?.[0] || qForm.question_type || 'boolean';
+    const effectiveTypes = qForm.answer_types || [];
+    const answerTypes = effectiveTypes.length > 1 ? effectiveTypes : null;
+    const primaryType = effectiveTypes[0] || qForm.question_type || 'boolean';
+    const hasSelect = effectiveTypes.includes('select');
+    const optionsToSave = hasSelect && qForm.options && qForm.options.length > 0 ? qForm.options : null;
 
     if (editingQuestion) {
       updateQuestion.mutate({
@@ -136,7 +141,7 @@ export default function QuestionnaireDetail() {
         question_type: primaryType as any,
         is_required: qForm.is_required ?? true,
         description: qForm.description || null,
-        options: (qForm.answer_types || []).includes('select') && qForm.options?.length ? qForm.options : null,
+        options: optionsToSave,
         require_camera: qForm.require_camera || false,
         answer_types: answerTypes,
       } as any, {
@@ -153,7 +158,7 @@ export default function QuestionnaireDetail() {
         question_type: primaryType as any,
         is_required: qForm.is_required ?? true,
         description: qForm.description || undefined,
-        options: (qForm.answer_types || []).includes('select') && qForm.options?.length ? qForm.options : undefined,
+        options: optionsToSave || undefined,
         position,
         require_camera: qForm.require_camera || false,
         answer_types: answerTypes,

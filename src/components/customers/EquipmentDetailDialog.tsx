@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/types/database';
 
@@ -44,7 +46,26 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
-  const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
+  const { data: portalToken } = useQuery({
+    queryKey: ['portalToken', equipment?.customer_id],
+    queryFn: async () => {
+      if (!equipment?.customer_id) return null;
+      const { data } = await supabase
+        .from('customer_portals')
+        .select('token')
+        .eq('customer_id', equipment.customer_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      return data?.token || null;
+    },
+    enabled: !!equipment?.customer_id,
+  });
+
+  const qrValue = equipment
+    ? portalToken
+      ? `${window.location.origin}/portal/${portalToken}?eq=${equipment.id}`
+      : `EQ-${equipment.identifier || equipment.id}`
+    : '';
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
