@@ -31,6 +31,7 @@ const equipmentSchema = z.object({
   capacity: z.string().optional(),
   location: z.string().optional(),
   install_date: z.string().optional(),
+  warranty_until: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -70,7 +71,7 @@ export function EquipmentFormDialog({
     defaultValues: {
       customer_id: '', name: '', category_id: '', identifier: '',
       brand: '', model: '', serial_number: '', capacity: '',
-      location: '', install_date: '', notes: '',
+      location: '', install_date: '', warranty_until: '', notes: '',
     },
   });
 
@@ -130,6 +131,7 @@ export function EquipmentFormDialog({
           capacity: equipment?.capacity ?? '',
           location: equipment?.location ?? '',
           install_date: equipment?.install_date ?? '',
+          warranty_until: (equipment as any)?.warranty_until ?? '',
           notes: equipment?.notes ?? '',
         });
         // Restore custom field values from equipment.custom_fields
