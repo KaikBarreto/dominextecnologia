@@ -1,6 +1,6 @@
 // Tipos do sistema de gestão
 
-export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro';
+export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro' | 'super_admin';
 
 export type OsStatus = 'pendente' | 'em_andamento' | 'concluida' | 'cancelada';
 
