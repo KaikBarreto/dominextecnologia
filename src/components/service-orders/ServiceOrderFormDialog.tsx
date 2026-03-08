@@ -150,6 +150,9 @@ export function ServiceOrderFormDialog({
       setEquipmentTemplateMap({});
       setRequireTechSignature(false);
       setRequireClientSignature(false);
+      setCustomerMode('existing');
+      setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
+      setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
       form.reset({
         customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
         equipment_id: serviceOrder?.equipment_id ?? '',
