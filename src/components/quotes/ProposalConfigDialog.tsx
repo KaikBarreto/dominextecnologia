@@ -7,6 +7,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { ProposalRenderer } from './ProposalRenderer';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Check, Save, Loader2 } from 'lucide-react';
 import type { Quote } from '@/hooks/useQuotes';
 import type { ProposalCustomization } from './templates/types';
@@ -118,39 +119,24 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Cor Primária</Label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={colors.primary_color || '#2563eb'}
-                onChange={(e) => setColors(c => ({ ...c, primary_color: e.target.value }))}
-                className="h-9 w-12 rounded border border-border cursor-pointer"
-              />
-              <span className="text-xs text-muted-foreground font-mono">{colors.primary_color}</span>
-            </div>
+            <ColorPicker
+              value={colors.primary_color || '#2563eb'}
+              onChange={(c) => setColors(prev => ({ ...prev, primary_color: c }))}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Cor de Destaque</Label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={colors.accent_color || '#f97316'}
-                onChange={(e) => setColors(c => ({ ...c, accent_color: e.target.value }))}
-                className="h-9 w-12 rounded border border-border cursor-pointer"
-              />
-              <span className="text-xs text-muted-foreground font-mono">{colors.accent_color}</span>
-            </div>
+            <ColorPicker
+              value={colors.accent_color || '#f97316'}
+              onChange={(c) => setColors(prev => ({ ...prev, accent_color: c }))}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Fundo do Cabeçalho</Label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={colors.header_bg || '#1e3a5f'}
-                onChange={(e) => setColors(c => ({ ...c, header_bg: e.target.value }))}
-                className="h-9 w-12 rounded border border-border cursor-pointer"
-              />
-              <span className="text-xs text-muted-foreground font-mono">{colors.header_bg}</span>
-            </div>
+            <ColorPicker
+              value={colors.header_bg || '#1e3a5f'}
+              onChange={(c) => setColors(prev => ({ ...prev, header_bg: c }))}
+            />
           </div>
         </div>
         <Button onClick={handleSave} disabled={saving} size="sm" className="mt-2">
