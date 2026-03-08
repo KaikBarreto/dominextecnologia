@@ -61,7 +61,42 @@ export default function CustomerDetail() {
   const ordersPagination = useDataPagination(customerOrders);
   const transactionsPagination = useDataPagination(customerTransactions);
 
-  if (isLoading) {
+  // Load existing portal link
+  useEffect(() => {
+    if (!id) return;
+    supabase
+      .from('customer_portals')
+      .select('token')
+      .eq('customer_id', id)
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) setPortalLink(`${window.location.origin}/portal/${(data as any).token}`);
+      });
+  }, [id]);
+
+  const handleGeneratePortal = async () => {
+    if (!id) return;
+    setGeneratingPortal(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_portals')
+        .insert({ customer_id: id } as any)
+        .select('token')
+        .single();
+      if (error) throw error;
+      const link = `${window.location.origin}/portal/${(data as any).token}`;
+      setPortalLink(link);
+      navigator.clipboard.writeText(link);
+      toast({ title: 'Link do portal gerado e copiado!' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    } finally {
+      setGeneratingPortal(false);
+    }
+  };
+
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
   }
 
