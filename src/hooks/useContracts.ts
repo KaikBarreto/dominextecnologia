@@ -247,6 +247,12 @@ export function useContracts() {
 
   const deleteContract = useMutation({
     mutationFn: async (id: string) => {
+      // Nullify references in service_orders and financial_transactions
+      await supabase.from('service_orders').update({ contract_id: null }).eq('contract_id', id);
+      await supabase.from('financial_transactions').update({ contract_id: null }).eq('contract_id', id);
+      // Delete related records
+      await supabase.from('contract_occurrences').delete().eq('contract_id', id);
+      await supabase.from('contract_items').delete().eq('contract_id', id);
       const { error } = await supabase.from('contracts').delete().eq('id', id);
       if (error) throw error;
     },
