@@ -7,6 +7,7 @@ export interface CustomerContact {
   name: string;
   phone: string | null;
   email: string | null;
+  position: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -31,7 +32,7 @@ export function useCustomerContacts(customerId?: string) {
   });
 
   const createContact = useMutation({
-    mutationFn: async (contact: { customer_id: string; name: string; phone?: string; email?: string; notes?: string }) => {
+    mutationFn: async (contact: { customer_id: string; name: string; phone?: string; email?: string; position?: string; notes?: string }) => {
       const { data, error } = await supabase
         .from('customer_contacts')
         .insert(contact)
@@ -44,7 +45,7 @@ export function useCustomerContacts(customerId?: string) {
   });
 
   const updateContact = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; phone?: string; email?: string; notes?: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; phone?: string; email?: string; position?: string; notes?: string }) => {
       const { data, error } = await supabase
         .from('customer_contacts')
         .update({ ...updates, updated_at: new Date().toISOString() })
