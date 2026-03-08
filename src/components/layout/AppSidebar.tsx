@@ -30,10 +30,9 @@ import { Button } from '@/components/ui/button';
 import { Sidebar, SidebarContent } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
-import logoDark from '@/assets/logo-dark.png';
-import logoWhite from '@/assets/logo-white.png';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 
 interface MenuItem {
   title: string;

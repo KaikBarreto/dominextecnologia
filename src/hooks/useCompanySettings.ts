@@ -20,6 +20,9 @@ export interface CompanySettings {
     accent_color?: string;
     header_bg?: string;
   };
+  white_label_enabled?: boolean;
+  white_label_logo_url?: string;
+  white_label_primary_color?: string;
   created_at: string;
   updated_at: string;
 }

@@ -13,8 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
-import logoDark from '@/assets/logo-dark.png';
-import logoWhite from '@/assets/logo-white.png';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 
 interface MenuItem {
   title: string;
