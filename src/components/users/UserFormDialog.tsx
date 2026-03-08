@@ -58,6 +58,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   const [loading, setLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { employees } = useEmployees();
   const [form, setForm] = useState<UserFormData>({
     full_name: '',
     email: '',
@@ -68,6 +69,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     preset_id: null,
     photo: null,
     removePhoto: false,
+    employee_id: null,
   });
 
   useEffect(() => {
@@ -82,10 +84,11 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
         preset_id: editingUser.preset_id || null,
         photo: null,
         removePhoto: false,
+        employee_id: editingUser.employee_id || null,
       });
       setPhotoPreview(editingUser.avatar_url || null);
     } else {
-      setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null, photo: null, removePhoto: false });
+      setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null, photo: null, removePhoto: false, employee_id: null });
       setPhotoPreview(null);
     }
   }, [editingUser, open]);
