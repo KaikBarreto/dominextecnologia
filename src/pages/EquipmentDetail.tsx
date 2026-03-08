@@ -62,11 +62,20 @@ export default function EquipmentDetail() {
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
   const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
 
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !id) return;
-    await uploadAttachment.mutateAsync({ equipmentId: id, file });
-    e.target.value = '';
+    const files = e.target.files;
+    if (!files || files.length === 0 || !id) return;
+    setUploadingFiles(true);
+    try {
+      for (const file of Array.from(files)) {
+        await uploadAttachment.mutateAsync({ equipmentId: id, file });
+      }
+    } finally {
+      setUploadingFiles(false);
+      e.target.value = '';
+    }
   };
 
   const handleAddTask = () => {
@@ -250,10 +259,10 @@ export default function EquipmentDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Arquivos anexados</h2>
-            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="mr-2 h-4 w-4" />Enviar arquivo
+            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
+              <Upload className="mr-2 h-4 w-4" />{uploadingFiles ? 'Enviando...' : 'Enviar arquivos'}
             </Button>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+            <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
           </div>
           {attachLoading ? (
             <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
