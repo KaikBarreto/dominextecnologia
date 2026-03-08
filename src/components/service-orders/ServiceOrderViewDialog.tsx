@@ -17,7 +17,6 @@ import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
-import { ptBR } from 'date-fns/locale';
 
 interface OSPhoto {
   id: string;
