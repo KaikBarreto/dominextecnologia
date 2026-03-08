@@ -5,7 +5,7 @@ import { formatBRL } from '@/utils/currency';
 
 export function ClassicTemplate({ quote, company, items, customization }: ProposalTemplateProps) {
   const clientName = quote.customers?.name ?? quote.prospect_name ?? '—';
-  const clientDoc = quote.customers?.document;
+  const clientDoc = (quote.customers as any)?.document;
   const clientEmail = quote.customers?.email ?? quote.prospect_email;
   const clientPhone = quote.customers?.phone ?? quote.prospect_phone;
 
