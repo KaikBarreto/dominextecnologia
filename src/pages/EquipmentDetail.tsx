@@ -253,6 +253,30 @@ export default function EquipmentDetail() {
               <p className="text-sm mt-1">{equipment.notes}</p>
             </CardContent></Card>
           )}
+          {/* Custom fields */}
+          {(() => {
+            const customFields = (equipment as any).custom_fields as Record<string, any> | null;
+            if (!customFields || Object.keys(customFields).length === 0) return null;
+            const visibleFields = fieldConfigs.filter(f => f.is_visible && customFields[f.field_key] != null && customFields[f.field_key] !== '');
+            if (visibleFields.length === 0) return null;
+            return (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleFields.map(field => {
+                  let displayValue = String(customFields[field.field_key]);
+                  if (field.field_type === 'boolean') displayValue = customFields[field.field_key] ? 'Sim' : 'Não';
+                  if (field.field_type === 'date' && customFields[field.field_key]) {
+                    try { displayValue = format(new Date(customFields[field.field_key]), 'dd/MM/yyyy', { locale: ptBR }); } catch { /* keep raw */ }
+                  }
+                  return (
+                    <Card key={field.id}><CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{field.label}</p>
+                      <p className="text-sm font-medium mt-1">{displayValue}</p>
+                    </CardContent></Card>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
