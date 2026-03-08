@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.0',
+    date: '08 de março de 2026',
+    type: 'major',
+    changes: [
+      {
+        title: 'Controle de Ponto Eletrônico',
+        description: 'Módulo completo de ponto na aba "Controle de Ponto" dentro de Usuários. Registro via geolocalização + selfie, painel admin com KPIs em tempo real, histórico, relatórios mensais com calendário visual e gráficos, configurações de jornada e exportação CSV.',
+        category: 'recurso',
+      },
+      {
+        title: 'Interface Mobile para Técnicos',
+        description: 'Tela mobile-first com botão grande por estado (entrada, intervalo, saída), fluxo de 3 etapas (localização → selfie → confirmação), histórico recente e vibração ao confirmar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Modais responsivos aprimorados',
+        description: 'ResponsiveModal agora suporta footer fixo e max-width customizável. Modais no desktop, drawers no mobile.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.3.0',
     date: '08 de março de 2026',
     type: 'minor',

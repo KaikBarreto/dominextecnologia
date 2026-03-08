@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.4.0";
 
-export const VERSION_NOTES = "Portal do cliente, gestão avançada de contratos, scrollbar personalizada, câmera obrigatória em fotos, edição de perguntas por modal";
+export const VERSION_NOTES = "Controle de ponto eletrônico, painel admin com KPIs em tempo real, interface mobile para técnicos";
