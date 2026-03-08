@@ -2477,6 +2477,7 @@ export type Database = {
           created_at: string | null
           date: string
           device_info: Json | null
+          employee_id: string | null
           id: string
           is_valid: boolean | null
           latitude: number | null
@@ -2486,7 +2487,7 @@ export type Database = {
           recorded_at: string
           source: string | null
           type: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           address?: string | null
@@ -2494,6 +2495,7 @@ export type Database = {
           created_at?: string | null
           date: string
           device_info?: Json | null
+          employee_id?: string | null
           id?: string
           is_valid?: boolean | null
           latitude?: number | null
@@ -2503,7 +2505,7 @@ export type Database = {
           recorded_at?: string
           source?: string | null
           type: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           address?: string | null
@@ -2511,6 +2513,7 @@ export type Database = {
           created_at?: string | null
           date?: string
           device_info?: Json | null
+          employee_id?: string | null
           id?: string
           is_valid?: boolean | null
           latitude?: number | null
@@ -2520,7 +2523,7 @@ export type Database = {
           recorded_at?: string
           source?: string | null
           type?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2530,37 +2533,47 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "time_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
         ]
       }
       time_schedules: {
         Row: {
           break_minutes: number | null
           company_id: string
+          employee_id: string | null
           expected_in: string
           expected_out: string
           id: string
           is_work_day: boolean | null
-          user_id: string
+          user_id: string | null
           weekday: number
         }
         Insert: {
           break_minutes?: number | null
           company_id: string
+          employee_id?: string | null
           expected_in: string
           expected_out: string
           id?: string
           is_work_day?: boolean | null
-          user_id: string
+          user_id?: string | null
           weekday: number
         }
         Update: {
           break_minutes?: number | null
           company_id?: string
+          employee_id?: string | null
           expected_in?: string
           expected_out?: string
           id?: string
           is_work_day?: boolean | null
-          user_id?: string
+          user_id?: string | null
           weekday?: number
         }
         Relationships: [
@@ -2569,6 +2582,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -2632,6 +2652,7 @@ export type Database = {
           company_id: string
           created_at: string | null
           date: string
+          employee_id: string | null
           expected_min: number | null
           first_clock_in: string | null
           id: string
@@ -2641,13 +2662,14 @@ export type Database = {
           status: string | null
           total_break_min: number | null
           total_worked_min: number | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           balance_min?: number | null
           company_id: string
           created_at?: string | null
           date: string
+          employee_id?: string | null
           expected_min?: number | null
           first_clock_in?: string | null
           id?: string
@@ -2657,13 +2679,14 @@ export type Database = {
           status?: string | null
           total_break_min?: number | null
           total_worked_min?: number | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           balance_min?: number | null
           company_id?: string
           created_at?: string | null
           date?: string
+          employee_id?: string | null
           expected_min?: number | null
           first_clock_in?: string | null
           id?: string
@@ -2673,7 +2696,7 @@ export type Database = {
           status?: string | null
           total_break_min?: number | null
           total_worked_min?: number | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2681,6 +2704,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_sheets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
