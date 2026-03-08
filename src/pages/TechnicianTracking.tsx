@@ -52,7 +52,7 @@ export default function TechnicianTracking() {
       .gte('created_at', startOfDay)
       .lte('created_at', endOfDay)
       .order('created_at', { ascending: true })
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         setLocations((data as LocationRecord[]) || []);
         setLoading(false);
       });

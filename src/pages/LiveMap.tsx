@@ -30,7 +30,7 @@ export default function LiveMap() {
 
     // Get latest location per user (we fetch recent and deduplicate)
     const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
-    const { data: locations } = await supabase
+    const { data: locations }: { data: any[] | null } = await supabase
       .from('technician_locations' as any)
       .select('*')
       .gte('created_at', oneHourAgo)

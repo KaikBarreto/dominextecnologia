@@ -30,7 +30,7 @@ export function TechnicianDistanceBadge({ technicianId, customer }: TechnicianDi
       .eq('user_id', technicianId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         if (data && data.length > 0) {
           setTechLocation({ lat: data[0].lat, lng: data[0].lng });
         }
