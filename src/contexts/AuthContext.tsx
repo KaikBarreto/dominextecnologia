@@ -140,19 +140,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasRole = (role: AppRole) => roles.includes(role);
   const isAdminOrGestor = () => hasRole('admin') || hasRole('gestor');
   
-  // Permission check: admin role always has full access.
-  // If user has no user_permissions row, fall back to role-based legacy access.
+  // "Acesso total" = user has 27+ permissions stored, grant everything dynamically
+  const isFullAccess = permissions.length >= 27;
+
+  // Permission check: admin role or full access always has full access.
   const hasPermission = (key: string) => {
-    if (hasRole('admin')) return true;
+    if (hasRole('admin') || isFullAccess) return true;
     if (permissions.length > 0) return permissions.includes(key);
-    // Legacy fallback: if no permissions configured, allow based on roles
     return roles.length > 0;
   };
 
   const hasScreenAccess = (screenKey: string) => {
-    if (hasRole('admin')) return true;
+    if (hasRole('admin') || isFullAccess) return true;
     if (permissions.length > 0) return permissions.includes(screenKey);
-    // Legacy fallback
     return roles.length > 0;
   };
 
