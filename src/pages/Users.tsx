@@ -36,6 +36,19 @@ export default function Users() {
   const getUserPermission = (userId: string) =>
     userPermissions.find(p => p.user_id === userId);
 
+  const uploadPhoto = async (userId: string, file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `user-${userId}-${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from('customer-photos')
+      .upload(fileName, file, { upsert: true });
+    if (uploadError) throw uploadError;
+    const { data: { publicUrl } } = supabase.storage
+      .from('customer-photos')
+      .getPublicUrl(fileName);
+    return publicUrl;
+  };
+
   const handleCreateUser = async (data: any) => {
     try {
       const { data: result, error } = await supabase.functions.invoke('create-user', {
@@ -52,6 +65,18 @@ export default function Users() {
 
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
+
+      // Upload photo if provided
+      if (data.photo && result?.user?.id) {
+        try {
+          const avatarUrl = await uploadPhoto(result.user.id, data.photo);
+          if (avatarUrl) {
+            await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('user_id', result.user.id);
+          }
+        } catch (photoErr) {
+          console.error('Photo upload failed:', photoErr);
+        }
+      }
 
       toast({ title: 'Usuário criado com sucesso!' });
       window.location.reload();
