@@ -167,7 +167,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </Tabs>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label>Válido até</Label>
           <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
@@ -192,6 +192,26 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               step="0.01"
             />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <Palette className="h-3.5 w-3.5" /> Template da Proposta
+          </Label>
+          <Select value={proposalTemplateId} onValueChange={setProposalTemplateId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o template" />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map(t => (
+                <SelectItem key={t.id} value={t.id}>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.preview_color }} />
+                    {t.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
