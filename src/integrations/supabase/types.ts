@@ -147,6 +147,9 @@ export type Database = {
           proposal_customization: Json | null
           state: string | null
           updated_at: string
+          white_label_enabled: boolean
+          white_label_logo_url: string | null
+          white_label_primary_color: string | null
           zip_code: string | null
         }
         Insert: {
@@ -164,6 +167,9 @@ export type Database = {
           proposal_customization?: Json | null
           state?: string | null
           updated_at?: string
+          white_label_enabled?: boolean
+          white_label_logo_url?: string | null
+          white_label_primary_color?: string | null
           zip_code?: string | null
         }
         Update: {
@@ -181,6 +187,9 @@ export type Database = {
           proposal_customization?: Json | null
           state?: string | null
           updated_at?: string
+          white_label_enabled?: boolean
+          white_label_logo_url?: string | null
+          white_label_primary_color?: string | null
           zip_code?: string | null
         }
         Relationships: []
@@ -2794,6 +2803,7 @@ export type Database = {
       can_bootstrap_admin: { Args: never; Returns: boolean }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }
+      has_full_permissions: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
