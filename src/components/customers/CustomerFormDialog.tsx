@@ -19,9 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import type { Customer, CustomerType } from '@/types/database';
-import { useToast } from '@/hooks/use-toast';
-import { CepLookup } from '@/components/CepLookup';
-import type { Customer, CustomerType } from '@/types/database';
+
 
 const customerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
