@@ -103,7 +103,17 @@ export default function Employees() {
     const { _createAccess, _password, ...employeeData } = data as any;
     
     if (editingEmployee) {
-      updateEmployee.mutate({ id: editingEmployee.id, ...employeeData }, { onSuccess: () => { setFormOpen(false); setEditingEmployee(null); } });
+      updateEmployee.mutate({ id: editingEmployee.id, ...employeeData }, {
+        onSuccess: async () => {
+          // Sync photo to linked user profile if employee has a user_id
+          const linkedUserId = employeeData.user_id || editingEmployee.user_id;
+          if (linkedUserId && employeeData.photo_url) {
+            await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
+          }
+          setFormOpen(false);
+          setEditingEmployee(null);
+        },
+      });
     } else {
       createEmployee.mutate(employeeData, {
         onSuccess: async (newEmployee: any) => {

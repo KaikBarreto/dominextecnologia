@@ -84,12 +84,18 @@ export default function Users() {
         }
       }
 
-      // Link to employee if selected
+      // Link to employee if selected and sync photo
       if (data.employee_id && result?.user?.id) {
         const updateData: any = { user_id: result.user.id };
-        // If a chosen_email was picked (email conflict), update employee email too
         if (data.chosen_email) {
           updateData.email = data.chosen_email;
+        }
+        // Sync user photo to employee
+        if (data.photo && result.user.id) {
+          const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('user_id', result.user.id).maybeSingle();
+          if (profile?.avatar_url) {
+            updateData.photo_url = profile.avatar_url;
+          }
         }
         await supabase.from('employees').update(updateData).eq('id', data.employee_id);
       }
@@ -142,9 +148,15 @@ export default function Users() {
       // Update employee link
       // First unlink any employee that was previously linked to this user
       await supabase.from('employees').update({ user_id: null }).eq('user_id', editingUser.user_id);
-      // Then link the selected employee
+      // Then link the selected employee and sync photo
       if (data.employee_id) {
-        await supabase.from('employees').update({ user_id: editingUser.user_id }).eq('id', data.employee_id);
+        const finalAvatarUrl = avatarUrl !== undefined ? avatarUrl : editingUser.avatar_url;
+        const empUpdate: any = { user_id: editingUser.user_id };
+        // Sync photo: if user has a photo, set it on employee too
+        if (finalAvatarUrl) {
+          empUpdate.photo_url = finalAvatarUrl;
+        }
+        await supabase.from('employees').update(empUpdate).eq('id', data.employee_id);
       }
 
       // Update email if changed
@@ -157,6 +169,7 @@ export default function Users() {
       }
 
       toast({ title: 'Usuário atualizado!' });
+      window.location.reload();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
       throw e;
