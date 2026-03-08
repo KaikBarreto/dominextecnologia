@@ -142,9 +142,15 @@ export default function Users() {
       // Update employee link
       // First unlink any employee that was previously linked to this user
       await supabase.from('employees').update({ user_id: null }).eq('user_id', editingUser.user_id);
-      // Then link the selected employee
+      // Then link the selected employee and sync photo
       if (data.employee_id) {
-        await supabase.from('employees').update({ user_id: editingUser.user_id }).eq('id', data.employee_id);
+        const finalAvatarUrl = avatarUrl !== undefined ? avatarUrl : editingUser.avatar_url;
+        const empUpdate: any = { user_id: editingUser.user_id };
+        // Sync photo: if user has a photo, set it on employee too
+        if (finalAvatarUrl) {
+          empUpdate.photo_url = finalAvatarUrl;
+        }
+        await supabase.from('employees').update(empUpdate).eq('id', data.employee_id);
       }
 
       // Update email if changed
@@ -157,6 +163,7 @@ export default function Users() {
       }
 
       toast({ title: 'Usuário atualizado!' });
+      window.location.reload();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
       throw e;
