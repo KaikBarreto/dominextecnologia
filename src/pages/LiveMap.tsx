@@ -296,7 +296,6 @@ export default function LiveMap() {
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500"></span> Executando OS</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500"></span> A Caminho</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500"></span> Em deslocamento</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500"></span> Check-out</div>
       </div>
 
