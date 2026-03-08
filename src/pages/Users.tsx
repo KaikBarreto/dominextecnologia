@@ -79,6 +79,11 @@ export default function Users() {
         }
       }
 
+      // Link to employee if selected
+      if (data.employee_id && result?.user?.id) {
+        await supabase.from('employees').update({ user_id: result.user.id }).eq('id', data.employee_id);
+      }
+
       toast({ title: 'Usuário criado com sucesso!' });
       window.location.reload();
     } catch (e: any) {
@@ -123,6 +128,14 @@ export default function Users() {
         permissions: data.permissions,
         preset_id: data.preset_id,
       });
+
+      // Update employee link
+      // First unlink any employee that was previously linked to this user
+      await supabase.from('employees').update({ user_id: null }).eq('user_id', editingUser.user_id);
+      // Then link the selected employee
+      if (data.employee_id) {
+        await supabase.from('employees').update({ user_id: editingUser.user_id }).eq('id', data.employee_id);
+      }
 
       toast({ title: 'Usuário atualizado!' });
     } catch (e: any) {
