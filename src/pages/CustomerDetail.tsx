@@ -148,21 +148,61 @@ export default function CustomerDetail() {
               </p>
             </CardContent></Card>
           )}
-          {(customer.address || customer.city) && (
-            <Card className="sm:col-span-2"><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</p>
-              <p className="text-sm font-medium mt-1 flex items-center gap-1">
-                <MapPin className="h-3 w-3 shrink-0" />
-                {[
-                  customer.address && customer.address_number ? `${customer.address}, ${customer.address_number}` : customer.address,
-                  customer.complement,
-                  customer.neighborhood,
-                  customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
-                  customer.zip_code
-                ].filter(Boolean).join(', ')}
-              </p>
-            </CardContent></Card>
-          )}
+          {(customer.address || customer.city) && (() => {
+            const fullAddress = [
+              customer.address && customer.address_number ? `${customer.address}, ${customer.address_number}` : customer.address,
+              customer.complement,
+              customer.neighborhood,
+              customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
+              customer.zip_code
+            ].filter(Boolean).join(', ');
+            const encodedAddress = encodeURIComponent(fullAddress);
+            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+            const wazeUrl = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+            const embedUrl = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+
+            return (
+              <Card className="sm:col-span-2"><CardContent className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</p>
+                <p className="text-sm font-medium flex items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {fullAddress}
+                </p>
+                <div className="rounded-lg overflow-hidden border h-48 w-full">
+                  <iframe
+                    title="Mapa do cliente"
+                    src={embedUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    <img src="https://maps.google.com/mapfiles/ms/icons/red-dot.png" alt="Google Maps" className="h-5 w-5" />
+                    Abrir no Google Maps
+                  </a>
+                  <a
+                    href={wazeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    <img src="https://www.waze.com/favicon.ico" alt="Waze" className="h-5 w-5" />
+                    Abrir no Waze
+                  </a>
+                </div>
+              </CardContent></Card>
+            );
+          })()}
           {customer.notes && (
             <Card className="sm:col-span-2"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
