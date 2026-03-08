@@ -54,7 +54,7 @@ const menuItems: MenuItem[] = [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
-      { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
+      
       { title: 'Rastreamento', icon: MapPin, path: '/rastreamento' },
       { title: 'Mapa ao Vivo', icon: Map, path: '/mapa-ao-vivo' },
     ],
@@ -68,6 +68,7 @@ const menuItems: MenuItem[] = [
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
+      { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
     ],
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
