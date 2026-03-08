@@ -121,17 +121,19 @@ export default function Employees() {
           
           if (_createAccess && employeeData.email && _password) {
             try {
-              const { data: fnData, error: fnError } = await supabase.functions.invoke('create-user', {
+              const response = await supabase.functions.invoke('create-user', {
                 body: {
                   email: employeeData.email,
                   password: _password,
                   full_name: employeeData.name,
                   phone: employeeData.phone || undefined,
+                  avatar_url: employeeData.photo_url || undefined,
                   role: 'tecnico',
                 },
               });
               
-              if (fnError) throw fnError;
+              if (response.error) throw new Error(response.error.message || 'Erro na chamada da função');
+              const fnData = response.data;
               if (fnData?.error) throw new Error(fnData.error);
               
               // Link user_id to employee

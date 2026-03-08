@@ -224,7 +224,7 @@ export default function Auth() {
       <div className="w-full max-w-md relative z-10">
         <div className="mb-8 flex flex-col items-center">
           <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" />
-          <p className="text-white/80 text-sm">Sistema de Gestão</p>
+          <p className="text-white/80 text-sm">Sistema de Gestão de Equipes Externas</p>
         </div>
 
         <Card className="border-0 bg-black/60 backdrop-blur-md shadow-2xl">
