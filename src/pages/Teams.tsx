@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function Teams() {
   const { teamsWithMembers, isLoading, createTeam, updateTeam, deleteTeam } = useTeams();
-  const { data: profiles } = useTechnicians();
+  const { data: profiles } = useProfiles();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
