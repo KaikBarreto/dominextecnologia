@@ -313,7 +313,14 @@ export function ServiceOrderFormDialog({
                       {teams.filter(t => t.is_active).length > 0 && (
                         <SelectGroup>
                           <SelectLabel>Equipes</SelectLabel>
-                          {teams.filter(t => t.is_active).map((t) => <SelectItem key={t.id} value={`team:${t.id}`}>{t.name}</SelectItem>)}
+                          {teams.filter(t => t.is_active).map((t) => (
+                            <SelectItem key={t.id} value={`team:${t.id}`}>
+                              <div className="flex items-center gap-2">
+                                <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: t.color || 'hsl(var(--primary))' }} />
+                                {t.name}
+                              </div>
+                            </SelectItem>
+                          ))}
                         </SelectGroup>
                       )}
                     </SelectContent>
@@ -445,7 +452,14 @@ export function ServiceOrderFormDialog({
                       {teams.filter(t => t.is_active).length > 0 && (
                         <SelectGroup>
                           <SelectLabel>Equipes</SelectLabel>
-                          {teams.filter(t => t.is_active).map((t) => <SelectItem key={t.id} value={`team:${t.id}`}>{t.name}</SelectItem>)}
+                          {teams.filter(t => t.is_active).map((t) => (
+                            <SelectItem key={t.id} value={`team:${t.id}`}>
+                              <div className="flex items-center gap-2">
+                                <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: t.color || 'hsl(var(--primary))' }} />
+                                {t.name}
+                              </div>
+                            </SelectItem>
+                          ))}
                         </SelectGroup>
                       )}
                     </SelectContent>
