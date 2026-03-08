@@ -183,25 +183,21 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="p-4 pb-3 border-b border-border">
             {profile ? (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center text-center gap-1.5">
                 <Avatar className="h-11 w-11">
                   <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{initials}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-sidebar-foreground truncate">{profile.full_name}</p>
-                  <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] px-1.5 py-0 mt-1 hover:bg-primary">
-                    {roleLabel}
-                  </Badge>
-                </div>
+                <p className="text-sm font-semibold text-sidebar-foreground truncate max-w-full">{profile.full_name}</p>
+                <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] px-1.5 py-0 hover:bg-primary">
+                  {roleLabel}
+                </Badge>
               </div>
             ) : (
-              <div className="flex items-center gap-3 animate-pulse">
+              <div className="flex flex-col items-center gap-2 animate-pulse">
                 <div className="h-11 w-11 rounded-full bg-muted" />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="h-4 w-32 bg-muted rounded" />
-                  <div className="h-3 w-24 bg-muted rounded" />
-                </div>
+                <div className="h-4 w-32 bg-muted rounded" />
+                <div className="h-3 w-24 bg-muted rounded" />
               </div>
             )}
           </div>
