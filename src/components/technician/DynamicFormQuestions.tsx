@@ -161,26 +161,36 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionId: string) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setUploadingPhoto(questionId);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${serviceOrderId}/form-${questionId}-${Date.now()}.${fileExt}`;
+      const uploadedUrls: string[] = [];
+      // Get existing photos
+      const existing = responses[questionId]?.response_photo_url;
+      if (existing) uploadedUrls.push(...existing.split(','));
 
-      const { error: uploadError } = await supabase.storage
-        .from('os-photos')
-        .upload(fileName, file);
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${serviceOrderId}/form-${questionId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
 
-      if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage
+          .from('os-photos')
+          .upload(fileName, file);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('os-photos')
-        .getPublicUrl(fileName);
+        if (uploadError) throw uploadError;
 
-      await saveResponse(questionId, null, publicUrl);
-      toast({ title: 'Foto enviada!' });
+        const { data: { publicUrl } } = supabase.storage
+          .from('os-photos')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      const combinedUrl = uploadedUrls.join(',');
+      await saveResponse(questionId, null, combinedUrl);
+      toast({ title: `${files.length > 1 ? `${files.length} fotos enviadas` : 'Foto enviada'}!` });
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -189,6 +199,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
       });
     } finally {
       setUploadingPhoto(null);
+      // Reset input so same file can be selected again
+      event.target.value = '';
     }
   };
 
@@ -294,17 +306,18 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
         );
 
       case 'photo':
-        const photoUrl = response?.response_photo_url;
+        const photoUrlRaw = response?.response_photo_url;
+        const photoUrls = photoUrlRaw ? photoUrlRaw.split(',').filter(Boolean) : [];
         const cameraOnly = !!(question as any).require_camera;
         return (
           <div className="space-y-2">
-            {photoUrl ? (
-              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={photoUrl}
-                  alt="Resposta"
-                  className="w-full h-full object-cover"
-                />
+            {photoUrls.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {photoUrls.map((url, idx) => (
+                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                    <img src={url} alt={`Resposta ${idx + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="aspect-video rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
@@ -315,6 +328,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 {...(cameraOnly ? { capture: "environment" as const } : {})}
                 className="hidden"
                 onChange={(e) => handlePhotoUpload(e, question.id)}
@@ -323,10 +337,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
               <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhoto === question.id}>
                 <span>
                   <Upload className="h-3 w-3 mr-1" />
-                  {uploadingPhoto === question.id ? 'Enviando...' : photoUrl ? 'Trocar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
+                  {uploadingPhoto === question.id ? 'Enviando...' : photoUrls.length > 0 ? 'Adicionar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
                 </span>
               </Button>
             </label>
+            {photoUrls.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center">{photoUrls.length} foto{photoUrls.length > 1 ? 's' : ''}</p>
+            )}
           </div>
         );
 
