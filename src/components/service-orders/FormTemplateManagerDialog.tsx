@@ -283,13 +283,13 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
           </div>
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingQuestionId(question.id)}>
+          <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => setEditingQuestionId(question.id)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           <Button 
-            variant="ghost" 
+            variant="destructive-ghost" 
             size="icon" 
-            className="h-8 w-8 text-destructive"
+            className="h-8 w-8"
             onClick={() => handleDeleteQuestion(question.id)}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -392,9 +392,8 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                   <Label className="text-sm">Ativo</Label>
                 </div>
                 <Button
-                  variant="ghost"
+                  variant="destructive-ghost"
                   size="icon"
-                  className="text-destructive"
                   onClick={() => setDeleteId(selectedTemplate.id)}
                 >
                   <Trash2 className="h-4 w-4" />

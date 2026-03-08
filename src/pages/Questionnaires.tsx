@@ -151,9 +151,8 @@ export default function QuestionnairesPage() {
                         </TableCell>
                         <TableCell>
                           <Button
-                            variant="ghost"
+                            variant="destructive-ghost"
                             size="icon"
-                            className="text-destructive"
                             onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
                           >
                             <Trash2 className="h-4 w-4" />

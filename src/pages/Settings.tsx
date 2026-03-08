@@ -169,7 +169,7 @@ export default function Settings() {
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                          <Button variant="destructive-ghost" size="sm">
                             <Trash2 className="mr-2 h-4 w-4" /> Remover
                           </Button>
                         </AlertDialogTrigger>

@@ -112,11 +112,11 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetail
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => onEdit(lead)}>
+              <Button variant="edit-ghost" size="sm" onClick={() => onEdit(lead)}>
                 <Edit className="h-4 w-4 mr-1" />
                 Editar
               </Button>
-              <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive">
+              <Button variant="destructive-ghost" size="sm" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
