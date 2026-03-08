@@ -180,24 +180,18 @@ export function DateRangeFilter({ value, preset, onPresetChange, onRangeChange }
                 </div>
               </div>
 
-              {/* Two calendars side by side */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Calendar
-                  mode="single"
-                  selected={tempFrom}
-                  onSelect={(d) => setTempFrom(d)}
-                  locale={ptBR}
-                  className="p-0 pointer-events-auto"
-                />
-                <Calendar
-                  mode="single"
-                  selected={tempTo}
-                  onSelect={(d) => setTempTo(d)}
-                  locale={ptBR}
-                  defaultMonth={tempTo || new Date(new Date().getFullYear(), new Date().getMonth() + 1)}
-                  className="p-0 pointer-events-auto"
-                />
-              </div>
+              {/* Single calendar for range selection */}
+              <Calendar
+                mode="range"
+                selected={tempFrom && tempTo ? { from: tempFrom, to: tempTo } : tempFrom ? { from: tempFrom, to: undefined } : undefined}
+                onSelect={(range) => {
+                  setTempFrom(range?.from);
+                  setTempTo(range?.to);
+                }}
+                locale={ptBR}
+                numberOfMonths={2}
+                className="p-0 pointer-events-auto"
+              />
 
               <div className="flex items-center justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={handleClearCustom}>
