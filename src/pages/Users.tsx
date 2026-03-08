@@ -105,8 +105,16 @@ export default function Users() {
         .update(profileUpdate)
         .eq('user_id', editingUser.user_id);
 
-      if (data.role) {
-        await updateUserRole.mutateAsync({ userId: editingUser.user_id, role: data.role });
+      // Handle role: set 'tecnico' or remove role
+      if (data.role === 'tecnico') {
+        await updateUserRole.mutateAsync({ userId: editingUser.user_id, role: 'tecnico' });
+      } else if (editingUser.role === 'tecnico' && !data.role) {
+        // Remove tecnico role
+        await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', editingUser.user_id)
+          .eq('role', 'tecnico');
       }
 
       await upsertPermissions.mutateAsync({

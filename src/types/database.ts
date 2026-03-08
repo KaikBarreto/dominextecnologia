@@ -95,6 +95,7 @@ export interface ServiceOrder {
   client_signature?: string;
   notes?: string;
   created_by?: string;
+  team_id?: string;
   form_template_id?: string;
   created_at: string;
   updated_at: string;

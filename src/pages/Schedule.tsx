@@ -13,6 +13,8 @@ import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useTeams } from '@/hooks/useTeams';
+import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
@@ -27,6 +29,8 @@ export default function Schedule() {
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
+  const { teamsWithMembers } = useTeams();
+  const { user } = useAuth();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -41,14 +45,34 @@ export default function Schedule() {
   const [customerFilter, setCustomerFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // Get team IDs the current user belongs to
+  const myTeamIds = useMemo(() => {
+    if (!user?.id) return [];
+    return teamsWithMembers
+      .filter(t => t.members.some(m => m.user_id === user.id))
+      .map(t => t.id);
+  }, [teamsWithMembers, user?.id]);
+
+  // Check if current user is a technician
+  const isTechnician = useMemo(() => {
+    return technicians.some(t => t.user_id === user?.id);
+  }, [technicians, user?.id]);
+
   const filteredOrders = useMemo(() => {
     return serviceOrders.filter((order) => {
+      // If user is a technician, only show their own OS or OS assigned to their teams
+      if (isTechnician && user?.id) {
+        const isAssignedToMe = order.technician_id === user.id;
+        const isAssignedToMyTeam = order.team_id && myTeamIds.includes(order.team_id);
+        if (!isAssignedToMe && !isAssignedToMyTeam) return false;
+      }
+
       if (technicianFilter !== 'all' && order.technician_id !== technicianFilter) return false;
       if (customerFilter !== 'all' && order.customer_id !== customerFilter) return false;
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
       return true;
     });
-  }, [serviceOrders, technicianFilter, customerFilter, statusFilter]);
+  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds]);
 
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
