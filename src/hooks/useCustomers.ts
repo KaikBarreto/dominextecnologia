@@ -12,6 +12,7 @@ export interface CustomerInput {
   phone?: string;
   address?: string;
   complement?: string;
+  neighborhood?: string;
   city?: string;
   state?: string;
   zip_code?: string;
