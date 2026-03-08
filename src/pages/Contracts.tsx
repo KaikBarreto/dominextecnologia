@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -144,7 +144,7 @@ export default function Contracts() {
 
                     let nextDateColor = 'text-muted-foreground';
                     if (nextOcc) {
-                      const daysUntil = differenceInDays(new Date(nextOcc.scheduled_date), new Date());
+                      const daysUntil = differenceInDays(parseISO(nextOcc.scheduled_date + 'T12:00:00'), new Date());
                       if (daysUntil < 0) nextDateColor = 'text-destructive font-medium';
                       else if (daysUntil <= 7) nextDateColor = 'text-warning font-medium';
                       else nextDateColor = 'text-success';
@@ -166,7 +166,7 @@ export default function Contracts() {
                         <TableCell><Badge variant="secondary">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</Badge></TableCell>
                         <TableCell>
                           {nextOcc ? (
-                            <span className={nextDateColor}>{format(new Date(nextOcc.scheduled_date), 'dd/MM/yyyy')}</span>
+                            <span className={nextDateColor}>{format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
