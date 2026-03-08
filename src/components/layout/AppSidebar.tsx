@@ -96,7 +96,7 @@ const WhatsAppIcon = () => (
 
 export function AppSidebar() {
   const { profile, roles, hasScreenAccess } = useAuth();
-  const { logoUrl, defaultLogoDark } = useWhiteLabel();
+  const { logoUrl, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
@@ -154,7 +154,11 @@ export function AppSidebar() {
           to="/dashboard"
           className="h-14 flex items-center justify-center bg-white border-b border-border shrink-0 overflow-hidden"
         >
-          {collapsed
+          {logoLoading ? (
+            collapsed
+              ? <div className="h-7 w-7 rounded bg-muted animate-pulse" />
+              : <div className="h-8 w-28 rounded bg-muted animate-pulse" />
+          ) : collapsed
             ? <img src={iconePreto} alt="Logo" className="h-7 w-7 object-contain" />
             : <img src={logoUrl || defaultLogoDark} alt="Logo" className="h-8 w-auto mx-auto" />
           }
