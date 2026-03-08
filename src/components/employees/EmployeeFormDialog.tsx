@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Loader2, Camera, Link2, Unlink } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Employee } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
+import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 
 interface EmployeeFormDialogProps {
