@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   LayoutDashboard, TrendingUp, TrendingDown, Tag, FileBarChart, History, CalendarClock,
 } from 'lucide-react';
@@ -31,11 +31,28 @@ export default function Finance() {
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
 
   const {
-    transactions, summary, isLoading,
+    transactions, isLoading,
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
 
   const filteredTransactions = filterByDate(transactions, 'transaction_date');
+
+  // Compute summary from filtered transactions
+  const summary = useMemo(() => {
+    const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
+    filteredTransactions.forEach((t) => {
+      if (t.transaction_type === 'entrada') {
+        s.totalEntradas += Number(t.amount);
+        if (!t.is_paid) s.aReceber += Number(t.amount);
+      } else {
+        s.totalSaidas += Number(t.amount);
+        if (!t.is_paid) s.aPagar += Number(t.amount);
+      }
+    });
+    s.saldo = s.totalEntradas - s.totalSaidas;
+    return s;
+  }, [filteredTransactions]);
+
 
   const handleSubmit = async (data: any) => {
     if (editingTransaction) {
