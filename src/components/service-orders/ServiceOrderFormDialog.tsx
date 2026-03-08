@@ -28,11 +28,12 @@ import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog'
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
+import { CepLookup } from '@/components/CepLookup';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 const serviceOrderSchema = z.object({
-  customer_id: z.string().min(1, 'Selecione um cliente'),
+  customer_id: z.string().optional(),
   equipment_id: z.string().optional(),
   technician_id: z.string().optional(),
   os_type: z.enum(['manutencao_preventiva', 'manutencao_corretiva', 'instalacao', 'visita_tecnica']),
@@ -82,6 +83,14 @@ export function ServiceOrderFormDialog({
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
+  const [customerMode, setCustomerMode] = useState<'existing' | 'adhoc'>('existing');
+  const [adhocName, setAdhocName] = useState('');
+  const [adhocPhone, setAdhocPhone] = useState('');
+  const [adhocCep, setAdhocCep] = useState('');
+  const [adhocAddress, setAdhocAddress] = useState('');
+  const [adhocCity, setAdhocCity] = useState('');
+  const [adhocState, setAdhocState] = useState('');
+  const [adhocNeighborhood, setAdhocNeighborhood] = useState('');
   const { equipment } = useEquipment(selectedCustomerId);
 
   const selectedServiceType = useMemo(
@@ -141,6 +150,9 @@ export function ServiceOrderFormDialog({
       setEquipmentTemplateMap({});
       setRequireTechSignature(false);
       setRequireClientSignature(false);
+      setCustomerMode('existing');
+      setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
+      setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
       form.reset({
         customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
         equipment_id: serviceOrder?.equipment_id ?? '',
@@ -162,6 +174,25 @@ export function ServiceOrderFormDialog({
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const handleCreateSubmit = async () => {
     const data = form.getValues();
+
+    // If adhoc customer, auto-create first
+    let customerId = data.customer_id;
+    if (customerMode === 'adhoc') {
+      if (!adhocName.trim()) return;
+      const result = await createCustomer.mutateAsync({
+        name: adhocName.trim(),
+        phone: adhocPhone || undefined,
+        address: adhocAddress || undefined,
+        neighborhood: adhocNeighborhood || undefined,
+        city: adhocCity || undefined,
+        state: adhocState || undefined,
+        zip_code: adhocCep?.replace(/\D/g, '') || undefined,
+      } as any);
+      if (!result) return;
+      customerId = (result as any).id;
+    }
+
+    if (!customerId) return;
     const assignee = data.technician_id || '';
     const isAll = assignee === 'all';
     const isTechTeam = !isAll && assignee.startsWith('team:');
@@ -170,6 +201,7 @@ export function ServiceOrderFormDialog({
 
     const baseData = {
       ...data,
+      customer_id: customerId,
       technician_id: techId,
       team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
@@ -225,14 +257,18 @@ export function ServiceOrderFormDialog({
 
   const activeSteps = useMemo(() => {
     if (serviceOrder) return STEPS;
+    if (customerMode === 'adhoc') return STEPS.filter(s => s.key !== 'equipment');
     if (!showEquipmentStep) return STEPS.filter(s => s.key !== 'equipment');
     return STEPS;
-  }, [showEquipmentStep, serviceOrder]);
+  }, [showEquipmentStep, serviceOrder, customerMode]);
 
   const currentStepKey = activeSteps[step]?.key || 'client';
 
   const canGoNext = () => {
-    if (currentStepKey === 'client') return !!form.getValues('customer_id');
+    if (currentStepKey === 'client') {
+      if (customerMode === 'adhoc') return !!adhocName.trim();
+      return !!form.getValues('customer_id');
+    }
     return true;
   };
 
@@ -400,28 +436,94 @@ export function ServiceOrderFormDialog({
           {/* Step 1: Client & Service */}
           {currentStepKey === 'client' && (
             <div className="space-y-4">
-              <FormField control={form.control} name="customer_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente *</FormLabel>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <FormControl>
-                        <SearchableSelect
-                          options={customerOptions}
-                          value={field.value}
-                          onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
-                          placeholder="Selecione o cliente"
-                          searchPlaceholder="Buscar cliente..."
-                        />
-                      </FormControl>
+              {/* Customer mode toggle */}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={customerMode === 'existing' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => { setCustomerMode('existing'); }}
+                >
+                  Cliente cadastrado
+                </Button>
+                <Button
+                  type="button"
+                  variant={customerMode === 'adhoc' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => { setCustomerMode('adhoc'); form.setValue('customer_id', ''); setSelectedCustomerId(undefined); setSelectedEquipmentIds([]); }}
+                >
+                  Cliente avulso
+                </Button>
+              </div>
+
+              {customerMode === 'existing' ? (
+                <FormField control={form.control} name="customer_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cliente *</FormLabel>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <FormControl>
+                          <SearchableSelect
+                            options={customerOptions}
+                            value={field.value}
+                            onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
+                            placeholder="Selecione o cliente"
+                            searchPlaceholder="Buscar cliente..."
+                          />
+                        </FormControl>
+                      </div>
+                      <Button type="button" variant="outline" size="icon" title="Criar cliente" onClick={() => setQuickCreateCustomerOpen(true)}>
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button type="button" variant="outline" size="icon" title="Criar cliente" onClick={() => setQuickCreateCustomerOpen(true)}>
-                      <UserPlus className="h-4 w-4" />
-                    </Button>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              ) : (
+                <div className="space-y-3 rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">O cliente será criado automaticamente com os dados abaixo.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Label>Nome *</Label>
+                      <Input value={adhocName} onChange={e => setAdhocName(e.target.value)} placeholder="Nome do cliente" />
+                    </div>
+                    <div>
+                      <Label>Telefone</Label>
+                      <Input value={adhocPhone} onChange={e => setAdhocPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                    </div>
+                    <div>
+                      <Label>CEP</Label>
+                      <CepLookup
+                        value={adhocCep}
+                        onChange={setAdhocCep}
+                        onAddressFound={(addr) => {
+                          setAdhocAddress(addr.logradouro);
+                          setAdhocNeighborhood(addr.bairro);
+                          setAdhocCity(addr.cidade);
+                          setAdhocState(addr.estado);
+                        }}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label>Endereço</Label>
+                      <Input value={adhocAddress} onChange={e => setAdhocAddress(e.target.value)} placeholder="Rua, número" />
+                    </div>
+                    <div>
+                      <Label>Bairro</Label>
+                      <Input value={adhocNeighborhood} onChange={e => setAdhocNeighborhood(e.target.value)} placeholder="Bairro" />
+                    </div>
+                    <div>
+                      <Label>Cidade</Label>
+                      <Input value={adhocCity} onChange={e => setAdhocCity(e.target.value)} placeholder="Cidade" />
+                    </div>
+                    <div>
+                      <Label>Estado</Label>
+                      <Input value={adhocState} onChange={e => setAdhocState(e.target.value)} placeholder="UF" maxLength={2} />
+                    </div>
                   </div>
-                  <FormMessage />
-                </FormItem>
-              )} />
+                </div>
+              )}
+
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Serviço</FormLabel>
