@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { StateCitySelector } from '@/components/StateCitySelector';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -512,13 +513,14 @@ export function ServiceOrderFormDialog({
                       <Label>Bairro</Label>
                       <Input value={adhocNeighborhood} onChange={e => setAdhocNeighborhood(e.target.value)} placeholder="Bairro" />
                     </div>
-                    <div>
-                      <Label>Cidade</Label>
-                      <Input value={adhocCity} onChange={e => setAdhocCity(e.target.value)} placeholder="Cidade" />
-                    </div>
-                    <div>
-                      <Label>Estado</Label>
-                      <Input value={adhocState} onChange={e => setAdhocState(e.target.value)} placeholder="UF" maxLength={2} />
+                    <div className="sm:col-span-2">
+                      <Label>UF / Cidade</Label>
+                      <StateCitySelector
+                        selectedState={adhocState}
+                        selectedCity={adhocCity}
+                        onStateChange={setAdhocState}
+                        onCityChange={setAdhocCity}
+                      />
                     </div>
                   </div>
                 </div>
