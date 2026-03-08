@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,9 @@ export default function Settings() {
   const [companyState, setCompanyState] = useState('');
   const [companyZip, setCompanyZip] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [wlUploading, setWlUploading] = useState(false);
+  const [wlEnabled, setWlEnabled] = useState(false);
+  const [wlColor, setWlColor] = useState('#00C597');
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
@@ -67,6 +70,8 @@ export default function Settings() {
       setCompanyZip(settings.zip_code || '');
       setCompanyNeighborhood((settings as any).neighborhood || '');
       setCompanyComplement((settings as any).complement || '');
+      setWlEnabled(!!(settings as any).white_label_enabled);
+      setWlColor((settings as any).white_label_primary_color || '#00C597');
     }
   }, [settings]);
 
