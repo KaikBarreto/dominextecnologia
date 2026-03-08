@@ -40,6 +40,7 @@ const customerSchema = z.object({
   state: z.string().optional(),
   zip_code: z.string().optional(),
   notes: z.string().optional(),
+  origin: z.string().optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -71,7 +72,7 @@ export function CustomerFormDialog({
     defaultValues: {
       name: '', customer_type: 'pj', company_name: '', document: '',
       email: '', phone: '', birth_date: '', address: '', address_number: '',
-      complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '',
+      complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '', origin: '',
     },
   });
 
@@ -96,6 +97,7 @@ export function CustomerFormDialog({
         state: customer?.state ?? '',
         zip_code: customer?.zip_code ?? '',
         notes: customer?.notes ?? '',
+        origin: (customer as any)?.origin ?? '',
       });
     }
   }, [open, customer]);
