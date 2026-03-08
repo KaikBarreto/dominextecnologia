@@ -1,65 +1,85 @@
 
 
-## Plano: Itens do Orçamento Profissional
+## Plan: Login Layout Fix + Full Permissions System
 
-### O que muda
+### 1. Login Mobile Layout Fix
+In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
 
-Substituir o `QuoteItemsTable` atual (lista linear genérica) por uma estrutura profissional separada em **duas seções**: **Serviços / Mão de Obra** e **Materiais**, seguindo padrões de geradores de orçamento do mercado (ex: propostas técnicas de manutenção, orçamentos de construção).
+### 2. Permissions System - Database Changes
 
-### Estrutura visual
+Create 2 new tables via migration:
 
-```text
-┌─────────────────────────────────────────────────────┐
-│ 🔧 SERVIÇOS E MÃO DE OBRA                    [+ Adicionar] │
-│ ┌─────────────────────────────────────────────────┐ │
-│ │ [Buscar serviço pré-cadastrado ▼] ou livre      │ │
-│ │ Descrição | Qtd | Valor Unit. | Total  | 🗑️    │ │
-│ │ ─────────────────────────────────────────────── │ │
-│ │ Manutenção Preventiva  | 2 | R$150 | R$300 | X │ │
-│ │ Mão de obra técnica    | 4h| R$80  | R$320 | X │ │
-│ │                         Subtotal Serviços: R$620│ │
-│ └─────────────────────────────────────────────────┘ │
-│                                                     │
-│ 📦 MATERIAIS                                 [+ Adicionar] │
-│ ┌─────────────────────────────────────────────────┐ │
-│ │ [Buscar material do estoque ▼] ou livre         │ │
-│ │ Descrição | Qtd | Valor Unit. | Total  | 🗑️    │ │
-│ │ ─────────────────────────────────────────────── │ │
-│ │ Filtro de ar (SKU-001) | 2 | R$45  | R$90  | X │ │
-│ │                        Subtotal Materiais: R$90 │ │
-│ └─────────────────────────────────────────────────┘ │
-│                                                     │
-│          Subtotal Serviços: R$ 620,00               │
-│          Subtotal Materiais: R$ 90,00               │
-│          SUBTOTAL GERAL: R$ 710,00                  │
-└─────────────────────────────────────────────────────┘
+**`permission_presets`** (cargos/kits de permissão):
+- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, authenticated can view
+
+**`user_permissions`** (permissões individuais por usuário):
+- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, users can view own
+
+The permissions will be a flat list of string keys covering:
+
+**Screen permissions (telas):**
+- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+
+**Function permissions (funções):**
+- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
+- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
+- `fn:manage_equipment`, `fn:manage_inventory`
+- `fn:manage_finance`, `fn:view_finance_totals`
+- `fn:manage_users`, `fn:manage_settings`
+- `fn:manage_crm`, `fn:manage_pmoc`
+
+### 3. Users Page Redesign (`src/pages/Users.tsx`)
+
+Redesign as a full CRUD inspired by the reference screenshots:
+- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
+- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
+- **Search bar** at the top
+
+### 4. New Components
+
+**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
+- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
+- "Perfil de Acesso" select: choose a preset or "Personalizado"
+- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
+- **Funções section**: Checkboxes for action permissions
+- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+
+**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
+- Name, description, and same checkbox structure as above
+- Accessible from a gear icon on the Users page header
+
+### 5. New Hook: `usePermissions.ts`
+- Fetch user's permissions from `user_permissions` table
+- Provide `hasPermission(key: string)` helper
+- Provide `hasScreenAccess(screenKey: string)` helper
+
+### 6. Auth Context Updates
+- Add `permissions: string[]` to AuthContext state
+- Fetch from `user_permissions` table on login
+- Expose `hasPermission()` method
+
+### 7. Sidebar & Menu Filtering
+- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
+- Each menu item maps to a `screen:*` permission
+- Fallback: if user has no `user_permissions` row, use legacy role-based access
+- Update `MobileNav.tsx` similarly
+
+### 8. Edge Function for User Creation
+Create `supabase/functions/create-user/index.ts`:
+- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
+- Also creates the profile and user_permissions records
+- This is needed because client-side `signUp` sends a confirmation email and logs in
+
+### Technical Details
+
+The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
+```json
+["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
 ```
 
-### Funcionalidades
+Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
 
-1. **Seleção de serviços pré-cadastrados** — SearchableSelect com dados de `useServiceTypes()` (tipos de serviço ativos). Ao selecionar, preenche descrição automaticamente. Permite também digitação livre.
-
-2. **Seleção de materiais do estoque** — SearchableSelect com dados de `useInventory()`. Ao selecionar, preenche descrição, valor unitário (`sale_price` ou `cost_price`), e vincula `inventory_id`. Permite também digitação livre.
-
-3. **Mão de obra** — Fica na seção de serviços com `item_type = 'mao_de_obra'`, pode selecionar de serviços ou digitar livre (ex: "4 horas de técnico").
-
-4. **Subtotais por seção** — Cada seção mostra seu subtotal independente. No rodapé, resumo com subtotal de serviços + subtotal de materiais = subtotal geral.
-
-5. **Botões de adicionar separados** — Cada seção tem seu próprio botão "Adicionar" que já define o `item_type` correto.
-
-### Alterações técnicas
-
-**`src/components/quotes/QuoteItemsTable.tsx`** — Reescrever completamente:
-- Importar `useServiceTypes` e `useInventory`
-- Separar items em dois arrays filtrados: `servicos` (item_type = servico | mao_de_obra) e `materiais` (item_type = material)
-- Cada seção renderiza seus itens com SearchableSelect para seleção rápida + Input de descrição editável
-- Ao selecionar um serviço: preenche `description` e `service_type_id`
-- Ao selecionar um material: preenche `description`, `unit_price`, `inventory_id`
-- Calcular e exibir subtotais por seção
-
-**`src/components/quotes/QuoteFormDialog.tsx`** — Ajustar o resumo financeiro para mostrar subtotal de serviços e materiais separadamente antes do desconto/total.
-
-**Nenhuma alteração de banco** — Os campos `inventory_id` e `service_type_id` já existem na tabela `quote_items`. Apenas precisamos passar esses valores no `useQuotes.ts` createQuote/updateQuote mutations.
-
-**`src/hooks/useQuotes.ts`** — Atualizar mutations para incluir `inventory_id` e `service_type_id` ao salvar items.
+The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
 

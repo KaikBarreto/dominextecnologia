@@ -111,6 +111,8 @@ export function useQuotes() {
             quantity: item.quantity,
             unit_price: item.unit_price,
             total_price: item.quantity * item.unit_price,
+            inventory_id: item.inventory_id || null,
+            service_type_id: item.service_type_id || null,
           })));
 
         if (itemsError) throw itemsError;
@@ -150,6 +152,8 @@ export function useQuotes() {
             quantity: item.quantity,
             unit_price: item.unit_price,
             total_price: item.quantity * item.unit_price,
+            inventory_id: item.inventory_id || null,
+            service_type_id: item.service_type_id || null,
           })));
 
         if (itemsError) throw itemsError;
