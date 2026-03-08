@@ -134,6 +134,7 @@ export type Database = {
       company_settings: {
         Row: {
           address: string | null
+          address_number: string | null
           city: string | null
           complement: string | null
           created_at: string
@@ -154,6 +155,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          address_number?: string | null
           city?: string | null
           complement?: string | null
           created_at?: string
@@ -174,6 +176,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          address_number?: string | null
           city?: string | null
           complement?: string | null
           created_at?: string

@@ -37,6 +37,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeBranco from '@/assets/icone_branco.png';
+import iconeVerde from '@/assets/icone_verde.png';
 import logoWhiteHorizontal from '@/assets/logo-white-horizontal.png';
 
 interface MenuItem {
