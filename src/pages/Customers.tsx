@@ -91,9 +91,9 @@ export default function Customers() {
         <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
           Lista de Clientes
         </h2>
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
