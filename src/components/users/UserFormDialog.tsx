@@ -64,6 +64,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { employees } = useEmployees();
   const [accessProfile, setAccessProfile] = useState<string>('custom');
+  const [showPwd, setShowPwd] = useState(false);
   const [form, setForm] = useState<UserFormData>({
     full_name: '',
     email: '',
