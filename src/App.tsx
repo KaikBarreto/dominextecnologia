@@ -35,6 +35,7 @@ import MobileMenu from "./pages/MobileMenu";
 import Teams from "./pages/Teams";
 import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
+import ServiceRating from "./pages/ServiceRating";
 import Changelog from "./pages/Changelog";
 import Tutorials from "./pages/Tutorials";
 import Employees from "./pages/Employees";
@@ -113,6 +114,8 @@ const AppRoutes = () => (
     
     {/* Technician OS - Public route with OS ID */}
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />
+    {/* Public rating page */}
+    <Route path="/avaliacao/:token" element={<ServiceRating />} />
 
     {/* Protected Routes */}
     <Route

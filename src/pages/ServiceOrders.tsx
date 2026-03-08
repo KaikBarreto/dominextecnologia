@@ -15,6 +15,7 @@ import {
   Settings,
   LayoutList,
   LayoutGrid,
+  Star,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -55,6 +58,7 @@ const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string
 
 export default function ServiceOrders() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
@@ -131,6 +135,24 @@ export default function ServiceOrders() {
         <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
         <p className="text-muted-foreground">Gerencie suas ordens de serviço</p>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="orders" className="flex items-center gap-1.5">
+            <ClipboardList className="h-4 w-4" />
+            Ordens de Serviço
+          </TabsTrigger>
+          <TabsTrigger value="nps" className="flex items-center gap-1.5">
+            <Star className="h-4 w-4" />
+            NPS e Satisfação
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="nps">
+          <NpsDashboard />
+        </TabsContent>
+
+        <TabsContent value="orders">
 
       <DateRangeFilter
         value={range}
@@ -476,6 +498,8 @@ export default function ServiceOrders() {
         open={statusConfigOpen}
         onOpenChange={setStatusConfigOpen}
       />
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }

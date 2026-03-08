@@ -121,11 +121,26 @@ export function useServiceOrders() {
         .single();
       
       if (error) throw error;
+
+      // Auto-create rating token when status changes to concluida
+      if (input.status === 'concluida') {
+        const { error: ratingError } = await supabase
+          .from('service_ratings')
+          .insert({ service_order_id: id })
+          .select()
+          .single();
+        // Ignore duplicate constraint error (already exists)
+        if (ratingError && ratingError.code !== '23505') {
+          console.error('Error creating rating token:', ratingError);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
       toast({ title: 'OS atualizada com sucesso!' });
     },
     onError: (error: Error) => {
