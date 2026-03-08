@@ -293,7 +293,7 @@ export default function CustomerPortal() {
                         )}
                       </div>
                       {isEnRoute && (
-                        <a href={`${window.location.origin}/acompanhamento/${os.id}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`} target="_blank" rel="noopener noreferrer">
                           <Button size="sm" variant="default" className="gap-1 text-xs">
                             📍 Acompanhar
                           </Button>

@@ -10,6 +10,7 @@ import { BalanceSummary } from '@/utils/employeeCalculations';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { processImageFile } from '@/utils/imageConvert';
 
 interface EmployeeCardProps {
   employee: Employee;
@@ -30,8 +31,9 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onMovement, 
   const { toast } = useToast();
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file || !onUpdatePhoto) return;
+    file = await processImageFile(file);
 
     setUploading(true);
     try {

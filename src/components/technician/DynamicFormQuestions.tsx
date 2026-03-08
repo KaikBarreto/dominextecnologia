@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
 
@@ -172,7 +173,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
       const existing = responses[questionId]?.response_photo_url;
       if (existing) uploadedUrls.push(...existing.split(','));
 
-      for (const file of Array.from(files)) {
+      for (const rawFile of Array.from(files)) {
+        const file = await processImageFile(rawFile);
         const fileExt = file.name.split('.').pop();
         const fileName = `${serviceOrderId}/form-${questionId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
 

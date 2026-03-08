@@ -49,7 +49,7 @@ import Quotes from "./pages/Quotes";
 import QuotePublic from "./pages/QuotePublic";
 import ProposalPublic from "./pages/ProposalPublic";
 import CustomerPortal from "./pages/CustomerPortal";
-import PublicTracking from "./pages/PublicTracking";
+
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
 
@@ -128,8 +128,6 @@ const AppRoutes = () => (
     <Route path="/proposta/:token" element={<ProposalPublic />} />
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />
-    {/* Public real-time tracking */}
-    <Route path="/acompanhamento/:osId" element={<PublicTracking />} />
 
     {/* Protected Routes */}
     <Route

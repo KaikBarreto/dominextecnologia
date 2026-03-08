@@ -43,7 +43,7 @@ function OrderDetail({
   const [linkCopied, setLinkCopied] = useState(false);
 
   const handleCopyTrackingLink = async () => {
-    const link = `${window.location.origin}/acompanhamento/${order.id}`;
+    const link = `${window.location.origin}/os-tecnico/${order.id}`;
     await navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);

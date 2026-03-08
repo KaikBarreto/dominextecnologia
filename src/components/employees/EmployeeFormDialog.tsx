@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { Employee } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
@@ -65,8 +66,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   }, [open, employee]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
+    file = await processImageFile(file);
     if (file.size > 5 * 1024 * 1024) {
       toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
       return;

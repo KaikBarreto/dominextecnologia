@@ -15,6 +15,7 @@ import {
 import { Loader2, ChevronRight, ChevronLeft, Check, Upload, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
@@ -173,11 +174,12 @@ export function CustomerFormDialog({
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setPhotoFile(file);
-                        setPhotoPreview(URL.createObjectURL(file));
+                        const processed = await processImageFile(file);
+                        setPhotoFile(processed);
+                        setPhotoPreview(URL.createObjectURL(processed));
                       }
                     }}
                   />

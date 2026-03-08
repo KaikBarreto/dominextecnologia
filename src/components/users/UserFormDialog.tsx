@@ -23,6 +23,7 @@ import {
   type PermissionPreset,
 } from '@/hooks/usePermissions';
 import { type AppRole } from '@/hooks/useUsers';
+import { processImageFile } from '@/utils/imageConvert';
 
 export interface UserFormData {
   full_name: string;
@@ -121,9 +122,10 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     }));
   };
 
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0];
     if (file) {
+      file = await processImageFile(file);
       setForm(f => ({ ...f, photo: file, removePhoto: false }));
       const url = URL.createObjectURL(file);
       setPhotoPreview(url);
