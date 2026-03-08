@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
+import { useEmployees } from '@/hooks/useEmployees';
 import { PermissionPresetDialog } from '@/components/users/PermissionPresetDialog';
 
 export default function Users() {
@@ -20,6 +21,7 @@ export default function Users() {
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { employees } = useEmployees();
   const [searchQuery, setSearchQuery] = useState('');
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
@@ -155,6 +157,7 @@ export default function Users() {
 
   const openEditUser = (userProfile: UserWithRole) => {
     const perm = getUserPermission(userProfile.user_id);
+    const linkedEmployee = employees.find(e => e.user_id === userProfile.user_id);
     setEditingUser({
       user_id: userProfile.user_id,
       full_name: userProfile.full_name,
@@ -163,6 +166,7 @@ export default function Users() {
       permissions: perm?.permissions || [],
       preset_id: perm?.preset_id || null,
       avatar_url: userProfile.avatar_url,
+      employee_id: linkedEmployee?.id || null,
     });
     setUserFormOpen(true);
   };
