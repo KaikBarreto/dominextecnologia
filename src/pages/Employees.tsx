@@ -40,6 +40,7 @@ export default function Employees() {
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { toast } = useToast();
   const { user } = useAuth();
   const { currentUserRole } = useUsers();
   const isTecnico = currentUserRole === 'tecnico';
