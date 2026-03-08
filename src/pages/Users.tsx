@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Camera } from 'lucide-react';
+import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Camera, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
 import { useUserPermissions, usePermissionPresets } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { PermissionPresetDialog } from '@/components/users/PermissionPresetDialog';
+import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
+import { TechnicianTimeClock } from '@/components/time-tracking/TechnicianTimeClock';
 
 export default function Users() {
   const { users, isLoading, updateUserRole, canManageRoles } = useUsers();
