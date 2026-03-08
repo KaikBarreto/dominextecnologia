@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const transactionSchema = z.object({
@@ -43,22 +44,9 @@ const transactionSchema = z.object({
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
-const categories = {
-  entrada: [
-    'Serviços',
-    'Venda de peças',
-    'Contratos PMOC',
-    'Outros recebimentos',
-  ],
-  saida: [
-    'Fornecedores',
-    'Peças e materiais',
-    'Combustível',
-    'Salários',
-    'Aluguel',
-    'Impostos',
-    'Outras despesas',
-  ],
+const fallbackCategories = {
+  entrada: ['Serviços', 'Venda de peças', 'Contratos PMOC', 'Outros recebimentos'],
+  saida: ['Fornecedores', 'Peças e materiais', 'Combustível', 'Salários', 'Aluguel', 'Impostos', 'Outras despesas'],
 };
 
 interface TransactionFormDialogProps {
@@ -79,7 +67,15 @@ export function TransactionFormDialog({
   defaultType = 'entrada',
 }: TransactionFormDialogProps) {
   const { customers } = useCustomers();
+  const { categories: dbCategories } = useFinancialCategories();
 
+  // Merge DB categories with fallback
+  const getCategoriesForType = (type: 'entrada' | 'saida') => {
+    const fromDb = dbCategories
+      .filter((c) => c.is_active && (c.type === type || c.type === 'ambos'))
+      .map((c) => c.name);
+    return fromDb.length > 0 ? fromDb : fallbackCategories[type];
+  };
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
@@ -188,7 +184,7 @@ export function TransactionFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categories[transactionType].map((cat) => (
+                        {getCategoriesForType(transactionType).map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {cat}
                           </SelectItem>

@@ -1,87 +1,85 @@
 
 
-## Plan: Redesign Financial Module with Sidebar Navigation, Categories, and DRE
+## Plan: Login Layout Fix + Full Permissions System
 
-### Overview
-Redesign the Finance page to use the same sidebar navigation pattern as Settings/other modules. Add dedicated sections for Receitas, Despesas, Categorias, and DRE (Resultado Financeiro).
+### 1. Login Mobile Layout Fix
+In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
 
-### 1. Database Changes
-- Create `financial_categories` table:
-  - `id` (uuid), `name` (text), `type` (text: 'entrada'|'saida'|'ambos'), `color` (text), `is_active` (boolean, default true), `created_at`, `updated_at`
-  - RLS: authenticated can view, admin/gestor can manage
-- No other DB changes needed; `financial_transactions.category` already exists as text and will reference category names
+### 2. Permissions System - Database Changes
 
-### 2. Restructure Finance Page (`src/pages/Finance.tsx`)
-Replace current tabs layout with sidebar navigation pattern (matching Settings.tsx):
+Create 2 new tables via migration:
 
-**Sidebar tabs:**
-- Visao Geral (icon: LayoutDashboard)
-- Receitas (icon: TrendingUp)
-- Despesas (icon: TrendingDown)
-- Categorias (icon: Tag)
-- DRE - Resultado (icon: FileBarChart)
+**`permission_presets`** (cargos/kits de permissão):
+- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, authenticated can view
 
-**Layout**: `flex flex-col lg:flex-row gap-6` with `nav lg:w-52` sidebar on the left, content on the right. Active tab uses `bg-primary text-white`.
+**`user_permissions`** (permissões individuais por usuário):
+- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, users can view own
 
-### 3. Visao Geral Tab
-Inspired by the reference screenshots:
-- **Summary cards**: Saldo do Sistema, Receitas totais (green bg), Despesas totais (red bg)
-- **Resultado do periodo** row showing net result
-- **Distribuicao por Categoria**: Donut chart (recharts PieChart) showing breakdown by category, with toggle Despesas/Receitas
-- **Ultimas Movimentacoes**: Timeline-style list of recent transactions (last 10), with "Ver todas" linking to Receitas/Despesas tabs
+The permissions will be a flat list of string keys covering:
 
-### 4. Receitas Tab
-- Header with "Receitas" title + "Nova Receita" button (green)
-- Search input
-- Table listing only `transaction_type === 'entrada'` transactions
-- Reuse existing `TransactionTable` component, filtered
-- Edit/Delete/Mark as paid actions
+**Screen permissions (telas):**
+- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
 
-### 5. Despesas Tab
-- Header with "Despesas" title + "Nova Despesa" button (red)
-- Same structure as Receitas but filtered for `transaction_type === 'saida'`
+**Function permissions (funções):**
+- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
+- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
+- `fn:manage_equipment`, `fn:manage_inventory`
+- `fn:manage_finance`, `fn:view_finance_totals`
+- `fn:manage_users`, `fn:manage_settings`
+- `fn:manage_crm`, `fn:manage_pmoc`
 
-### 6. Categorias Tab
-- CRUD for financial categories
-- List with name, type badge (Receita/Despesa/Ambos), color indicator
-- Add/Edit dialog with name, type select, color picker
-- Categories will be used in the TransactionFormDialog dropdown (replacing hardcoded list)
+### 3. Users Page Redesign (`src/pages/Users.tsx`)
 
-### 7. DRE - Resultado Tab
-Inspired by the reference screenshot:
-- **KPI cards at top**: Margem de Lucro (%), Receita Liquida, Resultado (EBITDA) - colored cards (red/green)
-- **Line chart**: Evolucao Receita vs Despesas over months (recharts AreaChart)
-- **DRE table**: Structured financial statement rows:
-  - (+) RECEITA BRUTA
-  - (-) IMPOSTOS E DEDUCOES
-  - (=) RECEITA LIQUIDA (highlighted row)
-  - (-) CPV (Custo do Servico)
-  - (=) LUCRO BRUTO (highlighted)
-  - (-) DESPESAS OPERACIONAIS (OPEX)
-  - (=) RESULTADO LIQUIDO (EBITDA) (green/red highlighted)
-- All values computed from existing `financial_transactions` data, grouped by category
+Redesign as a full CRUD inspired by the reference screenshots:
+- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
+- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
+- **Search bar** at the top
 
-### 8. New Components
-- `src/components/financial/FinanceOverview.tsx` - Visao Geral content
-- `src/components/financial/FinanceReceitas.tsx` - Receitas list
-- `src/components/financial/FinanceDespesas.tsx` - Despesas list  
-- `src/components/financial/FinanceCategorias.tsx` - Categories CRUD
-- `src/components/financial/FinanceDRE.tsx` - DRE/Resultado
-- `src/components/financial/CategoryFormDialog.tsx` - Category form
+### 4. New Components
 
-### 9. Hook Updates
-- Create `useFinancialCategories.ts` - CRUD for `financial_categories` table
-- Update `useFinancial.ts` to add monthly summary query for DRE chart data
-- Update `TransactionFormDialog.tsx` to load categories from DB instead of hardcoded array
+**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
+- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
+- "Perfil de Acesso" select: choose a preset or "Personalizado"
+- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
+- **Funções section**: Checkboxes for action permissions
+- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
 
-### 10. Version & Changelog
-- Update `APP_VERSION` to `1.2.0`
-- Add changelog entry for v1.2.0
-- Add database version entry
+**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
+- Name, description, and same checkbox structure as above
+- Accessible from a gear icon on the Users page header
 
-### Technical Notes
-- Recharts (already installed) will be used for the donut chart and area chart
-- The sidebar pattern matches exactly what Settings.tsx uses: `cn('flex items-center gap-3 rounded-lg px-3 py-2.5...', isActive ? 'bg-primary text-white' : '...')`
-- DRE categories mapping: categories with names containing "imposto"/"taxa" map to IMPOSTOS, "custo"/"material"/"peca" map to CPV, others map to OPEX
-- Period filter (month selector) at the top will filter all data across tabs
+### 5. New Hook: `usePermissions.ts`
+- Fetch user's permissions from `user_permissions` table
+- Provide `hasPermission(key: string)` helper
+- Provide `hasScreenAccess(screenKey: string)` helper
+
+### 6. Auth Context Updates
+- Add `permissions: string[]` to AuthContext state
+- Fetch from `user_permissions` table on login
+- Expose `hasPermission()` method
+
+### 7. Sidebar & Menu Filtering
+- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
+- Each menu item maps to a `screen:*` permission
+- Fallback: if user has no `user_permissions` row, use legacy role-based access
+- Update `MobileNav.tsx` similarly
+
+### 8. Edge Function for User Creation
+Create `supabase/functions/create-user/index.ts`:
+- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
+- Also creates the profile and user_permissions records
+- This is needed because client-side `signUp` sends a confirmation email and logs in
+
+### Technical Details
+
+The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
+```json
+["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
+```
+
+Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
+
+The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
 
