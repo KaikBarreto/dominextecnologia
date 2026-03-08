@@ -13,6 +13,7 @@ import { useContracts, generateOccurrences, getFrequencyLabel } from '@/hooks/us
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
+import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +56,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
   const { createContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
+  const { teams } = useTeams();
   const { serviceTypes } = useServiceTypes();
   const { templates } = useFormTemplates();
   const { toast } = useToast();
@@ -236,14 +238,32 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Técnico Responsável</Label>
+                  <Label>Técnico / Equipe Responsável</Label>
                   <Select value={technicianId || 'none'} onValueChange={v => setTechnicianId(v === 'none' ? '' : v)}>
                     <SelectTrigger><SelectValue placeholder="Nenhum (define na OS)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {technicians?.map(t => (
-                        <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
-                      ))}
+                      {(technicians?.length ?? 0) > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Técnicos</div>
+                          {technicians?.map(t => (
+                            <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {teams.filter(t => t.is_active).length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Equipes</div>
+                          {teams.filter(t => t.is_active).map(t => (
+                            <SelectItem key={`team-${t.id}`} value={`team:${t.id}`}>
+                              <div className="flex items-center gap-2">
+                                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                                {t.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -499,6 +519,48 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
                   </div>
                 </div>
               </div>
+
+              {/* Per-item questionnaire review */}
+              {selectedItems.length > 1 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Questionário por item</Label>
+                  <p className="text-xs text-muted-foreground">Altere o questionário individualmente se necessário</p>
+                  <div className="rounded-md border divide-y max-h-52 overflow-y-auto">
+                    {selectedItems.map((item, idx) => {
+                      const currentTemplate = item.form_template_id || formTemplateId || '';
+                      const templateName = templates.find(t => t.id === currentTemplate)?.name;
+                      return (
+                        <div key={idx} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{item.item_name}</p>
+                            {item.item_description && <p className="text-xs text-muted-foreground truncate">{item.item_description}</p>}
+                          </div>
+                          <Select
+                            value={item.form_template_id || 'default'}
+                            onValueChange={v => {
+                              setSelectedItems(prev => prev.map((it, i) =>
+                                i === idx ? { ...it, form_template_id: v === 'default' ? undefined : v } : it
+                              ));
+                            }}
+                          >
+                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                              <SelectValue placeholder={templateName || 'Padrão do contrato'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="default">
+                                {formTemplateId ? `Padrão: ${templates.find(t => t.id === formTemplateId)?.name || 'Questionário'}` : 'Nenhum'}
+                              </SelectItem>
+                              {templates.filter(t => t.is_active).map(t => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {isActive && (
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-start gap-3">

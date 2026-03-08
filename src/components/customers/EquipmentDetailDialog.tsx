@@ -12,6 +12,7 @@ import {
 import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
+import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/types/database';
@@ -35,6 +36,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(equipment?.id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(equipment?.id);
   const { settings: companySettings } = useCompanySettings();
+  const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
@@ -44,11 +46,20 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
 
   const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
 
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !equipment) return;
-    await uploadAttachment.mutateAsync({ equipmentId: equipment.id, file });
-    e.target.value = '';
+    const files = e.target.files;
+    if (!files || files.length === 0 || !equipment) return;
+    setUploadingFiles(true);
+    try {
+      for (const file of Array.from(files)) {
+        await uploadAttachment.mutateAsync({ equipmentId: equipment.id, file });
+      }
+    } finally {
+      setUploadingFiles(false);
+      e.target.value = '';
+    }
   };
 
   const handleAddTask = () => {
@@ -208,6 +219,27 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                 {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
               </Badge>
             </div>
+            {/* Custom fields */}
+            {(() => {
+              const customFields = (equipment as any).custom_fields as Record<string, any> | null;
+              if (!customFields || Object.keys(customFields).length === 0) return null;
+              const visibleFields = fieldConfigs.filter(f => f.is_visible && customFields[f.field_key] != null && customFields[f.field_key] !== '');
+              if (visibleFields.length === 0) return null;
+              return (
+                <div className="grid grid-cols-2 gap-3 col-span-2">
+                  {visibleFields.map(field => {
+                    let displayValue = String(customFields[field.field_key]);
+                    if (field.field_type === 'boolean') displayValue = customFields[field.field_key] ? 'Sim' : 'Não';
+                    return (
+                      <div key={field.id}>
+                        <p className="text-xs text-muted-foreground">{field.label}</p>
+                        <p className="text-sm">{displayValue}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -216,11 +248,11 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Arquivos anexados</p>
-              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
                 <Upload className="mr-2 h-4 w-4" />
-                Enviar arquivo
+                {uploadingFiles ? 'Enviando...' : 'Enviar arquivos'}
               </Button>
-              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+              <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
             </div>
 
             {attachLoading ? (
