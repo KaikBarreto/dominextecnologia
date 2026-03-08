@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { SettingsAppearanceContent } from '@/components/settings/SettingsAppearanceContent';
+import { CepLookup } from '@/components/CepLookup';
 
 const settingsTabs: SettingsTab[] = [
   { value: 'empresa', label: 'Empresa', icon: Building },
@@ -28,6 +30,9 @@ export default function Settings() {
   const [companyPhone, setCompanyPhone] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
+  const [companyNumber, setCompanyNumber] = useState('');
+  const [companyComplement, setCompanyComplement] = useState('');
+  const [companyNeighborhood, setCompanyNeighborhood] = useState('');
   const [companyCity, setCompanyCity] = useState('');
   const [companyState, setCompanyState] = useState('');
   const [companyZip, setCompanyZip] = useState('');
@@ -58,6 +63,8 @@ export default function Settings() {
       setCompanyCity(settings.city || '');
       setCompanyState(settings.state || '');
       setCompanyZip(settings.zip_code || '');
+      setCompanyNeighborhood((settings as any).neighborhood || '');
+      setCompanyComplement((settings as any).complement || '');
     }
   }, [settings]);
 
@@ -71,23 +78,48 @@ export default function Settings() {
       city: companyCity || undefined,
       state: companyState || undefined,
       zip_code: companyZip || undefined,
-    });
+    } as any);
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      return;
+    }
     setUploading(true);
     try {
-      const filePath = `company/logo_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('equipment-files').upload(filePath, file);
+      // Delete old logo if exists
+      if (settings?.logo_url) {
+        try {
+          const oldPath = settings.logo_url.split('/company-logos/')[1];
+          if (oldPath) await supabase.storage.from('company-logos').remove([oldPath]);
+        } catch {}
+      }
+      const filePath = `logo_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
       if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('equipment-files').getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ logo_url: publicUrl });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: err.message });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (settings?.logo_url) {
+      try {
+        const path = settings.logo_url.split('/company-logos/')[1];
+        if (path) await supabase.storage.from('company-logos').remove([path]);
+      } catch {}
+      updateSettings.mutate({ logo_url: null } as any);
     }
   };
 
@@ -119,60 +151,124 @@ export default function Settings() {
               </CardTitle>
               <CardDescription>Informações da empresa que aparecem em etiquetas e documentos</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              {/* Logo section */}
               <div className="space-y-2">
                 <Label>Logo da Empresa</Label>
-                <div className="flex items-center gap-4">
-                  {settings?.logo_url ? (
-                    <img src={settings.logo_url} alt="Logo" className="h-16 w-16 rounded-lg object-contain border" />
-                  ) : (
-                    <div className="h-16 w-16 rounded-lg border-2 border-dashed flex items-center justify-center text-muted-foreground">
-                      <Building className="h-6 w-6" />
+                {settings?.logo_url ? (
+                  <div className="flex items-center gap-4">
+                    <img src={settings.logo_url} alt="Logo" className="h-20 w-20 rounded-lg object-contain border bg-muted" />
+                    <div className="flex flex-col gap-2">
+                      <Button variant="outline" size="sm" asChild disabled={uploading}>
+                        <label className="cursor-pointer">
+                          {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                          Substituir
+                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                        </label>
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Remover
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover logo?</AlertDialogTitle>
+                            <AlertDialogDescription>O logo atual será removido permanentemente.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleRemoveLogo}>Remover</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
-                  )}
-                  <Button variant="outline" size="sm" asChild disabled={uploading}>
-                    <label className="cursor-pointer">
-                      {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                      {uploading ? 'Enviando...' : 'Enviar Logo'}
-                      <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                    </label>
-                  </Button>
-                </div>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer flex flex-col items-center justify-center h-28 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
+                    {uploading ? (
+                      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">Clique para enviar o logo</span>
+                        <span className="text-xs text-muted-foreground">PNG, JPG até 5MB</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
+                  </label>
+                )}
               </div>
+
+              <Separator />
+
+              {/* Company info */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="company-name">Nome da Empresa</Label>
-                  <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nome da sua empresa" />
+                  <Label>Nome da Empresa</Label>
+                  <Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Nome da sua empresa" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cnpj">CNPJ/CPF</Label>
-                  <Input id="cnpj" value={companyDoc} onChange={(e) => setCompanyDoc(e.target.value)} placeholder="00.000.000/0000-00" />
+                  <Label>CNPJ/CPF</Label>
+                  <Input value={companyDoc} onChange={e => setCompanyDoc(e.target.value)} placeholder="00.000.000/0000-00" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="(00) 0000-0000" />
+                  <Label>Telefone</Label>
+                  <Input value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} placeholder="(00) 0000-0000" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} placeholder="contato@empresa.com" />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="address">Endereço</Label>
-                  <Input id="address" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="Rua, número" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
-                  <Input id="city" value={companyCity} onChange={(e) => setCompanyCity(e.target.value)} placeholder="Cidade" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">Estado</Label>
-                  <Input id="state" value={companyState} onChange={(e) => setCompanyState(e.target.value)} placeholder="UF" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="zip">CEP</Label>
-                  <Input id="zip" value={companyZip} onChange={(e) => setCompanyZip(e.target.value)} placeholder="00000-000" />
+                  <Label>Email</Label>
+                  <Input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} placeholder="contato@empresa.com" />
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Address with CEP lookup */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Endereço</Label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>CEP</Label>
+                    <CepLookup
+                      value={companyZip}
+                      onChange={setCompanyZip}
+                      onAddressFound={(addr) => {
+                        setCompanyAddress(addr.logradouro);
+                        setCompanyNeighborhood(addr.bairro);
+                        setCompanyCity(addr.cidade);
+                        setCompanyState(addr.estado);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Logradouro</Label>
+                    <Input value={companyAddress} onChange={e => setCompanyAddress(e.target.value)} placeholder="Rua, Avenida..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Número</Label>
+                    <Input value={companyNumber} onChange={e => setCompanyNumber(e.target.value)} placeholder="Nº" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Complemento</Label>
+                    <Input value={companyComplement} onChange={e => setCompanyComplement(e.target.value)} placeholder="Sala, Andar..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bairro</Label>
+                    <Input value={companyNeighborhood} onChange={e => setCompanyNeighborhood(e.target.value)} placeholder="Bairro" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cidade</Label>
+                    <Input value={companyCity} onChange={e => setCompanyCity(e.target.value)} placeholder="Cidade" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Estado</Label>
+                    <Input value={companyState} onChange={e => setCompanyState(e.target.value)} placeholder="UF" maxLength={2} />
+                  </div>
+                </div>
+              </div>
+
               <Button onClick={handleSaveCompany} disabled={updateSettings.isPending}>
                 {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salvar Alterações

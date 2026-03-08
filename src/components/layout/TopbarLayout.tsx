@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, ClipboardList, Calendar, Users, UsersRound, Package,
   DollarSign, FileText, Settings, UserCircle, TrendingUp, Wrench,
-  ChevronDown, GraduationCap, LogOut, Menu,
+  ChevronDown, GraduationCap, LogOut, Menu, Briefcase,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -43,6 +43,7 @@ const menuItems: MenuItem[] = [
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
   { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
+  { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
 ];
 
 const userMenuPaths = ['/usuarios', '/tutoriais', '/configuracoes'];
