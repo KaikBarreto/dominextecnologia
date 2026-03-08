@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsStatus, FormQuestion } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { ptBR } from 'date-fns/locale';
 
 interface OSPhoto {
@@ -187,6 +189,14 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
                       )}
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Technician Location & Routing */}
+                {serviceOrder.technician_id && serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (
+                  <TechnicianDistanceBadge
+                    technicianId={serviceOrder.technician_id}
+                    customer={serviceOrder.customer}
+                  />
                 )}
 
                 {/* Check-in/out */}
