@@ -15,6 +15,7 @@ export interface TransactionInput {
   is_paid?: boolean;
   customer_id?: string;
   service_order_id?: string;
+  contract_id?: string;
   notes?: string;
 }
 

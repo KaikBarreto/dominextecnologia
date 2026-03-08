@@ -322,7 +322,7 @@ export default function ContractDetail() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total a receber</span>
-                <span className="font-medium text-green-600">R$ {formatBRL(totalReceivable)}</span>
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">R$ {formatBRL(totalReceivable)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Recebido</span>
@@ -330,7 +330,7 @@ export default function ContractDetail() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pendente</span>
-                <span className="font-medium text-orange-500">R$ {formatBRL(totalReceivable - totalPaid)}</span>
+                <span className="font-medium text-orange-500 dark:text-orange-400">R$ {formatBRL(totalReceivable - totalPaid)}</span>
               </div>
             </CardContent>
           </Card>
