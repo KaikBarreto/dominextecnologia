@@ -4,7 +4,6 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 
@@ -14,7 +13,7 @@ interface EmployeeMovementModalProps {
   type: 'vale' | 'bonus' | 'falta';
   employeeName: string;
   currentBalance: number;
-  onSubmit: (data: { amount: number; description?: string; payment_method?: string }) => void;
+  onSubmit: (data: { amount: number; description?: string }) => void;
   isPending?: boolean;
 }
 
@@ -23,14 +22,14 @@ const typeLabels: Record<string, string> = { vale: 'Vale', bonus: 'Bônus', falt
 export function EmployeeMovementModal({ open, onOpenChange, type, employeeName, currentBalance, onSubmit, isPending }: EmployeeMovementModalProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('dinheiro');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const value = parseCurrency(amount);
     if (value <= 0) return;
-    onSubmit({ amount: value, description: description || undefined, payment_method: type === 'vale' ? paymentMethod : undefined });
-    setAmount(''); setDescription(''); setPaymentMethod('dinheiro');
+    onSubmit({ amount: value, description: description || undefined });
+    setAmount('');
+    setDescription('');
   };
 
   return (
@@ -46,19 +45,6 @@ export function EmployeeMovementModal({ open, onOpenChange, type, employeeName, 
           <Label>Valor *</Label>
           <Input value={amount} onChange={e => setAmount(currencyMask(e.target.value))} placeholder="R$ 0,00" required />
         </div>
-
-        {type === 'vale' && (
-          <div className="space-y-1.5">
-            <Label>Forma de Pagamento</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                <SelectItem value="pix">PIX</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         <div className="space-y-1.5">
           <Label>Descrição</Label>

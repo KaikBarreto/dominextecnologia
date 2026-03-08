@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, BarChart3, Plus, Search, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ export default function Employees() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { currentUserRole } = useUsers();
+  const queryClient = useQueryClient();
   const isTecnico = currentUserRole === 'tecnico';
 
   // Load movements for selected employee
@@ -197,7 +198,31 @@ export default function Employees() {
     }
   };
 
-  const handleMovement = (data: { amount: number; description?: string; payment_method?: string }) => {
+  const registerFinancialTransaction = useCallback(async (input: {
+    type: 'entrada' | 'saida';
+    amount: number;
+    description: string;
+    notes?: string;
+  }) => {
+    const today = new Date().toISOString().split('T')[0];
+    await supabase.from('financial_transactions').insert({
+      transaction_type: input.type,
+      amount: input.amount,
+      description: input.description,
+      category: 'Funcionários',
+      transaction_date: today,
+      paid_date: today,
+      is_paid: true,
+      notes: input.notes,
+      created_by: user?.id,
+    });
+
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+  }, [queryClient, user?.id]);
+
+  const handleMovement = (data: { amount: number; description?: string }) => {
     if (!movementEmployee) return;
     const bal = activeBalance;
     let newBalance = bal.currentBalance;
@@ -210,22 +235,42 @@ export default function Employees() {
       amount: data.amount,
       balance_after: newBalance,
       description: data.description,
-      payment_method: data.payment_method,
       created_by: user?.id,
-    }, { onSuccess: () => setMovementEmployee(null) });
+    }, {
+      onSuccess: async () => {
+        const isRevenue = movementType === 'falta';
+        await registerFinancialTransaction({
+          type: isRevenue ? 'entrada' : 'saida',
+          amount: data.amount,
+          description: `${movementType === 'vale' ? 'Vale' : movementType === 'bonus' ? 'Bônus' : 'Falta'} - ${movementEmployee.name}`,
+          notes: data.description,
+        });
+        setMovementEmployee(null);
+      },
+    });
   };
 
-  const handlePayment = (data: { payment_method: string }) => {
+  const handlePayment = () => {
     if (!paymentEmployee) return;
+    const paymentAmount = activeBalance.currentBalance;
+
     addMovement.mutate({
       employee_id: paymentEmployee.id,
       type: 'pagamento',
-      amount: activeBalance.currentBalance,
+      amount: paymentAmount,
       balance_after: 0,
-      description: `Pagamento via ${data.payment_method}`,
-      payment_method: data.payment_method,
+      description: 'Pagamento de salário',
       created_by: user?.id,
-    }, { onSuccess: () => setPaymentEmployee(null) });
+    }, {
+      onSuccess: async () => {
+        await registerFinancialTransaction({
+          type: 'saida',
+          amount: paymentAmount,
+          description: `Pagamento de salário - ${paymentEmployee.name}`,
+        });
+        setPaymentEmployee(null);
+      },
+    });
   };
 
   const handleUpdatePhoto = useCallback((empId: string, url: string) => {

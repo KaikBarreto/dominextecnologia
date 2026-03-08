@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { TrendingUp, Plus, DollarSign, Filter, Search, X, Users, Target, Settings2 } from 'lucide-react';
+import { TrendingUp, Plus, DollarSign, Filter, Search, X, Users, Target, Settings2, Webhook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
-import { 
-  useLeads, 
-  type Lead, 
-  LEAD_SOURCES 
+import {
+  useLeads,
+  type Lead,
+  LEAD_SOURCES
 } from '@/hooks/useLeads';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages, type CrmStage } from '@/hooks/useCrmStages';
@@ -19,6 +19,7 @@ import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
+import { WebhookManagerDialog } from '@/components/crm/WebhookManagerDialog';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -182,6 +183,11 @@ export default function CRM() {
               <Settings2 className="h-4 w-4" />
             </Button>
           </StageManagerDialog>
+          <WebhookManagerDialog>
+            <Button variant="outline" size="icon" title="Configurar Webhooks">
+              <Webhook className="h-4 w-4" />
+            </Button>
+          </WebhookManagerDialog>
           <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
             <Plus className="h-4 w-4" />
             Nova Oportunidade

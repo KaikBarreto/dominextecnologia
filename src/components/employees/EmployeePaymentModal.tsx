@@ -1,9 +1,6 @@
-import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BalanceSummary } from '@/utils/employeeCalculations';
 
 interface EmployeePaymentModalProps {
@@ -12,12 +9,11 @@ interface EmployeePaymentModalProps {
   employeeName: string;
   salary: number;
   balance: BalanceSummary;
-  onSubmit: (data: { payment_method: string }) => void;
+  onSubmit: () => void;
   isPending?: boolean;
 }
 
 export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary, balance, onSubmit, isPending }: EmployeePaymentModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState('pix');
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const toPay = balance.currentBalance;
 
@@ -35,20 +31,9 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Forma de Pagamento</Label>
-          <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pix">PIX</SelectItem>
-              <SelectItem value="dinheiro">Dinheiro</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => onSubmit({ payment_method: paymentMethod })} disabled={isPending || toPay <= 0}>
+          <Button onClick={onSubmit} disabled={isPending || toPay <= 0}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirmar Pagamento
           </Button>
