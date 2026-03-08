@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,6 +23,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useTeams } from '@/hooks/useTeams';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
