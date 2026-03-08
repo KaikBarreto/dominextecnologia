@@ -65,8 +65,8 @@ export function CustomerFormDialog({
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: '', customer_type: 'pj', company_name: '', document: '',
-      email: '', phone: '', birth_date: '', address: '', complement: '',
-      neighborhood: '', city: '', state: '', zip_code: '', notes: '',
+      email: '', phone: '', birth_date: '', address: '', address_number: '',
+      complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '',
     },
   });
 
@@ -84,6 +84,7 @@ export function CustomerFormDialog({
         phone: customer?.phone ?? '',
         birth_date: (customer as any)?.birth_date ?? '',
         address: customer?.address ?? '',
+        address_number: (customer as any)?.address_number ?? '',
         complement: (customer as any)?.complement ?? '',
         neighborhood: (customer as any)?.neighborhood ?? '',
         city: customer?.city ?? '',
