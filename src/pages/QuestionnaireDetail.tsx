@@ -146,6 +146,7 @@ export default function QuestionnaireDetail() {
         options: optionsToSave,
         require_camera: qForm.require_camera || false,
         answer_types: answerTypes,
+        answer_mode: answerMode,
       } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
@@ -164,6 +165,7 @@ export default function QuestionnaireDetail() {
         position,
         require_camera: qForm.require_camera || false,
         answer_types: answerTypes,
+        answer_mode: answerMode,
       } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
