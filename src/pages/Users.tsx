@@ -188,6 +188,25 @@ export default function Users() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    setDeleteLoading(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('manage-user', {
+        body: { action: 'delete_user', user_id: deletingUser.user_id },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      toast({ title: 'Usuário excluído permanentemente!' });
+      setDeletingUser(null);
+      window.location.reload();
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const openEditUser = async (userProfile: UserWithRole) => {
     const perm = getUserPermission(userProfile.user_id);
     const linkedEmployee = employees.find(e => e.user_id === userProfile.user_id);
