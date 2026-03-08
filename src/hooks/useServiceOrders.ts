@@ -13,6 +13,7 @@ export interface ServiceOrderInput {
   customer_id: string;
   equipment_id?: string;
   technician_id?: string;
+  team_id?: string;
   os_type: OsType;
   service_type_id?: string;
   status?: OsStatus;

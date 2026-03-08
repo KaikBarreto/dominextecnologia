@@ -18,7 +18,7 @@ export default function CtaFinalSection() {
       />
 
       <div ref={ref} className="relative mx-auto max-w-3xl px-4 text-center scroll-reveal">
-        <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
           Comece hoje. Resultados em dias.
         </h2>
         <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">

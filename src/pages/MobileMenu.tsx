@@ -19,6 +19,7 @@ const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico' },
   { title: 'Serviços', icon: FileText, path: '/servicos' },
+  { title: 'Equipes', icon: Users, path: '/equipes' },
   { title: 'Questionários', icon: FileText, path: '/questionarios' },
   { title: 'Agenda', icon: Calendar, path: '/agenda' },
   { title: 'Clientes', icon: Users, path: '/clientes' },
@@ -27,7 +28,7 @@ const menuItems = [
   { title: 'Estoque', icon: Package, path: '/estoque' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro' },
   { title: 'PMOC', icon: FileText, path: '/pmoc' },
-  { title: 'Usuários', icon: UserCircle, path: '/usuarios' },
+  { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes' },
 ];
 

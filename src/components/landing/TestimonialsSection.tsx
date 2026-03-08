@@ -35,7 +35,7 @@ export default function TestimonialsSection() {
           Quem usa o Dominex, não volta para o improviso
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid gap-6 md:grid-cols-3">
           {testimonials.map((t) => (
             <div
               key={t.name}

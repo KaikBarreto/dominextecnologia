@@ -2,9 +2,10 @@ import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sideb
 import { AppSidebar } from './AppSidebar';
 import { SystemFooter } from './SystemFooter';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Snowflake, LogOut, Menu, UserCircle } from 'lucide-react';
+import { LogOut, Menu, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import logoDark from '@/assets/logo-dark.png';
 
 function HeaderContent() {
   const { user, signOut } = useAuth();
@@ -20,10 +21,7 @@ function HeaderContent() {
           </Button>
         )}
         {isMobile && (
-          <div className="flex items-center gap-2">
-            <Snowflake className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Sistema</span>
-          </div>
+          <img src={logoDark} alt="Dominex" className="h-6 w-auto" />
         )}
       </div>
 

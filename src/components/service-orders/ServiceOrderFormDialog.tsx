@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,6 +23,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useTeams } from '@/hooks/useTeams';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -70,6 +71,7 @@ export function ServiceOrderFormDialog({
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+  const { teams } = useTeams();
   const [step, setStep] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
@@ -160,15 +162,20 @@ export function ServiceOrderFormDialog({
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const handleCreateSubmit = async () => {
     const data = form.getValues();
+    const assignee = data.technician_id || '';
+    const isTechTeam = assignee.startsWith('team:');
+    const techId = isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined;
+    const teamId = isTechTeam ? assignee.slice(5) : undefined;
+
     const baseData = {
       ...data,
-      technician_id: data.technician_id || undefined,
+      technician_id: techId,
+      team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
     };
 
-    // Build equipment items for junction table
     const equipment_items = selectedEquipmentIds.map(eqId => ({
       equipment_id: eqId,
       form_template_id: equipmentTemplateMap[eqId] || undefined,
@@ -188,10 +195,16 @@ export function ServiceOrderFormDialog({
   };
 
   const handleEditSubmit = async (data: ServiceOrderFormData) => {
+    const assignee = data.technician_id || '';
+    const isTechTeam = assignee.startsWith('team:');
+    const techId = isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined;
+    const teamId = isTechTeam ? assignee.slice(5) : undefined;
+
     const cleanedData = {
       ...data,
       equipment_id: data.equipment_id || undefined,
-      technician_id: data.technician_id || undefined,
+      technician_id: techId,
+      team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
@@ -289,10 +302,21 @@ export function ServiceOrderFormDialog({
               )} />
               <FormField control={form.control} name="technician_id" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Técnico</FormLabel>
+                  <FormLabel>Técnico / Equipe</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent>{technicians?.map((t) => <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Técnicos</SelectLabel>
+                        {technicians?.map((t) => <SelectItem key={t.user_id} value={`user:${t.user_id}`}>{t.full_name}</SelectItem>)}
+                      </SelectGroup>
+                      {teams.filter(t => t.is_active).length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Equipes</SelectLabel>
+                          {teams.filter(t => t.is_active).map((t) => <SelectItem key={t.id} value={`team:${t.id}`}>{t.name}</SelectItem>)}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
@@ -410,10 +434,21 @@ export function ServiceOrderFormDialog({
               )} />
               <FormField control={form.control} name="technician_id" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Técnico</FormLabel>
+                  <FormLabel>Técnico / Equipe</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent>{technicians?.map((t) => <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Técnicos</SelectLabel>
+                        {technicians?.map((t) => <SelectItem key={t.user_id} value={`user:${t.user_id}`}>{t.full_name}</SelectItem>)}
+                      </SelectGroup>
+                      {teams.filter(t => t.is_active).length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Equipes</SelectLabel>
+                          {teams.filter(t => t.is_active).map((t) => <SelectItem key={t.id} value={`team:${t.id}`}>{t.name}</SelectItem>)}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>

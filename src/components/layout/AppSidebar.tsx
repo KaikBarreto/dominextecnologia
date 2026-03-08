@@ -3,6 +3,7 @@ import {
   ClipboardList,
   Calendar,
   Users,
+  UsersRound,
   Package,
   DollarSign,
   FileText,
@@ -42,6 +43,7 @@ const menuItems: MenuItem[] = [
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
+      { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
       { title: 'PMOC', icon: FileText, path: '/pmoc', screenKey: 'screen:pmoc' },
     ],
@@ -52,7 +54,7 @@ const menuItems: MenuItem[] = [
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
   { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
-  { title: 'Usuários', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
+  { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
   { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
