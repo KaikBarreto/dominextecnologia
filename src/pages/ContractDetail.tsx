@@ -1,16 +1,27 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useContractDetail } from '@/hooks/useContractDetail';
 import { getFrequencyLabel } from '@/hooks/useContracts';
-import { format, isBefore } from 'date-fns';
+import { useFinancial } from '@/hooks/useFinancial';
+import { format, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/currency';
+
+/** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
+function parseLocalDate(dateStr: string): Date {
+  return parseISO(dateStr + 'T12:00:00');
+}
 
 const STATUS_LABELS: Record<string, { label: string; variant: 'success' | 'outline' | 'destructive' | 'secondary' }> = {
   active: { label: 'Ativo', variant: 'success' },
