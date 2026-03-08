@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.2.0',
+    date: '08 de março de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Módulo Financeiro Completo',
+        description: 'Redesign do módulo financeiro com navegação lateral (sidebar), visão geral com gráficos, receitas, despesas e DRE.',
+        category: 'recurso',
+      },
+      {
+        title: 'Categorias Financeiras',
+        description: 'CRUD de categorias para organizar receitas e despesas, com cores e tipos personalizáveis.',
+        category: 'recurso',
+      },
+      {
+        title: 'DRE - Demonstrativo de Resultado',
+        description: 'Demonstrativo financeiro automático com cálculo de receita bruta, líquida, lucro bruto, OPEX e resultado final (EBITDA).',
+        category: 'recurso',
+      },
+      {
+        title: 'Gráficos Financeiros',
+        description: 'Gráfico de distribuição por categoria (donut) e evolução receita × despesas ao longo dos meses.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.1.0',
     date: '08 de março de 2026',
     type: 'minor',
@@ -378,7 +405,7 @@ const changelog: ChangelogEntry[] = [
 export default function Changelog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChangeCategory | 'all'>('all');
-  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.1.0']));
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.2.0']));
 
   const filteredChangelog = useMemo(() => {
     return changelog
