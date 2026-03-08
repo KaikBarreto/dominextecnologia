@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Monitor, Settings2, Camera, X } from 'lucide-react';
+import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
