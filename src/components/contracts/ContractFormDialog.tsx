@@ -55,7 +55,7 @@ const QUICK_DAYS = [
 ];
 
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract }: ContractFormDialogProps) {
-  const { createContract, updateContract } = useContracts();
+  const { createContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { teams } = useTeams();
