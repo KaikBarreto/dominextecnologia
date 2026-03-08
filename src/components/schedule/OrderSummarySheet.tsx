@@ -81,7 +81,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-4 p-1 overflow-hidden max-w-full">
+      <div className="space-y-4 p-1 pr-2 overflow-hidden max-w-full">
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={cn('text-xs shadow-sm shadow-black/15', statusBadge.className)}>{statusBadge.label}</Badge>
@@ -151,7 +151,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
                   >
                     <img src="/icons/google-maps.png" alt="Maps" className="h-3.5 w-3.5" />
                     Abrir com Maps
@@ -160,7 +160,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
                     href={`https://waze.com/ul?q=${encodeURIComponent(fullAddress)}&navigate=yes`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
                   >
                     <img src="/icons/waze.png" alt="Waze" className="h-3.5 w-3.5" />
                     Abrir com Waze
@@ -253,7 +253,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit }: OrderSu
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[440px] sm:w-[500px] max-w-[90vw]">
+      <SheetContent className="w-[480px] sm:w-[540px] max-w-[92vw]">
         <SheetHeader>
           <SheetTitle>Resumo da OS</SheetTitle>
         </SheetHeader>
