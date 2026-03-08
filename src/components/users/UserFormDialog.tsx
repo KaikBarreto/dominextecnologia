@@ -63,6 +63,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { employees } = useEmployees();
+  const [accessProfile, setAccessProfile] = useState<string>('custom');
   const [form, setForm] = useState<UserFormData>({
     full_name: '',
     email: '',
@@ -78,6 +79,10 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
 
   useEffect(() => {
     if (editingUser) {
+      const allKeys = getAllPermissionKeys();
+      const isAll = editingUser.permissions.length >= allKeys.length;
+      const presetMatch = editingUser.preset_id || null;
+      
       setForm({
         full_name: editingUser.full_name,
         email: editingUser.email || '',
@@ -85,19 +90,22 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
         phone: editingUser.phone || '',
         role: editingUser.role || '',
         permissions: editingUser.permissions || [],
-        preset_id: editingUser.preset_id || null,
+        preset_id: presetMatch,
         photo: null,
         removePhoto: false,
         employee_id: editingUser.employee_id || null,
       });
       setPhotoPreview(editingUser.avatar_url || null);
+      setAccessProfile(isAll ? 'all' : presetMatch ? presetMatch : 'custom');
     } else {
       setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null, photo: null, removePhoto: false, employee_id: null });
       setPhotoPreview(null);
+      setAccessProfile('custom');
     }
   }, [editingUser, open]);
 
   const handlePresetChange = (presetId: string) => {
+    setAccessProfile(presetId);
     if (presetId === 'custom') {
       setForm(f => ({ ...f, preset_id: null }));
       return;
@@ -113,6 +121,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   };
 
   const togglePermission = (key: string) => {
+    setAccessProfile('custom');
     setForm(f => ({
       ...f,
       preset_id: null,
