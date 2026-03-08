@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ImageIcon } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,6 +21,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import type { Customer } from '@/types/database';
 
 export default function Customers() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -110,6 +112,53 @@ export default function Customers() {
             </div>
           ) : (
             <>
+            {isMobile ? (
+              <div className="space-y-3">
+                {pagination.paginatedItems.map((customer) => (
+                  <Card key={customer.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${customer.id}`)}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0">
+                          {(customer as any).photo_url ? (
+                            <img src={(customer as any).photo_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                              <Users className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{customer.name}</p>
+                              {customer.document && <p className="text-xs text-muted-foreground">{customer.document}</p>}
+                            </div>
+                            <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'} className="shrink-0">
+                              {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
+                            </Badge>
+                          </div>
+                          {(customer as any).company_name && (
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{(customer as any).company_name}</p>
+                          )}
+                          <div className="flex flex-col gap-0.5 mt-2 text-xs text-muted-foreground">
+                            {customer.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{customer.phone}</span>}
+                            {customer.email && <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{customer.email}</span></span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="edit-ghost" size="sm" onClick={(e) => handleEdit(customer, e)}>
+                          <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                        </Button>
+                        <Button variant="destructive-ghost" size="sm" onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); setDeleteDialogOpen(true); }}>
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
             <div className="overflow-x-auto">
                <Table>
                 <TableHeader>
@@ -194,6 +243,7 @@ export default function Customers() {
                 </TableBody>
               </Table>
             </div>
+            )}
             <DataTablePagination
               page={pagination.page}
               totalPages={pagination.totalPages}

@@ -69,7 +69,7 @@ export default function Teams() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map(i => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-24 w-full" /></CardContent></Card>
           ))}
@@ -83,7 +83,7 @@ export default function Teams() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map(team => (
             <Card key={team.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4 space-y-3">

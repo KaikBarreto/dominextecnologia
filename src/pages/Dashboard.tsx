@@ -161,7 +161,7 @@ export default function Dashboard() {
       />
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
           [...Array(4)].map((_, i) => (
             <Card key={i}><CardContent className="p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>
@@ -170,10 +170,10 @@ export default function Dashboard() {
           <>
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">OS Abertas</p>
-                    <p className="text-2xl font-bold">{filteredOsAbertas}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">OS Abertas</p>
+                    <p className="text-xl sm:text-2xl font-bold">{filteredOsAbertas}</p>
                     <p className="text-xs text-muted-foreground">{filteredOsByStatus.pendente} pendentes</p>
                   </div>
                   <div className="rounded-full bg-primary p-3"><ClipboardList className="h-6 w-6 text-white" /></div>
@@ -182,10 +182,10 @@ export default function Dashboard() {
             </Card>
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Clientes Ativos</p>
-                    <p className="text-2xl font-bold">{stats?.clientesAtivos ?? 0}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Clientes Ativos</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats?.clientesAtivos ?? 0}</p>
                     <p className="text-xs text-muted-foreground">cadastrados</p>
                   </div>
                   <div className="rounded-full bg-success p-3"><Users className="h-6 w-6 text-white" /></div>
@@ -194,10 +194,10 @@ export default function Dashboard() {
             </Card>
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Faturamento</p>
-                    <p className="text-2xl font-bold">{formatCurrency(filteredFinancial.faturamento)}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Faturamento</p>
+                    <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(filteredFinancial.faturamento)}</p>
                     <p className="text-xs text-muted-foreground">No período</p>
                   </div>
                   <div className="rounded-full bg-warning p-3"><DollarSign className="h-6 w-6 text-white" /></div>
@@ -206,10 +206,10 @@ export default function Dashboard() {
             </Card>
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Taxa de Conclusão</p>
-                    <p className="text-2xl font-bold">{filteredTaxaConclusao}%</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Taxa de Conclusão</p>
+                    <p className="text-xl sm:text-2xl font-bold">{filteredTaxaConclusao}%</p>
                     <p className="text-xs text-muted-foreground">{filteredOsByStatus.concluida} concluídas</p>
                   </div>
                   <div className="rounded-full bg-info p-3"><TrendingUp className="h-6 w-6 text-white" /></div>
@@ -290,15 +290,15 @@ export default function Dashboard() {
                 {filteredRecentOS.slice(0, 5).map((os: any) => {
                   const statusInfo = statusConfig[os.status as keyof typeof statusConfig] || statusConfig.pendente;
                   return (
-                    <div key={os.id} className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-1">
+                    <div key={os.id} className="flex items-center justify-between rounded-lg border p-3 sm:p-4 gap-2">
+                      <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span>
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${statusInfo.bgColor} ${statusInfo.color}`}>
                             <statusInfo.icon className="h-3 w-3" />{statusInfo.label}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{os.customer?.name || 'Cliente não informado'}</p>
+                        <p className="text-sm text-muted-foreground truncate">{os.customer?.name || 'Cliente não informado'}</p>
                         <p className="text-xs text-muted-foreground">{osTypeLabels[os.os_type as keyof typeof osTypeLabels]}</p>
                       </div>
                     </div>

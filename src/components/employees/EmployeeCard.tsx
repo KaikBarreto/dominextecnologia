@@ -86,9 +86,9 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onMovement, 
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm truncate">{employee.name}</h3>
-                {employee.position && <p className="text-xs text-muted-foreground">{employee.position}</p>}
+                {employee.position && <p className="text-xs text-muted-foreground truncate">{employee.position}</p>}
               </div>
               <div className="flex gap-1 shrink-0">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit className="h-3.5 w-3.5" /></Button>
@@ -109,7 +109,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onMovement, 
                 </AlertDialog>
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
               <span className="text-sm font-semibold">{fmt(employee.salary)}</span>
               <Badge variant={balance.currentBalance >= 0 ? 'default' : 'destructive'} className="text-[10px]">
                 Saldo: {fmt(balance.currentBalance)}
@@ -119,11 +119,11 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onMovement, 
         </div>
 
         {/* Contact info */}
-        <div className="space-y-1 text-xs text-muted-foreground">
-          {employee.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3" />{employee.phone}</p>}
-          {employee.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3" />{employee.email}</p>}
-          {employee.address && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{employee.address}</p>}
-          {employee.hire_date && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3" />Admissão: {format(new Date(employee.hire_date + 'T12:00:00'), 'dd/MM/yyyy')}</p>}
+        <div className="space-y-1 text-xs text-muted-foreground overflow-hidden">
+          {employee.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3 shrink-0" /><span className="truncate">{employee.phone}</span></p>}
+          {employee.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{employee.email}</span></p>}
+          {employee.address && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{employee.address}</span></p>}
+          {employee.hire_date && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3 shrink-0" />Admissão: {format(new Date(employee.hire_date + 'T12:00:00'), 'dd/MM/yyyy')}</p>}
         </div>
 
         {/* Action buttons */}

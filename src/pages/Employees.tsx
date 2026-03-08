@@ -227,7 +227,7 @@ export default function Employees() {
             </div>
 
             {isLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
                 {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />)}
               </div>
             ) : filtered.length === 0 ? (
@@ -235,7 +235,7 @@ export default function Employees() {
                 {search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
                 {filtered.map(emp => (
                   <EmployeeCard
                     key={emp.id}
