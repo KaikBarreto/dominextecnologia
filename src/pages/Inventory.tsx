@@ -208,7 +208,7 @@ export default function Inventory() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button
-                            variant="ghost"
+                            variant="edit-ghost"
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => handleEdit(item)}
@@ -216,9 +216,9 @@ export default function Inventory() {
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="destructive-ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            className="h-8 w-8"
                             onClick={() => handleDelete(item.id)}
                           >
                             <Trash2 className="h-4 w-4" />

@@ -177,13 +177,12 @@ export default function Customers() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" onClick={(e) => handleEdit(customer, e)}>
+                          <Button variant="edit-ghost" size="icon" onClick={(e) => handleEdit(customer, e)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="destructive-ghost"
                             size="icon"
-                            className="text-destructive"
                             onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); setDeleteDialogOpen(true); }}
                           >
                             <Trash2 className="h-4 w-4" />
