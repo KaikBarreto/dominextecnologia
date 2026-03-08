@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.0.15";
+export const APP_VERSION = "1.1.0";
 
-export const VERSION_NOTES = "Contraste de cores e cascata na visão semanal";
+export const VERSION_NOTES = "Sistema de permissões granulares, gestão de usuários e cargos, layout mobile do login";
