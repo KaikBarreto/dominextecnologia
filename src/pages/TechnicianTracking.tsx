@@ -51,7 +51,7 @@ export default function TechnicianTracking() {
       .eq('user_id', selectedUserId)
       .gte('created_at', startOfDay)
       .lte('created_at', endOfDay)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .then(({ data }: { data: any[] | null }) => {
         setLocations((data as LocationRecord[]) || []);
         setLoading(false);
