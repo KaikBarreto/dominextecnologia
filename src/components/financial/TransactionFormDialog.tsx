@@ -12,6 +12,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -239,6 +240,28 @@ export function TransactionFormDialog({
                   <Input type="date" {...field} />
                 </FormControl>
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Is Paid toggle */}
+          <FormField
+            control={form.control}
+            name="is_paid"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <FormLabel className="!mt-0 font-medium">Já foi {isEntrada ? 'recebido' : 'pago'}</FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    {field.value
+                      ? (isEntrada ? 'Será registrado como recebido' : 'Será registrado como pago')
+                      : (isEntrada ? 'Irá para contas a receber' : 'Irá para contas a pagar')
+                    }
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
               </FormItem>
             )}
           />
