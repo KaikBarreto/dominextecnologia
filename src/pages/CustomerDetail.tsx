@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, QrCode, Loader2 } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, Loader2, FileText, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,10 +13,12 @@ import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { useContracts } from '@/hooks/useContracts';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { ContactFormDialog } from '@/components/customers/ContactFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useCustomerContacts } from '@/hooks/useCustomerContacts';
 import { osStatusLabels } from '@/types/database';
@@ -25,8 +27,9 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getFrequencyLabel } from '@/hooks/useContracts';
 
-type TabKey = 'geral' | 'equipamentos' | 'historico' | 'financeiro';
+type TabKey = 'geral' | 'equipamentos' | 'historico' | 'financeiro' | 'chamados' | 'contratos';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -41,6 +44,7 @@ export default function CustomerDetail() {
   const { transactions } = useFinancial();
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
   const { categories } = useEquipmentCategories();
+  const { contracts } = useContracts();
 
   const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
 
@@ -53,13 +57,21 @@ export default function CustomerDetail() {
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const [generatingPortal, setGeneratingPortal] = useState(false);
+  const [contractFormOpen, setContractFormOpen] = useState(false);
   const { toast } = useToast();
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
   const customerTransactions = transactions.filter(t => t.customer_id === id);
+  const customerContracts = contracts.filter(c => c.customer_id === id);
+
+  // Portal tickets (origin = 'portal')
+  const portalTickets = customerOrders.filter(os => (os as any).origin === 'portal');
+
   const ordersPagination = useDataPagination(customerOrders);
   const transactionsPagination = useDataPagination(customerTransactions);
+  const ticketsPagination = useDataPagination(portalTickets);
+  const contractsPagination = useDataPagination(customerContracts);
 
   // Load existing portal link
   useEffect(() => {
@@ -114,6 +126,8 @@ export default function CustomerDetail() {
     { key: 'geral', label: 'Geral' },
     { key: 'equipamentos', label: 'Equipamentos' },
     { key: 'historico', label: 'Histórico de OS' },
+    { key: 'chamados', label: 'Chamados' },
+    { key: 'contratos', label: 'Contratos' },
     { key: 'financeiro', label: 'Financeiro' },
   ];
 
@@ -249,7 +263,7 @@ export default function CustomerDetail() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent"
                   >
-                    <img src="https://maps.google.com/mapfiles/ms/icons/red-dot.png" alt="Google Maps" className="h-5 w-5" />
+                    <img src="/icons/google-maps.png" alt="Google Maps" className="h-5 w-5 object-contain" />
                     Abrir no Google Maps
                   </a>
                   <a
@@ -258,7 +272,7 @@ export default function CustomerDetail() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent"
                   >
-                    <img src="https://www.waze.com/favicon.ico" alt="Waze" className="h-5 w-5" />
+                    <img src="/icons/waze.png" alt="Waze" className="h-5 w-5 object-contain" />
                     Abrir no Waze
                   </a>
                 </div>
@@ -450,6 +464,115 @@ export default function CustomerDetail() {
         </div>
       )}
 
+      {activeTab === 'chamados' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Chamados do Portal</h2>
+          </div>
+          {portalTickets.length === 0 ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <Megaphone className="mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Nenhum chamado aberto pelo portal do cliente</p>
+              {!portalLink && (
+                <p className="text-xs text-muted-foreground mt-1">Gere o link do portal para o cliente abrir chamados</p>
+              )}
+            </div>
+          ) : (
+            <Card><CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ticketsPagination.paginatedItems.map((os) => (
+                      <TableRow key={os.id}>
+                        <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span></TableCell>
+                        <TableCell><p className="text-sm truncate max-w-[200px]">{os.description || '-'}</p></TableCell>
+                        <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {format(new Date(os.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <DataTablePagination page={ticketsPagination.page} totalPages={ticketsPagination.totalPages} totalItems={ticketsPagination.totalItems} from={ticketsPagination.from} to={ticketsPagination.to} pageSize={ticketsPagination.pageSize} onPageChange={ticketsPagination.setPage} onPageSizeChange={ticketsPagination.setPageSize} />
+            </CardContent></Card>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'contratos' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Contratos</h2>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setContractFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Contrato
+            </Button>
+          </div>
+          {customerContracts.length === 0 ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <FileText className="mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Nenhum contrato vinculado a este cliente</p>
+            </div>
+          ) : (
+            <Card><CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Frequência</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Início</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contractsPagination.paginatedItems.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell><p className="font-medium truncate max-w-[200px]">{c.name}</p></TableCell>
+                        <TableCell>
+                          <Badge variant={c.status === 'active' ? 'default' : 'secondary'}>
+                            {c.status === 'active' ? 'Ativo' : c.status === 'paused' ? 'Pausado' : 'Encerrado'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">
+                          {getFrequencyLabel(c.frequency_type, c.frequency_value)}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">
+                          {format(new Date(c.start_date), 'dd/MM/yyyy', { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => navigate(`/contratos/${c.id}`)}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <DataTablePagination page={contractsPagination.page} totalPages={contractsPagination.totalPages} totalItems={contractsPagination.totalItems} from={contractsPagination.from} to={contractsPagination.to} pageSize={contractsPagination.pageSize} onPageChange={contractsPagination.setPage} onPageSizeChange={contractsPagination.setPageSize} />
+            </CardContent></Card>
+          )}
+        </div>
+      )}
+
       {activeTab === 'financeiro' && (
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Transações do Cliente</h2>
@@ -520,6 +643,14 @@ export default function CustomerDetail() {
           await createServiceOrder.mutateAsync(data);
         }}
         isLoading={createServiceOrder.isPending}
+      />
+
+      {/* Contract Form Dialog - pre-filled with this customer */}
+      <ContractFormDialog
+        open={contractFormOpen}
+        onOpenChange={setContractFormOpen}
+        defaultCustomerId={id}
+        onCreated={(contractId) => navigate(`/contratos/${contractId}`)}
       />
 
       {/* Edit Customer Dialog */}
