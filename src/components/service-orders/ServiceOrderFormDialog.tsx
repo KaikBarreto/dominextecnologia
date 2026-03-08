@@ -174,6 +174,25 @@ export function ServiceOrderFormDialog({
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const handleCreateSubmit = async () => {
     const data = form.getValues();
+
+    // If adhoc customer, auto-create first
+    let customerId = data.customer_id;
+    if (customerMode === 'adhoc') {
+      if (!adhocName.trim()) return;
+      const result = await createCustomer.mutateAsync({
+        name: adhocName.trim(),
+        phone: adhocPhone || undefined,
+        address: adhocAddress || undefined,
+        neighborhood: adhocNeighborhood || undefined,
+        city: adhocCity || undefined,
+        state: adhocState || undefined,
+        zip_code: adhocCep?.replace(/\D/g, '') || undefined,
+      } as any);
+      if (!result) return;
+      customerId = (result as any).id;
+    }
+
+    if (!customerId) return;
     const assignee = data.technician_id || '';
     const isAll = assignee === 'all';
     const isTechTeam = !isAll && assignee.startsWith('team:');
