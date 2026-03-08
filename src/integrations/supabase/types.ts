@@ -1900,6 +1900,44 @@ export type Database = {
         }
         Relationships: []
       }
+      technician_locations: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          lat: number
+          lng: number
+          service_order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          lat: number
+          lng: number
+          service_order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          lat?: number
+          lng?: number
+          service_order_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technician_locations_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           created_at: string
