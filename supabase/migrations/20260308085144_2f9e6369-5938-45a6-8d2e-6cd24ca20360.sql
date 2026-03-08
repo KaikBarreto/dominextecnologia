@@ -1,0 +1,1 @@
+ALTER TABLE public.customer_contacts ADD COLUMN position TEXT;
