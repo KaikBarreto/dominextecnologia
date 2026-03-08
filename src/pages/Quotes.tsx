@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, Send, CheckCircle2, XCircle, Copy,
+  CopyPlus, Share2, ClipboardList, DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,19 +18,22 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/useQuotes';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
+import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Quotes() {
-  const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
+  const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editQuote, setEditQuote] = useState<Quote | null>(null);
+  const [viewQuote, setViewQuote] = useState<Quote | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
@@ -51,6 +55,12 @@ export default function Quotes() {
     const url = `${window.location.origin}/orcamento/${token}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Link copiado!' });
+  };
+
+  const shareWhatsApp = (q: Quote) => {
+    const url = `${window.location.origin}/orcamento/${q.token}`;
+    const msg = `Olá! Segue o orçamento #${q.quote_number} no valor de R$ ${(q.total_value ?? 0).toFixed(2)}.\n\nAcesse: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   return (
@@ -172,68 +182,120 @@ export default function Quotes() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-1">
-                      {q.status === 'rascunho' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="Enviar"
-                          onClick={() => updateStatus.mutate({ id: q.id, status: 'enviado' })}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {q.status === 'enviado' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-success"
-                            title="Aprovar"
-                            onClick={() => updateStatus.mutate({ id: q.id, status: 'aprovado' })}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            title="Rejeitar"
-                            onClick={() => updateStatus.mutate({ id: q.id, status: 'rejeitado' })}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Copiar Link"
-                        onClick={() => copyLink(q.token)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="edit-ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Editar"
-                        onClick={() => { setEditQuote(q); setFormOpen(true); }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive-ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Excluir"
-                        onClick={() => setDeleteId(q.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <TooltipProvider delayDuration={300}>
+                      <div className="flex justify-end gap-1">
+                        {/* View */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewQuote(q)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Visualizar</TooltipContent>
+                        </Tooltip>
+
+                        {/* Send */}
+                        {q.status === 'rascunho' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8"
+                                onClick={() => updateStatus.mutate({ id: q.id, status: 'enviado' })}>
+                                <Send className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Enviar</TooltipContent>
+                          </Tooltip>
+                        )}
+
+                        {/* Approve / Reject */}
+                        {q.status === 'enviado' && (
+                          <>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
+                                  onClick={() => updateStatus.mutate({ id: q.id, status: 'aprovado' })}>
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Aprovar</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                                  onClick={() => updateStatus.mutate({ id: q.id, status: 'rejeitado' })}>
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Rejeitar</TooltipContent>
+                            </Tooltip>
+                          </>
+                        )}
+
+                        {/* Generate Financial */}
+                        {q.status === 'aprovado' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
+                                onClick={() => createFinancialFromQuote.mutate(q)}>
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Gerar Conta a Receber</TooltipContent>
+                          </Tooltip>
+                        )}
+
+                        {/* WhatsApp */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => shareWhatsApp(q)}>
+                              <Share2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>WhatsApp</TooltipContent>
+                        </Tooltip>
+
+                        {/* Copy Link */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyLink(q.token)}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Copiar Link</TooltipContent>
+                        </Tooltip>
+
+                        {/* Duplicate */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateQuote.mutate(q)}>
+                              <CopyPlus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Duplicar</TooltipContent>
+                        </Tooltip>
+
+                        {/* Edit */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="edit-ghost" size="icon" className="h-8 w-8"
+                              onClick={() => { setEditQuote(q); setFormOpen(true); }}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Editar</TooltipContent>
+                        </Tooltip>
+
+                        {/* Delete */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(q.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Excluir</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TooltipProvider>
                   </TableCell>
                 </TableRow>
               ))}
@@ -242,11 +304,8 @@ export default function Quotes() {
         </Card>
       )}
 
-      <QuoteFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        quote={editQuote}
-      />
+      <QuoteFormDialog open={formOpen} onOpenChange={setFormOpen} quote={editQuote} />
+      <QuoteViewDialog open={!!viewQuote} onOpenChange={(o) => !o && setViewQuote(null)} quote={viewQuote} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

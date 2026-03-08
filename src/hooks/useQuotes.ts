@@ -86,7 +86,7 @@ export function useQuotes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, customers(name, email, phone)')
+        .select('*, customers(name, email, phone), quote_items(*)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -206,6 +206,78 @@ export function useQuotes() {
     },
   });
 
+  const duplicateQuote = useMutation({
+    mutationFn: async (source: Quote) => {
+      const { data: newQuote, error } = await supabase
+        .from('quotes')
+        .insert({
+          customer_id: source.customer_id,
+          prospect_name: source.prospect_name,
+          prospect_phone: source.prospect_phone,
+          prospect_email: source.prospect_email,
+          discount_type: source.discount_type,
+          discount_value: source.discount_value,
+          subtotal: source.subtotal,
+          discount_amount: source.discount_amount,
+          total_value: source.total_value,
+          notes: source.notes,
+          terms: source.terms,
+          assigned_to: source.assigned_to,
+          created_by: user?.id,
+          status: 'rascunho',
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+
+      const sourceItems = source.quote_items ?? [];
+      if (sourceItems.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('quote_items')
+          .insert(sourceItems.map((item, idx) => ({
+            quote_id: newQuote.id,
+            position: idx,
+            item_type: item.item_type,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            inventory_id: item.inventory_id || null,
+            service_type_id: item.service_type_id || null,
+          })));
+        if (itemsError) throw itemsError;
+      }
+      return newQuote;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast({ title: 'Orçamento duplicado como rascunho!' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao duplicar', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const createFinancialFromQuote = useMutation({
+    mutationFn: async (q: Quote) => {
+      const { error } = await supabase.from('financial_transactions').insert({
+        transaction_type: 'receita' as any,
+        amount: q.total_value ?? 0,
+        description: `Orçamento #${q.quote_number}`,
+        customer_id: q.customer_id,
+        is_paid: false,
+        created_by: user?.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Conta a receber gerada!' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Erro ao gerar financeiro', description: err.message, variant: 'destructive' });
+    },
+  });
+
   const fetchQuoteByToken = async (token: string) => {
     const { data, error } = await supabase
       .from('quotes')
@@ -226,8 +298,19 @@ export function useQuotes() {
     if (error) throw error;
   };
 
-  // KPI calculations
-  const quotes = quotesQuery.data ?? [];
+  // KPI calculations — also handle auto-expiration client-side
+  const quotes = (quotesQuery.data ?? []).map(q => {
+    if (q.status === 'enviado' && q.valid_until) {
+      const today = new Date().toISOString().split('T')[0];
+      if (q.valid_until < today) {
+        // Fire and forget status update
+        supabase.from('quotes').update({ status: 'expirado' }).eq('id', q.id);
+        return { ...q, status: 'expirado' };
+      }
+    }
+    return q;
+  });
+
   const totalOpen = quotes.filter(q => q.status === 'enviado').reduce((s, q) => s + (q.total_value ?? 0), 0);
   const totalApproved = quotes.filter(q => q.status === 'aprovado').length;
   const totalSent = quotes.filter(q => ['enviado', 'aprovado', 'rejeitado'].includes(q.status)).length;
@@ -243,6 +326,8 @@ export function useQuotes() {
     updateQuote,
     updateStatus,
     deleteQuote,
+    duplicateQuote,
+    createFinancialFromQuote,
     fetchQuoteByToken,
     respondByToken,
     kpis: { totalOpen, conversionRate, avgTicket, total: quotes.length },
