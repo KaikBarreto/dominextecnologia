@@ -36,6 +36,8 @@ import Changelog from "./pages/Changelog";
 import Tutorials from "./pages/Tutorials";
 import Employees from "./pages/Employees";
 import Billing from "./pages/Billing";
+import TechnicianTracking from "./pages/TechnicianTracking";
+import LiveMap from "./pages/LiveMap";
 import Checkout from "./pages/Checkout";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
@@ -140,6 +142,8 @@ const AppRoutes = () => (
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Teams />} />
       <Route path="/funcionarios" element={<Employees />} />
+      <Route path="/rastreamento" element={<TechnicianTracking />} />
+      <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/admin/empresas" element={<AdminCompanies />} />

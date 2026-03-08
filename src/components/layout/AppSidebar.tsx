@@ -16,6 +16,8 @@ import {
   Briefcase,
   CreditCard,
   Building2,
+  MapPin,
+  Map,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -58,6 +60,8 @@ const menuItems: MenuItem[] = [
   { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
   { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
+  { title: 'Rastreamento', icon: MapPin, path: '/rastreamento' },
+  { title: 'Mapa ao Vivo', icon: Map, path: '/mapa-ao-vivo' },
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
   { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
   { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },

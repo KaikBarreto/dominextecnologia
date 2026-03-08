@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
+import { TechnicianDistanceBadge } from '@/components/service-orders/TechnicianDistanceBadge';
 
 interface OrderSummarySheetProps {
   order: (ServiceOrder & { customer: any; equipment: any }) | null;
@@ -187,6 +188,14 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
               ))}
             </div>
           </div>
+        )}
+
+        {/* Technician Location & Routing */}
+        {order.technician_id && order.status !== 'concluida' && order.status !== 'cancelada' && (
+          <TechnicianDistanceBadge
+            technicianId={order.technician_id}
+            customer={order.customer}
+          />
         )}
 
         {/* Description */}

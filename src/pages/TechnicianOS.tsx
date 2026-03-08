@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ClipboardList, 
@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
+import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
@@ -166,6 +167,10 @@ export default function TechnicianOS() {
     });
   };
 
+  // Periodic geo tracking while OS is em_andamento
+  const isInProgress = serviceOrder?.status === 'em_andamento' && !!checkInTime && !checkOutTime;
+  useGeoTracking(id, isInProgress);
+
   const handleCheckIn = async () => {
     try {
       const location = await getCurrentLocation();
@@ -181,6 +186,11 @@ export default function TechnicianOS() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Record location event
+      if (id) {
+        recordLocationEvent(id, location.lat, location.lng, 'check_in');
+      }
 
       setCheckInTime(now);
       setCheckInLocation(location);
@@ -234,6 +244,11 @@ export default function TechnicianOS() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Record check-out location event
+      if (id) {
+        recordLocationEvent(id, location.lat, location.lng, 'check_out');
+      }
 
       setCheckOutTime(now);
       setCheckOutLocation(location);
