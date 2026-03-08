@@ -83,7 +83,12 @@ export default function Users() {
 
       // Link to employee if selected
       if (data.employee_id && result?.user?.id) {
-        await supabase.from('employees').update({ user_id: result.user.id }).eq('id', data.employee_id);
+        const updateData: any = { user_id: result.user.id };
+        // If a chosen_email was picked (email conflict), update employee email too
+        if (data.chosen_email) {
+          updateData.email = data.chosen_email;
+        }
+        await supabase.from('employees').update(updateData).eq('id', data.employee_id);
       }
 
       toast({ title: 'Usuário criado com sucesso!' });
