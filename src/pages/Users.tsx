@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Camera, Clock } from 'lucide-react';
+import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
 import { useUserPermissions, usePermissionPresets } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,8 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { PermissionPresetDialog } from '@/components/users/PermissionPresetDialog';
-import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
-import { TechnicianTimeClock } from '@/components/time-tracking/TechnicianTimeClock';
 
 export default function Users() {
   const { users, isLoading, updateUserRole, canManageRoles, currentUserRole } = useUsers();
@@ -28,9 +25,6 @@ export default function Users() {
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('users');
-
-  const isTecnico = currentUserRole === 'tecnico';
-  const isAdminOrGestor = currentUserRole === 'admin' || currentUserRole === 'gestor';
 
   const filteredUsers = users.filter(u =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -181,37 +175,20 @@ export default function Users() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {activeTab === 'users' && (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
-                <Settings2 className="h-4 w-4 mr-2" />
-                Configurações
-              </Button>
-              {canManageRoles && (
-                <Button size="sm" onClick={() => { setEditingUser(null); setUserFormOpen(true); }}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Criar Usuário
-                </Button>
-              )}
-            </>
+          <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
+            <Settings2 className="h-4 w-4 mr-2" />
+            Configurações
+          </Button>
+          {canManageRoles && (
+            <Button size="sm" onClick={() => { setEditingUser(null); setUserFormOpen(true); }}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Criar Usuário
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Tabs: Users | Controle de Ponto */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="users" className="gap-1.5">
-            <ShieldCheck className="h-4 w-4" />
-            Usuários ({users.length})
-          </TabsTrigger>
-          <TabsTrigger value="timeclock" className="gap-1.5">
-            <Clock className="h-4 w-4" />
-            Controle de Ponto
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users" className="space-y-4 mt-4">
+      <div className="space-y-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -346,12 +323,7 @@ export default function Users() {
               })}
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="timeclock" className="mt-4">
-          {isTecnico ? <TechnicianTimeClock /> : <AdminTimePanel />}
-        </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Dialogs */}
       <UserFormDialog
