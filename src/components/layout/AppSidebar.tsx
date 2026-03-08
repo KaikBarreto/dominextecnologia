@@ -18,6 +18,8 @@ import {
   Building2,
   MapPin,
   Map,
+  FolderOpen,
+  Boxes,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -57,12 +59,18 @@ const menuItems: MenuItem[] = [
     ],
   },
   { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
-  { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
-  { title: 'Equipamentos', icon: Package, path: '/equipamentos', screenKey: 'screen:equipment' },
+  {
+    title: 'Gestão',
+    icon: FolderOpen,
+    children: [
+      { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
+      { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
+      { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
+      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
+    ],
+  },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
-  { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
-  { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
   { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
   { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },
