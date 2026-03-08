@@ -45,8 +45,14 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
+    const body = await req.json();
+    const payload = typeof body === 'object' && body !== null
+      ? (typeof body.lead === 'object' && body.lead !== null ? body.lead as Record<string, unknown> : body as Record<string, unknown>)
+      : {};
+
     const url = new URL(req.url);
-    const token = url.searchParams.get('token') || req.headers.get('x-webhook-token');
+    const tokenFromBody = pickString(payload, ['token', 'webhook_token']);
+    const token = url.searchParams.get('token') || req.headers.get('x-webhook-token') || tokenFromBody;
 
     if (!token) {
       return new Response(JSON.stringify({ error: 'Token do webhook é obrigatório' }), {
@@ -69,11 +75,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const body = await req.json();
-    const payload = typeof body === 'object' && body !== null
-      ? (typeof body.lead === 'object' && body.lead !== null ? body.lead as Record<string, unknown> : body as Record<string, unknown>)
-      : {};
 
     const name = pickString(payload, ['name', 'full_name', 'nome']);
     const phone = pickString(payload, ['phone', 'phone_number', 'telefone', 'whatsapp']);
