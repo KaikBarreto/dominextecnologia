@@ -47,6 +47,7 @@ export interface Customer {
   birth_date?: string;
   notes?: string;
   photo_url?: string;
+  origin?: string;
   created_at: string;
   updated_at: string;
 }

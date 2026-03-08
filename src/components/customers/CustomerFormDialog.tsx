@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Loader2, ChevronRight, ChevronLeft, Check, Upload, Users } from 'lucide-react';
+import { icons } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
@@ -21,6 +22,7 @@ import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
+import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import type { Customer, CustomerType } from '@/types/database';
 
 
@@ -40,6 +42,7 @@ const customerSchema = z.object({
   state: z.string().optional(),
   zip_code: z.string().optional(),
   notes: z.string().optional(),
+  origin: z.string().optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -65,13 +68,14 @@ export function CustomerFormDialog({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const { toast } = useToast();
+  const { activeOrigins } = useCustomerOrigins();
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: '', customer_type: 'pj', company_name: '', document: '',
       email: '', phone: '', birth_date: '', address: '', address_number: '',
-      complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '',
+      complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '', origin: '',
     },
   });
 
@@ -96,6 +100,7 @@ export function CustomerFormDialog({
         state: customer?.state ?? '',
         zip_code: customer?.zip_code ?? '',
         notes: customer?.notes ?? '',
+        origin: (customer as any)?.origin ?? '',
       });
     }
   }, [open, customer]);
@@ -254,6 +259,29 @@ export function CustomerFormDialog({
                       onChange={(e) => field.onChange(phoneMask(e.target.value))}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="origin" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Origem</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma</SelectItem>
+                      {activeOrigins.map((o) => {
+                        const LucideIcon = (icons as any)[o.icon];
+                        return (
+                          <SelectItem key={o.id} value={o.name}>
+                            <div className="flex items-center gap-2">
+                              {LucideIcon && <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: o.color }}><LucideIcon className="h-2.5 w-2.5 text-white" /></div>}
+                              <span>{o.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />

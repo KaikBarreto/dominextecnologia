@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, Loader2, FileText, Megaphone } from 'lucide-react';
+import { icons } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,6 +28,7 @@ import { osStatusLabels } from '@/types/database';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { cn } from '@/lib/utils';
+import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getFrequencyLabel } from '@/hooks/useContracts';
@@ -50,6 +52,7 @@ export default function CustomerDetail() {
   const { contracts } = useContracts();
 
   const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
+  const { activeOrigins } = useCustomerOrigins();
 
   const [equipFormOpen, setEquipFormOpen] = useState(false);
   const [osFormOpen, setOsFormOpen] = useState(false);
@@ -215,6 +218,23 @@ export default function CustomerDetail() {
               <img src={customer.photo_url} alt={customer.name} className="h-32 w-32 rounded-full object-cover border" />
             </CardContent></Card>
           )}
+          {(customer as any).origin && (() => {
+            const originData = activeOrigins.find(o => o.name === (customer as any).origin);
+            const LucideIcon = originData ? (icons as any)[originData.icon] : null;
+            return (
+              <Card><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Origem</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {LucideIcon && originData && (
+                    <div className="h-5 w-5 rounded flex items-center justify-center" style={{ backgroundColor: originData.color }}>
+                      <LucideIcon className="h-3 w-3 text-white" />
+                    </div>
+                  )}
+                  <p className="text-sm font-medium">{(customer as any).origin}</p>
+                </div>
+              </CardContent></Card>
+            );
+          })()}
           {customer.document && (
             <Card><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">CPF/CNPJ</p>

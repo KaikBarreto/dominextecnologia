@@ -19,6 +19,7 @@ export interface CustomerInput {
   zip_code?: string;
   birth_date?: string;
   notes?: string;
+  origin?: string;
 }
 
 export function useCustomers() {
