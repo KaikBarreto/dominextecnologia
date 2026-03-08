@@ -26,6 +26,8 @@ import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export default function Quotes() {
   const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
@@ -52,6 +54,8 @@ export default function Quotes() {
     }
     return list;
   }, [quotes, statusFilter, search]);
+
+  const pagination = useDataPagination(filtered);
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/proposta/${token}`;
@@ -167,7 +171,7 @@ export default function Quotes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((q) => (
+              {pagination.paginatedItems.map((q) => (
                 <TableRow key={q.id}>
                   <TableCell className="font-medium">#{q.quote_number}</TableCell>
                   <TableCell>
@@ -276,6 +280,7 @@ export default function Quotes() {
               ))}
             </TableBody>
           </Table>
+          <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
         </Card>
       )}
 

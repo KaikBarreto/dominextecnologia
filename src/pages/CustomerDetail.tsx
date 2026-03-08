@@ -18,6 +18,8 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useCustomerContacts } from '@/hooks/useCustomerContacts';
 import { osStatusLabels } from '@/types/database';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -51,6 +53,8 @@ export default function CustomerDetail() {
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
   const customerTransactions = transactions.filter(t => t.customer_id === id);
+  const ordersPagination = useDataPagination(customerOrders);
+  const transactionsPagination = useDataPagination(customerTransactions);
 
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -359,7 +363,7 @@ export default function CustomerDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {customerOrders.map((os) => (
+                    {ordersPagination.paginatedItems.map((os) => (
                       <TableRow key={os.id}>
                         <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span></TableCell>
                         <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
@@ -376,6 +380,7 @@ export default function CustomerDetail() {
                   </TableBody>
                 </Table>
               </div>
+              <DataTablePagination page={ordersPagination.page} totalPages={ordersPagination.totalPages} totalItems={ordersPagination.totalItems} from={ordersPagination.from} to={ordersPagination.to} pageSize={ordersPagination.pageSize} onPageChange={ordersPagination.setPage} onPageSizeChange={ordersPagination.setPageSize} />
             </CardContent></Card>
           )}
         </div>
@@ -402,7 +407,7 @@ export default function CustomerDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {customerTransactions.map((t) => (
+                    {transactionsPagination.paginatedItems.map((t) => (
                       <TableRow key={t.id}>
                         <TableCell><p className="font-medium">{t.description}</p></TableCell>
                         <TableCell>
@@ -423,6 +428,7 @@ export default function CustomerDetail() {
                   </TableBody>
                 </Table>
               </div>
+              <DataTablePagination page={transactionsPagination.page} totalPages={transactionsPagination.totalPages} totalItems={transactionsPagination.totalItems} from={transactionsPagination.from} to={transactionsPagination.to} pageSize={transactionsPagination.pageSize} onPageChange={transactionsPagination.setPage} onPageSizeChange={transactionsPagination.setPageSize} />
             </CardContent></Card>
           )}
         </div>

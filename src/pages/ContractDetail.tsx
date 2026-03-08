@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ import { format, isBefore, parseISO, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -60,6 +62,13 @@ export default function ContractDetail() {
   const [recFrequency, setRecFrequency] = useState('unica');
   const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
+
+  const sortedOccurrences = useMemo(() => 
+    (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
+    [contract]
+  );
+  const occPagination = useDataPagination(sortedOccurrences);
+  const recPagination = useDataPagination(linkedTransactions || []);
 
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
@@ -126,7 +135,7 @@ export default function ContractDetail() {
   }
 
   const statusCfg = STATUS_LABELS[contract.status] || STATUS_LABELS.active;
-  const occurrences = (contract.contract_occurrences || []).sort((a, b) => a.occurrence_number - b.occurrence_number);
+  const occurrences = sortedOccurrences;
   const items = contract.contract_items || [];
 
   const totalReceivable = (linkedTransactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
@@ -221,7 +230,7 @@ export default function ContractDetail() {
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhuma conta vinculada a este contrato</p>
               ) : (
                 <div className="space-y-2">
-                  {(linkedTransactions || []).map(t => (
+                  {recPagination.paginatedItems.map(t => (
                     <div key={t.id} className="flex items-center justify-between p-3 rounded-md border text-sm">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium">{t.description}</p>
@@ -239,6 +248,7 @@ export default function ContractDetail() {
                     <span className="text-muted-foreground">Total: R$ {formatBRL(totalReceivable)}</span>
                     <span className="text-muted-foreground">Recebido: R$ {formatBRL(totalPaid)}</span>
                   </div>
+                  <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
                 </div>
               )}
             </CardContent>
@@ -261,7 +271,7 @@ export default function ContractDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {occurrences.map(occ => {
+                    {occPagination.paginatedItems.map(occ => {
                       const occDate = parseLocalDate(occ.scheduled_date);
                       const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
                       const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
@@ -309,6 +319,7 @@ export default function ContractDetail() {
                   </TableBody>
                 </Table>
               </div>
+              <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
             </CardContent>
           </Card>
         </div>
