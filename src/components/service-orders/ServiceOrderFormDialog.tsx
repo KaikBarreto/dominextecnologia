@@ -83,6 +83,14 @@ export function ServiceOrderFormDialog({
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
+  const [customerMode, setCustomerMode] = useState<'existing' | 'adhoc'>('existing');
+  const [adhocName, setAdhocName] = useState('');
+  const [adhocPhone, setAdhocPhone] = useState('');
+  const [adhocCep, setAdhocCep] = useState('');
+  const [adhocAddress, setAdhocAddress] = useState('');
+  const [adhocCity, setAdhocCity] = useState('');
+  const [adhocState, setAdhocState] = useState('');
+  const [adhocNeighborhood, setAdhocNeighborhood] = useState('');
   const { equipment } = useEquipment(selectedCustomerId);
 
   const selectedServiceType = useMemo(
