@@ -91,7 +91,7 @@ export default function Customers() {
         <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
           Lista de Clientes
         </h2>
-        <Card className="overflow-hidden">
+        <Card className="w-full max-w-full overflow-hidden">
           <CardContent className="p-0">
           <div className="p-4 sm:p-6">
           {isLoading ? (
