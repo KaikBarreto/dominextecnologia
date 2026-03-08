@@ -435,28 +435,94 @@ export function ServiceOrderFormDialog({
           {/* Step 1: Client & Service */}
           {currentStepKey === 'client' && (
             <div className="space-y-4">
-              <FormField control={form.control} name="customer_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente *</FormLabel>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <FormControl>
-                        <SearchableSelect
-                          options={customerOptions}
-                          value={field.value}
-                          onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
-                          placeholder="Selecione o cliente"
-                          searchPlaceholder="Buscar cliente..."
-                        />
-                      </FormControl>
+              {/* Customer mode toggle */}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={customerMode === 'existing' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => { setCustomerMode('existing'); }}
+                >
+                  Cliente cadastrado
+                </Button>
+                <Button
+                  type="button"
+                  variant={customerMode === 'adhoc' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => { setCustomerMode('adhoc'); form.setValue('customer_id', ''); setSelectedCustomerId(undefined); setSelectedEquipmentIds([]); }}
+                >
+                  Cliente avulso
+                </Button>
+              </div>
+
+              {customerMode === 'existing' ? (
+                <FormField control={form.control} name="customer_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cliente *</FormLabel>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <FormControl>
+                          <SearchableSelect
+                            options={customerOptions}
+                            value={field.value}
+                            onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); setSelectedEquipmentIds([]); }}
+                            placeholder="Selecione o cliente"
+                            searchPlaceholder="Buscar cliente..."
+                          />
+                        </FormControl>
+                      </div>
+                      <Button type="button" variant="outline" size="icon" title="Criar cliente" onClick={() => setQuickCreateCustomerOpen(true)}>
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button type="button" variant="outline" size="icon" title="Criar cliente" onClick={() => setQuickCreateCustomerOpen(true)}>
-                      <UserPlus className="h-4 w-4" />
-                    </Button>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              ) : (
+                <div className="space-y-3 rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">O cliente será criado automaticamente com os dados abaixo.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Label>Nome *</Label>
+                      <Input value={adhocName} onChange={e => setAdhocName(e.target.value)} placeholder="Nome do cliente" />
+                    </div>
+                    <div>
+                      <Label>Telefone</Label>
+                      <Input value={adhocPhone} onChange={e => setAdhocPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                    </div>
+                    <div>
+                      <Label>CEP</Label>
+                      <CepLookup
+                        value={adhocCep}
+                        onChange={setAdhocCep}
+                        onAddressFound={(addr) => {
+                          setAdhocAddress(addr.logradouro);
+                          setAdhocNeighborhood(addr.bairro);
+                          setAdhocCity(addr.cidade);
+                          setAdhocState(addr.estado);
+                        }}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label>Endereço</Label>
+                      <Input value={adhocAddress} onChange={e => setAdhocAddress(e.target.value)} placeholder="Rua, número" />
+                    </div>
+                    <div>
+                      <Label>Bairro</Label>
+                      <Input value={adhocNeighborhood} onChange={e => setAdhocNeighborhood(e.target.value)} placeholder="Bairro" />
+                    </div>
+                    <div>
+                      <Label>Cidade</Label>
+                      <Input value={adhocCity} onChange={e => setAdhocCity(e.target.value)} placeholder="Cidade" />
+                    </div>
+                    <div>
+                      <Label>Estado</Label>
+                      <Input value={adhocState} onChange={e => setAdhocState(e.target.value)} placeholder="UF" maxLength={2} />
+                    </div>
                   </div>
-                  <FormMessage />
-                </FormItem>
-              )} />
+                </div>
+              )}
+
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Serviço</FormLabel>
