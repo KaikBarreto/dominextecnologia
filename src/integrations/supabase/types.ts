@@ -505,6 +505,8 @@ export type Database = {
           email: string | null
           id: string
           is_deleted: boolean
+          lat: number | null
+          lng: number | null
           name: string
           neighborhood: string | null
           notes: string | null
@@ -528,6 +530,8 @@ export type Database = {
           email?: string | null
           id?: string
           is_deleted?: boolean
+          lat?: number | null
+          lng?: number | null
           name: string
           neighborhood?: string | null
           notes?: string | null
@@ -551,6 +555,8 @@ export type Database = {
           email?: string | null
           id?: string
           is_deleted?: boolean
+          lat?: number | null
+          lng?: number | null
           name?: string
           neighborhood?: string | null
           notes?: string | null

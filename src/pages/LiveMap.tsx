@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
+import type { OSRMRoute } from '@/utils/geolocation';
 import 'leaflet/dist/leaflet.css';
 
 interface TechMarker {
@@ -21,6 +23,12 @@ interface TrackingPoint {
   lng: number;
   event_type: string;
   created_at: string;
+}
+
+interface RouteInfo {
+  route: OSRMRoute;
+  destLat: number;
+  destLng: number;
 }
 
 const eventColors: Record<string, string> = {
@@ -42,11 +50,18 @@ const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r
 const TILE_LABELS_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png';
 const TILE_LABELS_DARK = 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png';
 
-function buildTooltipHtml(tech: TechMarker) {
+function buildTooltipHtml(tech: TechMarker, routeInfo?: RouteInfo) {
   const lastUpdate = new Date(tech.updated_at);
   const timeAgo = Math.round((Date.now() - lastUpdate.getTime()) / 60000);
   const ev = eventLabels[tech.event_type] || eventLabels.tracking;
   const color = eventColors[tech.event_type] || '#3b82f6';
+
+  const etaHtml = routeInfo
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding-top:4px;border-top:1px solid #e5e7eb">
+        <span style="font-size:12px;font-weight:600;color:#6366f1">🕐 Chegada em ~${routeInfo.route.durationMinutes} min</span>
+        <span style="font-size:11px;color:#888">(${routeInfo.route.distanceKm} km)</span>
+      </div>`
+    : '';
 
   return `
     <div style="min-width:180px;font-family:system-ui,sans-serif;line-height:1.4">
@@ -57,6 +72,7 @@ function buildTooltipHtml(tech: TechMarker) {
       </div>
       ${tech.service_order_id ? `<div style="font-size:11px;color:#888">OS vinculada</div>` : ''}
       <div style="font-size:11px;color:#aaa;margin-top:2px">Há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
+      ${etaHtml}
     </div>
   `;
 }
@@ -66,12 +82,71 @@ export default function LiveMap() {
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
   const polylinesRef = useRef<Map<string, any>>(new Map());
+  const routeLinesRef = useRef<Map<string, any>>(new Map());
+  const destMarkersRef = useRef<Map<string, any>>(new Map());
   const tileLayerRef = useRef<any>(null);
   const labelsLayerRef = useRef<any>(null);
   const [technicians, setTechnicians] = useState<TechMarker[]>([]);
   const [trails, setTrails] = useState<Map<string, TrackingPoint[]>>(new Map());
+  const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+
+  const fetchRoutesForTechs = useCallback(async (techs: TechMarker[]) => {
+    const enRouteTechs = techs.filter(
+      t => (t.event_type === 'en_route' || t.event_type === 'tracking') && t.service_order_id
+    );
+    if (enRouteTechs.length === 0) { setRoutes(new Map()); return; }
+
+    const osIds = enRouteTechs.map(t => t.service_order_id!);
+    const { data: orders } = await supabase
+      .from('service_orders')
+      .select('id, customer_id')
+      .in('id', osIds);
+
+    if (!orders || orders.length === 0) { setRoutes(new Map()); return; }
+
+    const customerIds = [...new Set(orders.map((o: any) => o.customer_id).filter(Boolean))];
+    const { data: customers } = await supabase
+      .from('customers')
+      .select('id, lat, lng, address, city, state, zip_code')
+      .in('id', customerIds);
+
+    if (!customers) { setRoutes(new Map()); return; }
+
+    const customerMap = new Map(customers.map((c: any) => [c.id, c]));
+    const osCustomerMap = new Map(orders.map((o: any) => [o.id, o.customer_id]));
+
+    const newRoutes = new Map<string, RouteInfo>();
+
+    await Promise.all(enRouteTechs.map(async (tech) => {
+      const customerId = osCustomerMap.get(tech.service_order_id!);
+      if (!customerId) return;
+      const customer = customerMap.get(customerId);
+      if (!customer) return;
+
+      let custLat = customer.lat ? Number(customer.lat) : null;
+      let custLng = customer.lng ? Number(customer.lng) : null;
+
+      if (!custLat || !custLng) {
+        const addr = buildCustomerAddress(customer);
+        if (!addr) return;
+        const coords = await geocodeAddress(addr);
+        if (!coords) return;
+        custLat = coords.lat;
+        custLng = coords.lng;
+        // Cache in DB
+        await supabase.from('customers').update({ lat: custLat, lng: custLng } as any).eq('id', customer.id);
+      }
+
+      const route = await fetchOSRMRoute(tech.lat, tech.lng, custLat, custLng);
+      if (route) {
+        newRoutes.set(tech.user_id, { route, destLat: custLat, destLng: custLng });
+      }
+    }));
+
+    setRoutes(newRoutes);
+  }, []);
 
   const fetchLatestLocations = useCallback(async () => {
     const { data: profiles } = await supabase.from('profiles').select('user_id, full_name');
@@ -88,6 +163,7 @@ export default function LiveMap() {
     if (!locations) {
       setTechnicians([]);
       setTrails(new Map());
+      setRoutes(new Map());
       setLoading(false);
       return;
     }
@@ -125,7 +201,10 @@ export default function LiveMap() {
     setTechnicians(markers);
     setTrails(trailsByUser);
     setLoading(false);
-  }, []);
+
+    // Fetch routes for en_route technicians
+    await fetchRoutesForTechs(markers);
+  }, [fetchRoutesForTechs]);
 
   // Toggle dark/light tiles
   useEffect(() => {
@@ -181,17 +260,22 @@ export default function LiveMap() {
     };
   }, []);
 
-  // Update markers and trails
+  // Update markers, trails and routes
   useEffect(() => {
     const updateMarkers = async () => {
       const L = await import('leaflet');
       const map = leafletMapRef.current;
       if (!map) return;
 
+      // Clear old markers/lines
       markersRef.current.forEach((marker) => map.removeLayer(marker));
       markersRef.current.clear();
       polylinesRef.current.forEach((line) => map.removeLayer(line));
       polylinesRef.current.clear();
+      routeLinesRef.current.forEach((line) => map.removeLayer(line));
+      routeLinesRef.current.clear();
+      destMarkersRef.current.forEach((m) => map.removeLayer(m));
+      destMarkersRef.current.clear();
 
       if (technicians.length === 0) return;
 
@@ -199,6 +283,7 @@ export default function LiveMap() {
 
       technicians.forEach((tech) => {
         const color = eventColors[tech.event_type] || '#3b82f6';
+        const routeInfo = routes.get(tech.user_id);
 
         const icon = L.divIcon({
           className: '',
@@ -208,9 +293,7 @@ export default function LiveMap() {
         });
 
         const marker = L.marker([tech.lat, tech.lng], { icon }).addTo(map);
-
-        // Bind persistent tooltip on hover
-        marker.bindTooltip(buildTooltipHtml(tech), {
+        marker.bindTooltip(buildTooltipHtml(tech, routeInfo), {
           direction: 'top',
           offset: [0, -12],
           opacity: 1,
@@ -232,6 +315,30 @@ export default function LiveMap() {
           }).addTo(map);
           polylinesRef.current.set(tech.user_id, polyline);
         }
+
+        // Draw route to customer if en_route
+        if (routeInfo) {
+          const routeLayer = L.geoJSON(routeInfo.route.geometry, {
+            style: { color: '#6366f1', weight: 4, opacity: 0.8 },
+          }).addTo(map);
+          routeLinesRef.current.set(tech.user_id, routeLayer);
+
+          // Destination marker
+          const destIcon = L.divIcon({
+            className: '',
+            html: `<div style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3" fill="#ef4444"/></svg>
+            </div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          });
+          const destMarker = L.marker([routeInfo.destLat, routeInfo.destLng], { icon: destIcon }).addTo(map);
+          destMarker.bindTooltip(`<div style="font-family:system-ui;font-size:12px;font-weight:600">📍 Destino do cliente</div>`, {
+            direction: 'top', offset: [0, -14], className: 'leaflet-tooltip-custom',
+          });
+          destMarkersRef.current.set(tech.user_id, destMarker);
+          bounds.push([routeInfo.destLat, routeInfo.destLng]);
+        }
       });
 
       if (bounds.length > 0) {
@@ -240,7 +347,7 @@ export default function LiveMap() {
     };
 
     updateMarkers();
-  }, [technicians, trails]);
+  }, [technicians, trails, routes]);
 
   // Realtime subscription
   useEffect(() => {
@@ -297,6 +404,7 @@ export default function LiveMap() {
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500"></span> Executando OS</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500"></span> A Caminho</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500"></span> Check-out</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', border: '2px solid white', boxShadow: '0 0 0 1px #ef4444' }}></span> Destino cliente</div>
       </div>
 
       <Card className="overflow-hidden">
