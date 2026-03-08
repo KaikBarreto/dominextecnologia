@@ -39,6 +39,7 @@ import iconePreto from '@/assets/icone_preto.png';
 import iconeBranco from '@/assets/icone_branco.png';
 import iconeVerde from '@/assets/icone_verde.png';
 import logoWhiteHorizontal from '@/assets/logo-white-horizontal.png';
+import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
 
 interface MenuItem {
   title: string;
@@ -173,7 +174,7 @@ export function AppSidebar() {
               )
             : <>
                 <img src={logoUrl || defaultLogoDark} alt="Logo" className="h-8 w-auto mx-auto dark:hidden" />
-                <img src={logoUrl || logoWhiteHorizontal} alt="Logo" className="h-8 w-auto mx-auto hidden dark:block" />
+                <img src={logoUrl || logoHorizontalVerde} alt="Logo" className="h-8 w-auto mx-auto hidden dark:block" />
               </>
           }
         </NavLink>
