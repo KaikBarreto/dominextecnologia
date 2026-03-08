@@ -1,14 +1,15 @@
 import { SidebarProvider, SidebarInset, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { SystemFooter } from './SystemFooter';
-import { Outlet } from 'react-router-dom';
-import { Snowflake, LogOut, Menu } from 'lucide-react';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { Snowflake, LogOut, Menu, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
 function HeaderContent() {
   const { user, signOut } = useAuth();
   const { toggleSidebar, isMobile } = useSidebar();
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -26,10 +27,19 @@ function HeaderContent() {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1">
         {user && (
           <>
-            <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
+            <span className="text-sm text-muted-foreground hidden sm:inline mr-1">{user.email}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate('/perfil')}
+              title="Meu Perfil"
+            >
+              <UserCircle className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -56,7 +66,7 @@ export function AppLayout() {
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <Outlet />
           </main>
-          <footer className="border-t px-4 py-3">
+          <footer className="border-t px-4 h-[52px] flex items-center justify-center">
             <SystemFooter />
           </footer>
         </SidebarInset>
