@@ -2801,6 +2801,7 @@ export type Database = {
     }
     Functions: {
       can_bootstrap_admin: { Args: never; Returns: boolean }
+      can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }

@@ -192,14 +192,14 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <p className="text-xs text-muted-foreground">Vincula este funcionário a um usuário existente no sistema</p>
         </div>
 
-        {/* Create system access toggle - only on creation */}
-        {!employee && (
+        {/* Create system access toggle - on creation OR on edit when no linked user */}
+        {(!employee || (employee && !employee.user_id && !linkedUserId)) && (
           <div className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center gap-2">
               <Switch checked={createAccess} onCheckedChange={(v) => { setCreateAccess(v); if (v && !password) setPassword(''); }} />
               <div>
                 <Label className="text-sm cursor-pointer">Criar acesso ao sistema</Label>
-                <p className="text-xs text-muted-foreground">Cria automaticamente um usuário com perfil Técnico</p>
+                <p className="text-xs text-muted-foreground">Cria automaticamente um usuário com perfil Técnico{employee ? ' usando os dados deste funcionário' : ''}</p>
               </div>
             </div>
             {createAccess && (
