@@ -54,6 +54,7 @@ export default function Settings() {
   const [wlUploading, setWlUploading] = useState(false);
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
+  const [wlIconUploading, setWlIconUploading] = useState(false);
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
