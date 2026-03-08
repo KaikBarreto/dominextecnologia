@@ -206,6 +206,12 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                   <p className="text-sm">{equipment.install_date}</p>
                 </div>
               )}
+              {(equipment as any).warranty_until && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Validade da Garantia</p>
+                  <p className="text-sm">{(equipment as any).warranty_until}</p>
+                </div>
+              )}
             </div>
             {equipment.notes && (
               <div>
