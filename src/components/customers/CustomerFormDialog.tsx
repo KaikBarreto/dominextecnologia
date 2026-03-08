@@ -262,6 +262,29 @@ export function CustomerFormDialog({
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={form.control} name="origin" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Origem</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma</SelectItem>
+                      {activeOrigins.map((o) => {
+                        const LucideIcon = (icons as any)[o.icon];
+                        return (
+                          <SelectItem key={o.id} value={o.name}>
+                            <div className="flex items-center gap-2">
+                              {LucideIcon && <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: o.color }}><LucideIcon className="h-2.5 w-2.5 text-white" /></div>}
+                              <span>{o.name}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </div>
           )}
 
