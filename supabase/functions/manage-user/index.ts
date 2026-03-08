@@ -26,8 +26,16 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token);
-    if (!caller) {
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    const callerId = claimsData?.claims?.sub;
+
+    if (claimsError || !callerId) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -38,7 +46,7 @@ Deno.serve(async (req) => {
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', caller.id)
+      .eq('user_id', callerId)
       .in('role', ['admin', 'gestor'])
       .maybeSingle();
 
@@ -49,7 +57,7 @@ Deno.serve(async (req) => {
       const { data: permsData } = await supabaseAdmin
         .from('user_permissions')
         .select('permissions')
-        .eq('user_id', caller.id)
+        .eq('user_id', callerId)
         .eq('is_active', true)
         .maybeSingle();
       
