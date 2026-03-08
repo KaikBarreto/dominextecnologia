@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -182,32 +182,60 @@ export default function Settings() {
     toast({ title: 'Preferência salva!' });
   };
 
-  const usabilityItems = [
-    { key: 'autoSaveOS', title: 'Salvamento Automático de OS', description: 'Salvar automaticamente rascunhos de ordens de serviço ao editar' },
-    { key: 'confirmDelete', title: 'Confirmar Exclusões', description: 'Exibir diálogo de confirmação antes de excluir registros' },
-    { key: 'showOSValues', title: 'Exibir Valores nas OS', description: 'Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço' },
-    { key: 'requireSignature', title: 'Exigir Assinatura do Cliente', description: 'Tornar obrigatória a assinatura do cliente ao finalizar OS' },
-    { key: 'compactTables', title: 'Tabelas Compactas', description: 'Reduzir espaçamento nas tabelas para exibir mais dados por página' },
-    { key: 'showEquipmentPhotos', title: 'Fotos de Equipamentos', description: 'Exibir miniaturas de fotos dos equipamentos nas listagens' },
+  const usabilitySections = [
+    {
+      title: 'Ordens de Serviço',
+      icon: ClipboardList,
+      description: 'Comportamentos relacionados às ordens de serviço',
+      items: [
+        { key: 'autoSaveOS', title: 'Salvamento Automático', description: 'Salvar automaticamente rascunhos de ordens de serviço ao editar' },
+        { key: 'showOSValues', title: 'Exibir Valores', description: 'Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço' },
+        { key: 'requireSignature', title: 'Exigir Assinatura', description: 'Tornar obrigatória a assinatura do cliente ao finalizar OS' },
+      ],
+    },
+    {
+      title: 'Interface',
+      icon: TableProperties,
+      description: 'Preferências visuais de listagens e tabelas',
+      items: [
+        { key: 'compactTables', title: 'Tabelas Compactas', description: 'Reduzir espaçamento nas tabelas para exibir mais dados por página' },
+        { key: 'showEquipmentPhotos', title: 'Fotos de Equipamentos', description: 'Exibir miniaturas de fotos dos equipamentos nas listagens' },
+      ],
+    },
+    {
+      title: 'Segurança',
+      icon: ShieldCheck,
+      description: 'Confirmações e validações de segurança',
+      items: [
+        { key: 'confirmDelete', title: 'Confirmar Exclusões', description: 'Exibir diálogo de confirmação antes de excluir registros' },
+      ],
+    },
   ];
 
   const renderContent = () => {
     switch (activeTab) {
       case 'empresa':
         return (
-          <>
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Building className="h-5 w-5 text-primary" />
-                Dados da Empresa
-              </CardTitle>
+                <CardTitle>Dados da Empresa</CardTitle>
+              </div>
               <CardDescription>Informações da empresa que aparecem em etiquetas e documentos</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Logo section */}
-              <div className="space-y-2">
-                <Label>Logo da Empresa</Label>
+
+              {/* ========== SEÇÃO: IDENTIDADE VISUAL ========== */}
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Image className="h-4 w-4 text-primary" />
+                  Identidade Visual
+                </h3>
+                <p className="text-xs text-muted-foreground">Logo da empresa para documentos e sistema</p>
+              </div>
+
+              <div className="pl-0 sm:pl-6">
                 {settings?.logo_url ? (
                   <div className="flex items-center gap-4">
                     <img src={settings.logo_url} alt="Logo" className="h-20 w-20 rounded-lg object-contain border bg-muted" />
@@ -254,10 +282,18 @@ export default function Settings() {
                 )}
               </div>
 
-              <Separator />
+              <Separator className="my-6" />
 
-              {/* Company info */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* ========== SEÇÃO: DADOS CADASTRAIS ========== */}
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Dados Cadastrais
+                </h3>
+                <p className="text-xs text-muted-foreground">Razão social, documento e informações oficiais</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>
                   <Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Nome da sua empresa" />
@@ -266,6 +302,20 @@ export default function Settings() {
                   <Label>CNPJ/CPF</Label>
                   <Input value={companyDoc} onChange={e => setCompanyDoc(cpfCnpjMask(e.target.value))} placeholder="00.000.000/0000-00" />
                 </div>
+              </div>
+
+              <Separator className="my-6" />
+
+              {/* ========== SEÇÃO: CONTATO ========== */}
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
+                  Contato
+                </h3>
+                <p className="text-xs text-muted-foreground">Telefone e e-mail da empresa</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
                 <div className="space-y-2">
                   <Label>Telefone</Label>
                   <Input value={companyPhone} onChange={e => setCompanyPhone(phoneMask(e.target.value))} placeholder="(00) 0000-0000" />
@@ -276,186 +326,212 @@ export default function Settings() {
                 </div>
               </div>
 
-              <Separator />
+              <Separator className="my-6" />
 
-              {/* Address with CEP lookup */}
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">Endereço</Label>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>CEP</Label>
-                    <CepLookup
-                      value={companyZip}
-                      onChange={setCompanyZip}
-                      onAddressFound={(addr) => {
-                        setCompanyAddress(addr.logradouro);
-                        setCompanyNeighborhood(addr.bairro);
-                        setCompanyCity(addr.cidade);
-                        setCompanyState(addr.estado);
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Logradouro</Label>
-                    <Input value={companyAddress} onChange={e => setCompanyAddress(e.target.value)} placeholder="Rua, Avenida..." />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Número</Label>
-                    <Input value={companyNumber} onChange={e => setCompanyNumber(e.target.value)} placeholder="Nº" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Complemento</Label>
-                    <Input value={companyComplement} onChange={e => setCompanyComplement(e.target.value)} placeholder="Sala, Andar..." />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Bairro</Label>
-                    <Input value={companyNeighborhood} onChange={e => setCompanyNeighborhood(e.target.value)} placeholder="Bairro" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cidade</Label>
-                    <Input value={companyCity} onChange={e => setCompanyCity(e.target.value)} placeholder="Cidade" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Estado</Label>
-                    <Input value={companyState} onChange={e => setCompanyState(e.target.value)} placeholder="UF" maxLength={2} />
-                  </div>
+              {/* ========== SEÇÃO: ENDEREÇO ========== */}
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  Endereço
+                </h3>
+                <p className="text-xs text-muted-foreground">Localização física da empresa</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
+                <div className="space-y-2">
+                  <Label>CEP</Label>
+                  <CepLookup
+                    value={companyZip}
+                    onChange={setCompanyZip}
+                    onAddressFound={(addr) => {
+                      setCompanyAddress(addr.logradouro);
+                      setCompanyNeighborhood(addr.bairro);
+                      setCompanyCity(addr.cidade);
+                      setCompanyState(addr.estado);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Logradouro</Label>
+                  <Input value={companyAddress} onChange={e => setCompanyAddress(e.target.value)} placeholder="Rua, Avenida..." />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número</Label>
+                  <Input value={companyNumber} onChange={e => setCompanyNumber(e.target.value)} placeholder="Nº" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Complemento</Label>
+                  <Input value={companyComplement} onChange={e => setCompanyComplement(e.target.value)} placeholder="Sala, Andar..." />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bairro</Label>
+                  <Input value={companyNeighborhood} onChange={e => setCompanyNeighborhood(e.target.value)} placeholder="Bairro" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cidade</Label>
+                  <Input value={companyCity} onChange={e => setCompanyCity(e.target.value)} placeholder="Cidade" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Estado</Label>
+                  <Input value={companyState} onChange={e => setCompanyState(e.target.value)} placeholder="UF" maxLength={2} />
                 </div>
               </div>
 
-              <Button onClick={handleSaveCompany} disabled={updateSettings.isPending}>
-                {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Alterações
-              </Button>
-            </CardContent>
-          </Card>
+              <Separator className="my-6" />
 
-          {/* White Label Section */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Paintbrush className="h-5 w-5 text-primary" />
-                White Label
-              </CardTitle>
-              <CardDescription>Personalize o sistema com a identidade visual da sua empresa</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="font-medium text-sm">Ativar White Label</p>
-                  <p className="text-sm text-muted-foreground">Substitui o logo e a cor padrão do sistema</p>
-                </div>
-                <Switch checked={wlEnabled} onCheckedChange={setWlEnabled} />
+              {/* ========== SEÇÃO: WHITE LABEL ========== */}
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Paintbrush className="h-4 w-4 text-primary" />
+                  White Label
+                </h3>
+                <p className="text-xs text-muted-foreground">Personalize o sistema com a identidade visual da sua marca</p>
               </div>
 
-              {wlEnabled && (
-                <>
-                  <Separator />
+              <div className="space-y-4 pl-0 sm:pl-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Ativar White Label</Label>
+                    <p className="text-xs text-muted-foreground">Substitui o logo e a cor padrão do sistema</p>
+                  </div>
+                  <Switch checked={wlEnabled} onCheckedChange={setWlEnabled} />
+                </div>
 
-                  {/* WL Logo */}
-                  <div className="space-y-2">
-                    <Label>Logo personalizado</Label>
-                    <p className="text-xs text-muted-foreground">
-                      {(settings as any)?.white_label_logo_url
-                        ? 'Logo personalizado configurado'
-                        : 'Por padrão, será utilizado o logo da empresa acima'}
-                    </p>
-                    {(settings as any)?.white_label_logo_url ? (
-                      <div className="flex items-center gap-4">
-                        <img
-                          src={(settings as any).white_label_logo_url}
-                          alt="WL Logo"
-                          className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-muted p-1"
-                        />
-                        <div className="flex flex-col gap-2">
-                          <Button variant="outline" size="sm" asChild disabled={wlUploading}>
-                            <label className="cursor-pointer">
-                              {wlUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                              Substituir
-                              <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} />
-                            </label>
-                          </Button>
-                          <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlLogo}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Remover
-                          </Button>
+                {wlEnabled && (
+                  <>
+                    <Separator className="opacity-50" />
+
+                    {/* WL Logo */}
+                    <div className="space-y-2">
+                      <Label>Logo personalizado</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {(settings as any)?.white_label_logo_url
+                          ? 'Logo personalizado configurado'
+                          : 'Por padrão, será utilizado o logo da empresa acima'}
+                      </p>
+                      {(settings as any)?.white_label_logo_url ? (
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={(settings as any).white_label_logo_url}
+                            alt="WL Logo"
+                            className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-muted p-1"
+                          />
+                          <div className="flex flex-col gap-2">
+                            <Button variant="outline" size="sm" asChild disabled={wlUploading}>
+                              <label className="cursor-pointer">
+                                {wlUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                Substituir
+                                <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} />
+                              </label>
+                            </Button>
+                            <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlLogo}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Remover
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
-                        {wlUploading ? (
-                          <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                            <span className="text-xs text-muted-foreground">Enviar logo personalizado (opcional)</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
-                      </label>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  {/* WL Color */}
-                  <div className="space-y-2">
-                    <Label>Cor primária</Label>
-                    <p className="text-xs text-muted-foreground">Substitui a cor verde padrão do sistema</p>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={wlColor}
-                        onChange={e => setWlColor(e.target.value)}
-                        className="h-10 w-14 rounded-md border border-input cursor-pointer bg-transparent"
-                      />
-                      <Input
-                        value={wlColor}
-                        onChange={e => setWlColor(e.target.value)}
-                        placeholder="#00C597"
-                        className="w-32 uppercase font-mono"
-                        maxLength={7}
-                      />
-                      <div
-                        className="h-10 flex-1 rounded-md border"
-                        style={{ backgroundColor: wlColor }}
-                      />
+                      ) : (
+                        <label className="cursor-pointer flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
+                          {wlUploading ? (
+                            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                          ) : (
+                            <>
+                              <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                              <span className="text-xs text-muted-foreground">Enviar logo personalizado (opcional)</span>
+                            </>
+                          )}
+                          <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
+                        </label>
+                      )}
                     </div>
-                  </div>
-                </>
-              )}
 
-              <Button onClick={handleSaveWhiteLabel} disabled={updateSettings.isPending}>
-                {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar White Label
-              </Button>
+                    <Separator className="opacity-50" />
+
+                    {/* WL Color */}
+                    <div className="space-y-2">
+                      <Label>Cor primária</Label>
+                      <p className="text-xs text-muted-foreground">Substitui a cor verde padrão do sistema</p>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={wlColor}
+                          onChange={e => setWlColor(e.target.value)}
+                          className="h-10 w-14 rounded-md border border-input cursor-pointer bg-transparent"
+                        />
+                        <Input
+                          value={wlColor}
+                          onChange={e => setWlColor(e.target.value)}
+                          placeholder="#00C597"
+                          className="w-32 uppercase font-mono"
+                          maxLength={7}
+                        />
+                        <div
+                          className="h-10 flex-1 rounded-md border"
+                          style={{ backgroundColor: wlColor }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-4">
+                <Button onClick={handleSaveCompany} disabled={updateSettings.isPending}>
+                  {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar Dados da Empresa
+                </Button>
+                {wlEnabled && (
+                  <Button variant="outline" onClick={handleSaveWhiteLabel} disabled={updateSettings.isPending}>
+                    {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar White Label
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
-        </>
-      );
+        );
 
       case 'usabilidade':
         return (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <SlidersHorizontal className="h-5 w-5 text-primary" />
-                Usabilidade
-              </CardTitle>
+                <CardTitle>Usabilidade</CardTitle>
+              </div>
               <CardDescription>Preferências de comportamento do sistema</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-1">
-              {usabilityItems.map((item, idx) => (
-                <div key={item.key}>
-                  <div className="flex items-center justify-between py-4">
-                    <div className="space-y-0.5 pr-4">
-                      <p className="font-medium text-sm">{item.title}</p>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                    </div>
-                    <Switch
-                      checked={usabilitySettings[item.key]}
-                      onCheckedChange={(checked) => updateUsability(item.key, checked)}
-                    />
+            <CardContent className="space-y-6">
+              {usabilitySections.map((section, sIdx) => (
+                <div key={section.title}>
+                  {sIdx > 0 && <Separator className="my-6" />}
+
+                  {/* Section header */}
+                  <div className="space-y-1 mb-4">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <section.icon className="h-4 w-4 text-primary" />
+                      {section.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">{section.description}</p>
                   </div>
-                  {idx < usabilityItems.length - 1 && <Separator />}
+
+                  {/* Section items */}
+                  <div className="space-y-1 pl-0 sm:pl-6">
+                    {section.items.map((item, iIdx) => (
+                      <div key={item.key}>
+                        <div className="flex items-center justify-between py-3">
+                          <div className="space-y-0.5 pr-4">
+                            <Label className="text-sm font-medium">{item.title}</Label>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                          <Switch
+                            checked={usabilitySettings[item.key]}
+                            onCheckedChange={(checked) => updateUsability(item.key, checked)}
+                          />
+                        </div>
+                        {iIdx < section.items.length - 1 && <Separator className="opacity-50" />}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </CardContent>
