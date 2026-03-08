@@ -40,6 +40,166 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.2.10',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contatos do Cliente (Responsável no Local)',
+        description: 'Novo campo "Responsável no Local (falar com)" na aba Geral do cliente, com nome, telefone e email corporativo. Modal para adicionar, editar e excluir contatos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Remoção do banner de instalação PWA',
+        description: 'Removido o toast/banner de instalação do PWA que aparecia ao acessar o sistema.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.2.9',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção do gerenciamento de sessões',
+        description: 'Corrigido o fluxo de login com detecção de sessões ativas. Agora ao logar com sessão ativa em outro dispositivo, o sistema exibe o aviso corretamente antes de prosseguir.',
+        category: 'correcao',
+      },
+      {
+        title: 'Desconectar outras sessões',
+        description: 'Opção de desconectar todos os outros dispositivos ao fazer login, com encerramento forçado via realtime.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.2.8',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mapa do cliente com Google Maps',
+        description: 'Embed do Google Maps na aba Geral do cliente, com links diretos para rota no Google Maps e Waze.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.2.7',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PWA — Progressive Web App',
+        description: 'Sistema transformado em PWA instalável com suporte offline, cache inteligente (Workbox) e indicador de status de conexão.',
+        category: 'recurso',
+      },
+      {
+        title: 'Botão de limpar cache no rodapé',
+        description: 'Ícone de refresh no rodapé que limpa cache, service workers e faz hard reload do sistema.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.2.6',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Monitoramento de sessões ativas',
+        description: 'Tabela de sessões ativas com detecção de login simultâneo, device info e último acesso. Forced logout em tempo real via Supabase Realtime.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.2.5',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Módulo de Funcionários',
+        description: 'CRUD completo de funcionários com foto, CPF, cargo, salário, Pix e endereço. Dashboard com métricas e extrato financeiro individual.',
+        category: 'recurso',
+      },
+      {
+        title: 'Movimentações de Funcionários',
+        description: 'Registro de adiantamentos, pagamentos e descontos com cálculo automático de saldo e histórico completo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.2.4',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Rastreamento de Técnicos em tempo real',
+        description: 'Mapa ao vivo com localização dos técnicos em campo, atualizado em tempo real via geolocalização.',
+        category: 'recurso',
+      },
+      {
+        title: 'Distância do técnico ao cliente',
+        description: 'Badge com distância estimada entre técnico e endereço do cliente na criação/edição de OS.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.2.3',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Equipes de Técnicos',
+        description: 'Criação e gestão de equipes com membros, cores e atribuição de OS por equipe.',
+        category: 'recurso',
+      },
+      {
+        title: 'SLA por tipo de serviço',
+        description: 'Configuração de prazo máximo (em horas) para atendimento por tipo de serviço, com indicador visual de SLA na agenda.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.2.2',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Status de OS personalizáveis',
+        description: 'Gerenciador de status com cores, posição e campos obrigatórios por status. Status padrão configurável.',
+        category: 'recurso',
+      },
+      {
+        title: 'Campos obrigatórios por status',
+        description: 'Configuração de quais campos devem ser preenchidos para que uma OS possa avançar para determinado status.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.2.1',
+    date: '08 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contas a Pagar e Receber',
+        description: 'Visão separada de contas a pagar e a receber no módulo financeiro, com filtros de período e status de pagamento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ícones nas categorias financeiras',
+        description: 'Seletor de ícones (Lucide) para categorias financeiras, exibidos na listagem e nos gráficos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.2.0',
     date: '08 de março de 2026',
     type: 'minor',
