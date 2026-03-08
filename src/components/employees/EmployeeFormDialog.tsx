@@ -61,7 +61,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setPixKey(employee?.pix_key || '');
       setPhotoUrl(employee?.photo_url || '');
       setCreateAccess(false);
-      setPassword(generatePassword());
+      setUseTemporaryPassword(false);
+      setPassword('');
       setLinkedUserId(employee?.user_id || null);
     }
   }, [open, employee]);
@@ -92,7 +93,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     e.preventDefault();
     if (!name.trim()) { toast({ variant: 'destructive', title: 'Nome é obrigatório' }); return; }
     if (createAccess && !email.trim()) { toast({ variant: 'destructive', title: 'Email é obrigatório para criar acesso' }); return; }
-    if (createAccess && password.length < 6) { toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
+    const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
+    if (createAccess && finalPassword.length < 6) { toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
     onSubmit({
       name: name.trim(),
       cpf: cpf || null,
@@ -106,7 +108,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       photo_url: photoUrl || null,
       user_id: linkedUserId,
       _createAccess: createAccess,
-      _password: password,
+      _password: finalPassword,
     } as any);
   };
 
