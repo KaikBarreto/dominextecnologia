@@ -60,9 +60,12 @@ interface CompanySettings {
 const OS_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/30' },
   em_andamento: { label: 'Em andamento', color: 'bg-primary/10 text-primary border-primary/30' },
+  a_caminho: { label: 'A caminho', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30' },
   concluida: { label: 'Concluída', color: 'bg-success/10 text-success border-success/30' },
   cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
+
+const ACTIVE_STATUSES = ['em_andamento', 'a_caminho', 'pendente'];
 
 export default function CustomerPortal() {
   const { token } = useParams<{ token: string }>();
