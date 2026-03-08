@@ -1,85 +1,45 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Plano: Refinar visualmente os 3 templates de proposta
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+### Melhorias por template
 
-### 2. Permissions System - Database Changes
+**ClassicTemplate** — Corporativo formal refinado
+- Adicionar campo CNPJ/CPF do cliente quando disponivel
+- Adicionar numero do item (#) na tabela
+- Subtotal de cada secao (servicos / materiais) ao final da tabela
+- Separador visual mais elegante entre header e corpo
+- Assinatura/aceite area no rodape (linha pontilhada para assinatura)
+- Forma de pagamento se houver nos termos
+- Melhorar espcamento e hierarquia tipografica
 
-Create 2 new tables via migration:
+**ModernTemplate** — Tech/startup vibrante
+- Adicionar CNPJ da empresa e do cliente
+- Adicionar badge de status (ex: "Enviado", "Aprovado") no header
+- Numeracao nos cards de itens
+- Subtotal por secao dentro de um mini-card
+- Area de termos com icone decorativo
+- Rodape com dados completos da empresa
+- Melhorar o bloco de total com label "VALOR TOTAL" mais proeminente
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+**MinimalTemplate** — Editorial clean
+- Adicionar dados do cliente (email, telefone) abaixo do nome
+- Adicionar dados da empresa (CNPJ, endereco) de forma discreta
+- Separar servicos de materiais com label sutil
+- Subtotal por grupo
+- Linha horizontal fina antes do total
+- Espaçar melhor validade e data de emissao
+- Assinatura area minimalista no final
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+### Melhorias comuns a todos
+- Formatar valores monetarios com separador de milhares brasileiro (1.300,00 em vez de 1300.00)
+- Mostrar unidade "un" ou "h" quando aplicavel
+- Garantir que endereço completo da empresa aparece em todos
 
-The permissions will be a flat list of string keys covering:
+### Arquivos editados
+- `src/components/quotes/templates/ClassicTemplate.tsx`
+- `src/components/quotes/templates/ModernTemplate.tsx`
+- `src/components/quotes/templates/MinimalTemplate.tsx`
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
-
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
-
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
-
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
-
-### 4. New Components
-
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
-
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
-
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
-
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
-
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
-
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
-
-### Technical Details
-
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
-```
-
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
-
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+Sem alteracoes de banco.
 
