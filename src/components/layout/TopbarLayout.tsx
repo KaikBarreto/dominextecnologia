@@ -50,8 +50,8 @@ const userMenuPaths = ['/usuarios', '/tutoriais', '/configuracoes'];
 
 export function TopbarLayout() {
   const { profile, roles, hasScreenAccess, signOut } = useAuth();
+  const { logoUrl, defaultLogoDark, defaultLogoWhite } = useWhiteLabel();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const filterByAccess = <T extends { screenKey?: string }>(items: T[]): T[] =>
     items.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
@@ -74,18 +74,29 @@ export function TopbarLayout() {
   return (
     <header className="hidden lg:flex h-14 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
       <div className="flex items-center gap-6 min-w-0 flex-1">
-        <img
-          src={logoDark}
-          alt="Dominex"
-          className="h-7 shrink-0 cursor-pointer dark:hidden"
-          onClick={() => navigate('/dashboard')}
-        />
-        <img
-          src={logoWhite}
-          alt="Dominex"
-          className="h-7 shrink-0 cursor-pointer hidden dark:block"
-          onClick={() => navigate('/dashboard')}
-        />
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt="Logo"
+            className="h-7 shrink-0 cursor-pointer"
+            onClick={() => navigate('/dashboard')}
+          />
+        ) : (
+          <>
+            <img
+              src={defaultLogoDark}
+              alt="Dominex"
+              className="h-7 shrink-0 cursor-pointer dark:hidden"
+              onClick={() => navigate('/dashboard')}
+            />
+            <img
+              src={defaultLogoWhite}
+              alt="Dominex"
+              className="h-7 shrink-0 cursor-pointer hidden dark:block"
+              onClick={() => navigate('/dashboard')}
+            />
+          </>
+        )}
 
         <nav className="flex items-center gap-1">
           {visibleItems.map((item) => {

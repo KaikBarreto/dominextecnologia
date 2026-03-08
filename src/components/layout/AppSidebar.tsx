@@ -87,6 +87,7 @@ const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
 
 export function AppSidebar() {
   const { profile, roles, hasScreenAccess } = useAuth();
+  const { logoUrl, defaultLogoDark } = useWhiteLabel();
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>(() => {
     // Auto-open the group that contains the current route on mount
@@ -126,7 +127,7 @@ export function AppSidebar() {
       <SidebarContent className="flex flex-1 flex-col p-0 overflow-hidden">
         {/* Logo */}
         <NavLink to="/dashboard" className="h-14 flex items-center justify-center bg-white border-b border-border shrink-0 cursor-pointer">
-          <img src={logoDark} alt="Dominex" className="h-8 w-auto mx-auto" />
+          <img src={logoUrl || defaultLogoDark} alt="Logo" className="h-8 w-auto mx-auto" />
         </NavLink>
 
         {/* Scrollable content */}
