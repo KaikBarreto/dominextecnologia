@@ -18,7 +18,7 @@ export function SystemFooter({ variant = 'light' }: SystemFooterProps) {
           to="/changelog"
           className={linkClass}
         >
-          Sistema v{APP_VERSION}
+          Dominex v{APP_VERSION}
         </Link>
         {' · Desenvolvido por '}
         <a

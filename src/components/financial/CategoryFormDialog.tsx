@@ -13,18 +13,20 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { CATEGORY_ICONS, type CategoryIconKey } from './categoryIcons';
 import type { FinancialCategory } from '@/hooks/useFinancialCategories';
 
 const schema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   type: z.string().min(1, 'Tipo é obrigatório'),
   color: z.string().min(1, 'Cor é obrigatória'),
+  icon: z.string().default('Tag'),
 });
 
 type FormData = z.infer<typeof schema>;
 
 const PRESET_COLORS = [
-  '#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6',
+  '#00C597', '#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6',
   '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#14b8a6',
 ];
 
@@ -42,18 +44,24 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     defaultValues: {
       name: category?.name ?? '',
       type: category?.type ?? 'ambos',
-      color: category?.color ?? '#3b82f6',
+      color: category?.color ?? '#00C597',
+      icon: category?.icon ?? 'Tag',
     },
   });
+
+  const selectedColor = form.watch('color');
+  const selectedIcon = form.watch('icon');
 
   const handleSubmit = async (data: FormData) => {
     await onSubmit(data);
     form.reset();
   };
 
+  const iconKeys = Object.keys(CATEGORY_ICONS) as CategoryIconKey[];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[460px]">
         <DialogHeader>
           <DialogTitle>{category ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
         </DialogHeader>
@@ -95,6 +103,35 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
                       style={{ backgroundColor: c }}
                     />
                   ))}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="icon" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Ícone</FormLabel>
+                <div className="grid grid-cols-8 gap-2 max-h-[160px] overflow-y-auto p-1">
+                  {iconKeys.map((key) => {
+                    const Icon = CATEGORY_ICONS[key];
+                    const isSelected = field.value === key;
+                    return (
+                      <button
+                        type="button"
+                        key={key}
+                        onClick={() => field.onChange(key)}
+                        title={key}
+                        className={`flex h-9 w-9 items-center justify-center rounded-lg border-2 transition-all ${
+                          isSelected
+                            ? 'border-foreground text-white'
+                            : 'border-transparent text-muted-foreground hover:bg-muted'
+                        }`}
+                        style={isSelected ? { backgroundColor: selectedColor } : undefined}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </button>
+                    );
+                  })}
                 </div>
                 <FormMessage />
               </FormItem>

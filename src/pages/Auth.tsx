@@ -84,7 +84,7 @@ export default function Auth() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
-          <img src={logoWhite} alt="Glacial Cold Brasil" className="h-16 w-auto mb-2" />
+          <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" />
           <p className="text-white/80 text-sm">Sistema de Gestão</p>
         </div>
 

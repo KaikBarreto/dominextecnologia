@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,18 +10,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
 import { CategoryFormDialog } from './CategoryFormDialog';
-
-const typeLabels: Record<string, string> = {
-  entrada: 'Receita',
-  saida: 'Despesa',
-  ambos: 'Ambos',
-};
+import { getCategoryIcon } from './categoryIcons';
 
 export function FinanceCategorias() {
   const { categories, isLoading, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialCategory | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [defaultType, setDefaultType] = useState<string>('entrada');
+
+  const receitas = categories.filter((c) => c.type === 'entrada' || c.type === 'ambos');
+  const despesas = categories.filter((c) => c.type === 'saida' || c.type === 'ambos');
 
   const handleSubmit = async (data: any) => {
     if (editing) {
@@ -38,6 +37,12 @@ export function FinanceCategorias() {
     setFormOpen(true);
   };
 
+  const handleNew = (type: string) => {
+    setEditing(null);
+    setDefaultType(type);
+    setFormOpen(true);
+  };
+
   const handleDelete = async () => {
     if (deleteId) {
       await deleteCategory.mutateAsync(deleteId);
@@ -45,56 +50,96 @@ export function FinanceCategorias() {
     }
   };
 
+  const renderCategoryList = (items: FinancialCategory[]) => (
+    <div className="space-y-2">
+      {items.map((cat) => {
+        const Icon = getCategoryIcon(cat.icon);
+        return (
+          <div key={cat.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: cat.color }}>
+                <Icon className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-medium">{cat.name}</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={() => handleEdit(cat)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteId(cat.id)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Categorias</h2>
-          <p className="text-sm text-muted-foreground">Organize receitas e despesas por categoria</p>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3 rounded-xl bg-muted p-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+          <SettingsIcon className="h-5 w-5 text-white" />
         </div>
-        <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Categoria
-        </Button>
+        <div>
+          <h2 className="text-lg font-bold">Configurações do Financeiro</h2>
+          <p className="text-sm text-muted-foreground">Gerencie categorias de receita e despesa do módulo financeiro</p>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-3">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : categories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Tag className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">Nenhuma categoria</h3>
-              <p className="text-muted-foreground text-sm">Crie categorias para organizar suas finanças</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {categories.map((cat) => (
-                <div key={cat.id} className="flex items-center justify-between px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: cat.color }} />
-                    <div>
-                      <p className="font-medium">{cat.name}</p>
-                      <Badge variant="outline" className="text-[10px]">{typeLabels[cat.type] || cat.type}</Badge>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(cat)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteId(cat.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+      {isLoading ? (
+        <div className="p-6 space-y-3">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Receitas */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success">
+                  <TrendingUp className="h-5 w-5 text-white" />
                 </div>
-              ))}
+                <div>
+                  <h3 className="font-bold">Categorias de Receita</h3>
+                  <p className="text-xs text-muted-foreground">{receitas.length} categorias</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => handleNew('entrada')}>
+                <Plus className="mr-1 h-4 w-4" />
+                Nova
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            {receitas.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma categoria de receita</p>
+            ) : renderCategoryList(receitas)}
+          </div>
+
+          {/* Despesas */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive">
+                  <TrendingDown className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold">Categorias de Despesa</h3>
+                  <p className="text-xs text-muted-foreground">{despesas.length} categorias</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => handleNew('saida')}>
+                <Plus className="mr-1 h-4 w-4" />
+                Nova
+              </Button>
+            </div>
+            {despesas.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma categoria de despesa</p>
+            ) : renderCategoryList(despesas)}
+          </div>
+        </div>
+      )}
 
       <CategoryFormDialog
         open={formOpen}

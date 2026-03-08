@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
@@ -61,9 +63,8 @@ export function TransactionFormDialog({
 
   const getCategoriesForType = (type: 'entrada' | 'saida') => {
     const fromDb = dbCategories
-      .filter((c) => c.is_active && (c.type === type || c.type === 'ambos'))
-      .map((c) => c.name);
-    return fromDb.length > 0 ? fromDb : fallbackCategories[type];
+      .filter((c) => c.is_active && (c.type === type || c.type === 'ambos'));
+    return fromDb.length > 0 ? fromDb : null;
   };
 
   const form = useForm<TransactionFormData>({
@@ -77,6 +78,19 @@ export function TransactionFormDialog({
     },
   });
 
+  // Reset form defaults when dialog opens with new defaultType or transaction
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
+        category: transaction?.category ?? '',
+        description: transaction?.description ?? '',
+        amount: transaction?.amount ?? 0,
+        transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
+      });
+    }
+  }, [open, defaultType, transaction]);
+
   const transactionType = form.watch('transaction_type');
 
   const handleSubmit = async (data: TransactionFormData) => {
@@ -86,6 +100,7 @@ export function TransactionFormDialog({
   };
 
   const isEntrada = transactionType === 'entrada';
+  const dbCats = getCategoriesForType(transactionType);
 
   return (
     <ResponsiveModal
@@ -138,7 +153,7 @@ export function TransactionFormDialog({
             )}
           />
 
-          {/* Category */}
+          {/* Category with icons */}
           <FormField
             control={form.control}
             name="category"
@@ -152,11 +167,28 @@ export function TransactionFormDialog({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {getCategoriesForType(transactionType).map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
+                    {dbCats ? (
+                      dbCats.map((cat) => {
+                        const Icon = getCategoryIcon(cat.icon);
+                        return (
+                          <SelectItem key={cat.id} value={cat.name}>
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="flex h-5 w-5 items-center justify-center rounded-full shrink-0"
+                                style={{ backgroundColor: cat.color }}
+                              >
+                                <Icon className="h-3 w-3 text-white" />
+                              </span>
+                              {cat.name}
+                            </span>
+                          </SelectItem>
+                        );
+                      })
+                    ) : (
+                      fallbackCategories[transactionType].map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -172,12 +204,7 @@ export function TransactionFormDialog({
               <FormItem>
                 <FormLabel>Valor (R$)</FormLabel>
                 <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0,00"
-                    {...field}
-                  />
+                  <Input type="number" step="0.01" placeholder="0,00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

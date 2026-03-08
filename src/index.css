@@ -6,8 +6,8 @@
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
-Design Premium com Azul da Marca #1565C0
-#1565C0 = HSL(210, 79%, 42%)
+Design Premium com Verde da Marca #00C597
+#00C597 = HSL(160, 100%, 39%)
 */
 
 @layer base {
@@ -22,8 +22,8 @@ Design Premium com Azul da Marca #1565C0
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    /* Primary - Cor da Marca #1565C0 */
-    --primary: 210 79% 42%;
+    /* Primary - Cor da Marca #00C597 */
+    --primary: 160 100% 39%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary - Preto Elegante */
@@ -54,22 +54,22 @@ Design Premium com Azul da Marca #1565C0
     /* Borders e Inputs */
     --border: 0 0% 88%;
     --input: 0 0% 88%;
-    --ring: 210 79% 42%;
+    --ring: 160 100% 39%;
 
     --radius: 0.75rem;
 
     /* Sidebar - Light theme */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 210 79% 42%;
+    --sidebar-primary: 160 100% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 79% 42%;
+    --sidebar-accent: 160 100% 39%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 210 79% 42%;
+    --sidebar-ring: 160 100% 39%;
 
     /* Gradientes customizados */
-    --gradient-brand: linear-gradient(135deg, hsl(210 79% 42%) 0%, hsl(210 85% 50%) 100%);
+    --gradient-brand: linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%);
     --gradient-dark: linear-gradient(180deg, hsl(0 0% 5%) 0%, hsl(0 0% 12%) 100%);
   }
 
@@ -83,7 +83,7 @@ Design Premium com Azul da Marca #1565C0
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 210 79% 42%;
+    --primary: 160 100% 39%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 15%;
@@ -109,18 +109,18 @@ Design Premium com Azul da Marca #1565C0
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 210 79% 42%;
+    --ring: 160 100% 39%;
 
     --sidebar-background: 0 0% 8%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 210 79% 42%;
+    --sidebar-primary: 160 100% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 79% 42%;
+    --sidebar-accent: 160 100% 39%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 210 79% 42%;
+    --sidebar-ring: 160 100% 39%;
 
-    --gradient-brand: linear-gradient(135deg, hsl(210 79% 42%) 0%, hsl(210 85% 50%) 100%);
+    --gradient-brand: linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%);
     --gradient-dark: linear-gradient(180deg, hsl(0 0% 8%) 0%, hsl(0 0% 5%) 100%);
   }
 }
