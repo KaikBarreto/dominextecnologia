@@ -165,7 +165,6 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionId: string) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    const file = await processImageFile(files[0]);
 
     setUploadingPhoto(questionId);
     try {
@@ -174,7 +173,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
       const existing = responses[questionId]?.response_photo_url;
       if (existing) uploadedUrls.push(...existing.split(','));
 
-      for (const file of Array.from(files)) {
+      for (const rawFile of Array.from(files)) {
+        const file = await processImageFile(rawFile);
         const fileExt = file.name.split('.').pop();
         const fileName = `${serviceOrderId}/form-${questionId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
 
