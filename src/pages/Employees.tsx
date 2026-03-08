@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Users, BarChart3, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,8 +14,9 @@ import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
-import { calculateEmployeeBalance } from '@/utils/employeeCalculations';
+import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const tabs: SettingsTab[] = [
   { value: 'list', label: 'Funcionários', icon: Users },
@@ -39,18 +41,35 @@ export default function Employees() {
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
   const { movements, addMovement, deleteMovement } = useEmployeeMovements(activeEmployeeId);
 
-  // Calculate balances for all employees
-  const allMovementsQuery = useEmployeeMovements(); // loads nothing (no id)
-  
-  // We need a simple balance map - for cards we calculate from empty movements (simplified)
-  // In production you'd batch-fetch, but here we show salary as balance when no movements
+  // Fetch ALL movements for balance calculation on cards
+  const { data: allMovements = [] } = useQuery({
+    queryKey: ['all-employee-movements'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('employee_movements')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as EmployeeMovement[];
+    },
+  });
+
+  // Calculate balances for all employees using real movements
   const balanceMap = useMemo(() => {
     const map = new Map();
+    const grouped = new Map<string, EmployeeMovement[]>();
+    
+    for (const m of allMovements) {
+      if (!grouped.has(m.employee_id)) grouped.set(m.employee_id, []);
+      grouped.get(m.employee_id)!.push(m);
+    }
+    
     employees.forEach(e => {
-      map.set(e.id, calculateEmployeeBalance([], e.salary));
+      const empMovements = grouped.get(e.id) || [];
+      map.set(e.id, calculateEmployeeBalance(empMovements, e.salary));
     });
     return map;
-  }, [employees]);
+  }, [employees, allMovements]);
 
   // Active employee balance (with real movements)
   const activeBalance = useMemo(() => {
@@ -111,6 +130,10 @@ export default function Employees() {
     }, { onSuccess: () => setPaymentEmployee(null) });
   };
 
+  const handleUpdatePhoto = useCallback((empId: string, url: string) => {
+    updateEmployee.mutate({ id: empId, photo_url: url });
+  }, [updateEmployee]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -163,6 +186,7 @@ export default function Employees() {
                     onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
                     onPayment={() => setPaymentEmployee(emp)}
                     onExtract={() => setExtractEmployee(emp)}
+                    onUpdatePhoto={(url) => handleUpdatePhoto(emp.id, url)}
                   />
                 ))}
               </div>

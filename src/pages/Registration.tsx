@@ -286,20 +286,6 @@ export default function Registration() {
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">CNPJ (opcional)</Label>
-                      <div className="relative mt-1">
-                        <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                        <Input
-                          {...register('company_cnpj', {
-                            onChange: (e) => { e.target.value = cpfCnpjMask(e.target.value); },
-                          })}
-                          placeholder="00.000.000/0000-00"
-                          maxLength={18}
-                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
-                        />
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -428,7 +414,7 @@ export default function Registration() {
           </CardContent>
         </Card>
 
-        <SystemFooter />
+        <SystemFooter variant="dark" />
       </div>
     </div>
   );
