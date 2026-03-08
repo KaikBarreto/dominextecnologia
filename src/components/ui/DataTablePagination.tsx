@@ -40,12 +40,13 @@ export function DataTablePagination({
           <span className="text-xs text-muted-foreground whitespace-nowrap">Por página</span>
           <Select
             value={String(pageSize)}
-            onValueChange={(value) => onPageSizeChange(value === 'all' ? 'all' : Number(value) as 25 | 50 | 100)}
+            onValueChange={(value) => onPageSizeChange(value === 'all' ? 'all' : Number(value) as 10 | 25 | 50 | 100)}
           >
             <SelectTrigger className="h-8 w-[110px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="10">10</SelectItem>
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
