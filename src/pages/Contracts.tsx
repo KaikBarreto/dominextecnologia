@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
