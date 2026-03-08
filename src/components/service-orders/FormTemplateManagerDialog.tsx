@@ -102,7 +102,14 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
   const handleCreateTemplate = () => {
     if (!newTemplateName.trim()) return;
     createTemplate.mutate({ name: newTemplateName }, {
-      onSuccess: () => setNewTemplateName(''),
+      onSuccess: (data: any) => {
+        setNewTemplateName('');
+        // By default, set to first active service (toggle "Todos" OFF)
+        const firstActive = serviceTypes.find(t => t.is_active);
+        if (firstActive && data?.id) {
+          setTemplateServices.mutate({ templateId: data.id, serviceTypeIds: [firstActive.id] });
+        }
+      },
     });
   };
 
