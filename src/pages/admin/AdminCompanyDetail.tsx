@@ -103,10 +103,10 @@ export default function AdminCompanyDetail() {
               WhatsApp
             </Button>
           )}
-          <Button variant="outline" className="gap-2 hover:bg-yellow-500 hover:text-white" onClick={() => setShowEdit(true)}>
+          <Button variant="edit-ghost" className="gap-2" onClick={() => setShowEdit(true)}>
             <Edit className="h-4 w-4" /> Editar
           </Button>
-          <Button variant="destructive" className="gap-2" onClick={() => setShowDeleteDialog(true)}>
+          <Button variant="destructive-ghost" className="gap-2" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="h-4 w-4" /> Excluir
           </Button>
         </div>

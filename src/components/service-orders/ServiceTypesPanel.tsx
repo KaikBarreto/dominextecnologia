@@ -145,13 +145,12 @@ export function ServiceTypesPanel() {
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(st)}>
+                    <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(st)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="destructive-ghost"
                       size="icon"
-                      className="text-destructive"
                       onClick={() => { setToDeleteId(st.id); setDeleteDialogOpen(true); }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -206,13 +205,12 @@ export function ServiceTypesPanel() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(st)}>
+                        <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(st)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="destructive-ghost"
                           size="icon"
-                          className="text-destructive"
                           onClick={() => { setToDeleteId(st.id); setDeleteDialogOpen(true); }}
                         >
                           <Trash2 className="h-4 w-4" />

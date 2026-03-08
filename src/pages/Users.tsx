@@ -278,11 +278,10 @@ export default function Users() {
                     {canManageRoles && (
                       <div className="flex gap-2 shrink-0 self-end sm:self-center">
                         <Button
-                          variant="outline"
+                          variant="edit-ghost"
                           size="sm"
                           onClick={() => openEditUser(userProfile)}
                           title="Editar usuário"
-                          className="hover:bg-yellow-500 hover:text-white hover:border-yellow-500"
                         >
                           <Pencil className="h-4 w-4 sm:mr-2" />
                           <span className="hidden sm:inline">Editar</span>

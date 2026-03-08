@@ -130,10 +130,10 @@ function CategoriesPanel() {
                   {cat.description && (
                     <span className="text-xs text-muted-foreground hidden sm:inline">{cat.description}</span>
                   )}
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditColor(cat.color); }}>
+                  <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditColor(cat.color); }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(cat.id)}>
+                  <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(cat.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </>

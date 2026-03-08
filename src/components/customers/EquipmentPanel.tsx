@@ -232,16 +232,15 @@ export function EquipmentPanel() {
                         <TableCell>
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button
-                              variant="ghost"
+                              variant="edit-ghost"
                               size="icon"
                               onClick={() => { setEditingEquipment(eq); setFormOpen(true); }}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="destructive-ghost"
                               size="icon"
-                              className="text-destructive"
                               onClick={() => { setEquipmentToDelete(eq); setDeleteDialogOpen(true); }}
                             >
                               <Trash2 className="h-4 w-4" />

@@ -148,10 +148,10 @@ export function TransactionListPanel({
                                 <Check className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => onEdit(t)}>
+                            <Button variant="edit-ghost" size="icon" onClick={() => onEdit(t)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteId(t.id)}>
+                            <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(t.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

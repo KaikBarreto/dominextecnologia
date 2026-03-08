@@ -322,10 +322,10 @@ export default function ServiceOrders() {
                                   <Button variant="ghost" size="icon" title="Abrir Questionário" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
                                     <ExternalLink className="h-4 w-4 text-primary" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(os)}>
+                                  <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(os)}>
                                     <Pencil className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}>
+                                  <Button variant="destructive-ghost" size="icon" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
