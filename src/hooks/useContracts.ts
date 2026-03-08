@@ -186,6 +186,7 @@ export function useContracts() {
               customer_id: input.customer_id,
               equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
               technician_id: input.technician_id || null,
+              team_id: input.team_id || null,
               os_type: 'manutencao_preventiva' as const,
               service_type_id: input.service_type_id || null,
               form_template_id: input.form_template_id || null,
