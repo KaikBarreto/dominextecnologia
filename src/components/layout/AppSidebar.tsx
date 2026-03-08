@@ -203,7 +203,7 @@ export function AppSidebar() {
                     <button
                       key={item.title}
                       title={item.title}
-                      onClick={toggleSidebar}
+                      onClick={() => handleCollapsedParentClick(item.title)}
                       className={cn(
                         'flex w-full items-center justify-center rounded-lg py-2.5 transition-colors',
                         hasActiveChild
