@@ -295,6 +295,8 @@ export default function Customers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
     </div>
   );
 }
