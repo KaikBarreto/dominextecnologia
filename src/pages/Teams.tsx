@@ -7,13 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTeams, type TeamWithMembers } from '@/hooks/useTeams';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useProfiles } from '@/hooks/useProfiles';
 import { TeamFormDialog } from '@/components/teams/TeamFormDialog';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Teams() {
   const { teamsWithMembers, isLoading, createTeam, updateTeam, deleteTeam } = useTeams();
-  const { data: profiles } = useTechnicians();
+  const { data: profiles } = useProfiles();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
