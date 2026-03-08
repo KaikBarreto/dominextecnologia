@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { phoneMask } from '@/utils/masks';
-import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2 } from 'lucide-react';
+import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
