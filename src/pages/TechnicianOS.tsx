@@ -105,7 +105,7 @@ export default function TechnicianOS() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'form_responses', filter: `service_order_id=eq.${id}` },
-        () => { /* responses updated - will be shown in report */ }
+        () => { fetchFormResponses(); }
       )
       .on(
         'postgres_changes',

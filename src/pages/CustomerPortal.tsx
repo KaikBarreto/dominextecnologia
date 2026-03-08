@@ -57,12 +57,12 @@ interface CompanySettings {
   state: string | null;
 }
 
-const OS_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/30' },
-  em_andamento: { label: 'Em andamento', color: 'bg-primary/10 text-primary border-primary/30' },
-  a_caminho: { label: 'A caminho', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30' },
-  concluida: { label: 'Concluída', color: 'bg-success/10 text-success border-success/30' },
-  cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive border-destructive/30' },
+const OS_STATUS_LABELS: Record<string, { label: string; color: string; badgeClass: string }> = {
+  pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/30', badgeClass: 'bg-warning text-white border-transparent' },
+  em_andamento: { label: 'Em andamento', color: 'bg-primary/10 text-primary border-primary/30', badgeClass: 'bg-primary text-white border-transparent' },
+  a_caminho: { label: 'A caminho', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30', badgeClass: 'bg-indigo-500 text-white border-transparent' },
+  concluida: { label: 'Concluída', color: 'bg-success/10 text-success border-success/30', badgeClass: 'bg-success text-white border-transparent' },
+  cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive border-destructive/30', badgeClass: 'bg-destructive text-white border-transparent' },
 };
 
 const ACTIVE_STATUSES = ['em_andamento', 'a_caminho', 'pendente'];
@@ -273,13 +273,13 @@ export default function CustomerPortal() {
               const statusCfg = OS_STATUS_LABELS[os.status] || OS_STATUS_LABELS.pendente;
               const isEnRoute = os.status === 'a_caminho' || os.status === 'em_andamento';
               return (
-                <Card key={os.id} className="border-primary/30 bg-primary/5">
+              <Card key={os.id} className="bg-card border hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(4, '0')}</span>
-                          <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>
+                          <Badge className={cn('text-xs', statusCfg.badgeClass)}>
                             {statusCfg.label}
                           </Badge>
                         </div>
@@ -338,7 +338,7 @@ export default function CustomerPortal() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(4, '0')}</span>
-                                <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>
+                              <Badge className={cn('text-xs', statusCfg.badgeClass)}>
                                   {statusCfg.label}
                                 </Badge>
                               </div>
