@@ -146,11 +146,11 @@ export default function Customers() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex justify-end gap-2 mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="edit-ghost" size="sm" onClick={(e) => handleEdit(customer, e)}>
+                      <div className="mt-3 flex flex-wrap justify-end gap-2 border-t pt-2" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="edit-ghost" size="sm" className="h-8 px-2 text-xs" onClick={(e) => handleEdit(customer, e)}>
                           <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                         </Button>
-                        <Button variant="destructive-ghost" size="sm" onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); setDeleteDialogOpen(true); }}>
+                        <Button variant="destructive-ghost" size="sm" className="h-8 px-2 text-xs" onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); setDeleteDialogOpen(true); }}>
                           <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
                         </Button>
                       </div>
