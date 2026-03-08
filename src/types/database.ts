@@ -133,6 +133,7 @@ export interface FormQuestion {
   is_required: boolean;
   position: number;
   description?: string;
+  require_camera?: boolean;
   created_at: string;
 }
 

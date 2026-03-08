@@ -1017,6 +1017,7 @@ export type Database = {
           position: number
           question: string
           question_type: string
+          require_camera: boolean
           template_id: string
         }
         Insert: {
@@ -1028,6 +1029,7 @@ export type Database = {
           position?: number
           question: string
           question_type?: string
+          require_camera?: boolean
           template_id: string
         }
         Update: {
@@ -1039,6 +1041,7 @@ export type Database = {
           position?: number
           question?: string
           question_type?: string
+          require_camera?: boolean
           template_id?: string
         }
         Relationships: [

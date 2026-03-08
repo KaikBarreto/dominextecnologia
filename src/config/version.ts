@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.2.10";
+export const APP_VERSION = "1.3.0";
 
-export const VERSION_NOTES = "Contatos do cliente, correção de sessões ativas, remoção do banner de instalação PWA";
+export const VERSION_NOTES = "Portal do cliente, gestão avançada de contratos, scrollbar personalizada, câmera obrigatória em fotos, edição de perguntas por modal";
