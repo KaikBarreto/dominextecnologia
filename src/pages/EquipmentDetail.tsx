@@ -327,7 +327,7 @@ export default function EquipmentDetail() {
       {/* Anexos tab */}
       {activeTab === 'anexos' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Arquivos anexados</h2>
             <div className="flex items-center gap-2">
               <div className="flex border rounded-lg overflow-hidden">
@@ -347,7 +347,7 @@ export default function EquipmentDetail() {
                 </button>
               </div>
               <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
-                <Upload className="mr-2 h-4 w-4" />{uploadingFiles ? 'Enviando...' : 'Enviar arquivos'}
+                <Upload className="mr-2 h-4 w-4" />{uploadingFiles ? 'Enviando...' : 'Enviar'}
               </Button>
             </div>
             <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
