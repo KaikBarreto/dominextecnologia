@@ -12,9 +12,11 @@ export interface ResponsiveModalProps {
   description?: string;
   children: React.ReactNode;
   className?: string;
+  /** Footer content rendered below the scrollable area */
+  footer?: React.ReactNode;
 }
 
-export function ResponsiveModal({ open, onOpenChange, title, children, className }: ResponsiveModalProps) {
+export function ResponsiveModal({ open, onOpenChange, title, children, className, footer }: ResponsiveModalProps) {
   const isCompact = useIsCompact();
 
   if (isCompact) {
@@ -24,9 +26,10 @@ export function ResponsiveModal({ open, onOpenChange, title, children, className
           <DrawerHeader>
             <DrawerTitle>{title}</DrawerTitle>
           </DrawerHeader>
-          <div className={cn("px-4 pb-6 overflow-y-auto", className)} style={{ maxHeight: 'calc(90vh - 80px)' }}>
+          <div className={cn("px-4 pb-6 overflow-y-auto", className)} style={{ maxHeight: footer ? 'calc(90vh - 140px)' : 'calc(90vh - 80px)' }}>
             {children}
           </div>
+          {footer && <div className="px-4 pb-4 border-t pt-3">{footer}</div>}
         </DrawerContent>
       </Drawer>
     );
@@ -34,11 +37,12 @@ export function ResponsiveModal({ open, onOpenChange, title, children, className
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-h-[90vh] overflow-y-auto sm:max-w-[600px]", className)}>
+      <DialogContent className={cn("max-h-[90vh] flex flex-col sm:max-w-[600px]", className)}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        {children}
+        <div className="overflow-y-auto flex-1">{children}</div>
+        {footer && <div className="border-t pt-3">{footer}</div>}
       </DialogContent>
     </Dialog>
   );

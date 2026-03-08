@@ -2470,6 +2470,221 @@ export type Database = {
           },
         ]
       }
+      time_records: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string | null
+          date: string
+          device_info: Json | null
+          id: string
+          is_valid: boolean | null
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          photo_url: string | null
+          recorded_at: string
+          source: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string | null
+          date: string
+          device_info?: Json | null
+          id?: string
+          is_valid?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          photo_url?: string | null
+          recorded_at?: string
+          source?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string | null
+          date?: string
+          device_info?: Json | null
+          id?: string
+          is_valid?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          photo_url?: string | null
+          recorded_at?: string
+          source?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_records_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_schedules: {
+        Row: {
+          break_minutes: number | null
+          company_id: string
+          expected_in: string
+          expected_out: string
+          id: string
+          is_work_day: boolean | null
+          user_id: string
+          weekday: number
+        }
+        Insert: {
+          break_minutes?: number | null
+          company_id: string
+          expected_in: string
+          expected_out: string
+          id?: string
+          is_work_day?: boolean | null
+          user_id: string
+          weekday: number
+        }
+        Update: {
+          break_minutes?: number | null
+          company_id?: string
+          expected_in?: string
+          expected_out?: string
+          id?: string
+          is_work_day?: boolean | null
+          user_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_schedules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_settings: {
+        Row: {
+          allow_off_hours: boolean | null
+          company_id: string
+          created_at: string | null
+          default_break_min: number | null
+          default_in: string
+          default_out: string
+          id: string
+          late_tolerance_min: number | null
+          max_radius_meters: number | null
+          require_geolocation: boolean | null
+          require_selfie: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_off_hours?: boolean | null
+          company_id: string
+          created_at?: string | null
+          default_break_min?: number | null
+          default_in?: string
+          default_out?: string
+          id?: string
+          late_tolerance_min?: number | null
+          max_radius_meters?: number | null
+          require_geolocation?: boolean | null
+          require_selfie?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_off_hours?: boolean | null
+          company_id?: string
+          created_at?: string | null
+          default_break_min?: number | null
+          default_in?: string
+          default_out?: string
+          id?: string
+          late_tolerance_min?: number | null
+          max_radius_meters?: number | null
+          require_geolocation?: boolean | null
+          require_selfie?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_sheets: {
+        Row: {
+          balance_min: number | null
+          company_id: string
+          created_at: string | null
+          date: string
+          expected_min: number | null
+          first_clock_in: string | null
+          id: string
+          justification: string | null
+          justified_by: string | null
+          last_clock_out: string | null
+          status: string | null
+          total_break_min: number | null
+          total_worked_min: number | null
+          user_id: string
+        }
+        Insert: {
+          balance_min?: number | null
+          company_id: string
+          created_at?: string | null
+          date: string
+          expected_min?: number | null
+          first_clock_in?: string | null
+          id?: string
+          justification?: string | null
+          justified_by?: string | null
+          last_clock_out?: string | null
+          status?: string | null
+          total_break_min?: number | null
+          total_worked_min?: number | null
+          user_id: string
+        }
+        Update: {
+          balance_min?: number | null
+          company_id?: string
+          created_at?: string | null
+          date?: string
+          expected_min?: number | null
+          first_clock_in?: string | null
+          id?: string
+          justification?: string | null
+          justified_by?: string | null
+          last_clock_out?: string | null
+          status?: string | null
+          total_break_min?: number | null
+          total_worked_min?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_sheets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           created_at: string
