@@ -34,7 +34,7 @@ const menuItems: MenuItem[] = [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Questionários', icon: FileText, path: '/questionarios', screenKey: 'screen:questionnaires' },
-      { title: 'PMOC', icon: FileText, path: '/pmoc', screenKey: 'screen:pmoc' },
+      { title: 'Contratos', icon: FileText, path: '/contratos', screenKey: 'screen:contracts' },
     ],
   },
   { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },

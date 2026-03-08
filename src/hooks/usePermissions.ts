@@ -35,7 +35,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:service_orders', label: 'Ordens de Serviço', group: 'Serviços', category: 'servicos' },
   { key: 'screen:services', label: 'Serviços', group: 'Serviços', category: 'servicos' },
   { key: 'screen:questionnaires', label: 'Questionários', group: 'Serviços', category: 'servicos' },
-  { key: 'screen:pmoc', label: 'PMOC', group: 'Serviços', category: 'servicos' },
+  { key: 'screen:contracts', label: 'Contratos', group: 'Serviços', category: 'servicos' },
   { key: 'screen:equipment', label: 'Equipamentos', group: 'Serviços', category: 'servicos' },
   { key: 'screen:customers', label: 'Clientes', group: 'Comercial', category: 'comercial' },
   { key: 'screen:crm', label: 'CRM', group: 'Comercial', category: 'comercial' },
@@ -60,7 +60,7 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:manage_users', label: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários do sistema', group: 'Administração', category: 'administracao' },
   { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao' },
   { key: 'fn:manage_crm', label: 'Gerenciar CRM', description: 'Gerenciar leads e pipeline comercial', group: 'Comercial', category: 'comercial' },
-  { key: 'fn:manage_pmoc', label: 'Gerenciar PMOC', description: 'Gerenciar contratos e planos PMOC', group: 'Serviços', category: 'servicos' },
+  { key: 'fn:manage_contracts', label: 'Gerenciar Contratos', description: 'Gerenciar contratos recorrentes e manutenções', group: 'Serviços', category: 'servicos' },
 ] as const;
 
 export const ALL_PERMISSIONS = [...SCREEN_PERMISSIONS, ...FUNCTION_PERMISSIONS];
