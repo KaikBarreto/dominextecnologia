@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ClipboardList,
   Plus,
@@ -42,6 +42,7 @@ import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -65,16 +66,20 @@ export default function ServiceOrders() {
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
+  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { statuses } = useOsStatuses();
 
-  const filteredOrders = serviceOrders.filter((os) => {
-    const matchesSearch =
-      os.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(os.order_number).includes(searchTerm);
-    const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredOrders = useMemo(() => {
+    const dateFiltered = filterByDate(serviceOrders, 'scheduled_date');
+    return dateFiltered.filter((os) => {
+      const matchesSearch =
+        os.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(os.order_number).includes(searchTerm);
+      const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [serviceOrders, searchTerm, statusFilter, range]);
 
   const pagination = useDataPagination(filteredOrders);
 
@@ -126,6 +131,13 @@ export default function ServiceOrders() {
         <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
         <p className="text-muted-foreground">Gerencie suas ordens de serviço</p>
       </div>
+
+      <DateRangeFilter
+        value={range}
+        preset={preset}
+        onPresetChange={setPreset}
+        onRangeChange={setRange}
+      />
 
       {/* Actions bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
