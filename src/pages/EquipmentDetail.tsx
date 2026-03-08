@@ -20,6 +20,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -48,6 +49,7 @@ export default function EquipmentDetail() {
   const { serviceOrders } = useServiceOrders();
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
+  const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [editEquipOpen, setEditEquipOpen] = useState(false);
   const [deleteEquipOpen, setDeleteEquipOpen] = useState(false);
