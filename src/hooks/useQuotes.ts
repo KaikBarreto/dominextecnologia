@@ -16,7 +16,10 @@ export interface QuoteItem {
 }
 
 export interface QuoteInput {
-  customer_id: string;
+  customer_id?: string;
+  prospect_name?: string;
+  prospect_phone?: string;
+  prospect_email?: string;
   status?: string;
   valid_until?: string;
   discount_type?: string;
@@ -33,7 +36,10 @@ export interface QuoteInput {
 export interface Quote {
   id: string;
   quote_number: number;
-  customer_id: string;
+  customer_id: string | null;
+  prospect_name: string | null;
+  prospect_phone: string | null;
+  prospect_email: string | null;
   status: string;
   valid_until: string | null;
   discount_type: string | null;
