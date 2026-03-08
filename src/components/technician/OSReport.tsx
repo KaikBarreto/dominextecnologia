@@ -56,6 +56,15 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     fetchRating();
   }, [serviceOrder.id]);
 
+  const fetchRating = async () => {
+    const { data } = await supabase
+      .from('service_ratings')
+      .select('*')
+      .eq('service_order_id', serviceOrder.id)
+      .maybeSingle();
+    if (data) setRatingData(data);
+  };
+
   const fetchCompany = async () => {
     const { data } = await supabase.from('company_settings').select('*').limit(1).single();
     if (data) setCompany(data);
