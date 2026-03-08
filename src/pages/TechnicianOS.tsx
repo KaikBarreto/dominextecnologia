@@ -480,7 +480,7 @@ export default function TechnicianOS() {
           </Card>
 
           {/* Live tracking map for public viewers when a_caminho */}
-          {serviceOrder.status === 'a_caminho' && serviceOrder.technician_id && (
+          {serviceOrder.status === 'a_caminho' && (
             <PublicTrackingMap serviceOrderId={serviceOrder.id} />
           )}
         </div>
