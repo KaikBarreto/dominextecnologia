@@ -45,7 +45,7 @@ export default function ProposalPublic() {
           if (tpl) setTemplateSlug(tpl.slug);
         }
       }
-      if (companyRes.data) setCompany(companyRes.data as CompanySettings);
+      if (companyRes.data) setCompany(companyRes.data as unknown as CompanySettings);
       setLoading(false);
     })();
   }, [token]);

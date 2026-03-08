@@ -15,6 +15,11 @@ export interface CompanySettings {
   state?: string;
   zip_code?: string;
   logo_url?: string;
+  proposal_customization?: {
+    primary_color?: string;
+    accent_color?: string;
+    header_bg?: string;
+  };
   created_at: string;
   updated_at: string;
 }

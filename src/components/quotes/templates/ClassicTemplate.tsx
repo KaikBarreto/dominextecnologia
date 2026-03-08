@@ -2,18 +2,20 @@ import type { ProposalTemplateProps } from './types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export function ClassicTemplate({ quote, company, items }: ProposalTemplateProps) {
+export function ClassicTemplate({ quote, company, items, customization }: ProposalTemplateProps) {
   const clientName = quote.customers?.name ?? quote.prospect_name ?? '—';
   const serviceItems = items.filter(i => i.item_type === 'servico' || i.item_type === 'mao_de_obra');
   const materialItems = items.filter(i => i.item_type === 'material');
   const allItems = [...serviceItems, ...materialItems].length === 0 ? items : null;
+
+  const primary = customization?.primary_color || '#1f2937';
 
   const renderTable = (label: string, rows: typeof items) => (
     <div className="mb-8">
       <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-3 border-b border-gray-300 pb-1">{label}</p>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b-2 border-gray-800">
+          <tr style={{ borderBottom: `2px solid ${primary}` }}>
             <th className="text-left py-2.5 px-3 font-bold text-gray-800" style={{ fontFamily: "'Georgia', serif" }}>Descrição</th>
             <th className="text-center py-2.5 px-3 font-bold text-gray-800 w-16" style={{ fontFamily: "'Georgia', serif" }}>Qtd</th>
             <th className="text-right py-2.5 px-3 font-bold text-gray-800 w-28" style={{ fontFamily: "'Georgia', serif" }}>Unitário</th>
@@ -37,7 +39,7 @@ export function ClassicTemplate({ quote, company, items }: ProposalTemplateProps
   return (
     <div className="bg-white text-gray-900 p-10 min-h-[800px]" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
       {/* Header with double border */}
-      <div className="border-t-4 border-b-2 border-gray-800 py-6 mb-8 flex justify-between items-start">
+      <div className="border-b-2 py-6 mb-8 flex justify-between items-start" style={{ borderTopWidth: 4, borderTopStyle: 'solid', borderTopColor: primary, borderBottomColor: primary }}>
         <div>
           {company?.logo_url ? (
             <img src={company.logo_url} alt="Logo" className="h-16 mb-3 object-contain" crossOrigin="anonymous" />
@@ -57,7 +59,7 @@ export function ClassicTemplate({ quote, company, items }: ProposalTemplateProps
           </div>
         </div>
         <div className="text-right">
-          <p className="text-3xl font-bold tracking-tight text-gray-800">PROPOSTA</p>
+          <p className="text-3xl font-bold tracking-tight" style={{ color: primary }}>PROPOSTA</p>
           <p className="text-lg text-gray-500 mt-1">Nº {quote.quote_number}</p>
           <p className="text-xs text-gray-400 mt-3" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
             {format(new Date(quote.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
@@ -67,7 +69,7 @@ export function ClassicTemplate({ quote, company, items }: ProposalTemplateProps
 
       {/* Client info */}
       <div className="bg-gray-50 border border-gray-200 rounded p-5 mb-8">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold mb-2" style={{ fontFamily: "'Segoe UI', sans-serif" }}>Destinatário</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] font-bold mb-2" style={{ color: primary, fontFamily: "'Segoe UI', sans-serif" }}>Destinatário</p>
         <p className="text-lg font-bold text-gray-900">{clientName}</p>
         <div className="flex gap-6 mt-1.5 text-sm text-gray-500" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
           {(quote.customers?.email || quote.prospect_email) && (
@@ -94,7 +96,7 @@ export function ClassicTemplate({ quote, company, items }: ProposalTemplateProps
       )}
 
       {/* Totals */}
-      <div className="border-t-4 border-gray-800 pt-5 flex flex-col items-end mb-8">
+      <div className="pt-5 flex flex-col items-end mb-8" style={{ borderTopWidth: 4, borderTopStyle: 'solid', borderTopColor: primary }}>
         {(quote.discount_amount ?? 0) > 0 && (
           <div className="space-y-1 mb-2 text-right" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
             <p className="text-sm text-gray-500">Subtotal: R$ {(quote.subtotal ?? 0).toFixed(2)}</p>
@@ -108,7 +110,7 @@ export function ClassicTemplate({ quote, company, items }: ProposalTemplateProps
 
       {/* Terms */}
       {quote.terms && (
-        <div className="mb-6 border-l-4 border-gray-800 pl-4">
+        <div className="mb-6 pl-4" style={{ borderLeft: `4px solid ${primary}` }}>
           <p className="text-[10px] uppercase tracking-[0.15em] text-gray-400 font-bold mb-1" style={{ fontFamily: "'Segoe UI', sans-serif" }}>Condições e Termos</p>
           <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed" style={{ fontFamily: "'Segoe UI', sans-serif" }}>{quote.terms}</p>
         </div>
@@ -122,7 +124,7 @@ export function ClassicTemplate({ quote, company, items }: ProposalTemplateProps
       )}
 
       {/* Footer */}
-      <div className="mt-16 pt-4 border-t-2 border-gray-800 text-xs text-gray-400 flex justify-between" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
+      <div className="mt-16 pt-4 text-xs text-gray-400 flex justify-between" style={{ borderTopWidth: 2, borderTopStyle: 'solid', borderTopColor: primary, fontFamily: "'Segoe UI', sans-serif" }}>
         <span>{company?.name}</span>
         <span>Proposta #{quote.quote_number}</span>
       </div>
