@@ -559,10 +559,10 @@ function QuestionRow({
           )}
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+          <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}>
+          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={onDelete}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -605,10 +605,10 @@ function EditableOption({ value, onChange, onRemove }: { value: string; onChange
       >
         {value}
       </span>
-      <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/opt:opacity-100" onClick={() => setEditing(true)}>
+      <Button variant="edit-ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/opt:opacity-100" onClick={() => setEditing(true)}>
         <Pencil className="h-2.5 w-2.5" />
       </Button>
-      <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover/opt:opacity-100" onClick={onRemove}>
+      <Button variant="destructive-ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/opt:opacity-100" onClick={onRemove}>
         <X className="h-3 w-3" />
       </Button>
     </div>

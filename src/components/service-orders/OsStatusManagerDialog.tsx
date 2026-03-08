@@ -280,10 +280,10 @@ export function OsStatusManagerDialog({ open, onOpenChange }: Props) {
                       <div className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
                       <span className="flex-1 text-sm font-medium">{status.label}</span>
                       <span className="text-xs text-muted-foreground font-mono">{status.key}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(status.id); setEditLabel(status.label); setEditColor(status.color); }}>
+                      <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(status.id); setEditLabel(status.label); setEditColor(status.color); }}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(status.id)}>
+                      <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(status.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </>
