@@ -19,8 +19,10 @@ import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { LeadDetailModal } from '@/components/crm/LeadDetailModal';
 import { LeadCard } from '@/components/crm/LeadCard';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
+import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useLeadInteractions } from '@/hooks/useLeads';
 
 interface Filters {
   search: string;
@@ -39,6 +41,10 @@ export default function CRM() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Loss reason dialog
+  const [lossDialogOpen, setLossDialogOpen] = useState(false);
+  const [pendingLossDrop, setPendingLossDrop] = useState<{ leadId: string; stageId: string; leadTitle: string } | null>(null);
   
   const [filters, setFilters] = useState<Filters>({
     search: '',
@@ -52,24 +58,16 @@ export default function CRM() {
   // Apply filters
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
-      // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchesTitle = lead.title.toLowerCase().includes(searchLower);
         const matchesCustomer = lead.customers?.name?.toLowerCase().includes(searchLower);
         if (!matchesTitle && !matchesCustomer) return false;
       }
-      
-      // Source filter
       if (filters.source && lead.source !== filters.source) return false;
-      
-      // Assigned to filter
       if (filters.assignedTo && lead.assigned_to !== filters.assignedTo) return false;
-      
-      // Value range filters
       if (filters.minValue && (lead.value || 0) < parseFloat(filters.minValue)) return false;
       if (filters.maxValue && (lead.value || 0) > parseFloat(filters.maxValue)) return false;
-      
       return true;
     });
   }, [leads, filters]);
@@ -95,20 +93,11 @@ export default function CRM() {
   const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
 
   const clearFilters = () => {
-    setFilters({
-      search: '',
-      source: '',
-      assignedTo: '',
-      minValue: '',
-      maxValue: '',
-    });
+    setFilters({ search: '', source: '', assignedTo: '', minValue: '', maxValue: '' });
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
   const handleEdit = (lead: Lead) => {
@@ -128,6 +117,7 @@ export default function CRM() {
 
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     e.dataTransfer.setData('leadId', lead.id);
+    e.dataTransfer.setData('leadTitle', lead.title);
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -139,38 +129,47 @@ export default function CRM() {
   const handleDrop = async (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('leadId');
-    if (leadId) {
-      await updateLead.mutateAsync({ id: leadId, stage_id: stageId });
+    const leadTitle = e.dataTransfer.getData('leadTitle');
+    if (!leadId) return;
+
+    // Check if dropping on a "lost" stage
+    const targetStage = stages.find(s => s.id === stageId);
+    if (targetStage?.is_lost) {
+      setPendingLossDrop({ leadId, stageId, leadTitle });
+      setLossDialogOpen(true);
+      return;
     }
+
+    await updateLead.mutateAsync({ id: leadId, stage_id: stageId });
   };
 
-  const getStageGradient = (color: string) => {
+  const handleLossConfirm = async (reason: string, details: string) => {
+    if (!pendingLossDrop) return;
+    const lossNotes = `Motivo da perda: ${reason}${details ? `\n${details}` : ''}`;
+    await updateLead.mutateAsync({
+      id: pendingLossDrop.leadId,
+      stage_id: pendingLossDrop.stageId,
+      notes: lossNotes,
+    });
+    setLossDialogOpen(false);
+    setPendingLossDrop(null);
+  };
+
+  // Map stage color to saturated bg for column header
+  const getStageHeaderBg = (color: string) => {
     switch (color) {
-      case 'muted': return 'from-muted/50 to-muted/30';
-      case 'info': return 'from-info/15 to-info/5';
-      case 'warning': return 'from-warning/15 to-warning/5';
-      case 'success': return 'from-success/15 to-success/5';
-      case 'destructive': return 'from-destructive/15 to-destructive/5';
-      case 'primary': return 'from-primary/15 to-primary/5';
-      default: return 'from-muted/50 to-muted/30';
+      case 'muted': return 'bg-muted-foreground';
+      case 'info': return 'bg-info';
+      case 'warning': return 'bg-warning';
+      case 'success': return 'bg-success';
+      case 'destructive': return 'bg-destructive';
+      case 'primary': return 'bg-primary';
+      default: return 'bg-muted-foreground';
     }
   };
-
-  const getStageHeaderBorder = (color: string) => {
-    switch (color) {
-      case 'muted': return 'border-muted-foreground/30';
-      case 'info': return 'border-info/50';
-      case 'warning': return 'border-warning/50';
-      case 'success': return 'border-success/50';
-      case 'destructive': return 'border-destructive/50';
-      case 'primary': return 'border-primary/50';
-      default: return 'border-muted-foreground/30';
-    }
-  };
-
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -183,93 +182,89 @@ export default function CRM() {
               <Settings2 className="h-4 w-4" />
             </Button>
           </StageManagerDialog>
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+          <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-[#1565C0] hover:bg-[#1565C0]/90 text-white">
             <Plus className="h-4 w-4" />
             Nova Oportunidade
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - saturated backgrounds */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-card to-primary/5 border-primary/20">
+        <Card className="border-0 bg-primary text-white">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total de Leads</p>
+                <p className="text-sm text-white/70">Total de Leads</p>
                 {isLoading ? (
-                  <Skeleton className="h-8 w-12 mt-1" />
+                  <Skeleton className="h-8 w-12 mt-1 bg-white/20" />
                 ) : (
                   <p className="text-3xl font-bold">{stats.total}</p>
                 )}
               </div>
-              <div className="rounded-full bg-primary p-3">
-                <Target className="h-6 w-6 text-white" />
+              <div className="rounded-full bg-white/20 p-3">
+                <Target className="h-6 w-6" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-success/5 border-success/20">
+        <Card className="border-0 bg-success text-white">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Valor Total</p>
+                <p className="text-sm text-white/70">Valor Total</p>
                 {isLoading ? (
-                  <Skeleton className="h-8 w-24 mt-1" />
+                  <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
                 ) : (
-                  <p className="text-2xl font-bold text-success">{formatCurrency(stats.totalValue)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
                 )}
               </div>
-              <div className="rounded-full bg-success p-3">
-                <DollarSign className="h-6 w-6 text-white" />
+              <div className="rounded-full bg-white/20 p-3">
+                <DollarSign className="h-6 w-6" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Dynamic stats based on stages */}
         {stages.filter(s => s.is_won).slice(0, 1).map(wonStage => (
-          <Card key={wonStage.id} className="bg-gradient-to-br from-card to-success/5 border-success/20">
+          <Card key={wonStage.id} className="border-0 bg-info text-white">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{wonStage.name}</p>
+                  <p className="text-sm text-white/70">{wonStage.name}</p>
                   {isLoading ? (
-                    <Skeleton className="h-8 w-24 mt-1" />
+                    <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
                   ) : (
-                    <p className="text-2xl font-bold text-success">
+                    <p className="text-2xl font-bold">
                       {formatCurrency(valueByStage[wonStage.id] || 0)}
                     </p>
                   )}
                 </div>
-                <div className="rounded-full bg-success p-3">
-                  <TrendingUp className="h-6 w-6 text-white" />
+                <div className="rounded-full bg-white/20 p-3">
+                  <TrendingUp className="h-6 w-6" />
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
 
-        {stages.filter(s => !s.is_won && !s.is_lost).slice(0, 2).map((stage, index) => (
-          <Card key={stage.id} className={cn(
-            "bg-gradient-to-br from-card",
-            index === 0 ? "to-warning/5 border-warning/20" : "to-info/5 border-info/20"
-          )}>
+        {stages.filter(s => !s.is_won && !s.is_lost).slice(0, 1).map((stage) => (
+          <Card key={stage.id} className="border-0 bg-warning text-white">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{stage.name}</p>
+                  <p className="text-sm text-white/70">{stage.name}</p>
                   {isLoading ? (
-                    <Skeleton className="h-8 w-24 mt-1" />
+                    <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
                   ) : (
-                    <p className={cn("text-2xl font-bold", index === 0 ? "text-warning" : "text-info")}>
+                    <p className="text-2xl font-bold">
                       {formatCurrency(valueByStage[stage.id] || 0)}
                     </p>
                   )}
                 </div>
-                <div className={cn("rounded-full p-3", index === 0 ? "bg-warning" : "bg-info")}>
-                  {index === 0 ? <TrendingUp className="h-6 w-6 text-white" /> : <Users className="h-6 w-6 text-white" />}
+                <div className="rounded-full bg-white/20 p-3">
+                  <Users className="h-6 w-6" />
                 </div>
               </div>
             </CardContent>
@@ -295,7 +290,7 @@ export default function CRM() {
               <Filter className="h-4 w-4" />
               Filtros
               {activeFiltersCount > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                <Badge className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-primary text-white">
                   {activeFiltersCount}
                 </Badge>
               )}
@@ -319,9 +314,7 @@ export default function CRM() {
                   value={filters.source || 'all'}
                   onValueChange={(value) => setFilters(prev => ({ ...prev, source: value === 'all' ? '' : value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
                     {LEAD_SOURCES.map(src => (
@@ -337,9 +330,7 @@ export default function CRM() {
                   value={filters.assignedTo || 'all'}
                   onValueChange={(value) => setFilters(prev => ({ ...prev, assignedTo: value === 'all' ? '' : value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     {users.map(user => (
@@ -372,10 +363,7 @@ export default function CRM() {
                 </div>
               </div>
 
-              <Button 
-                className="w-full" 
-                onClick={() => setFiltersOpen(false)}
-              >
+              <Button className="w-full" onClick={() => setFiltersOpen(false)}>
                 Aplicar Filtros
               </Button>
             </div>
@@ -387,80 +375,69 @@ export default function CRM() {
       {activeFiltersCount > 0 && (
         <div className="flex flex-wrap gap-2">
           {filters.source && (
-            <Badge variant="secondary" className="gap-1">
+            <Badge className="gap-1 bg-foreground text-background">
               Origem: {filters.source}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => setFilters(prev => ({ ...prev, source: '' }))}
-              />
+              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, source: '' }))} />
             </Badge>
           )}
           {filters.assignedTo && (
-            <Badge variant="secondary" className="gap-1">
+            <Badge className="gap-1 bg-foreground text-background">
               Vendedor: {users.find(u => u.user_id === filters.assignedTo)?.full_name || 'N/A'}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => setFilters(prev => ({ ...prev, assignedTo: '' }))}
-              />
+              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, assignedTo: '' }))} />
             </Badge>
           )}
           {filters.minValue && (
-            <Badge variant="secondary" className="gap-1">
+            <Badge className="gap-1 bg-foreground text-background">
               Min: {formatCurrency(parseFloat(filters.minValue))}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => setFilters(prev => ({ ...prev, minValue: '' }))}
-              />
+              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, minValue: '' }))} />
             </Badge>
           )}
           {filters.maxValue && (
-            <Badge variant="secondary" className="gap-1">
+            <Badge className="gap-1 bg-foreground text-background">
               Max: {formatCurrency(parseFloat(filters.maxValue))}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => setFilters(prev => ({ ...prev, maxValue: '' }))}
-              />
+              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, maxValue: '' }))} />
             </Badge>
           )}
         </div>
       )}
 
-      {/* Pipeline Kanban */}
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <TrendingUp className="h-5 w-5" />
-            Pipeline de Vendas
-            {filteredLeads.length !== leads.length && (
-              <Badge variant="outline" className="ml-2">
-                {filteredLeads.length} de {leads.length}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {(isLoading || stagesLoading) ? (
-            <div className="flex gap-4 overflow-x-auto p-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="min-w-[280px] flex-shrink-0">
-                  <Skeleton className="h-8 w-full mb-4" />
-                  <div className="space-y-3">
-                    <Skeleton className="h-28 w-full" />
-                    <Skeleton className="h-28 w-full" />
-                  </div>
+      {/* Pipeline Kanban - scroll only inside this component */}
+      <div className="overflow-hidden">
+        <div className="flex items-center gap-2 mb-3">
+          <TrendingUp className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Pipeline de Vendas</h2>
+          {filteredLeads.length !== leads.length && (
+            <Badge variant="outline" className="ml-2">
+              {filteredLeads.length} de {leads.length}
+            </Badge>
+          )}
+        </div>
+
+        {(isLoading || stagesLoading) ? (
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="min-w-[280px] flex-shrink-0">
+                <Skeleton className="h-8 w-full mb-4" />
+                <div className="space-y-3">
+                  <Skeleton className="h-28 w-full" />
+                  <Skeleton className="h-28 w-full" />
                 </div>
-              ))}
-            </div>
-          ) : stages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
+              </div>
+            ))}
+          </div>
+        ) : stages.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <Settings2 className="mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="text-lg font-medium">Nenhum estágio configurado</h3>
               <p className="text-muted-foreground max-w-sm">
                 Clique no botão de configurações para criar estágios do pipeline
               </p>
-            </div>
-          ) : filteredLeads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
+            </CardContent>
+          </Card>
+        ) : filteredLeads.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="text-lg font-medium">
                 {leads.length === 0 ? 'Nenhuma oportunidade' : 'Nenhum resultado encontrado'}
@@ -470,37 +447,37 @@ export default function CRM() {
                   ? 'Clique em "Nova Oportunidade" para começar a gerenciar seu pipeline de vendas'
                   : 'Tente ajustar os filtros para encontrar as oportunidades desejadas'}
               </p>
-            </div>
-          ) : (
-            <div className="flex gap-4 overflow-x-auto p-4 pb-6">
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="overflow-x-auto pb-4 -mx-1 px-1">
+            <div className="flex gap-4" style={{ minWidth: `${stages.length * 316}px` }}>
               {stages.map((stage) => (
                 <div
                   key={stage.id}
-                  className="min-w-[300px] max-w-[300px] flex-shrink-0"
+                  className="w-[300px] flex-shrink-0"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, stage.id)}
                 >
-                  {/* Column Header */}
-                  <div className={`rounded-t-lg bg-gradient-to-r ${getStageGradient(stage.color)} border-b-2 ${getStageHeaderBorder(stage.color)} p-3`}>
+                  {/* Column Header - saturated solid color */}
+                  <div className={cn('rounded-t-lg p-3 text-white', getStageHeaderBg(stage.color))}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge className={cn(getStageColorClass(stage.color), 'font-semibold')}>
-                          {stage.name}
-                        </Badge>
-                        <span className="text-xs font-medium bg-background/80 px-2 py-0.5 rounded-full">
+                        <span className="font-semibold text-sm">{stage.name}</span>
+                        <span className="text-xs font-medium bg-white/20 px-2 py-0.5 rounded-full">
                           {leadsByStage[stage.id]?.length || 0}
                         </span>
                       </div>
                     </div>
                     {(valueByStage[stage.id] || 0) > 0 && (
-                      <p className="text-sm font-semibold mt-2 text-foreground">
+                      <p className="text-sm font-semibold mt-1.5 text-white/90">
                         {formatCurrency(valueByStage[stage.id] || 0)}
                       </p>
                     )}
                   </div>
 
-                  {/* Cards */}
-                  <ScrollArea className="h-[450px] rounded-b-lg border border-t-0 bg-muted/20">
+                  {/* Cards - white/card bg, no pastel */}
+                  <ScrollArea className="h-[450px] rounded-b-lg border border-t-0 bg-card">
                     <div className="space-y-3 p-3">
                       {(leadsByStage[stage.id] || []).map((lead) => (
                         <div
@@ -525,9 +502,9 @@ export default function CRM() {
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
 
       {/* Form Dialog */}
       <LeadFormDialog
@@ -545,6 +522,17 @@ export default function CRM() {
           setDetailOpen(false);
           handleEdit(lead);
         }}
+      />
+
+      {/* Loss Reason Dialog */}
+      <LossReasonDialog
+        open={lossDialogOpen}
+        onOpenChange={(open) => {
+          setLossDialogOpen(open);
+          if (!open) setPendingLossDrop(null);
+        }}
+        onConfirm={handleLossConfirm}
+        leadTitle={pendingLossDrop?.leadTitle}
       />
     </div>
   );
