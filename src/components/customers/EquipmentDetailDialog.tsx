@@ -12,6 +12,7 @@ import {
 import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
+import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/types/database';
@@ -35,6 +36,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(equipment?.id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(equipment?.id);
   const { settings: companySettings } = useCompanySettings();
+  const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
