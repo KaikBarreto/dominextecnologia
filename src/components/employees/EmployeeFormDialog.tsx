@@ -14,7 +14,6 @@ import { Employee } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
-import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 
 interface EmployeeFormDialogProps {
   open: boolean;
