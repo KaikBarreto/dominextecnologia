@@ -33,6 +33,7 @@ import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
 import Changelog from "./pages/Changelog";
 import Tutorials from "./pages/Tutorials";
+import Employees from "./pages/Employees";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -132,6 +133,7 @@ const AppRoutes = () => (
       <Route path="/configuracoes" element={<Settings />} />
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Teams />} />
+      <Route path="/funcionarios" element={<Employees />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Tutorials />} />
