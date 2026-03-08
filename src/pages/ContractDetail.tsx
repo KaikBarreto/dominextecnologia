@@ -321,6 +321,7 @@ export default function ContractDetail() {
               </div>
               <DataTablePagination pagination={occPagination} />
             </CardContent>
+          </Card>
         </div>
 
         {/* Right column */}
