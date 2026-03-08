@@ -30,12 +30,10 @@ export function useWhiteLabel() {
   const primaryColor = (settings as any)?.white_label_primary_color || null;
   const customLogoUrl = (settings as any)?.white_label_logo_url || null;
 
-  // Determine the logo to use
-  const logoUrl = enabled && customLogoUrl
-    ? customLogoUrl
-    : enabled && settings?.logo_url
-      ? settings.logo_url
-      : null; // null means use default static logos
+  // When WL is enabled: use custom WL logo, or fall back to company logo
+  const logoUrl = enabled
+    ? (customLogoUrl || settings?.logo_url || null)
+    : null; // null means use default static logos
 
   const defaultLogoDark = logoDark;
   const defaultLogoWhite = logoWhite;
