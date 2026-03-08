@@ -14,8 +14,13 @@ import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 
 export default function Landing() {
+  useEffect(() => {
+    document.documentElement.classList.add('landing-scrollbar');
+    return () => document.documentElement.classList.remove('landing-scrollbar');
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[hsl(0,0%,4%)] landing-scrollbar">
+    <div className="min-h-screen bg-[hsl(0,0%,4%)]">
       <LandingNavbar />
       <HeroSection />
       <LogosSection />
