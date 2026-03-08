@@ -147,6 +147,15 @@ export default function Users() {
         await supabase.from('employees').update({ user_id: editingUser.user_id }).eq('id', data.employee_id);
       }
 
+      // Update email if changed
+      if (data.email && data.email !== editingUser.email) {
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke('manage-user', {
+          body: { action: 'update_email', user_id: editingUser.user_id, email: data.email },
+        });
+        if (emailError) throw emailError;
+        if (emailResult?.error) throw new Error(emailResult.error);
+      }
+
       toast({ title: 'Usuário atualizado!' });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
