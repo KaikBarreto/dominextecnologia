@@ -16,6 +16,7 @@ import {
   LayoutList,
   LayoutGrid,
   Star,
+  BarChart3,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
+import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -131,6 +133,7 @@ export default function ServiceOrders() {
 
   const sidebarTabs: SettingsTab[] = [
     { value: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
+    { value: 'report', label: 'Relatório', icon: BarChart3 },
     { value: 'nps', label: 'NPS e Satisfação', icon: Star },
   ];
 
@@ -143,6 +146,7 @@ export default function ServiceOrders() {
 
       <SettingsSidebarLayout tabs={sidebarTabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'nps' && <NpsDashboard />}
+        {activeTab === 'report' && <OsReportDashboard />}
         {activeTab === 'orders' && (
           <div className="space-y-6">
 

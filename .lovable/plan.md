@@ -1,48 +1,85 @@
 
 
-## Plano: Nova aba "Relatório" em Ordens de Serviço
+## Plan: Login Layout Fix + Full Permissions System
 
-### Objetivo
-Criar uma aba de relatório analítico completo dentro do módulo de Ordens de Serviço, com métricas, gráficos e tabelas resumidas.
+### 1. Login Mobile Layout Fix
+In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
 
-### Componente novo: `src/components/service-orders/OsReportDashboard.tsx`
+### 2. Permissions System - Database Changes
 
-Conteúdo da aba:
+Create 2 new tables via migration:
 
-**1. Cards de resumo (topo)**
-- Total de OS no período
-- OS concluídas / taxa de conclusão (%)
-- Tempo médio de atendimento (diferença check-in → check-out)
-- Faturamento total (soma de `total_value` das OS concluídas)
+**`permission_presets`** (cargos/kits de permissão):
+- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, authenticated can view
 
-**2. Gráficos**
-- **OS por status** — PieChart com cores dos status configurados
-- **OS por tipo de serviço** — BarChart horizontal com cor de cada service_type
-- **OS ao longo do tempo** — LineChart mensal/semanal mostrando volume de OS criadas
-- **Faturamento ao longo do tempo** — BarChart com valores das OS concluídas por mês
+**`user_permissions`** (permissões individuais por usuário):
+- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, users can view own
 
-**3. Rankings / tabelas**
-- **Top 10 clientes** — tabela com cliente, qtd de OS, valor total
-- **Top técnicos** — tabela com técnico, qtd de OS concluídas, tempo médio
-- **OS por dia da semana** — mini bar chart (seg-dom)
+The permissions will be a flat list of string keys covering:
 
-**4. Filtro de data**
-- Reutilizar `DateRangeFilter` já existente, filtrando por `scheduled_date`
+**Screen permissions (telas):**
+- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
 
-### Integração na página
+**Function permissions (funções):**
+- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
+- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
+- `fn:manage_equipment`, `fn:manage_inventory`
+- `fn:manage_finance`, `fn:view_finance_totals`
+- `fn:manage_users`, `fn:manage_settings`
+- `fn:manage_crm`, `fn:manage_pmoc`
 
-Adicionar ao array `sidebarTabs` em `ServiceOrders.tsx`:
+### 3. Users Page Redesign (`src/pages/Users.tsx`)
+
+Redesign as a full CRUD inspired by the reference screenshots:
+- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
+- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
+- **Search bar** at the top
+
+### 4. New Components
+
+**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
+- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
+- "Perfil de Acesso" select: choose a preset or "Personalizado"
+- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
+- **Funções section**: Checkboxes for action permissions
+- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+
+**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
+- Name, description, and same checkbox structure as above
+- Accessible from a gear icon on the Users page header
+
+### 5. New Hook: `usePermissions.ts`
+- Fetch user's permissions from `user_permissions` table
+- Provide `hasPermission(key: string)` helper
+- Provide `hasScreenAccess(screenKey: string)` helper
+
+### 6. Auth Context Updates
+- Add `permissions: string[]` to AuthContext state
+- Fetch from `user_permissions` table on login
+- Expose `hasPermission()` method
+
+### 7. Sidebar & Menu Filtering
+- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
+- Each menu item maps to a `screen:*` permission
+- Fallback: if user has no `user_permissions` row, use legacy role-based access
+- Update `MobileNav.tsx` similarly
+
+### 8. Edge Function for User Creation
+Create `supabase/functions/create-user/index.ts`:
+- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
+- Also creates the profile and user_permissions records
+- This is needed because client-side `signUp` sends a confirmation email and logs in
+
+### Technical Details
+
+The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
+```json
+["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
 ```
-{ value: 'report', label: 'Relatório', icon: BarChart3 }
-```
 
-Renderizar `<OsReportDashboard />` quando `activeTab === 'report'`.
+Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
 
-O componente usa os dados já carregados por `useServiceOrders()` e `useProfiles()` para calcular tudo client-side com `useMemo`, sem necessidade de queries adicionais ou mudanças no banco.
-
-### Arquivos
-- **Criar**: `src/components/service-orders/OsReportDashboard.tsx`
-- **Editar**: `src/pages/ServiceOrders.tsx` (adicionar tab + renderização)
-
-Sem migrações de banco.
+The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
 
