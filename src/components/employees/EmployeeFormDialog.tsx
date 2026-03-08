@@ -24,6 +24,7 @@ interface EmployeeFormDialogProps {
 
 export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending }: EmployeeFormDialogProps) {
   const { toast } = useToast();
+  const { users } = useUsers();
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
@@ -37,6 +38,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [uploading, setUploading] = useState(false);
   const [createAccess, setCreateAccess] = useState(false);
   const [password, setPassword] = useState('');
+  const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -57,6 +59,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setPhotoUrl(employee?.photo_url || '');
       setCreateAccess(false);
       setPassword(generatePassword());
+      setLinkedUserId(employee?.user_id || null);
     }
   }, [open, employee]);
 
