@@ -1,39 +1,66 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  LayoutDashboard,
+  CalendarDays,
+  ClipboardList,
+  Wrench,
+  FileQuestion,
+  Shield,
+  Cpu,
+  Handshake,
+  TrendingUp,
+  Package,
+  DollarSign,
+  Users,
+  Settings,
+  type LucideIcon,
+} from 'lucide-react';
 
-// All available permission keys
+// ============ CATEGORIAS DE TELA ============
+export const SCREEN_CATEGORIES: Record<string, { label: string; icon: LucideIcon }> = {
+  geral: { label: 'Geral', icon: LayoutDashboard },
+  servicos: { label: 'Serviços', icon: Wrench },
+  comercial: { label: 'Comercial', icon: Handshake },
+  operacional: { label: 'Operacional', icon: Package },
+  financeiro: { label: 'Financeiro', icon: DollarSign },
+  administracao: { label: 'Administração', icon: Settings },
+};
+
+// ============ PERMISSÕES DE TELA ============
 export const SCREEN_PERMISSIONS = [
-  { key: 'screen:dashboard', label: 'Dashboard', group: 'Geral' },
-  { key: 'screen:service_orders', label: 'Ordens de Serviço', group: 'Serviços' },
-  { key: 'screen:services', label: 'Serviços', group: 'Serviços' },
-  { key: 'screen:questionnaires', label: 'Questionários', group: 'Serviços' },
-  { key: 'screen:pmoc', label: 'PMOC', group: 'Serviços' },
-  { key: 'screen:schedule', label: 'Agenda', group: 'Geral' },
-  { key: 'screen:customers', label: 'Clientes', group: 'Comercial' },
-  { key: 'screen:equipment', label: 'Equipamentos', group: 'Serviços' },
-  { key: 'screen:crm', label: 'CRM', group: 'Comercial' },
-  { key: 'screen:inventory', label: 'Estoque', group: 'Operacional' },
-  { key: 'screen:finance', label: 'Financeiro', group: 'Financeiro' },
-  { key: 'screen:users', label: 'Usuários', group: 'Administração' },
-  { key: 'screen:settings', label: 'Configurações', group: 'Administração' },
+  { key: 'screen:dashboard', label: 'Dashboard', group: 'Geral', category: 'geral' },
+  { key: 'screen:schedule', label: 'Agenda', group: 'Geral', category: 'geral' },
+  { key: 'screen:service_orders', label: 'Ordens de Serviço', group: 'Serviços', category: 'servicos' },
+  { key: 'screen:services', label: 'Serviços', group: 'Serviços', category: 'servicos' },
+  { key: 'screen:questionnaires', label: 'Questionários', group: 'Serviços', category: 'servicos' },
+  { key: 'screen:pmoc', label: 'PMOC', group: 'Serviços', category: 'servicos' },
+  { key: 'screen:equipment', label: 'Equipamentos', group: 'Serviços', category: 'servicos' },
+  { key: 'screen:customers', label: 'Clientes', group: 'Comercial', category: 'comercial' },
+  { key: 'screen:crm', label: 'CRM', group: 'Comercial', category: 'comercial' },
+  { key: 'screen:inventory', label: 'Estoque', group: 'Operacional', category: 'operacional' },
+  { key: 'screen:finance', label: 'Financeiro', group: 'Financeiro', category: 'financeiro' },
+  { key: 'screen:users', label: 'Usuários', group: 'Administração', category: 'administracao' },
+  { key: 'screen:settings', label: 'Configurações', group: 'Administração', category: 'administracao' },
 ] as const;
 
+// ============ PERMISSÕES DE FUNÇÃO ============
 export const FUNCTION_PERMISSIONS = [
-  { key: 'fn:create_os', label: 'Criar OS', group: 'Serviços' },
-  { key: 'fn:edit_os', label: 'Editar OS', group: 'Serviços' },
-  { key: 'fn:delete_os', label: 'Excluir OS', group: 'Serviços' },
-  { key: 'fn:create_customer', label: 'Criar Cliente', group: 'Comercial' },
-  { key: 'fn:edit_customer', label: 'Editar Cliente', group: 'Comercial' },
-  { key: 'fn:delete_customer', label: 'Excluir Cliente', group: 'Comercial' },
-  { key: 'fn:manage_equipment', label: 'Gerenciar Equipamentos', group: 'Serviços' },
-  { key: 'fn:manage_inventory', label: 'Gerenciar Estoque', group: 'Operacional' },
-  { key: 'fn:manage_finance', label: 'Gerenciar Financeiro', group: 'Financeiro' },
-  { key: 'fn:view_finance_totals', label: 'Ver Totais Financeiros', group: 'Financeiro' },
-  { key: 'fn:manage_users', label: 'Gerenciar Usuários', group: 'Administração' },
-  { key: 'fn:manage_settings', label: 'Gerenciar Configurações', group: 'Administração' },
-  { key: 'fn:manage_crm', label: 'Gerenciar CRM', group: 'Comercial' },
-  { key: 'fn:manage_pmoc', label: 'Gerenciar PMOC', group: 'Serviços' },
+  { key: 'fn:create_os', label: 'Criar OS', description: 'Criar novas ordens de serviço', group: 'Serviços', category: 'servicos' },
+  { key: 'fn:edit_os', label: 'Editar OS', description: 'Editar ordens de serviço existentes', group: 'Serviços', category: 'servicos' },
+  { key: 'fn:delete_os', label: 'Excluir OS', description: 'Excluir ordens de serviço', group: 'Serviços', category: 'servicos' },
+  { key: 'fn:create_customer', label: 'Criar Cliente', description: 'Cadastrar novos clientes no sistema', group: 'Comercial', category: 'comercial' },
+  { key: 'fn:edit_customer', label: 'Editar Cliente', description: 'Editar dados de clientes existentes', group: 'Comercial', category: 'comercial' },
+  { key: 'fn:delete_customer', label: 'Excluir Cliente', description: 'Excluir clientes do sistema', group: 'Comercial', category: 'comercial' },
+  { key: 'fn:manage_equipment', label: 'Gerenciar Equipamentos', description: 'Criar, editar e excluir equipamentos', group: 'Serviços', category: 'servicos' },
+  { key: 'fn:manage_inventory', label: 'Gerenciar Estoque', description: 'Gerenciar materiais e movimentações de estoque', group: 'Operacional', category: 'operacional' },
+  { key: 'fn:manage_finance', label: 'Gerenciar Financeiro', description: 'Criar e editar transações financeiras', group: 'Financeiro', category: 'financeiro' },
+  { key: 'fn:view_finance_totals', label: 'Ver Totais Financeiros', description: 'Visualizar saldos, totais e projeções', group: 'Financeiro', category: 'financeiro' },
+  { key: 'fn:manage_users', label: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários do sistema', group: 'Administração', category: 'administracao' },
+  { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao' },
+  { key: 'fn:manage_crm', label: 'Gerenciar CRM', description: 'Gerenciar leads e pipeline comercial', group: 'Comercial', category: 'comercial' },
+  { key: 'fn:manage_pmoc', label: 'Gerenciar PMOC', description: 'Gerenciar contratos e planos PMOC', group: 'Serviços', category: 'servicos' },
 ] as const;
 
 export const ALL_PERMISSIONS = [...SCREEN_PERMISSIONS, ...FUNCTION_PERMISSIONS];
@@ -46,7 +73,14 @@ export function getPermissionsByGroup(group: string): { key: string; label: stri
   return ALL_PERMISSIONS.filter(p => p.group === group);
 }
 
-// Get all permissions (full access)
+export function getScreensByCategory(category: string) {
+  return SCREEN_PERMISSIONS.filter(p => p.category === category);
+}
+
+export function getFunctionsByCategory(category: string) {
+  return FUNCTION_PERMISSIONS.filter(p => p.category === category);
+}
+
 export function getAllPermissionKeys(): string[] {
   return ALL_PERMISSIONS.map(p => p.key);
 }
