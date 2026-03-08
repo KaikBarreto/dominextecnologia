@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/useQuotes';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
+import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,6 +36,7 @@ export default function Quotes() {
   const [editQuote, setEditQuote] = useState<Quote | null>(null);
   const [viewQuote, setViewQuote] = useState<Quote | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
 
   const filtered = useMemo(() => {
     let list = quotes;
@@ -76,9 +78,14 @@ export default function Quotes() {
             <p className="text-sm text-muted-foreground">{quotes.length} orçamentos</p>
           </div>
         </div>
-        <Button onClick={() => { setEditQuote(null); setFormOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Novo Orçamento
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setConfigOpen(true)}>
+            <Palette className="h-4 w-4 mr-2" /> Configurar Proposta
+          </Button>
+          <Button onClick={() => { setEditQuote(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Novo Orçamento
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -306,6 +313,7 @@ export default function Quotes() {
 
       <QuoteFormDialog open={formOpen} onOpenChange={setFormOpen} quote={editQuote} />
       <QuoteViewDialog open={!!viewQuote} onOpenChange={(o) => !o && setViewQuote(null)} quote={viewQuote} />
+      <ProposalConfigDialog open={configOpen} onOpenChange={setConfigOpen} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
