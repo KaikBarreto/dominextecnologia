@@ -100,6 +100,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       address: address || null,
       pix_key: pixKey || null,
       photo_url: photoUrl || null,
+      user_id: linkedUserId,
       _createAccess: createAccess,
       _password: password,
     } as any);
@@ -156,7 +157,28 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Endereço</Label>
             <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Endereço completo" />
+        </div>
+
+        {/* Link to existing user */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm font-medium">Vincular a um usuário do sistema</Label>
           </div>
+          <Select value={linkedUserId || '_none'} onValueChange={(v) => setLinkedUserId(v === '_none' ? null : v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Nenhum usuário vinculado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">Nenhum</SelectItem>
+              {users.map(u => (
+                <SelectItem key={u.user_id} value={u.user_id}>
+                  {u.full_name} {u.phone ? `(${u.phone})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Vincula este funcionário a um usuário existente no sistema</p>
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Chave PIX</Label>
             <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, email, telefone ou chave aleatória" />
