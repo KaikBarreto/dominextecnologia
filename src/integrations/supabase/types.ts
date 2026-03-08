@@ -2813,7 +2813,12 @@ export type Database = {
         | "negociacao"
         | "fechado_ganho"
         | "fechado_perdido"
-      os_status: "pendente" | "em_andamento" | "concluida" | "cancelada"
+      os_status:
+        | "pendente"
+        | "a_caminho"
+        | "em_andamento"
+        | "concluida"
+        | "cancelada"
       os_type:
         | "manutencao_preventiva"
         | "manutencao_corretiva"
@@ -2963,7 +2968,13 @@ export const Constants = {
         "fechado_ganho",
         "fechado_perdido",
       ],
-      os_status: ["pendente", "em_andamento", "concluida", "cancelada"],
+      os_status: [
+        "pendente",
+        "a_caminho",
+        "em_andamento",
+        "concluida",
+        "cancelada",
+      ],
       os_type: [
         "manutencao_preventiva",
         "manutencao_corretiva",
