@@ -28,3 +28,31 @@ export function cepMask(value: string): string {
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
+
+/**
+ * Smart PIX key mask: detects if the value is numeric (phone/CPF/CNPJ) and applies
+ * the appropriate mask. Non-numeric values (email, random key) pass through unchanged.
+ */
+export function pixKeyMask(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  // If value starts with non-digit chars or contains @ it's email/random — no mask
+  if (value.includes('@') || (value.length > 0 && digits.length === 0)) {
+    return value;
+  }
+  // If mostly digits, apply smart mask
+  if (digits.length > 0 && digits.length === value.replace(/[\s()./-]/g, '').length) {
+    // Phone pattern: starts with area code (2 digits) + 9 (mobile) — up to 11 digits
+    if (digits.length <= 11 && digits.length >= 10 && digits[2] === '9') {
+      return phoneMask(value);
+    }
+    // CPF: exactly 11 digits (not phone)
+    if (digits.length <= 11) {
+      return cpfCnpjMask(value);
+    }
+    // CNPJ: 12-14 digits
+    if (digits.length <= 14) {
+      return cpfCnpjMask(value);
+    }
+  }
+  return value;
+}

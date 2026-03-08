@@ -13,7 +13,7 @@ import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { Employee } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
-import { cpfCnpjMask, phoneMask } from '@/utils/masks';
+import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 
 interface EmployeeFormDialogProps {
