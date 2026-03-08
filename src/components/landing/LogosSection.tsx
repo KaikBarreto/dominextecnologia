@@ -11,7 +11,7 @@ export default function LogosSection() {
   return (
     <section className="relative py-16 bg-[hsl(0,0%,4%)] border-y border-white/5">
       <div ref={ref} className="scroll-reveal">
-        <p className="text-center text-sm text-white/30 uppercase tracking-widest mb-8">
+        <p className="text-center text-sm text-white/60 uppercase tracking-widest mb-8">
           Empresas que já dominam suas operações com o Dominex
         </p>
         <div className="overflow-hidden">
@@ -19,9 +19,9 @@ export default function LogosSection() {
             {[...logos, ...logos].map((name, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 text-white/20 hover:text-white/50 transition-opacity whitespace-nowrap"
+                className="flex items-center gap-2 text-white/50 hover:text-white/80 transition-opacity whitespace-nowrap"
               >
-                <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold">
+                <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center text-xs font-bold text-white/70">
                   {name[0]}
                 </div>
                 <span className="text-sm font-medium">{name}</span>
