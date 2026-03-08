@@ -1,0 +1,1 @@
+ALTER TABLE public.form_questions ADD COLUMN require_camera boolean NOT NULL DEFAULT false;
