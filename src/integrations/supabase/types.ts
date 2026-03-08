@@ -230,6 +230,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           name: string
+          neighborhood: string | null
           notes: string | null
           phone: string | null
           photo_url: string | null
@@ -251,6 +252,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           name: string
+          neighborhood?: string | null
           notes?: string | null
           phone?: string | null
           photo_url?: string | null
@@ -272,6 +274,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           name?: string
+          neighborhood?: string | null
           notes?: string | null
           phone?: string | null
           photo_url?: string | null

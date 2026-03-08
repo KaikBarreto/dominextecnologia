@@ -20,8 +20,8 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   lead: 'Lead',
   proposta: 'Proposta',
   negociacao: 'Negociação',
-  fechado_ganho: 'Fechado (Ganho)',
-  fechado_perdido: 'Fechado (Perdido)',
+  fechado_ganho: 'Negócio Fechado (Ganho)',
+  fechado_perdido: 'Negócio Perdido',
 };
 
 export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
