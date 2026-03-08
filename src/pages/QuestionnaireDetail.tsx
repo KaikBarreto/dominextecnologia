@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Plus, Pencil, Trash2, GripVertical, X, Check,
+  ArrowLeft, Plus, Pencil, Trash2, GripVertical, X,
   CheckSquare, Type, Hash, Camera, ListChecks,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -55,13 +52,13 @@ export default function QuestionnaireDetail() {
   // Question modal state (create or edit)
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<FormQuestion | null>(null);
-  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean }>({
-    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false,
+  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[] }>({
+    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [],
   });
   const [newOption, setNewOption] = useState('');
 
   const resetQuestionForm = () => {
-    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false });
+    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [] });
     setNewOption('');
     setEditingQuestion(null);
   };
@@ -73,6 +70,7 @@ export default function QuestionnaireDetail() {
 
   const openEditModal = (question: FormQuestion) => {
     setEditingQuestion(question);
+    const answerTypes = (question as any).answer_types as string[] | null;
     setQForm({
       question: question.question,
       question_type: question.question_type,
@@ -80,6 +78,7 @@ export default function QuestionnaireDetail() {
       description: question.description || '',
       options: (question.options as string[]) || [],
       require_camera: (question as any).require_camera || false,
+      answer_types: answerTypes && answerTypes.length > 0 ? answerTypes : [question.question_type],
     });
     setNewOption('');
     setQuestionModalOpen(true);
@@ -98,19 +97,48 @@ export default function QuestionnaireDetail() {
     );
   }
 
+  // Get the effective answer types for a question
+  const getEffectiveTypes = (q: FormQuestion): string[] => {
+    const at = (q as any).answer_types as string[] | null;
+    return at && at.length > 0 ? at : [q.question_type];
+  };
+
+  const handleToggleAnswerType = (typeValue: string) => {
+    const current = qForm.answer_types || [];
+    let next: string[];
+    if (current.includes(typeValue)) {
+      next = current.filter(t => t !== typeValue);
+    } else {
+      next = [...current, typeValue];
+    }
+    // Must have at least one
+    if (next.length === 0) return;
+    // Primary type is the first one
+    setQForm({
+      ...qForm,
+      answer_types: next,
+      question_type: next[0] as any,
+      // Keep options if select is included
+      options: next.includes('select') ? (qForm.options || []) : [],
+      require_camera: next.includes('photo') ? (qForm.require_camera || false) : false,
+    });
+  };
+
   const handleSaveQuestion = () => {
     if (!qForm.question?.trim()) return;
+    const answerTypes = qForm.answer_types && qForm.answer_types.length > 1 ? qForm.answer_types : null;
+    const primaryType = qForm.answer_types?.[0] || qForm.question_type || 'boolean';
 
     if (editingQuestion) {
-      // Update existing
       updateQuestion.mutate({
         id: editingQuestion.id,
         question: qForm.question,
-        question_type: qForm.question_type as any,
+        question_type: primaryType as any,
         is_required: qForm.is_required ?? true,
         description: qForm.description || null,
-        options: qForm.question_type === 'select' && qForm.options?.length ? qForm.options : null,
+        options: (qForm.answer_types || []).includes('select') && qForm.options?.length ? qForm.options : null,
         require_camera: qForm.require_camera || false,
+        answer_types: answerTypes,
       } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
@@ -118,18 +146,18 @@ export default function QuestionnaireDetail() {
         },
       });
     } else {
-      // Create new
       const position = template.questions?.length || 0;
       createQuestion.mutate({
         template_id: template.id,
         question: qForm.question!,
-        question_type: qForm.question_type as any,
+        question_type: primaryType as any,
         is_required: qForm.is_required ?? true,
         description: qForm.description || undefined,
-        options: qForm.question_type === 'select' && qForm.options?.length ? qForm.options : undefined,
+        options: (qForm.answer_types || []).includes('select') && qForm.options?.length ? qForm.options : undefined,
         position,
         require_camera: qForm.require_camera || false,
-      }, {
+        answer_types: answerTypes,
+      } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
           resetQuestionForm();
@@ -181,6 +209,7 @@ export default function QuestionnaireDetail() {
   };
 
   const sortedQuestions = [...(template.questions || [])].sort((a, b) => a.position - b.position);
+  const selectedAnswerTypes = qForm.answer_types || [];
 
   return (
     <div className="space-y-6">
@@ -271,7 +300,7 @@ export default function QuestionnaireDetail() {
       ) : (
         <div className="space-y-2">
           {sortedQuestions.map((question, index) => {
-            const Icon = getQTypeIcon(question.question_type);
+            const effectiveTypes = getEffectiveTypes(question);
             const questionOptions = (question.options as string[]) || [];
 
             return (
@@ -294,26 +323,34 @@ export default function QuestionnaireDetail() {
                   <div className="flex-1 min-w-0 space-y-1">
                     <p className="text-sm font-medium leading-tight">{question.question}</p>
                     {question.description && (
-                      <p className="text-xs text-muted-foreground">{question.description}</p>
+                      <p className="text-xs text-muted-foreground italic">🔒 {question.description}</p>
                     )}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="secondary" className="text-xs gap-1">
-                        <Icon className="h-3 w-3" />
-                        {getQTypeLabel(question.question_type)}
-                      </Badge>
+                      {effectiveTypes.map(t => {
+                        const Icon = getQTypeIcon(t);
+                        return (
+                          <Badge key={t} variant="secondary" className="text-xs gap-1">
+                            <Icon className="h-3 w-3" />
+                            {getQTypeLabel(t)}
+                          </Badge>
+                        );
+                      })}
+                      {effectiveTypes.length > 1 && (
+                        <Badge variant="outline" className="text-xs">Resposta alternativa</Badge>
+                      )}
                       {question.is_required && (
                         <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
                       )}
-                      {question.question_type === 'photo' && (question as any).require_camera && (
+                      {effectiveTypes.includes('photo') && (question as any).require_camera && (
                         <Badge variant="outline" className="text-xs">Câmera obrigatória</Badge>
                       )}
-                      {question.question_type === 'select' && questionOptions.length > 0 && (
+                      {effectiveTypes.includes('select') && questionOptions.length > 0 && (
                         <span className="text-xs text-muted-foreground">
                           {questionOptions.length} opções
                         </span>
                       )}
                     </div>
-                    {question.question_type === 'select' && questionOptions.length > 0 && (
+                    {effectiveTypes.includes('select') && questionOptions.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {questionOptions.map((opt, i) => (
                           <Badge key={i} variant="outline" className="text-xs font-normal">{opt}</Badge>
@@ -359,33 +396,37 @@ export default function QuestionnaireDetail() {
             />
             <p className="text-xs text-muted-foreground mt-1">Visível apenas durante o preenchimento. Não aparece no relatório nem no portal do cliente.</p>
           </div>
-          <div>
-            <Label>Tipo de resposta</Label>
-            <Select
-              value={qForm.question_type || 'boolean'}
-              onValueChange={(v) => setQForm({ ...qForm, question_type: v as any, options: v === 'select' ? (qForm.options || []) : [], require_camera: v === 'photo' ? (qForm.require_camera || false) : false })}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {QUESTION_TYPES.map((t) => {
-                  const QIcon = t.icon;
-                  return (
-                    <SelectItem key={t.value} value={t.value}>
-                      <span className="flex items-center gap-2">
-                        <QIcon className="h-4 w-4" />
-                        {t.label}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+
+          {/* Multi answer types */}
+          <div className="space-y-2">
+            <Label>Tipos de resposta</Label>
+            <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de responder. Se mais de uma, ao responder por uma forma as demais ficam ocultas.</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {QUESTION_TYPES.map((t) => {
+                const QIcon = t.icon;
+                const isSelected = selectedAnswerTypes.includes(t.value);
+                return (
+                  <label
+                    key={t.value}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors',
+                      isSelected ? 'border-primary bg-primary/5 text-primary' : 'hover:bg-muted/50'
+                    )}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleToggleAnswerType(t.value)}
+                    />
+                    <QIcon className="h-4 w-4" />
+                    {t.label}
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           {/* Camera-only toggle for photo type */}
-          {qForm.question_type === 'photo' && (
+          {selectedAnswerTypes.includes('photo') && (
             <div className="flex items-center gap-2">
               <Switch
                 checked={qForm.require_camera ?? false}
@@ -399,7 +440,7 @@ export default function QuestionnaireDetail() {
           )}
 
           {/* Select options config */}
-          {qForm.question_type === 'select' && (
+          {selectedAnswerTypes.includes('select') && (
             <div className="space-y-2">
               <Label>Opções de resposta</Label>
               <div className="flex gap-2">
@@ -442,7 +483,7 @@ export default function QuestionnaireDetail() {
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleSaveQuestion}
-              disabled={!qForm.question?.trim() || createQuestion.isPending || updateQuestion.isPending}
+              disabled={!qForm.question?.trim() || selectedAnswerTypes.length === 0 || createQuestion.isPending || updateQuestion.isPending}
             >
               {editingQuestion ? 'Salvar Alterações' : 'Criar Pergunta'}
             </Button>

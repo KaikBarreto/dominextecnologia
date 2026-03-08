@@ -43,7 +43,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   const [saving, setSaving] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
 
-  // Validation effect - notify parent about required field status
+  // Validation effect
   useEffect(() => {
     if (onValidationChange && questions.length > 0) {
       const requiredQuestions = questions.filter(q => q.is_required);
@@ -112,7 +112,6 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   const saveResponse = async (questionId: string, value: string | null, photoUrl?: string | null) => {
     setSaving(questionId);
     try {
-      // Check if response already exists
       const { data: existing } = await supabase
         .from('form_responses')
         .select('id')
@@ -121,7 +120,6 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
         .single();
 
       if (existing) {
-        // Update existing
         const { error } = await supabase
           .from('form_responses')
           .update({
@@ -132,7 +130,6 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
           .eq('id', existing.id);
         if (error) throw error;
       } else {
-        // Insert new
         const { error } = await supabase
           .from('form_responses')
           .insert({
@@ -213,12 +210,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
     );
   }
 
-  const renderQuestionInput = (question: FormQuestion) => {
+  const renderSingleTypeInput = (question: FormQuestion, type: string) => {
     const response = responses[question.id];
     const value = response?.response_value || '';
     const isSaving = saving === question.id;
 
-    switch (question.question_type) {
+    switch (type) {
       case 'boolean':
         return (
           <div className="flex items-center justify-between">
@@ -346,6 +343,82 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
       default:
         return <p className="text-sm text-muted-foreground">Tipo não suportado</p>;
     }
+  };
+
+  const renderQuestionInput = (question: FormQuestion) => {
+    const answerTypes = ((question as any).answer_types as string[] | null);
+    const effectiveTypes = answerTypes && answerTypes.length > 0 ? answerTypes : [question.question_type];
+
+    // Single type - just render it
+    if (effectiveTypes.length === 1) {
+      return renderSingleTypeInput(question, effectiveTypes[0]);
+    }
+
+    // Multi type - show all, but hide others when one is answered
+    const response = responses[question.id];
+    const hasTextValue = response?.response_value?.trim();
+    const hasPhotoValue = response?.response_photo_url;
+
+    // Determine which type was answered
+    let answeredType: string | null = null;
+    if (hasPhotoValue) {
+      answeredType = 'photo';
+    } else if (hasTextValue) {
+      // Could be boolean, text, number, select, signature
+      if (hasTextValue === 'true' || hasTextValue === 'false') {
+        answeredType = effectiveTypes.includes('boolean') ? 'boolean' : null;
+      }
+      if (!answeredType) {
+        // Try to figure out which type was used
+        for (const t of effectiveTypes) {
+          if (t !== 'photo' && t !== 'signature') {
+            answeredType = t;
+            break;
+          }
+        }
+      }
+    }
+
+    return (
+      <div className="space-y-3">
+        {effectiveTypes.map((type) => {
+          // If another type was answered, hide this one
+          if (answeredType && answeredType !== type && type !== answeredType) {
+            // But show a badge indicating it was answered via another type
+            return null;
+          }
+
+          return (
+            <div key={type} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type}
+                </Badge>
+                {answeredType === type && (
+                  <Badge variant="default" className="text-xs gap-1">
+                    <Check className="h-3 w-3" /> Respondido
+                  </Badge>
+                )}
+              </div>
+              {renderSingleTypeInput(question, type)}
+            </div>
+          );
+        })}
+        {answeredType && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground"
+            onClick={() => {
+              // Clear response to show all types again
+              saveResponse(question.id, null, null);
+            }}
+          >
+            Limpar resposta e mostrar todas as opções
+          </Button>
+        )}
+      </div>
+    );
   };
 
   return (
