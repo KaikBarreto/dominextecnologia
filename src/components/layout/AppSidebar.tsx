@@ -76,11 +76,14 @@ export function AppSidebar() {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
+  const isSuperAdmin = roles.includes('super_admin');
+
   const filterByAccess = <T extends { screenKey?: string }>(items: T[]): T[] => {
     return items.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
   };
 
-  const filteredMenu = filterByAccess(menuItems);
+  const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems);
+  const filteredMenu = activeMenu;
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
     children?.some((c) => location.pathname === c.path) ?? false;
