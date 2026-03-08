@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, Send, CheckCircle2, XCircle,
   ExternalLink, ClipboardList, DollarSign, Palette,
@@ -30,6 +31,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export default function Quotes() {
+  const isMobile = useIsMobile();
   const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -158,6 +160,31 @@ export default function Quotes() {
         </Card>
       ) : (
         <Card>
+          {isMobile ? (
+            <div className="p-3 space-y-3">
+              {pagination.paginatedItems.map((q) => (
+                <Card key={q.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-medium text-sm">#{q.quote_number}</span>
+                      <Badge className={STATUS_COLORS[q.status] ?? ''}>{STATUS_LABELS[q.status] ?? q.status}</Badge>
+                    </div>
+                    <p className="text-sm font-medium truncate">{q.customers?.name ?? q.prospect_name ?? '—'}</p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}</span>
+                      <span className="font-semibold text-foreground">R$ {(q.total_value ?? 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-1 pt-1 border-t">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewQuote(q)}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}><ExternalLink className="h-3.5 w-3.5" /></Button>
+                      <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => { setEditQuote(q); setFormOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(q.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -195,7 +222,6 @@ export default function Quotes() {
                   <TableCell>
                     <TooltipProvider delayDuration={300}>
                       <div className="flex justify-end gap-1">
-                        {/* View */}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewQuote(q)}>
@@ -205,8 +231,6 @@ export default function Quotes() {
                           <TooltipContent>Visualizar</TooltipContent>
                         </Tooltip>
 
-
-                        {/* Approve / Reject */}
                         {q.status === 'enviado' && (
                           <>
                             <Tooltip>
@@ -230,7 +254,6 @@ export default function Quotes() {
                           </>
                         )}
 
-                        {/* Generate Financial */}
                         {q.status === 'aprovado' && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -243,7 +266,6 @@ export default function Quotes() {
                           </Tooltip>
                         )}
 
-                        {/* Abrir em nova guia */}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}>
@@ -253,7 +275,6 @@ export default function Quotes() {
                           <TooltipContent>Abrir em nova guia</TooltipContent>
                         </Tooltip>
 
-                        {/* Edit */}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="edit-ghost" size="icon" className="h-8 w-8"
@@ -264,7 +285,6 @@ export default function Quotes() {
                           <TooltipContent>Editar</TooltipContent>
                         </Tooltip>
 
-                        {/* Delete */}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(q.id)}>
@@ -280,6 +300,7 @@ export default function Quotes() {
               ))}
             </TableBody>
           </Table>
+          )}
           <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
         </Card>
       )}

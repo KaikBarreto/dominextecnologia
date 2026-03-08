@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Package, Plus, Search, AlertTriangle, DollarSign, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export default function Inventory() {
+  const isMobile = useIsMobile();
   const { items, isLoading, stats, deleteItem } = useInventory();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -163,6 +165,35 @@ export default function Inventory() {
             </div>
           ) : (
             <>
+            {isMobile ? (
+              <div className="space-y-3">
+                {pagination.paginatedItems.map((item) => (
+                  <Card key={item.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm truncate">{item.name}</p>
+                            {isLowStock(item) && <Badge variant="warning" className="shrink-0"><AlertTriangle className="mr-1 h-3 w-3" />Baixo</Badge>}
+                          </div>
+                          {item.sku && <p className="text-xs text-muted-foreground">{item.sku}</p>}
+                        </div>
+                        {item.category && <Badge variant="secondary" className="shrink-0">{item.category}</Badge>}
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Qtd: <span className="font-medium text-foreground">{item.quantity || 0} {item.unit}</span></span>
+                        <span className="text-muted-foreground">Custo: <span className="font-medium text-foreground">{item.cost_price ? formatCurrency(item.cost_price) : '-'}</span></span>
+                        <span className="text-muted-foreground">Venda: <span className="font-medium text-foreground">{item.sale_price ? formatCurrency(item.sale_price) : '-'}</span></span>
+                      </div>
+                      <div className="flex justify-end gap-1 pt-1 border-t">
+                        <Button variant="edit-ghost" size="sm" onClick={() => handleEdit(item)}><Edit className="h-3.5 w-3.5 mr-1" />Editar</Button>
+                        <Button variant="destructive-ghost" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="h-3.5 w-3.5 mr-1" />Excluir</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -230,6 +261,7 @@ export default function Inventory() {
                 </TableBody>
               </Table>
             </div>
+            )}
             <DataTablePagination
               page={pagination.page}
               totalPages={pagination.totalPages}

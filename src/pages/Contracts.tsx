@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { ScrollText, Plus, Search, Calendar, CheckCircle, Clock, AlertTriangle, Edit, Pause, Play, Trash2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'outli
 
 export default function Contracts() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { contracts, isLoading, stats, updateContractStatus, deleteContract } = useContracts();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -128,6 +130,53 @@ export default function Contracts() {
             </div>
           ) : (
             <>
+              {isMobile ? (
+                <div className="p-4 space-y-3">
+                  {pagination.paginatedItems.map(contract => {
+                    const nextOcc = getNextOccurrence(contract);
+                    const statusCfg = STATUS_CONFIG[contract.status] || STATUS_CONFIG.active;
+                    const itemCount = contract.contract_items?.length || 0;
+                    let nextDateColor = 'text-muted-foreground';
+                    if (nextOcc) {
+                      const daysUntil = differenceInDays(parseISO(nextOcc.scheduled_date + 'T12:00:00'), new Date());
+                      if (daysUntil < 0) nextDateColor = 'text-destructive font-medium';
+                      else if (daysUntil <= 7) nextDateColor = 'text-warning font-medium';
+                      else nextDateColor = 'text-success';
+                    }
+                    return (
+                      <Card key={contract.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/contratos/${contract.id}`)}>
+                        <CardContent className="p-4 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <ScrollText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <p className="font-medium text-sm truncate">{contract.name}</p>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate">{contract.customers?.name || '-'}</p>
+                            </div>
+                            <Badge variant={statusCfg.variant} className="shrink-0">{statusCfg.label}</Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <Badge variant="secondary">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</Badge>
+                            <span>{itemCount} {itemCount === 1 ? 'item' : 'itens'}</span>
+                            {nextOcc && <span className={nextDateColor}>Próx: {format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>}
+                          </div>
+                          <div className="flex justify-end gap-1 pt-1 border-t" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title={contract.status === 'active' ? 'Pausar' : 'Retomar'}
+                              onClick={() => updateContractStatus.mutate({ id: contract.id, status: contract.status === 'active' ? 'paused' : 'active' })}>
+                              {contract.status === 'active' ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Button variant="destructive-ghost" size="icon" className="h-7 w-7"
+                              onClick={() => { if (confirm('Excluir contrato?')) deleteContract.mutate(contract.id); }}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -206,6 +255,7 @@ export default function Contracts() {
                   </TableBody>
                 </Table>
               </div>
+              )}
               <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
             </>
           )}

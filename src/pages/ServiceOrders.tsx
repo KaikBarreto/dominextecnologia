@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ClipboardList,
   Plus,
@@ -60,6 +61,7 @@ const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string
 };
 
 export default function ServiceOrders() {
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
@@ -266,6 +268,48 @@ export default function ServiceOrders() {
                 </div>
               ) : (
                 <>
+                  {isMobile ? (
+                    <div className="p-3 space-y-3">
+                      {pagination.paginatedItems.map((os) => (
+                        <Card key={os.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
+                              <Select value={os.status} onValueChange={(value) => handleStatusChange(os, value as OsStatus)}>
+                                <SelectTrigger className="h-7 w-[130px] text-xs" style={{ backgroundColor: getStatusColor(os.status), color: 'white' }}>
+                                  <SelectValue><span className="text-white">{getStatusLabel(os.status)}</span></SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {statusOptions.map((s) => (
+                                    <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <p className="font-medium text-sm truncate">{os.customer?.name || 'N/A'}</p>
+                            {os.equipment && <p className="text-xs text-muted-foreground truncate">{os.equipment.name}</p>}
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              {os.service_type && (
+                                <div className="flex items-center gap-1">
+                                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                  <span>{os.service_type.name}</span>
+                                </div>
+                              )}
+                              {os.scheduled_date && (
+                                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                              )}
+                            </div>
+                            <div className="flex justify-end gap-1 pt-1 border-t">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}><Eye className="h-3.5 w-3.5" /></Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 text-primary" /></Button>
+                              <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>
+                              <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -355,6 +399,7 @@ export default function ServiceOrders() {
                       </TableBody>
                     </Table>
                   </div>
+                  )}
                   <DataTablePagination
                     page={pagination.page}
                     totalPages={pagination.totalPages}
