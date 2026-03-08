@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Download, Printer, Building2, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2 } from 'lucide-react';
+import { Download, Printer, Building2, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -463,6 +463,51 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                   )
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* NPS / Rating Section */}
+          {ratingData && ratingData.rated_at && (
+            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Star className="h-3.5 w-3.5" /> Avaliação do Cliente
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-slate-800">{ratingData.nps_score}</p>
+                  <p className="text-xs text-slate-500">NPS (0-10)</p>
+                </div>
+                <div>
+                  <div className="flex justify-center gap-0.5">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={`h-4 w-4 ${s <= (ratingData.quality_rating || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Qualidade</p>
+                </div>
+                <div>
+                  <div className="flex justify-center gap-0.5">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={`h-4 w-4 ${s <= (ratingData.punctuality_rating || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Pontualidade</p>
+                </div>
+                <div>
+                  <div className="flex justify-center gap-0.5">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={`h-4 w-4 ${s <= (ratingData.professionalism_rating || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Profissionalismo</p>
+                </div>
+              </div>
+              {ratingData.comment && (
+                <div className="mt-3 p-2 bg-slate-50 rounded text-sm text-slate-700 italic">
+                  "{ratingData.comment}"
+                  {ratingData.rated_by_name && <span className="block text-xs text-slate-500 mt-1">— {ratingData.rated_by_name}</span>}
+                </div>
+              )}
             </div>
           )}
 
