@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
 import { useUserPermissions, usePermissionPresets } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +28,8 @@ export default function Users() {
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('users');
+  const [deletingUser, setDeletingUser] = useState<UserWithRole | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const filteredUsers = users.filter(u =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
