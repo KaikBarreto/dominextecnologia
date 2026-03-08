@@ -40,6 +40,7 @@ function formatCurrency(value: number) {
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
   const { serviceOrders, createServiceOrder } = useServiceOrders();

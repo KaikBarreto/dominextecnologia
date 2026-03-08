@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List, Image } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -47,6 +49,7 @@ export default function EquipmentDetail() {
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
+  const isMobile = useIsMobile();
   const { settings: companySettings } = useCompanySettings();
   const { equipment: allEquipment, isLoading: eqLoading } = useEquipment();
   const { serviceOrders } = useServiceOrders();
@@ -180,20 +183,33 @@ export default function EquipmentDetail() {
         </div>
       </div>
 
-      <div className="flex gap-1 border-b">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
-              activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {isMobile ? (
+        <Select value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {tabs.map((tab) => (
+              <SelectItem key={tab.key} value={tab.key}>{tab.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <div className="flex gap-1 border-b">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+                activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Geral tab */}
       {activeTab === 'geral' && (
