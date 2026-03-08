@@ -44,6 +44,7 @@ interface ServiceOrderViewDialogProps {
 
 const statusColors: Record<OsStatus, string> = {
   pendente: 'bg-warning/10 text-warning border-warning',
+  a_caminho: 'bg-indigo-500/10 text-indigo-600 border-indigo-500',
   em_andamento: 'bg-info/10 text-info border-info',
   concluida: 'bg-success/10 text-success border-success',
   cancelada: 'bg-destructive/10 text-destructive border-destructive',
