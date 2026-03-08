@@ -328,7 +328,7 @@ export default function QuestionnaireDetail() {
                   <div className="flex-1 min-w-0 space-y-1">
                     <p className="text-sm font-medium leading-tight">{question.question}</p>
                     {question.description && (
-                      <p className="text-xs text-muted-foreground italic">🔒 {question.description}</p>
+                      <p className="text-xs text-muted-foreground italic whitespace-pre-line">🔒 {question.description}</p>
                     )}
                     <div className="flex items-center gap-2 flex-wrap">
                       {effectiveTypes.map(t => {
