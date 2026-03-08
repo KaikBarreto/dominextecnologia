@@ -1,54 +1,85 @@
 
 
-## Plano: CEP no Cadastro de Cliente, Sessões, Soft Delete de Cliente
+## Plan: Login Layout Fix + Full Permissions System
 
-### 1. Integrar CepLookup no formulário de cliente
+### 1. Login Mobile Layout Fix
+In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
 
-**Arquivo**: `src/components/customers/CustomerFormDialog.tsx`
-- Substituir o campo CEP simples (linha 242-248) pelo componente `CepLookup` existente
-- No `onAddressFound`, preencher automaticamente `address` (logradouro), `city`, `state` via `form.setValue()`
-- Manter campos editáveis após preenchimento automático
+### 2. Permissions System - Database Changes
 
-### 2. Soft Delete de Clientes
+Create 2 new tables via migration:
 
-**Problema**: `service_orders.customer_id` tem FK com `RESTRICT` — impede exclusão quando há OS vinculada.
+**`permission_presets`** (cargos/kits de permissão):
+- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, authenticated can view
 
-**Migração SQL**:
-- Adicionar coluna `is_deleted boolean DEFAULT false` e `deleted_at timestamptz` na tabela `customers`
-- Não alterar a FK — manter integridade referencial
+**`user_permissions`** (permissões individuais por usuário):
+- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, users can view own
 
-**Arquivo**: `src/hooks/useCustomers.ts`
-- Alterar `deleteCustomer` para fazer UPDATE (`is_deleted = true, deleted_at = now()`) em vez de DELETE
-- Alterar query de listagem para filtrar `is_deleted = false`
+The permissions will be a flat list of string keys covering:
 
-**Arquivo**: `src/pages/Customers.tsx`
-- O erro de FK desaparece pois não tentamos mais DELETE
-- A mensagem de sucesso continua "Cliente excluído com sucesso"
+**Screen permissions (telas):**
+- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
 
-**Resultado**: Cliente "desaparece" da listagem, mas o histórico de OS continua mostrando o nome do cliente normalmente.
+**Function permissions (funções):**
+- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
+- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
+- `fn:manage_equipment`, `fn:manage_inventory`
+- `fn:manage_finance`, `fn:view_finance_totals`
+- `fn:manage_users`, `fn:manage_settings`
+- `fn:manage_crm`, `fn:manage_pmoc`
 
-### 3. Corrigir Sessões Ativas (login)
+### 3. Users Page Redesign (`src/pages/Users.tsx`)
 
-**Problema atual**: O fluxo de sessão usa `as any` para contornar tipos e pode ter race conditions. A lógica no `Auth.tsx` está correta em estrutura mas precisa de ajustes:
+Redesign as a full CRUD inspired by the reference screenshots:
+- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
+- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
+- **Search bar** at the top
 
-**Arquivo**: `src/pages/Auth.tsx`
-- No `handleSessionContinue`: após o usuário confirmar, re-autenticar (pois a sessão auth já existe), registrar nova sessão e DEPOIS desconectar as outras (se checkbox marcado) — mesma ordem da EcoSistema
-- No `handleSessionCancel`: chamar `supabase.auth.signOut()` para limpar a sessão auth que foi criada durante a verificação
-- Garantir que a navegação para `/dashboard` aconteça APÓS o registro da sessão
+### 4. New Components
 
-**Arquivo**: `src/hooks/useForcedLogout.ts`
-- Já está correto — monitora DELETE em `active_sessions` e faz signOut se a sessão atual é removida
+**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
+- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
+- "Perfil de Acesso" select: choose a preset or "Personalizado"
+- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
+- **Funções section**: Checkboxes for action permissions
+- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
 
-**Arquivo**: `src/contexts/AuthContext.tsx`
-- Já limpa sessão no signOut — correto
+**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
+- Name, description, and same checkbox structure as above
+- Accessible from a gear icon on the Users page header
 
-O principal ajuste é garantir que `handleLogin` não navegue antes de registrar a sessão, e que o dialog funcione sem ficar preso.
+### 5. New Hook: `usePermissions.ts`
+- Fetch user's permissions from `user_permissions` table
+- Provide `hasPermission(key: string)` helper
+- Provide `hasScreenAccess(screenKey: string)` helper
 
-### Arquivos a Modificar
-- `src/components/customers/CustomerFormDialog.tsx` (integrar CepLookup)
-- `src/hooks/useCustomers.ts` (soft delete)
-- `src/pages/Auth.tsx` (corrigir fluxo de sessão)
+### 6. Auth Context Updates
+- Add `permissions: string[]` to AuthContext state
+- Fetch from `user_permissions` table on login
+- Expose `hasPermission()` method
 
-### Migração SQL
-1. Adicionar `is_deleted` e `deleted_at` na tabela `customers`
+### 7. Sidebar & Menu Filtering
+- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
+- Each menu item maps to a `screen:*` permission
+- Fallback: if user has no `user_permissions` row, use legacy role-based access
+- Update `MobileNav.tsx` similarly
+
+### 8. Edge Function for User Creation
+Create `supabase/functions/create-user/index.ts`:
+- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
+- Also creates the profile and user_permissions records
+- This is needed because client-side `signUp` sends a confirmation email and logs in
+
+### Technical Details
+
+The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
+```json
+["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
+```
+
+Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
+
+The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
 

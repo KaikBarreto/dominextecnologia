@@ -29,6 +29,7 @@ export function useCustomers() {
       const { data, error } = await supabase
         .from('customers')
         .select('*')
+        .eq('is_deleted', false)
         .order('name');
       
       if (error) throw error;
@@ -89,7 +90,7 @@ export function useCustomers() {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('customers')
-        .delete()
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() } as any)
         .eq('id', id);
       
       if (error) throw error;

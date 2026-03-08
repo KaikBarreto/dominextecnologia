@@ -16,6 +16,7 @@ import { Loader2, ChevronRight, ChevronLeft, Check, Upload, Users } from 'lucide
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { CepLookup } from '@/components/CepLookup';
 import type { Customer, CustomerType } from '@/types/database';
 
 const customerSchema = z.object({
@@ -242,7 +243,17 @@ export function CustomerFormDialog({
               <FormField control={form.control} name="zip_code" render={({ field }) => (
                 <FormItem>
                   <FormLabel>CEP</FormLabel>
-                  <FormControl><Input placeholder="00000-000" {...field} /></FormControl>
+                  <FormControl>
+                    <CepLookup
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      onAddressFound={(addr) => {
+                        if (addr.logradouro) form.setValue('address', addr.logradouro);
+                        if (addr.cidade) form.setValue('city', addr.cidade);
+                        if (addr.estado) form.setValue('state', addr.estado);
+                      }}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

@@ -224,9 +224,11 @@ export type Database = {
           complement: string | null
           created_at: string
           customer_type: Database["public"]["Enums"]["customer_type"]
+          deleted_at: string | null
           document: string | null
           email: string | null
           id: string
+          is_deleted: boolean
           name: string
           notes: string | null
           phone: string | null
@@ -243,9 +245,11 @@ export type Database = {
           complement?: string | null
           created_at?: string
           customer_type?: Database["public"]["Enums"]["customer_type"]
+          deleted_at?: string | null
           document?: string | null
           email?: string | null
           id?: string
+          is_deleted?: boolean
           name: string
           notes?: string | null
           phone?: string | null
@@ -262,9 +266,11 @@ export type Database = {
           complement?: string | null
           created_at?: string
           customer_type?: Database["public"]["Enums"]["customer_type"]
+          deleted_at?: string | null
           document?: string | null
           email?: string | null
           id?: string
+          is_deleted?: boolean
           name?: string
           notes?: string | null
           phone?: string | null
