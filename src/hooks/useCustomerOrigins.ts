@@ -23,7 +23,7 @@ export function useCustomerOrigins() {
         .select('*')
         .order('name');
       if (error) throw error;
-      return (data || []) as CustomerOrigin[];
+      return (data || []) as unknown as CustomerOrigin[];
     },
   });
 
