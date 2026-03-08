@@ -71,8 +71,8 @@ export default function CustomerDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        {(customer as any).photo_url ? (
-          <img src={(customer as any).photo_url} alt="" className="h-12 w-12 rounded-full object-cover border" />
+        {customer.photo_url ? (
+          <img src={customer.photo_url} alt="" className="h-12 w-12 rounded-full object-cover border" />
         ) : (
           <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
             <Package className="h-5 w-5 text-muted-foreground" />
@@ -84,8 +84,8 @@ export default function CustomerDetail() {
             <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
               {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
             </Badge>
-            {(customer as any).company_name && (
-              <span className="text-sm text-muted-foreground">{(customer as any).company_name}</span>
+            {customer.company_name && (
+              <span className="text-sm text-muted-foreground">{customer.company_name}</span>
             )}
           </div>
         </div>
@@ -116,9 +116,9 @@ export default function CustomerDetail() {
 
       {activeTab === 'geral' && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {(customer as any).photo_url && (
+          {customer.photo_url && (
             <Card className="sm:col-span-2"><CardContent className="p-4 flex justify-center">
-              <img src={(customer as any).photo_url} alt={customer.name} className="h-32 w-32 rounded-full object-cover border" />
+              <img src={customer.photo_url} alt={customer.name} className="h-32 w-32 rounded-full object-cover border" />
             </CardContent></Card>
           )}
           {customer.document && (
@@ -139,12 +139,12 @@ export default function CustomerDetail() {
               <p className="text-sm font-medium mt-1 flex items-center gap-1"><Phone className="h-3 w-3" />{customer.phone}</p>
             </CardContent></Card>
           )}
-          {(customer as any).birth_date && (
+          {customer.birth_date && (
             <Card><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Data de Nascimento</p>
               <p className="text-sm font-medium mt-1 flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(new Date((customer as any).birth_date), 'dd/MM/yyyy', { locale: ptBR })}
+                {format(new Date(customer.birth_date), 'dd/MM/yyyy', { locale: ptBR })}
               </p>
             </CardContent></Card>
           )}
@@ -153,7 +153,13 @@ export default function CustomerDetail() {
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</p>
               <p className="text-sm font-medium mt-1 flex items-center gap-1">
                 <MapPin className="h-3 w-3 shrink-0" />
-                {[customer.address, (customer as any).complement, customer.city, customer.state, customer.zip_code].filter(Boolean).join(', ')}
+                {[
+                  customer.address && customer.address_number ? `${customer.address}, ${customer.address_number}` : customer.address,
+                  customer.complement,
+                  customer.neighborhood,
+                  customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
+                  customer.zip_code
+                ].filter(Boolean).join(', ')}
               </p>
             </CardContent></Card>
           )}
