@@ -241,6 +241,14 @@ export default function ContractDetail() {
           </div>
           <p className="text-muted-foreground">{contract.customers?.name || 'Cliente'}</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="edit-ghost" size="sm" onClick={() => setShowEditForm(true)}>
+            <Pencil className="h-4 w-4 mr-1" /> Editar
+          </Button>
+          <Button variant="destructive-ghost" size="sm" onClick={() => setShowDeleteDialog(true)}>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
