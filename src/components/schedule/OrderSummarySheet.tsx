@@ -81,7 +81,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-4 p-1 overflow-hidden">
+      <div className="space-y-4 p-1 overflow-hidden max-w-full">
         {/* Status & Type */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className={cn('text-xs shadow-sm shadow-black/15', statusBadge.className)}>{statusBadge.label}</Badge>
@@ -253,7 +253,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit }: OrderSu
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[440px]">
+      <SheetContent className="w-[440px] sm:w-[500px] max-w-[90vw]">
         <SheetHeader>
           <SheetTitle>Resumo da OS</SheetTitle>
         </SheetHeader>
