@@ -24,7 +24,7 @@ function hexToHsl(hex: string): string | null {
 }
 
 export function useWhiteLabel() {
-  const { settings } = useCompanySettings();
+  const { settings, isLoading } = useCompanySettings();
 
   const enabled = !!(settings as any)?.white_label_enabled;
   const primaryColor = (settings as any)?.white_label_primary_color || null;
@@ -64,5 +64,6 @@ export function useWhiteLabel() {
     logoUrl,
     defaultLogoDark,
     defaultLogoWhite,
+    isLoading,
   };
 }
