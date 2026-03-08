@@ -19,6 +19,7 @@ export interface FormQuestionInsert {
   position?: number;
   description?: string;
   require_camera?: boolean;
+  answer_types?: string[] | null;
 }
 
 export const QUESTION_TYPES: { value: string; label: string; icon: LucideIcon }[] = [

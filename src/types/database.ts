@@ -134,6 +134,7 @@ export interface FormQuestion {
   position: number;
   description?: string;
   require_camera?: boolean;
+  answer_types?: string[];
   created_at: string;
 }
 

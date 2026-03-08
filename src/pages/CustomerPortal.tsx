@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Package, ClipboardList, Plus, Clock, CheckCircle, AlertCircle, Loader2, Send, ChevronRight } from 'lucide-react';
+import { Package, ClipboardList, Plus, Clock, CheckCircle, AlertCircle, Loader2, Send, ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,16 @@ interface ServiceOrder {
   os_type: string;
 }
 
+interface CompanySettings {
+  name: string;
+  logo_url: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+}
+
 const OS_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/30' },
   em_andamento: { label: 'Em andamento', color: 'bg-primary/10 text-primary border-primary/30' },
@@ -62,7 +72,7 @@ export default function CustomerPortal() {
 
   const [portal, setPortal] = useState<PortalData | null>(null);
   const [customer, setCustomer] = useState<{ id: string; name: string } | null>(null);
-  const [companySettings, setCompanySettings] = useState<{ name: string; logo_url: string | null } | null>(null);
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +111,6 @@ export default function CustomerPortal() {
     setLoading(true);
     setError(null);
     try {
-      // Get portal
       const { data: portalData, error: portalError } = await supabase
         .from('customer_portals')
         .select('*')
@@ -117,7 +126,6 @@ export default function CustomerPortal() {
 
       setPortal(portalData as any);
 
-      // Get customer
       const { data: customerData } = await supabase
         .from('customers')
         .select('id, name')
@@ -126,15 +134,13 @@ export default function CustomerPortal() {
 
       if (customerData) setCustomer(customerData as any);
 
-      // Get company settings
       const { data: settings } = await supabase
         .from('company_settings')
-        .select('name, logo_url')
+        .select('name, logo_url, phone, email, address, city, state')
         .limit(1)
         .single();
       if (settings) setCompanySettings(settings as any);
 
-      // Load equipment & OS
       await Promise.all([
         loadEquipment((portalData as any).customer_id),
         loadServiceOrders((portalData as any).customer_id),
@@ -214,21 +220,40 @@ export default function CustomerPortal() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header with company info */}
       <header className="border-b bg-card px-4 py-4">
         <div className="mx-auto max-w-4xl flex items-center gap-3">
-          {companySettings?.logo_url && (
-            <img src={companySettings.logo_url} alt="" className="h-8 w-8 rounded object-contain" />
+          {companySettings?.logo_url ? (
+            <img src={companySettings.logo_url} alt="" className="h-10 w-10 rounded object-contain" />
+          ) : (
+            <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
+              <Package className="h-5 w-5 text-primary" />
+            </div>
           )}
-          <div className="flex-1">
-            <h1 className="text-lg font-bold">{companySettings?.name || 'Portal do Cliente'}</h1>
-            <p className="text-sm text-muted-foreground">{customer?.name}</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate">{companySettings?.name || 'Portal do Cliente'}</h1>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+              {companySettings?.phone && <span>{companySettings.phone}</span>}
+              {companySettings?.email && <span>{companySettings.email}</span>}
+              {companySettings?.city && companySettings?.state && (
+                <span>{companySettings.city} - {companySettings.state}</span>
+              )}
+            </div>
           </div>
           <Button size="sm" onClick={() => setShowTicketForm(true)}>
             <Plus className="h-4 w-4 mr-1" /> Abrir Chamado
           </Button>
         </div>
       </header>
+
+      {/* Customer name bar */}
+      <div className="border-b bg-muted/30 px-4 py-2">
+        <div className="mx-auto max-w-4xl">
+          <p className="text-sm text-muted-foreground">
+            Olá, <span className="font-medium text-foreground">{customer?.name}</span>
+          </p>
+        </div>
+      </div>
 
       <main className="mx-auto max-w-4xl p-4 space-y-6">
         <Tabs defaultValue={defaultTab}>
@@ -276,8 +301,20 @@ export default function CustomerPortal() {
                                 }
                               </p>
                             </div>
-                            {os.status === 'pendente' && <Clock className="h-5 w-5 text-warning shrink-0" />}
-                            {os.status === 'concluida' && <CheckCircle className="h-5 w-5 text-success shrink-0" />}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <a
+                                href={`${window.location.origin}/os-tecnico/${os.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Ver detalhes"
+                              >
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </a>
+                              {os.status === 'pendente' && <Clock className="h-5 w-5 text-warning" />}
+                              {os.status === 'concluida' && <CheckCircle className="h-5 w-5 text-success" />}
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -340,7 +377,6 @@ export default function CustomerPortal() {
                   </CardContent>
                 </Card>
 
-                {/* OS history for this equipment */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Histórico de OS deste equipamento</CardTitle>
@@ -358,7 +394,14 @@ export default function CustomerPortal() {
                                 <span className="font-mono font-bold">#{String(os.order_number).padStart(4, '0')}</span>
                                 {os.description && <span className="text-muted-foreground ml-2">{os.description}</span>}
                               </div>
-                              <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>{statusCfg.label}</Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>{statusCfg.label}</Badge>
+                                <a href={`${window.location.origin}/os-tecnico/${os.id}`} target="_blank" rel="noopener noreferrer">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </Button>
+                                </a>
+                              </div>
                             </div>
                           );
                         })}

@@ -1,0 +1,1 @@
+ALTER TABLE public.form_questions ADD COLUMN answer_types jsonb DEFAULT NULL;

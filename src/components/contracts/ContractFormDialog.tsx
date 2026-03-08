@@ -28,6 +28,7 @@ interface ContractFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreated?: (contractId: string) => void;
   editContract?: any;
+  defaultCustomerId?: string;
 }
 
 const STEPS = [
@@ -54,7 +55,7 @@ const QUICK_DAYS = [
   { label: '90 dias', value: 90 },
 ];
 
-export function ContractFormDialog({ open, onOpenChange, onCreated, editContract }: ContractFormDialogProps) {
+export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { createContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
@@ -70,7 +71,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   // Step 1
   const [name, setName] = useState('');
-  const [customerId, setCustomerId] = useState('');
+  const [customerId, setCustomerId] = useState(defaultCustomerId || '');
   const [technicianId, setTechnicianId] = useState('');
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [formTemplateId, setFormTemplateId] = useState('');
@@ -126,7 +127,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }))
       );
     } else {
-      setName(''); setCustomerId(''); setTechnicianId(''); setServiceTypeId('');
+      setName(''); setCustomerId(defaultCustomerId || ''); setTechnicianId(''); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setSelectedItems([]);
