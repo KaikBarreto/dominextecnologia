@@ -90,7 +90,7 @@ function OrderDetail({
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(buildCustomerAddress(order.customer))}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
                 >
                   <img src="/icons/google-maps.png" alt="Maps" className="h-3.5 w-3.5" />
                   Abrir com Maps
@@ -99,7 +99,7 @@ function OrderDetail({
                   href={`https://waze.com/ul?q=${encodeURIComponent(buildCustomerAddress(order.customer))}&navigate=yes`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
                 >
                   <img src="/icons/waze.png" alt="Waze" className="h-3.5 w-3.5" />
                   Abrir com Waze
