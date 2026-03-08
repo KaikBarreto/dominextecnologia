@@ -104,6 +104,7 @@ export function useContracts() {
       name: string;
       customer_id: string;
       technician_id?: string | null;
+      team_id?: string | null;
       service_type_id?: string | null;
       form_template_id?: string | null;
       status: string;
@@ -129,6 +130,7 @@ export function useContracts() {
           name: input.name,
           customer_id: input.customer_id,
           technician_id: input.technician_id || null,
+          team_id: input.team_id || null,
           service_type_id: input.service_type_id || null,
           form_template_id: input.form_template_id || null,
           status: input.status,
