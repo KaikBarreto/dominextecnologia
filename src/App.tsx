@@ -97,11 +97,7 @@ const AppRoutes = () => (
     {/* Auth routes */}
     <Route
       path="/login"
-      element={
-        <PublicRoute>
-          <Auth />
-        </PublicRoute>
-      }
+      element={<Auth />}
     />
     {/* Legacy /auth redirect */}
     <Route path="/auth" element={<Navigate to="/login" replace />} />
