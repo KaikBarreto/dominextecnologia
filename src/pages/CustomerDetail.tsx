@@ -53,6 +53,8 @@ export default function CustomerDetail() {
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
   const customerTransactions = transactions.filter(t => t.customer_id === id);
+  const ordersPagination = useDataPagination(customerOrders);
+  const transactionsPagination = useDataPagination(customerTransactions);
 
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;

@@ -37,6 +37,8 @@ export default function Contracts() {
     return matchesSearch && matchesStatus;
   });
 
+  const pagination = useDataPagination(filtered);
+
   const getNextOccurrence = (c: typeof contracts[0]) => {
     const next = (c.contract_occurrences || [])
       .filter(o => o.status === 'scheduled')

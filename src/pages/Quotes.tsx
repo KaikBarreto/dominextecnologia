@@ -55,6 +55,8 @@ export default function Quotes() {
     return list;
   }, [quotes, statusFilter, search]);
 
+  const pagination = useDataPagination(filtered);
+
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/proposta/${token}`;
     navigator.clipboard.writeText(url);

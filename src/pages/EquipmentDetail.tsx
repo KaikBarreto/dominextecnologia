@@ -65,6 +65,7 @@ export default function EquipmentDetail() {
 
   const equipment = allEquipment.find(eq => eq.id === id);
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
+  const ordersPagination = useDataPagination(equipmentOrders);
   const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
