@@ -52,6 +52,7 @@ export function TopbarLayout() {
   const { profile, roles, hasScreenAccess, signOut } = useAuth();
   const { logoUrl, defaultLogoDark, defaultLogoWhite } = useWhiteLabel();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const filterByAccess = <T extends { screenKey?: string }>(items: T[]): T[] =>
     items.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
