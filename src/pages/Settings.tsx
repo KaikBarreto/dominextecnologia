@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -211,11 +212,11 @@ export default function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label>CNPJ/CPF</Label>
-                  <Input value={companyDoc} onChange={e => setCompanyDoc(e.target.value)} placeholder="00.000.000/0000-00" />
+                  <Input value={companyDoc} onChange={e => setCompanyDoc(cpfCnpjMask(e.target.value))} placeholder="00.000.000/0000-00" />
                 </div>
                 <div className="space-y-2">
                   <Label>Telefone</Label>
-                  <Input value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} placeholder="(00) 0000-0000" />
+                  <Input value={companyPhone} onChange={e => setCompanyPhone(phoneMask(e.target.value))} placeholder="(00) 0000-0000" />
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>

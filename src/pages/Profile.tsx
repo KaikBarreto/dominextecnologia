@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { phoneMask } from '@/utils/masks';
 import { Camera, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,7 +146,7 @@ export default function Profile() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                  <Input id="phone" value={phone} onChange={(e) => setPhone(phoneMask(e.target.value))} placeholder="(00) 00000-0000" />
                 </div>
                 <div className="space-y-2">
                   <Label>Conta criada em</Label>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { phoneMask } from '@/utils/masks';
 import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -215,7 +216,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
             )}
             <div>
               <Label className="text-[13px] font-normal uppercase tracking-wider">Telefone</Label>
-              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(00) 00000-0000" />
+              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: phoneMask(e.target.value) }))} placeholder="(00) 00000-0000" />
             </div>
           </div>
 

@@ -169,7 +169,7 @@ export default function CRM() {
   };
 
   return (
-    <div className="space-y-6 overflow-hidden">
+    <div className="space-y-6 min-w-0">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

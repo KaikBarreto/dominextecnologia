@@ -17,7 +17,9 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
+import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import type { Customer, CustomerType } from '@/types/database';
+
 
 const customerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
@@ -214,7 +216,13 @@ export function CustomerFormDialog({
               <FormField control={form.control} name="document" render={({ field }) => (
                 <FormItem>
                   <FormLabel>CPF/CNPJ</FormLabel>
-                  <FormControl><Input placeholder="Documento" {...field} /></FormControl>
+                  <FormControl>
+                    <Input 
+                      placeholder="000.000.000-00" 
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(cpfCnpjMask(e.target.value))}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -235,7 +243,13 @@ export function CustomerFormDialog({
               <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Telefone</FormLabel>
-                  <FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl>
+                  <FormControl>
+                    <Input 
+                      placeholder="(00) 00000-0000" 
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(phoneMask(e.target.value))}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
