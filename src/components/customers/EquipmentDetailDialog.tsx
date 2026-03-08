@@ -219,6 +219,27 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                 {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
               </Badge>
             </div>
+            {/* Custom fields */}
+            {(() => {
+              const customFields = (equipment as any).custom_fields as Record<string, any> | null;
+              if (!customFields || Object.keys(customFields).length === 0) return null;
+              const visibleFields = fieldConfigs.filter(f => f.is_visible && customFields[f.field_key] != null && customFields[f.field_key] !== '');
+              if (visibleFields.length === 0) return null;
+              return (
+                <div className="grid grid-cols-2 gap-3 col-span-2">
+                  {visibleFields.map(field => {
+                    let displayValue = String(customFields[field.field_key]);
+                    if (field.field_type === 'boolean') displayValue = customFields[field.field_key] ? 'Sim' : 'Não';
+                    return (
+                      <div key={field.id}>
+                        <p className="text-xs text-muted-foreground">{field.label}</p>
+                        <p className="text-sm">{displayValue}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
