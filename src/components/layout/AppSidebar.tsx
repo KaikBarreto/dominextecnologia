@@ -139,40 +139,27 @@ export function AppSidebar() {
             <img src={iconePreto} alt="Logo" className="h-7 w-7 object-contain" />
           </NavLink>
 
-          {/* Profile */}
-          <div className="w-full flex justify-center py-3 border-b border-border">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Avatar className="h-8 w-8 cursor-default">
-                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
-                </Avatar>
-              </TooltipTrigger>
-              <TooltipContent side="right">{profile?.full_name}</TooltipContent>
-            </Tooltip>
-          </div>
-
-          {/* Menu icons */}
+          {/* Menu icons only (same items, no text) */}
           <div className="flex-1 w-full overflow-y-auto py-2">
-            <div className="flex flex-col items-center gap-1">
+            <nav className="space-y-1 px-2">
               {filteredMenu.map((item) => {
-                const isGroup = !!item.children;
-                const visibleChildren = isGroup ? filterByAccess(item.children!) : [];
-                if (isGroup && visibleChildren.length === 0) return null;
-                const active = isGroup ? isSubmenuActive(visibleChildren) : false;
+                if (item.children) {
+                  const visibleChildren = filterByAccess(item.children);
+                  if (visibleChildren.length === 0) return null;
+                  const hasActiveSubmenu = isSubmenuActive(visibleChildren);
 
-                if (isGroup) {
                   return (
                     <Tooltip key={item.title}>
                       <TooltipTrigger asChild>
                         <button
                           onClick={toggleSidebar}
                           className={cn(
-                            'h-10 w-10 rounded-lg flex items-center justify-center transition-colors',
-                            active
+                            'flex w-full items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-colors',
+                            hasActiveSubmenu
                               ? 'bg-primary text-primary-foreground'
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
                           )}
+                          aria-label={item.title}
                         >
                           <item.icon className={ICON_SIZE} />
                         </button>
@@ -189,12 +176,13 @@ export function AppSidebar() {
                         to={item.path!}
                         className={({ isActive }) =>
                           cn(
-                            'h-10 w-10 rounded-lg flex items-center justify-center transition-colors',
+                            'flex w-full items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-colors',
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
                           )
                         }
+                        aria-label={item.title}
                       >
                         <item.icon className={ICON_SIZE} />
                       </NavLink>
@@ -203,7 +191,7 @@ export function AppSidebar() {
                   </Tooltip>
                 );
               })}
-            </div>
+            </nav>
           </div>
 
           {/* Footer WhatsApp */}
