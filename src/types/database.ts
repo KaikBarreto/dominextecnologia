@@ -135,6 +135,7 @@ export interface FormQuestion {
   description?: string;
   require_camera?: boolean;
   answer_types?: string[];
+  answer_mode?: 'exclusive' | 'combined';
   created_at: string;
 }
 

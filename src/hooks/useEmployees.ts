@@ -14,6 +14,7 @@ export interface Employee {
   address: string | null;
   pix_key: string | null;
   photo_url: string | null;
+  user_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

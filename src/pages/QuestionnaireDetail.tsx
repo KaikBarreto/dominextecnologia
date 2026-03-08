@@ -52,13 +52,13 @@ export default function QuestionnaireDetail() {
   // Question modal state (create or edit)
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<FormQuestion | null>(null);
-  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[] }>({
-    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [],
+  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[]; answer_mode?: string }>({
+    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive',
   });
   const [newOption, setNewOption] = useState('');
 
   const resetQuestionForm = () => {
-    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [] });
+    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive' });
     setNewOption('');
     setEditingQuestion(null);
   };
@@ -81,6 +81,7 @@ export default function QuestionnaireDetail() {
       options: opts,
       require_camera: (question as any).require_camera || false,
       answer_types: effectiveTypes,
+      answer_mode: (question as any).answer_mode || 'exclusive',
     });
     setNewOption('');
     setQuestionModalOpen(true);
@@ -133,6 +134,7 @@ export default function QuestionnaireDetail() {
     const primaryType = effectiveTypes[0] || qForm.question_type || 'boolean';
     const hasSelect = effectiveTypes.includes('select');
     const optionsToSave = hasSelect && qForm.options && qForm.options.length > 0 ? qForm.options : null;
+    const answerMode = effectiveTypes.length >= 2 ? ((qForm as any).answer_mode || 'exclusive') : 'exclusive';
 
     if (editingQuestion) {
       updateQuestion.mutate({
@@ -144,6 +146,7 @@ export default function QuestionnaireDetail() {
         options: optionsToSave,
         require_camera: qForm.require_camera || false,
         answer_types: answerTypes,
+        answer_mode: answerMode,
       } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
@@ -162,6 +165,7 @@ export default function QuestionnaireDetail() {
         position,
         require_camera: qForm.require_camera || false,
         answer_types: answerTypes,
+        answer_mode: answerMode,
       } as any, {
         onSuccess: () => {
           setQuestionModalOpen(false);
@@ -341,7 +345,9 @@ export default function QuestionnaireDetail() {
                         );
                       })}
                       {effectiveTypes.length > 1 && (
-                        <Badge variant="outline" className="text-xs">Resposta alternativa</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {(question as any).answer_mode === 'combined' ? '🔗 Cumulativo' : '⚡ Exclusivo'}
+                        </Badge>
                       )}
                       {question.is_required && (
                         <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
@@ -405,7 +411,7 @@ export default function QuestionnaireDetail() {
           {/* Multi answer types */}
           <div className="space-y-2">
             <Label>Tipos de resposta</Label>
-            <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de responder. Se mais de uma, ao responder por uma forma as demais ficam ocultas.</p>
+            <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de responder.</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {QUESTION_TYPES.map((t) => {
                 const QIcon = t.icon;
@@ -429,6 +435,47 @@ export default function QuestionnaireDetail() {
               })}
             </div>
           </div>
+
+          {/* Answer mode toggle when 2+ types selected */}
+          {selectedAnswerTypes.length >= 2 && (
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-medium">Modo de resposta múltipla</Label>
+              <div className="space-y-2">
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
+                  (qForm as any).answer_mode !== 'combined' ? 'border-primary bg-primary/10' : 'hover:bg-muted/50'
+                )}>
+                  <input
+                    type="radio"
+                    name="answer_mode"
+                    checked={(qForm as any).answer_mode !== 'combined'}
+                    onChange={() => setQForm({ ...qForm, answer_mode: 'exclusive' } as any)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="font-medium">Exclusivo</span>
+                    <p className="text-xs text-muted-foreground">Responder por um tipo oculta os demais</p>
+                  </div>
+                </label>
+                <label className={cn(
+                  "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
+                  (qForm as any).answer_mode === 'combined' ? 'border-primary bg-primary/10' : 'hover:bg-muted/50'
+                )}>
+                  <input
+                    type="radio"
+                    name="answer_mode"
+                    checked={(qForm as any).answer_mode === 'combined'}
+                    onChange={() => setQForm({ ...qForm, answer_mode: 'combined' } as any)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="font-medium">Cumulativo</span>
+                    <p className="text-xs text-muted-foreground">O técnico pode responder por múltiplas formas simultaneamente</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
 
           {/* Camera-only toggle for photo type */}
           {selectedAnswerTypes.includes('photo') && (

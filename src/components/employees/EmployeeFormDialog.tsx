@@ -4,6 +4,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,13 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [pixKey, setPixKey] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [createAccess, setCreateAccess] = useState(false);
+  const [password, setPassword] = useState('');
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  };
 
   useEffect(() => {
     if (open) {
@@ -45,6 +53,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setAddress(employee?.address || '');
       setPixKey(employee?.pix_key || '');
       setPhotoUrl(employee?.photo_url || '');
+      setCreateAccess(false);
+      setPassword(generatePassword());
     }
   }, [open, employee]);
 
@@ -72,6 +82,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast({ variant: 'destructive', title: 'Nome é obrigatório' }); return; }
+    if (createAccess && !email.trim()) { toast({ variant: 'destructive', title: 'Email é obrigatório para criar acesso' }); return; }
+    if (createAccess && password.length < 6) { toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
     onSubmit({
       name: name.trim(),
       cpf: cpf || null,
@@ -83,7 +95,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       address: address || null,
       pix_key: pixKey || null,
       photo_url: photoUrl || null,
-    });
+      _createAccess: createAccess,
+      _password: password,
+    } as any);
   };
 
   const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
@@ -143,6 +157,32 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, email, telefone ou chave aleatória" />
           </div>
         </div>
+
+        {/* Create system access toggle - only on creation */}
+        {!employee && (
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <Switch checked={createAccess} onCheckedChange={setCreateAccess} />
+              <div>
+                <Label className="text-sm cursor-pointer">Criar acesso ao sistema</Label>
+                <p className="text-xs text-muted-foreground">Cria automaticamente um usuário com perfil Técnico</p>
+              </div>
+            </div>
+            {createAccess && (
+              <div className="space-y-2">
+                {!email && <p className="text-xs text-destructive">Preencha o email acima para criar o acesso</p>}
+                <div className="space-y-1.5">
+                  <Label>Senha temporária</Label>
+                  <div className="flex gap-2">
+                    <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
+                    <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Anote a senha — ela será exibida apenas uma vez</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

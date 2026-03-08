@@ -19,6 +19,7 @@ import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUsers } from '@/hooks/useUsers';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const tabs: SettingsTab[] = [
@@ -39,6 +40,7 @@ export default function Employees() {
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { toast } = useToast();
   const { user } = useAuth();
   const { currentUserRole } = useUsers();
   const isTecnico = currentUserRole === 'tecnico';
@@ -97,11 +99,51 @@ export default function Employees() {
     return result;
   }, [employees, search, sort]);
 
-  const handleCreateOrUpdate = (data: Partial<Employee>) => {
+  const handleCreateOrUpdate = async (data: Partial<Employee> & { _createAccess?: boolean; _password?: string }) => {
+    const { _createAccess, _password, ...employeeData } = data as any;
+    
     if (editingEmployee) {
-      updateEmployee.mutate({ id: editingEmployee.id, ...data }, { onSuccess: () => { setFormOpen(false); setEditingEmployee(null); } });
+      updateEmployee.mutate({ id: editingEmployee.id, ...employeeData }, { onSuccess: () => { setFormOpen(false); setEditingEmployee(null); } });
     } else {
-      createEmployee.mutate(data, { onSuccess: () => setFormOpen(false) });
+      createEmployee.mutate(employeeData, {
+        onSuccess: async (newEmployee: any) => {
+          setFormOpen(false);
+          
+          if (_createAccess && employeeData.email && _password) {
+            try {
+              const { data: fnData, error: fnError } = await supabase.functions.invoke('create-user', {
+                body: {
+                  email: employeeData.email,
+                  password: _password,
+                  full_name: employeeData.name,
+                  phone: employeeData.phone || undefined,
+                  role: 'tecnico',
+                },
+              });
+              
+              if (fnError) throw fnError;
+              if (fnData?.error) throw new Error(fnData.error);
+              
+              // Link user_id to employee
+              if (fnData?.user?.id && newEmployee?.id) {
+                await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', newEmployee.id);
+              }
+              
+              toast({
+                title: 'Acesso ao sistema criado!',
+                description: `Email: ${employeeData.email} — Senha: ${_password}`,
+                duration: 15000,
+              });
+            } catch (err: any) {
+              toast({
+                variant: 'destructive',
+                title: 'Funcionário criado, mas erro ao criar acesso',
+                description: err.message,
+              });
+            }
+          }
+        },
+      });
     }
   };
 
