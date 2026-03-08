@@ -38,7 +38,9 @@ export interface Customer {
   email?: string;
   phone?: string;
   address?: string;
+  address_number?: string;
   complement?: string;
+  neighborhood?: string;
   city?: string;
   state?: string;
   zip_code?: string;
