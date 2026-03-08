@@ -44,8 +44,8 @@ import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
+import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -129,6 +129,11 @@ export default function ServiceOrders() {
   // Kanban columns ordered by status position
   const kanbanColumns = statusOptions;
 
+  const sidebarTabs: SettingsTab[] = [
+    { value: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
+    { value: 'nps', label: 'NPS e Satisfação', icon: Star },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -136,23 +141,10 @@ export default function ServiceOrders() {
         <p className="text-muted-foreground">Gerencie suas ordens de serviço</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="orders" className="flex items-center gap-1.5">
-            <ClipboardList className="h-4 w-4" />
-            Ordens de Serviço
-          </TabsTrigger>
-          <TabsTrigger value="nps" className="flex items-center gap-1.5">
-            <Star className="h-4 w-4" />
-            NPS e Satisfação
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="nps">
-          <NpsDashboard />
-        </TabsContent>
-
-        <TabsContent value="orders">
+      <SettingsSidebarLayout tabs={sidebarTabs} activeTab={activeTab} onTabChange={setActiveTab}>
+        {activeTab === 'nps' && <NpsDashboard />}
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
 
       <DateRangeFilter
         value={range}
@@ -498,8 +490,9 @@ export default function ServiceOrders() {
         open={statusConfigOpen}
         onOpenChange={setStatusConfigOpen}
       />
-      </TabsContent>
-      </Tabs>
+          </div>
+        )}
+      </SettingsSidebarLayout>
     </div>
   );
 }
