@@ -1408,6 +1408,7 @@ export type Database = {
           service_type_id: string | null
           solution: string | null
           status: Database["public"]["Enums"]["os_status"]
+          team_id: string | null
           tech_signature: string | null
           technician_id: string | null
           total_value: number | null
@@ -1442,6 +1443,7 @@ export type Database = {
           service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          team_id?: string | null
           tech_signature?: string | null
           technician_id?: string | null
           total_value?: number | null
@@ -1476,6 +1478,7 @@ export type Database = {
           service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          team_id?: string | null
           tech_signature?: string | null
           technician_id?: string | null
           total_value?: number | null
@@ -1508,6 +1511,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -1545,6 +1555,68 @@ export type Database = {
           number_prefix?: string | null
           requires_equipment?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
