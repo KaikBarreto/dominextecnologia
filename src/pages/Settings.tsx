@@ -87,6 +87,8 @@ export default function Settings() {
       city: companyCity || undefined,
       state: companyState || undefined,
       zip_code: companyZip || undefined,
+      white_label_enabled: wlEnabled,
+      white_label_primary_color: wlColor || null,
     } as any);
   };
 
@@ -499,12 +501,6 @@ export default function Settings() {
                   {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Salvar Dados da Empresa
                 </Button>
-                {wlEnabled && (
-                  <Button variant="outline" onClick={handleSaveWhiteLabel} disabled={updateSettings.isPending}>
-                    {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Salvar White Label
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
