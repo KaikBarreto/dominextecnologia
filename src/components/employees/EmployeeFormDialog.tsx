@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Camera, Link2, Unlink } from 'lucide-react';
+import { Loader2, Camera, Link2, Unlink, Eye, EyeOff } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [useTemporaryPassword, setUseTemporaryPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
+  const [showPasswordField, setShowPasswordField] = useState(false);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -223,7 +224,12 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                       <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
                     </div>
                   ) : (
-                    <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                    <div className="relative">
+                      <Input type={showPasswordField ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                      <button type="button" onClick={() => setShowPasswordField(!showPasswordField)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {showPasswordField ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   )}
                   <p className="text-xs text-muted-foreground">
                     {useTemporaryPassword ? 'Anote a senha — ela será exibida apenas uma vez' : 'Defina a senha que o funcionário usará para acessar o sistema'}

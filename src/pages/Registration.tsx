@@ -354,11 +354,14 @@ export default function Registration() {
                       <div className="relative mt-1">
                         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                         <Input
-                          type="password"
+                          type={showPassword ? 'text' : 'password'}
                           {...register('confirm_password', { required: 'Confirme a senha' })}
                           placeholder="Repita a senha"
                           className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                         />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white">
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
                       {errors.confirm_password && <p className="text-sm text-destructive mt-1">{errors.confirm_password.message}</p>}
                     </div>
