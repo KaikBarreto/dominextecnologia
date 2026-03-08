@@ -54,9 +54,12 @@ export default function Users() {
 
   const handleCreateUser = async (data: any) => {
     try {
+      // Use chosen_email if there was a conflict resolution
+      const finalEmail = data.chosen_email || data.email;
+      
       const { data: result, error } = await supabase.functions.invoke('create-user', {
         body: {
-          email: data.email,
+          email: finalEmail,
           password: data.password,
           full_name: data.full_name,
           phone: data.phone || null,
