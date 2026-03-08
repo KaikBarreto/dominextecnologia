@@ -27,8 +27,24 @@ export const useForcedLogout = () => {
           filter: `user_id=eq.${user.id}`,
         },
         async (payload) => {
-          const oldSession = payload.old as { session_token?: string };
-          if (oldSession?.session_token !== currentToken) return;
+          const oldSession = payload.old as { session_token?: string; user_id?: string };
+          
+          // With REPLICA IDENTITY FULL, old row data is available
+          // Check if the deleted session matches OUR token
+          if (oldSession?.session_token && oldSession.session_token !== currentToken) return;
+          
+          // If session_token is missing from payload (fallback), verify our session still exists
+          if (!oldSession?.session_token) {
+            const { data } = await supabase
+              .from("active_sessions")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("session_token", currentToken)
+              .maybeSingle();
+            
+            // Our session still exists — the delete was for another session
+            if (data) return;
+          }
 
           toast({
             variant: "destructive",
