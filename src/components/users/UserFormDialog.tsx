@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { phoneMask } from '@/utils/masks';
-import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2 } from 'lucide-react';
+import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { useEmployees } from '@/hooks/useEmployees';
 import {
   SCREEN_PERMISSIONS,
   FUNCTION_PERMISSIONS,
@@ -32,6 +33,7 @@ export interface UserFormData {
   preset_id: string | null;
   photo?: File | null;
   removePhoto?: boolean;
+  employee_id?: string | null;
 }
 
 interface UserFormDialogProps {
@@ -47,6 +49,7 @@ interface UserFormDialogProps {
     permissions: string[];
     preset_id?: string | null;
     avatar_url?: string | null;
+    employee_id?: string | null;
   } | null;
 }
 
