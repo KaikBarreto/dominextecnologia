@@ -29,6 +29,7 @@ const customerSchema = z.object({
   birth_date: z.string().optional(),
   address: z.string().optional(),
   complement: z.string().optional(),
+  neighborhood: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zip_code: z.string().optional(),
@@ -64,7 +65,7 @@ export function CustomerFormDialog({
     defaultValues: {
       name: '', customer_type: 'pj', company_name: '', document: '',
       email: '', phone: '', birth_date: '', address: '', complement: '',
-      city: '', state: '', zip_code: '', notes: '',
+      neighborhood: '', city: '', state: '', zip_code: '', notes: '',
     },
   });
 
@@ -83,6 +84,7 @@ export function CustomerFormDialog({
         birth_date: (customer as any)?.birth_date ?? '',
         address: customer?.address ?? '',
         complement: (customer as any)?.complement ?? '',
+        neighborhood: (customer as any)?.neighborhood ?? '',
         city: customer?.city ?? '',
         state: customer?.state ?? '',
         zip_code: customer?.zip_code ?? '',
@@ -249,6 +251,7 @@ export function CustomerFormDialog({
                       onChange={field.onChange}
                       onAddressFound={(addr) => {
                         if (addr.logradouro) form.setValue('address', addr.logradouro);
+                        if (addr.bairro) form.setValue('neighborhood', addr.bairro);
                         if (addr.cidade) form.setValue('city', addr.cidade);
                         if (addr.estado) form.setValue('state', addr.estado);
                       }}
@@ -268,6 +271,13 @@ export function CustomerFormDialog({
                 <FormItem>
                   <FormLabel>Complemento</FormLabel>
                   <FormControl><Input placeholder="Apto, sala, bloco..." {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="neighborhood" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bairro</FormLabel>
+                  <FormControl><Input placeholder="Bairro" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
