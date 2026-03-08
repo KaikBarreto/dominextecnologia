@@ -1,85 +1,115 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Plano: Melhorias no Sistema e Landing Page
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+### 1. Renomear "Usuários" para "Usuários e Permissões"
 
-### 2. Permissions System - Database Changes
+**Arquivos**: `AppSidebar.tsx`, `MobileMenu.tsx`, `Users.tsx`
+- Alterar o título no menu lateral, menu mobile e no cabeçalho da página de `Usuários` para `Usuários e Permissões`
 
-Create 2 new tables via migration:
+### 2. Criar Tela "Equipes" dentro do submenu Serviços
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+**Banco de dados** — nova tabela `teams` e `team_members`:
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+```sql
+CREATE TABLE public.teams (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  color text DEFAULT '#3b82f6',
+  is_active boolean DEFAULT true,
+  created_by uuid,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
 
-The permissions will be a flat list of string keys covering:
+ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+CREATE POLICY "Authenticated users can manage teams" ON public.teams
+  FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
+CREATE TABLE public.team_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(team_id, user_id)
+);
 
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
+ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
-
-### 4. New Components
-
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
-
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
-
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
-
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
-
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
-
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
-
-### Technical Details
-
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
+CREATE POLICY "Authenticated users can manage team_members" ON public.team_members
+  FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 ```
 
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
+Adicionar coluna `team_id` na tabela `service_orders`:
+```sql
+ALTER TABLE public.service_orders ADD COLUMN team_id uuid REFERENCES public.teams(id);
+```
 
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+**Novos arquivos**:
+- `src/pages/Teams.tsx` — Página com listagem de equipes em cards, busca, e botão de criar
+- `src/components/teams/TeamFormDialog.tsx` — Dialog para criar/editar equipe com nome, descrição, cor, e seleção de membros (multi-select de usuários/profiles)
+- `src/hooks/useTeams.ts` — Hook com queries para teams e team_members (CRUD completo)
+
+**Arquivos modificados**:
+- `src/App.tsx` — Adicionar rota `/equipes`
+- `src/components/layout/AppSidebar.tsx` — Adicionar item "Equipes" dentro do submenu "Serviços" com ícone `UsersRound`
+- `src/pages/MobileMenu.tsx` — Adicionar "Equipes" ao menu
+
+### 3. Atribuir Técnico OU Equipe na OS
+
+**Arquivo**: `src/components/service-orders/ServiceOrderFormDialog.tsx`
+- Alterar o campo "Técnico" para um Select com optgroups:
+  - **Grupo "Técnicos"**: lista de perfis individuais (como já existe)
+  - **Grupo "Equipes"**: lista de equipes ativas
+- Valor salvo: se for equipe, salvar em `team_id` e limpar `technician_id`; se for técnico, salvar em `technician_id` e limpar `team_id`
+- Usar prefixo no value do select: `user:UUID` ou `team:UUID` para distinguir
+- Importar e usar `useTeams` para buscar equipes
+
+**Arquivo**: `src/hooks/useServiceOrders.ts` — garantir que `team_id` é enviado nas mutations de criar/editar OS
+
+### 4. Logo no Header (versão escura)
+
+**Arquivo**: `src/components/layout/AppLayout.tsx`
+- No `HeaderContent`, substituir o ícone `Snowflake` + "Sistema" por `<img src={logoDark} />` usando `src/assets/logo-dark.png`
+- Manter visível apenas em mobile (quando `isMobile`)
+
+### 5. Landing Page Responsiva
+
+Revisão de responsividade em todos os componentes da landing:
+
+- **HeroSection**: Já usa `grid lg:grid-cols-2`. Verificar padding, tamanhos de fonte e mockup em telas < 375px.
+- **FeaturesGrid**: Já usa `useIsMobile`. Garantir layout correto.
+- **PricingSection**: Garantir stack vertical mobile com scroll.
+- **ProductMockup**: O mockup simulado já esconde sidebar em mobile. Verificar overflow.
+- **ProblemSolutionSection**: Garantir stack vertical em mobile.
+- **TestimonialsSection**: Já tem carousel mobile.
+- **SegmentsSection**: Garantir wrap correto dos chips.
+- **HowItWorks**: Garantir cards empilham em mobile.
+- **FaqSection**, **CtaFinalSection**, **LandingFooter**: Verificar padding e font-size.
+
+Ajustes específicos:
+- Reduzir font-size do H1 hero em mobile (`text-3xl` em vez de `text-4xl`)
+- Garantir que botões CTA ficam full-width em mobile
+- Padding horizontal consistente (`px-4` em mobile)
+- Footer: stack vertical em mobile com spacing adequado
+
+### Arquivos Totais
+
+**Criar**:
+- `src/pages/Teams.tsx`
+- `src/components/teams/TeamFormDialog.tsx`
+- `src/hooks/useTeams.ts`
+
+**Modificar**:
+- `src/App.tsx` — nova rota
+- `src/components/layout/AppSidebar.tsx` — menu + renomear
+- `src/components/layout/AppLayout.tsx` — logo no header
+- `src/pages/MobileMenu.tsx` — renomear + equipes
+- `src/pages/Users.tsx` — renomear título
+- `src/components/service-orders/ServiceOrderFormDialog.tsx` — select técnico/equipe
+- Landing page components (ajustes responsivos)
+
+**Migração SQL**: 2 tabelas + 1 coluna nova
 
