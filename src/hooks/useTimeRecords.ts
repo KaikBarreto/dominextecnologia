@@ -12,7 +12,8 @@ export type SheetStatus = 'open' | 'complete' | 'incomplete' | 'justified' | 'ho
 export interface TimeRecord {
   id: string;
   company_id: string;
-  user_id: string;
+  user_id: string | null;
+  employee_id: string | null;
   date: string;
   type: PunchType;
   recorded_at: string;
@@ -30,7 +31,8 @@ export interface TimeRecord {
 export interface TimeSheet {
   id: string;
   company_id: string;
-  user_id: string;
+  user_id: string | null;
+  employee_id: string | null;
   date: string;
   first_clock_in: string | null;
   last_clock_out: string | null;
@@ -60,12 +62,21 @@ export interface TimeSettings {
 export interface TimeSchedule {
   id: string;
   company_id: string;
-  user_id: string;
+  user_id: string | null;
+  employee_id: string | null;
   weekday: number;
   expected_in: string;
   expected_out: string;
   break_minutes: number;
   is_work_day: boolean;
+}
+
+export interface EmployeeBasic {
+  id: string;
+  name: string;
+  position: string | null;
+  photo_url: string | null;
+  is_active: boolean;
 }
 
 // ─── Helper: calculate worked minutes from records ───
@@ -127,7 +138,7 @@ export function useWorkedMinutes(records: TimeRecord[]) {
   return minutes;
 }
 
-// ─── useTimeRecord (for technician) ───
+// ─── useTimeRecord (for technician — still uses user_id) ───
 export function useTimeRecord(userId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -211,7 +222,6 @@ export function useTimeRecord(userId: string | undefined) {
     }) => {
       if (!userId) throw new Error('Usuário não identificado');
 
-      // Get company_id
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
@@ -233,7 +243,6 @@ export function useTimeRecord(userId: string | undefined) {
 
       const now = new Date().toISOString();
 
-      // Insert record
       const { error: recErr } = await supabase.from('time_records').insert({
         company_id: profile.company_id,
         user_id: userId,
@@ -308,18 +317,23 @@ export function useTimeRecord(userId: string | undefined) {
   };
 }
 
-// ─── useAdminTimeSheet (for admin dashboard) ───
+// ─── useAdminTimeSheet (for admin dashboard — uses employees) ───
 export function useAdminTimeSheet() {
   const { user } = useAuth();
   const today = format(new Date(), 'yyyy-MM-dd');
   const queryClient = useQueryClient();
 
-  const { data: profiles = [] } = useQuery({
-    queryKey: ['allProfiles'],
+  // Fetch employees instead of profiles
+  const { data: employees = [] } = useQuery({
+    queryKey: ['allEmployees'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('profiles').select('*').order('full_name');
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, name, position, photo_url, is_active')
+        .eq('is_active', true)
+        .order('name');
       if (error) throw error;
-      return data || [];
+      return (data || []) as EmployeeBasic[];
     },
   });
 
@@ -363,47 +377,48 @@ export function useAdminTimeSheet() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const getRecordsForUser = useCallback((userId: string) =>
-    todayRecords.filter(r => r.user_id === userId), [todayRecords]);
+  const getRecordsForEmployee = useCallback((employeeId: string) =>
+    todayRecords.filter(r => r.employee_id === employeeId), [todayRecords]);
 
-  const getSheetForUser = useCallback((userId: string) =>
-    todaySheets.find(s => s.user_id === userId) || null, [todaySheets]);
+  const getSheetForEmployee = useCallback((employeeId: string) =>
+    todaySheets.find(s => s.employee_id === employeeId) || null, [todaySheets]);
 
-  const getUserStatus = useCallback((userId: string): 'present' | 'absent' | 'on_break' | 'finished' | 'late' => {
-    const records = getRecordsForUser(userId);
+  const getEmployeeStatus = useCallback((employeeId: string): 'present' | 'absent' | 'on_break' | 'finished' | 'late' => {
+    const records = getRecordsForEmployee(employeeId);
     if (records.length === 0) return 'absent';
     const types = records.map(r => r.type);
     if (types.includes('clock_out')) return 'finished';
     if (types.includes('break_start') && !types.includes('break_end')) return 'on_break';
     return 'present';
-  }, [getRecordsForUser]);
+  }, [getRecordsForEmployee]);
 
   const kpis = useMemo(() => {
     let present = 0, absent = 0, onBreak = 0, finished = 0;
-    profiles.forEach(p => {
-      const s = getUserStatus(p.user_id);
+    employees.forEach(emp => {
+      const s = getEmployeeStatus(emp.id);
       if (s === 'present' || s === 'late') present++;
       else if (s === 'absent') absent++;
       else if (s === 'on_break') onBreak++;
       else if (s === 'finished') finished++;
     });
     return { present, absent, onBreak, finished };
-  }, [profiles, getUserStatus]);
+  }, [employees, getEmployeeStatus]);
 
   const registerManualPunch = useMutation({
-    mutationFn: async ({ userId, type, recordedAt, notes }: {
-      userId: string; type: PunchType; recordedAt: string; notes: string;
+    mutationFn: async ({ employeeId, type, recordedAt, notes }: {
+      employeeId: string; type: PunchType; recordedAt: string; notes: string;
     }) => {
+      // Get company_id from current user's profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
-        .eq('user_id', userId)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
         .single();
       if (!profile?.company_id) throw new Error('Empresa não encontrada');
 
       const { error } = await supabase.from('time_records').insert({
         company_id: profile.company_id,
-        user_id: userId,
+        employee_id: employeeId,
         date: format(new Date(recordedAt), 'yyyy-MM-dd'),
         type,
         recorded_at: recordedAt,
@@ -419,15 +434,15 @@ export function useAdminTimeSheet() {
   });
 
   return {
-    profiles, todayRecords, todaySheets, isLoading,
-    getRecordsForUser, getSheetForUser, getUserStatus,
+    employees, todayRecords, todaySheets, isLoading,
+    getRecordsForEmployee, getSheetForEmployee, getEmployeeStatus,
     kpis, registerManualPunch,
   };
 }
 
 // ─── useTimeHistory ───
 export function useTimeHistory(filters: {
-  userId?: string;
+  employeeId?: string;
   startDate?: string;
   endDate?: string;
   status?: string;
@@ -436,7 +451,7 @@ export function useTimeHistory(filters: {
     queryKey: ['timeHistory', filters],
     queryFn: async () => {
       let query = supabase.from('time_sheets').select('*').order('date', { ascending: false });
-      if (filters.userId) query = query.eq('user_id', filters.userId);
+      if (filters.employeeId) query = query.eq('employee_id', filters.employeeId);
       if (filters.startDate) query = query.gte('date', filters.startDate);
       if (filters.endDate) query = query.lte('date', filters.endDate);
       if (filters.status && filters.status !== 'all') query = query.eq('status', filters.status);
@@ -488,7 +503,7 @@ export function useTimeSettings() {
   return { settings, isLoading, upsert };
 }
 
-// ─── useTimeSchedules ───
+// ─── useTimeSchedules (uses employee_id) ───
 export function useTimeSchedules() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -496,18 +511,19 @@ export function useTimeSchedules() {
   const { data: schedules = [], isLoading } = useQuery({
     queryKey: ['timeSchedules'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('time_schedules').select('*').order('user_id').order('weekday');
+      const { data, error } = await supabase.from('time_schedules').select('*').order('employee_id').order('weekday');
       if (error) throw error;
       return (data || []) as TimeSchedule[];
     },
   });
 
   const upsertSchedule = useMutation({
-    mutationFn: async (items: Omit<TimeSchedule, 'id'>[]) => {
+    mutationFn: async (items: Array<Omit<TimeSchedule, 'id' | 'user_id'>>) => {
       if (items.length === 0) return;
-      // Delete existing for this user
-      const userId = items[0].user_id;
-      await supabase.from('time_schedules').delete().eq('user_id', userId);
+      const employeeId = items[0].employee_id;
+      if (employeeId) {
+        await supabase.from('time_schedules').delete().eq('employee_id', employeeId);
+      }
       const { error } = await supabase.from('time_schedules').insert(items as any);
       if (error) throw error;
     },
@@ -521,21 +537,21 @@ export function useTimeSchedules() {
   return { schedules, isLoading, upsertSchedule };
 }
 
-// ─── useTimeRecordsForDay (fetch records for a specific user+date) ───
-export function useTimeRecordsForDay(userId: string | null, date: string | null) {
+// ─── useTimeRecordsForDay (fetch records for a specific employee+date) ───
+export function useTimeRecordsForDay(employeeId: string | null, date: string | null) {
   return useQuery({
-    queryKey: ['timeRecordsDay', userId, date],
+    queryKey: ['timeRecordsDay', employeeId, date],
     queryFn: async () => {
-      if (!userId || !date) return [];
+      if (!employeeId || !date) return [];
       const { data, error } = await supabase
         .from('time_records')
         .select('*')
-        .eq('user_id', userId)
+        .eq('employee_id', employeeId)
         .eq('date', date)
         .order('recorded_at');
       if (error) throw error;
       return (data || []) as TimeRecord[];
     },
-    enabled: !!userId && !!date,
+    enabled: !!employeeId && !!date,
   });
 }

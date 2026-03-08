@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { useTimeHistory, formatMinutes } from '@/hooks/useTimeRecords';
 import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
@@ -18,21 +17,21 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({
 
 export function TimeReport() {
   const now = new Date();
-  const { profiles } = useAdminTimeSheet();
+  const { employees } = useAdminTimeSheet();
   const [month, setMonth] = useState(String(now.getMonth()));
   const [year, setYear] = useState(String(now.getFullYear()));
-  const [userId, setUserId] = useState('all');
+  const [employeeId, setEmployeeId] = useState('all');
 
   const startDate = format(startOfMonth(new Date(+year, +month)), 'yyyy-MM-dd');
   const endDate = format(endOfMonth(new Date(+year, +month)), 'yyyy-MM-dd');
 
   const { data: sheets = [] } = useTimeHistory({
-    userId: userId !== 'all' ? userId : undefined,
+    employeeId: employeeId !== 'all' ? employeeId : undefined,
     startDate,
     endDate,
   });
 
-  const profile = profiles.find(p => p.user_id === userId);
+  const employee = employees.find(e => e.id === employeeId);
 
   const summary = useMemo(() => {
     const workedDays = sheets.filter(s => s.status === 'complete' || s.status === 'open').length;
@@ -91,26 +90,27 @@ export function TimeReport() {
             {[2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={userId} onValueChange={setUserId}>
+        <Select value={employeeId} onValueChange={setEmployeeId}>
           <SelectTrigger className="w-[200px]"><SelectValue placeholder="Funcionário" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {profiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>)}
+            {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
       {/* Summary Card */}
-      {userId !== 'all' && profile && (
+      {employeeId !== 'all' && employee && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={profile.avatar_url || undefined} />
-                <AvatarFallback>{profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={employee.photo_url || undefined} />
+                <AvatarFallback>{employee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="font-semibold">{profile.full_name}</h3>
+                <h3 className="font-semibold">{employee.name}</h3>
+                {employee.position && <p className="text-sm text-muted-foreground">{employee.position}</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -131,7 +131,6 @@ export function TimeReport() {
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
               <div key={d} className="font-medium text-muted-foreground py-1">{d}</div>
             ))}
-            {/* Offset for first day */}
             {Array.from({ length: getDay(days[0]) }).map((_, i) => <div key={`e-${i}`} />)}
             {days.map(d => {
               const sh = getSheetForDate(d);

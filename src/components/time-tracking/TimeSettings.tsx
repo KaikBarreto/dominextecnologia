@@ -5,11 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useTimeSettings, useTimeSchedules, type TimeSettings } from '@/hooks/useTimeRecords';
+import { useTimeSettings, useTimeSchedules } from '@/hooks/useTimeRecords';
 import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Pencil, Save } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -17,8 +16,7 @@ const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 export function TimeSettingsPanel() {
   const { settings, upsert } = useTimeSettings();
   const { schedules, upsertSchedule } = useTimeSchedules();
-  const { profiles } = useAdminTimeSheet();
-  const { toast } = useToast();
+  const { employees } = useAdminTimeSheet();
 
   const [form, setForm] = useState({
     default_in: '08:00',
@@ -46,29 +44,30 @@ export function TimeSettingsPanel() {
     }
   }, [settings]);
 
-  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
   const [scheduleForm, setScheduleForm] = useState<Record<number, { in: string; out: string; break: number; work: boolean }>>({});
 
-  const openScheduleEdit = (userId: string) => {
-    const userScheds = schedules.filter(s => s.user_id === userId);
+  const openScheduleEdit = (employeeId: string) => {
+    const empScheds = schedules.filter(s => s.employee_id === employeeId);
     const form: Record<number, any> = {};
     for (let i = 0; i < 7; i++) {
-      const existing = userScheds.find(s => s.weekday === i);
+      const existing = empScheds.find(s => s.weekday === i);
       form[i] = existing
         ? { in: existing.expected_in, out: existing.expected_out, break: existing.break_minutes, work: existing.is_work_day }
         : { in: '08:00', out: '17:00', break: 60, work: i !== 0 && i !== 6 };
     }
     setScheduleForm(form);
-    setEditingUser(userId);
+    setEditingEmployee(employeeId);
   };
 
   const saveSchedule = async () => {
-    if (!editingUser) return;
-    const { data: profile } = await supabase.from('profiles').select('company_id').eq('user_id', editingUser).single();
+    if (!editingEmployee) return;
+    // Get company_id from current user
+    const { data: profile } = await supabase.from('profiles').select('company_id').eq('user_id', (await supabase.auth.getUser()).data.user?.id || '').single();
     if (!profile?.company_id) return;
     const items = Object.entries(scheduleForm).map(([weekday, v]) => ({
       company_id: profile.company_id,
-      user_id: editingUser,
+      employee_id: editingEmployee,
       weekday: Number(weekday),
       expected_in: v.in,
       expected_out: v.out,
@@ -76,10 +75,10 @@ export function TimeSettingsPanel() {
       is_work_day: v.work,
     }));
     await upsertSchedule.mutateAsync(items);
-    setEditingUser(null);
+    setEditingEmployee(null);
   };
 
-  const editingProfile = profiles.find(p => p.user_id === editingUser);
+  const editingEmp = employees.find(e => e.id === editingEmployee);
 
   return (
     <div className="space-y-6">
@@ -146,21 +145,21 @@ export function TimeSettingsPanel() {
                 </tr>
               </thead>
               <tbody>
-                {profiles.map(p => {
-                  const userScheds = schedules.filter(s => s.user_id === p.user_id);
+                {employees.map(emp => {
+                  const empScheds = schedules.filter(s => s.employee_id === emp.id);
                   return (
-                    <tr key={p.user_id} className="border-b">
+                    <tr key={emp.id} className="border-b">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-7 w-7">
-                            <AvatarImage src={p.avatar_url || undefined} />
-                            <AvatarFallback className="text-xs">{p.full_name[0]}</AvatarFallback>
+                            <AvatarImage src={emp.photo_url || undefined} />
+                            <AvatarFallback className="text-xs">{emp.name[0]}</AvatarFallback>
                           </Avatar>
-                          <span className="text-sm truncate max-w-[120px]">{p.full_name}</span>
+                          <span className="text-sm truncate max-w-[120px]">{emp.name}</span>
                         </div>
                       </td>
                       {WEEKDAYS.map((_, i) => {
-                        const sched = userScheds.find(s => s.weekday === i);
+                        const sched = empScheds.find(s => s.weekday === i);
                         return (
                           <td key={i} className="text-center px-2 py-3 text-xs">
                             {sched ? (sched.is_work_day ? `${sched.expected_in.slice(0,5)}-${sched.expected_out.slice(0,5)}` : 'Folga') : '—'}
@@ -168,7 +167,7 @@ export function TimeSettingsPanel() {
                         );
                       })}
                       <td className="px-4 py-3">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openScheduleEdit(p.user_id)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openScheduleEdit(emp.id)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </td>
@@ -183,9 +182,9 @@ export function TimeSettingsPanel() {
 
       {/* Schedule Edit Modal */}
       <ResponsiveModal
-        open={!!editingUser}
-        onOpenChange={() => setEditingUser(null)}
-        title={`Jornada — ${editingProfile?.full_name || ''}`}
+        open={!!editingEmployee}
+        onOpenChange={() => setEditingEmployee(null)}
+        title={`Jornada — ${editingEmp?.name || ''}`}
         className="sm:max-w-[500px]"
       >
         <div className="space-y-3 py-2">
