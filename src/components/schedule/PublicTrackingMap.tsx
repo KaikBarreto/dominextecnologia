@@ -267,7 +267,7 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
           </div>
         )}
 
-        <div ref={mapRef} className="h-[300px] w-full" />
+        <div ref={mapRef} className="h-[400px] w-full" />
       </CardContent>
     </Card>
   );
