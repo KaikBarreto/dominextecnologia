@@ -97,6 +97,7 @@ export interface ServiceOrder {
   check_out_location?: { lat: number; lng: number } | null;
   client_signature?: string;
   notes?: string;
+  contract_id?: string;
   created_by?: string;
   team_id?: string;
   form_template_id?: string;

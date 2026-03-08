@@ -56,6 +56,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [ratingData, setRatingData] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
+  const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,6 +64,9 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     fetchAllResponses();
     fetchRating();
     fetchEquipmentItems();
+    if ((serviceOrder as any).contract_id) {
+      fetchContract((serviceOrder as any).contract_id);
+    }
   }, [serviceOrder.id]);
 
   const fetchRating = async () => {
@@ -77,6 +81,15 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const fetchCompany = async () => {
     const { data } = await supabase.from('company_settings').select('*').limit(1).single();
     if (data) setCompany(data);
+  };
+
+  const fetchContract = async (contractId: string) => {
+    const { data } = await supabase
+      .from('contracts')
+      .select('id, name')
+      .eq('id', contractId)
+      .maybeSingle();
+    if (data) setContractInfo(data);
   };
 
   const fetchEquipmentItems = async () => {
@@ -300,6 +313,17 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         </div>
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          {/* Contract info */}
+          {contractInfo && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-2">
+              <FileSignature className="h-4 w-4 text-blue-600 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Contrato</p>
+                <p className="text-sm font-semibold text-blue-900">{contractInfo.name}</p>
+              </div>
+            </div>
+          )}
+
           {/* Client & Equipment */}
           <div className="grid grid-cols-1 gap-4">
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">

@@ -440,40 +440,29 @@ export default function QuestionnaireDetail() {
           {selectedAnswerTypes.length >= 2 && (
             <div className="rounded-lg border p-3 space-y-2">
               <Label className="text-sm font-medium">Modo de resposta múltipla</Label>
-              <div className="space-y-2">
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
-                  (qForm as any).answer_mode !== 'combined' ? 'border-primary bg-primary/10' : 'hover:bg-muted/50'
+              <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/30">
+                <span className={cn(
+                  "text-sm font-medium transition-colors",
+                  (qForm as any).answer_mode !== 'combined' ? 'text-foreground' : 'text-muted-foreground'
                 )}>
-                  <input
-                    type="radio"
-                    name="answer_mode"
-                    checked={(qForm as any).answer_mode !== 'combined'}
-                    onChange={() => setQForm({ ...qForm, answer_mode: 'exclusive' } as any)}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <span className="font-medium">Exclusivo</span>
-                    <p className="text-xs text-muted-foreground">Responder por um tipo oculta os demais</p>
-                  </div>
-                </label>
-                <label className={cn(
-                  "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
-                  (qForm as any).answer_mode === 'combined' ? 'border-primary bg-primary/10' : 'hover:bg-muted/50'
+                  Exclusivo
+                </span>
+                <Switch
+                  checked={(qForm as any).answer_mode === 'combined'}
+                  onCheckedChange={(checked) => setQForm({ ...qForm, answer_mode: checked ? 'combined' : 'exclusive' } as any)}
+                />
+                <span className={cn(
+                  "text-sm font-medium transition-colors",
+                  (qForm as any).answer_mode === 'combined' ? 'text-foreground' : 'text-muted-foreground'
                 )}>
-                  <input
-                    type="radio"
-                    name="answer_mode"
-                    checked={(qForm as any).answer_mode === 'combined'}
-                    onChange={() => setQForm({ ...qForm, answer_mode: 'combined' } as any)}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <span className="font-medium">Cumulativo</span>
-                    <p className="text-xs text-muted-foreground">O técnico pode responder por múltiplas formas simultaneamente</p>
-                  </div>
-                </label>
+                  Cumulativo
+                </span>
               </div>
+              <p className="text-xs text-muted-foreground">
+                {(qForm as any).answer_mode === 'combined'
+                  ? 'O técnico poderá preencher todos os tipos de resposta ao mesmo tempo'
+                  : 'Ao responder por um tipo, os demais ficam ocultos automaticamente'}
+              </p>
             </div>
           )}
 
