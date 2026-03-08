@@ -139,8 +139,14 @@ export function AppSidebar() {
     .join('')
     .toUpperCase() || '?';
 
+  const handleCollapsedParentClick = (title: string) => {
+    setOpenMenus(prev => prev.includes(title) ? prev : [...prev, title]);
+    toggleSidebar();
+  };
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-background relative h-svh">
+    <Sidebar collapsible="icon" className="border-r border-border bg-background">
+      <div className="relative h-full">
       <SidebarContent className="flex h-full flex-col p-0 overflow-hidden">
 
         {/* ── Logo ── */}
@@ -197,7 +203,7 @@ export function AppSidebar() {
                     <button
                       key={item.title}
                       title={item.title}
-                      onClick={toggleSidebar}
+                      onClick={() => handleCollapsedParentClick(item.title)}
                       className={cn(
                         'flex w-full items-center justify-center rounded-lg py-2.5 transition-colors',
                         hasActiveChild
@@ -333,6 +339,7 @@ export function AppSidebar() {
           : <ChevronLeft className="h-3 w-3" />
         }
       </button>
+      </div>
     </Sidebar>
   );
 }
