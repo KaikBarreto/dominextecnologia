@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Phone, Mail, MapPin, Calendar, Edit, Trash2, FileText, Banknote, Gift, AlertCircle, CreditCard, Camera } from 'lucide-react';
+import { useState } from 'react';
+import { Phone, Mail, MapPin, Calendar, Edit, Trash2, FileText, Banknote, Gift, AlertCircle, CreditCard } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -8,9 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Employee } from '@/hooks/useEmployees';
 import { BalanceSummary } from '@/utils/employeeCalculations';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { processImageFile } from '@/utils/imageConvert';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 interface EmployeeCardProps {
   employee: Employee;
@@ -21,44 +19,13 @@ interface EmployeeCardProps {
   onMovement: (type: 'vale' | 'bonus' | 'falta') => void;
   onPayment: () => void;
   onExtract: () => void;
-  onUpdatePhoto?: (url: string) => void;
+  
 }
 
-export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWithUser, onMovement, onPayment, onExtract, onUpdatePhoto }: EmployeeCardProps) {
+export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWithUser, onMovement, onPayment, onExtract }: EmployeeCardProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const { toast } = useToast();
-
-  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    let file = e.target.files?.[0];
-    if (!file || !onUpdatePhoto) return;
-    file = await processImageFile(file);
-
-    setUploading(true);
-    try {
-      const ext = file.name.split('.').pop();
-      const path = `${employee.id}/photo.${ext}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('employee-photos')
-        .upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('employee-photos')
-        .getPublicUrl(path);
-
-      onUpdatePhoto(publicUrl + '?t=' + Date.now());
-      toast({ title: 'Foto atualizada!' });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar foto', description: err.message });
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
 
   return (
     <Card className="overflow-hidden">
@@ -66,24 +33,13 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
         {/* Header */}
         <div className="flex items-start gap-3">
           <div 
-            className="relative group cursor-pointer shrink-0"
-            onClick={() => fileInputRef.current?.click()}
+            className="shrink-0 cursor-pointer"
+            onClick={() => employee.photo_url && setPhotoPreviewOpen(true)}
           >
             <Avatar className="h-12 w-12">
               <AvatarImage src={employee.photo_url || undefined} />
               <AvatarFallback className="bg-primary text-primary-foreground font-bold">{initials}</AvatarFallback>
             </Avatar>
-            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera className="h-4 w-4 text-white" />
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoChange}
-              disabled={uploading}
-            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
@@ -159,6 +115,12 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
             <FileText className="h-3 w-3" /> Extrato
           </Button>
         </div>
+        <ImagePreviewModal
+          src={employee.photo_url || ''}
+          alt={employee.name}
+          open={photoPreviewOpen}
+          onClose={() => setPhotoPreviewOpen(false)}
+        />
       </CardContent>
     </Card>
   );

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Camera } from 'lucide-react';
+import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck } from 'lucide-react';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,6 +31,7 @@ export default function Users() {
   const [activeTab, setActiveTab] = useState('users');
   const [deletingUser, setDeletingUser] = useState<UserWithRole | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   const filteredUsers = users.filter(u =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -320,18 +322,16 @@ export default function Users() {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         {/* Avatar + Info */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="relative group shrink-0">
+                          <div
+                            className="shrink-0 cursor-pointer"
+                            onClick={() => userProfile.avatar_url && setPreviewPhoto({ src: userProfile.avatar_url, alt: userProfile.full_name })}
+                          >
                             <Avatar className="h-12 w-12 border-2 border-border">
                               <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name} />
                               <AvatarFallback className="bg-muted text-muted-foreground">
                                 {getInitials(userProfile.full_name)}
                               </AvatarFallback>
                             </Avatar>
-                            {canManageRoles && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                <Camera className="h-4 w-4 text-white" />
-                              </div>
-                            )}
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -453,6 +453,13 @@ export default function Users() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImagePreviewModal
+        src={previewPhoto?.src || ''}
+        alt={previewPhoto?.alt}
+        open={!!previewPhoto}
+        onClose={() => setPreviewPhoto(null)}
+      />
     </div>
   );
 }

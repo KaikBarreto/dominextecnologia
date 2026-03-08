@@ -301,7 +301,7 @@ export default function Employees() {
                     onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
                     onPayment={() => setPaymentEmployee(emp)}
                     onExtract={() => setExtractEmployee(emp)}
-                    onUpdatePhoto={(url) => handleUpdatePhoto(emp.id, url)}
+                    
                   />
                 ))}
               </div>
