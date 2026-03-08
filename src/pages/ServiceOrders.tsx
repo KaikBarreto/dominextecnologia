@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ClipboardList,
   Plus,
@@ -42,6 +42,7 @@ import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
