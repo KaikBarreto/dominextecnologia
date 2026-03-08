@@ -365,28 +365,42 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   const renderQuestionInput = (question: FormQuestion) => {
     const answerTypes = ((question as any).answer_types as string[] | null);
     const effectiveTypes = answerTypes && answerTypes.length > 0 ? answerTypes : [question.question_type];
+    const answerMode = (question as any).answer_mode || 'exclusive';
 
     // Single type - just render it
     if (effectiveTypes.length === 1) {
       return renderSingleTypeInput(question, effectiveTypes[0]);
     }
 
-    // Multi type - show all, but hide others when one is answered
+    // Combined mode - always show all types
+    if (answerMode === 'combined') {
+      return (
+        <div className="space-y-3">
+          {effectiveTypes.map((type) => (
+            <div key={type} className="space-y-1">
+              <Badge variant="outline" className="text-xs">
+                {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type}
+              </Badge>
+              {renderSingleTypeInput(question, type)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Exclusive mode - hide others when one is answered
     const response = responses[question.id];
     const hasTextValue = response?.response_value?.trim();
     const hasPhotoValue = response?.response_photo_url;
 
-    // Determine which type was answered
     let answeredType: string | null = null;
     if (hasPhotoValue) {
       answeredType = 'photo';
     } else if (hasTextValue) {
-      // Could be boolean, text, number, select, signature
       if (hasTextValue === 'true' || hasTextValue === 'false') {
         answeredType = effectiveTypes.includes('boolean') ? 'boolean' : null;
       }
       if (!answeredType) {
-        // Try to figure out which type was used
         for (const t of effectiveTypes) {
           if (t !== 'photo' && t !== 'signature') {
             answeredType = t;
@@ -399,12 +413,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
     return (
       <div className="space-y-3">
         {effectiveTypes.map((type) => {
-          // If another type was answered, hide this one
-          if (answeredType && answeredType !== type && type !== answeredType) {
-            // But show a badge indicating it was answered via another type
-            return null;
-          }
-
+          if (answeredType && answeredType !== type) return null;
           return (
             <div key={type} className="space-y-1">
               <div className="flex items-center gap-2">
@@ -426,10 +435,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
             variant="ghost"
             size="sm"
             className="text-xs text-muted-foreground"
-            onClick={() => {
-              // Clear response to show all types again
-              saveResponse(question.id, null, null);
-            }}
+            onClick={() => saveResponse(question.id, null, null)}
           >
             Limpar resposta e mostrar todas as opções
           </Button>

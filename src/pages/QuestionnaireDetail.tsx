@@ -345,7 +345,9 @@ export default function QuestionnaireDetail() {
                         );
                       })}
                       {effectiveTypes.length > 1 && (
-                        <Badge variant="outline" className="text-xs">Resposta alternativa</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {(question as any).answer_mode === 'combined' ? '🔗 Cumulativo' : '⚡ Exclusivo'}
+                        </Badge>
                       )}
                       {question.is_required && (
                         <Badge variant="destructive" className="text-xs">Obrigatória</Badge>
