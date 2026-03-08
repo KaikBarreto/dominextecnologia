@@ -26,7 +26,15 @@ const settingsTabs: SettingsTab[] = [
 ];
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('empresa');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTabState] = useState(() => {
+    const tabFromUrl = searchParams.get('tab');
+    return tabFromUrl && ['empresa', 'usabilidade', 'aparencia'].includes(tabFromUrl) ? tabFromUrl : 'empresa';
+  });
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
   const { settings, isLoading, updateSettings } = useCompanySettings();
   const { toast } = useToast();
 
