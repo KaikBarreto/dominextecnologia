@@ -127,85 +127,87 @@ export default function Contracts() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contrato</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Frequência</TableHead>
-                    <TableHead>Próxima OS</TableHead>
-                    <TableHead className="text-center">Itens</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[140px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagination.paginatedItems.map(contract => {
-                    const nextOcc = getNextOccurrence(contract);
-                    const statusCfg = STATUS_CONFIG[contract.status] || STATUS_CONFIG.active;
-                    const itemCount = contract.contract_items?.length || 0;
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Contrato</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Frequência</TableHead>
+                      <TableHead>Próxima OS</TableHead>
+                      <TableHead className="text-center">Itens</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[140px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagination.paginatedItems.map(contract => {
+                      const nextOcc = getNextOccurrence(contract);
+                      const statusCfg = STATUS_CONFIG[contract.status] || STATUS_CONFIG.active;
+                      const itemCount = contract.contract_items?.length || 0;
 
-                    let nextDateColor = 'text-muted-foreground';
-                    if (nextOcc) {
-                      const daysUntil = differenceInDays(parseISO(nextOcc.scheduled_date + 'T12:00:00'), new Date());
-                      if (daysUntil < 0) nextDateColor = 'text-destructive font-medium';
-                      else if (daysUntil <= 7) nextDateColor = 'text-warning font-medium';
-                      else nextDateColor = 'text-success';
-                    }
+                      let nextDateColor = 'text-muted-foreground';
+                      if (nextOcc) {
+                        const daysUntil = differenceInDays(parseISO(nextOcc.scheduled_date + 'T12:00:00'), new Date());
+                        if (daysUntil < 0) nextDateColor = 'text-destructive font-medium';
+                        else if (daysUntil <= 7) nextDateColor = 'text-warning font-medium';
+                        else nextDateColor = 'text-success';
+                      }
 
-                    return (
-                      <TableRow
-                        key={contract.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/contratos/${contract.id}`)}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <ScrollText className="h-4 w-4 text-muted-foreground shrink-0" />
-                            {contract.name}
-                          </div>
-                        </TableCell>
-                        <TableCell>{contract.customers?.name || '-'}</TableCell>
-                        <TableCell><Badge variant="secondary">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</Badge></TableCell>
-                        <TableCell>
-                          {nextOcc ? (
-                            <span className={nextDateColor}>{format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</TableCell>
-                        <TableCell>
-                          <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            <Button
-                              variant="ghost" size="icon" className="h-8 w-8"
-                              title={contract.status === 'active' ? 'Pausar' : 'Retomar'}
-                              onClick={() => updateContractStatus.mutate({
-                                id: contract.id,
-                                status: contract.status === 'active' ? 'paused' : 'active',
-                              })}
-                            >
-                              {contract.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                            </Button>
-                            <Button
-                              variant="destructive-ghost" size="icon" className="h-8 w-8"
-                              onClick={() => { if (confirm('Excluir contrato?')) deleteContract.mutate(contract.id); }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-            <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
+                      return (
+                        <TableRow
+                          key={contract.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => navigate(`/contratos/${contract.id}`)}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <ScrollText className="h-4 w-4 text-muted-foreground shrink-0" />
+                              {contract.name}
+                            </div>
+                          </TableCell>
+                          <TableCell>{contract.customers?.name || '-'}</TableCell>
+                          <TableCell><Badge variant="secondary">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</Badge></TableCell>
+                          <TableCell>
+                            {nextOcc ? (
+                              <span className={nextDateColor}>{format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</TableCell>
+                          <TableCell>
+                            <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                              <Button
+                                variant="ghost" size="icon" className="h-8 w-8"
+                                title={contract.status === 'active' ? 'Pausar' : 'Retomar'}
+                                onClick={() => updateContractStatus.mutate({
+                                  id: contract.id,
+                                  status: contract.status === 'active' ? 'paused' : 'active',
+                                })}
+                              >
+                                {contract.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                              </Button>
+                              <Button
+                                variant="destructive-ghost" size="icon" className="h-8 w-8"
+                                onClick={() => { if (confirm('Excluir contrato?')) deleteContract.mutate(contract.id); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
+            </>
           )}
         </CardContent>
       </Card>
