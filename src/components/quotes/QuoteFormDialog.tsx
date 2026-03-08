@@ -207,7 +207,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.preview_color }} />
                     {t.name}
-                  </span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
