@@ -19,7 +19,7 @@ interface EmployeeCardProps {
   onMovement: (type: 'vale' | 'bonus' | 'falta') => void;
   onPayment: () => void;
   onExtract: () => void;
-  onUpdatePhoto?: (url: string) => void;
+  
 }
 
 export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWithUser, onMovement, onPayment, onExtract }: EmployeeCardProps) {
