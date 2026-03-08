@@ -13,6 +13,8 @@ import {
   ArrowLeft,
   Calendar,
   Building2,
+  Eye,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +55,7 @@ export default function TechnicianOS() {
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
@@ -68,6 +71,13 @@ export default function TechnicianOS() {
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
 
+  // Check if user is authenticated
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setIsAuthenticated(!!data.user);
+    });
+  }, []);
+
   useEffect(() => {
     if (id) {
       fetchServiceOrder();
@@ -76,6 +86,32 @@ export default function TechnicianOS() {
       fetchEquipmentItems();
     }
   }, [id]);
+
+  // Realtime subscription for public (non-authenticated) viewers
+  useEffect(() => {
+    if (!id || isAuthenticated !== false) return;
+
+    const channel = supabase
+      .channel(`os-realtime-${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'service_orders', filter: `id=eq.${id}` },
+        () => { fetchServiceOrder(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'form_responses', filter: `service_order_id=eq.${id}` },
+        () => { /* responses updated - will be shown in report */ }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'os_photos', filter: `service_order_id=eq.${id}` },
+        () => { fetchPhotos(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [id, isAuthenticated]);
 
   const fetchEquipmentItems = async () => {
     try {
@@ -169,7 +205,7 @@ export default function TechnicianOS() {
 
   // Periodic geo tracking while OS is em_andamento
   const isInProgress = serviceOrder?.status === 'em_andamento' && !!checkInTime && !checkOutTime;
-  useGeoTracking(id, isInProgress);
+  useGeoTracking(id, isInProgress && isAuthenticated === true);
 
   const handleCheckIn = async () => {
     try {
@@ -187,7 +223,6 @@ export default function TechnicianOS() {
 
       if (error) throw error;
 
-      // Record location event
       if (id) {
         recordLocationEvent(id, location.lat, location.lng, 'check_in');
       }
@@ -245,7 +280,6 @@ export default function TechnicianOS() {
 
       if (error) throw error;
 
-      // Record check-out location event
       if (id) {
         recordLocationEvent(id, location.lat, location.lng, 'check_out');
       }
@@ -266,7 +300,7 @@ export default function TechnicianOS() {
     }
   };
 
-  if (loading) {
+  if (loading || isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-background p-4 space-y-4">
         <Skeleton className="h-32 w-full" />
@@ -290,7 +324,6 @@ export default function TechnicianOS() {
     );
   }
 
-  // Saturated badges with white text
   const statusBadgeVariant: Record<OsStatus, 'warning' | 'info' | 'success' | 'destructive'> = {
     pendente: 'warning',
     em_andamento: 'info',
@@ -323,6 +356,128 @@ export default function TechnicianOS() {
     );
   }
 
+  // PUBLIC READ-ONLY MODE for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="bg-primary text-primary-foreground">
+          <div className="max-w-2xl mx-auto p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {company?.logo_url ? (
+                    <img src={company.logo_url} alt="Logo" className="h-10 w-10 sm:h-12 sm:w-12 rounded object-contain bg-white p-1 shrink-0" />
+                  ) : (
+                    <Building2 className="h-5 w-5 opacity-70 shrink-0" />
+                  )}
+                  <span className="text-sm opacity-80 truncate">{company?.name || ''}</span>
+                </div>
+              </div>
+              <Badge variant={statusBadgeVariant[serviceOrder.status]} className="shrink-0">
+                {osStatusLabels[serviceOrder.status]}
+              </Badge>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
+                <p className="text-xs sm:text-sm opacity-80">{osTypeLabels[serviceOrder.os_type]}</p>
+              </div>
+              {serviceOrder.scheduled_date && (
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm opacity-80">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    {format(new Date(serviceOrder.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                    {serviceOrder.scheduled_time && ` ${String(serviceOrder.scheduled_time).slice(0, 5)}`}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+          {/* Realtime indicator */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <Eye className="h-4 w-4 text-primary shrink-0" />
+            <span>Acompanhamento em tempo real</span>
+            <span className="relative flex h-2 w-2 ml-auto">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+          </div>
+
+          {/* Check-in timestamp */}
+          {checkInTime && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="text-xs sm:text-sm">
+                  Check-in: {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Client Info */}
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
+              </div>
+              <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
+              {serviceOrder.customer?.phone && (
+                <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Description */}
+          {serviceOrder.description && (
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Serviço</p>
+                <p className="text-sm break-words">{serviceOrder.description}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Equipment list - read only */}
+          {equipmentItems.length > 0 && (
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Equipamentos</p>
+                <div className="space-y-2">
+                  {equipmentItems.map(item => item.equipment && (
+                    <div key={item.equipment_id} className="text-sm">
+                      <p className="font-medium">{item.equipment.name}</p>
+                      {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Status info */}
+          <Card>
+            <CardContent className="p-3 sm:p-4 text-center">
+              <Badge variant={statusBadgeVariant[serviceOrder.status]} className="text-base px-4 py-1">
+                {osStatusLabels[serviceOrder.status]}
+              </Badge>
+              <p className="text-sm text-muted-foreground mt-2">
+                {serviceOrder.status === 'pendente' && 'Aguardando início do atendimento'}
+                {serviceOrder.status === 'em_andamento' && 'Técnico em atendimento...'}
+                {serviceOrder.status === 'cancelada' && 'Esta OS foi cancelada'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // AUTHENTICATED MODE - full interactive
   const isCheckedIn = !!checkInTime;
   const isPending = serviceOrder.status === 'pendente';
 
@@ -438,7 +593,7 @@ export default function TechnicianOS() {
           </CardContent>
         </Card>
 
-        {/* Description & Notes - shown before questionnaires */}
+        {/* Description & Notes */}
         {serviceOrder.description && (
           <Card>
             <CardContent className="p-3 sm:p-4">

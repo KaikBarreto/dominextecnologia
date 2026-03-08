@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -51,6 +51,7 @@ export default function EquipmentDetail() {
   const { categories } = useEquipmentCategories();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [attachViewMode, setAttachViewMode] = useState<'gallery' | 'list'>('gallery');
   const [editEquipOpen, setEditEquipOpen] = useState(false);
   const [deleteEquipOpen, setDeleteEquipOpen] = useState(false);
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
@@ -247,12 +248,6 @@ export default function EquipmentDetail() {
               </CardContent></Card>
             )}
           </div>
-          {equipment.notes && (
-            <Card><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
-              <p className="text-sm mt-1">{equipment.notes}</p>
-            </CardContent></Card>
-          )}
           {/* Custom fields */}
           {(() => {
             const customFields = (equipment as any).custom_fields as Record<string, any> | null;
@@ -277,6 +272,13 @@ export default function EquipmentDetail() {
               </div>
             );
           })()}
+          {/* Notes after custom fields */}
+          {equipment.notes && (
+            <Card><CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
+              <p className="text-sm mt-1">{equipment.notes}</p>
+            </CardContent></Card>
+          )}
         </div>
       )}
 
@@ -285,9 +287,27 @@ export default function EquipmentDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Arquivos anexados</h2>
-            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
-              <Upload className="mr-2 h-4 w-4" />{uploadingFiles ? 'Enviando...' : 'Enviar arquivos'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setAttachViewMode('gallery')}
+                  className={cn('p-1.5 transition-colors', attachViewMode === 'gallery' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                  title="Galeria"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setAttachViewMode('list')}
+                  className={cn('p-1.5 transition-colors', attachViewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                  title="Lista"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
+                <Upload className="mr-2 h-4 w-4" />{uploadingFiles ? 'Enviando...' : 'Enviar arquivos'}
+              </Button>
+            </div>
             <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
           </div>
           {attachLoading ? (
@@ -296,6 +316,38 @@ export default function EquipmentDetail() {
             <div className="flex flex-col items-center py-12 text-center">
               <Paperclip className="mb-2 h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Nenhum anexo</p>
+            </div>
+          ) : attachViewMode === 'gallery' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {attachments.map((att) => {
+                const isImage = /\.(webp|jpe?g|png|heic)$/i.test(att.file_name);
+                return (
+                  <div key={att.id} className="relative group rounded-lg border overflow-hidden bg-muted/30">
+                    {isImage ? (
+                      <img
+                        src={att.file_url}
+                        alt={att.file_name}
+                        className="w-full aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setPreviewImage(att.file_url)}
+                      />
+                    ) : (
+                      <div className="w-full aspect-square flex flex-col items-center justify-center gap-2 p-3">
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground text-center truncate w-full px-2">{att.file_name}</p>
+                      </div>
+                    )}
+                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-background/80 p-1 hover:bg-background shadow-sm">
+                        <Download className="h-3.5 w-3.5" />
+                      </a>
+                      <button onClick={() => setDeleteAttachmentId(att.id)} className="rounded-full bg-background/80 p-1 hover:bg-destructive hover:text-white shadow-sm">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate px-2 py-1.5 bg-background/80 backdrop-blur-sm">{att.file_name}</p>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-2">

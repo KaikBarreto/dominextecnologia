@@ -37,6 +37,13 @@ interface CompanyData {
   logo_url?: string | null;
 }
 
+interface EquipmentItem {
+  equipment_id: string;
+  form_template_id: string | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
+  form_template: { id: string; name: string } | null;
+}
+
 interface OSReportProps {
   serviceOrder: ServiceOrder & { customer: any; equipment: any; form_template?: any };
   photos: OSPhoto[];
@@ -48,12 +55,14 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [ratingData, setRatingData] = useState<any>(null);
+  const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCompany();
     fetchAllResponses();
     fetchRating();
+    fetchEquipmentItems();
   }, [serviceOrder.id]);
 
   const fetchRating = async () => {
@@ -70,8 +79,20 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (data) setCompany(data);
   };
 
+  const fetchEquipmentItems = async () => {
+    const { data } = await supabase
+      .from('service_order_equipment')
+      .select(`
+        equipment_id,
+        form_template_id,
+        equipment:equipment(id, name, brand, model),
+        form_template:form_templates(id, name)
+      `)
+      .eq('service_order_id', serviceOrder.id);
+    if (data) setEquipmentItems(data as unknown as EquipmentItem[]);
+  };
+
   const fetchAllResponses = async () => {
-    // Fetch all responses for this service order (covers all templates/equipment)
     const { data } = await supabase
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, question:form_questions(*)')
@@ -105,10 +126,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const { jsPDF } = await import('jspdf');
 
       const element = reportRef.current;
-      
-      // Force a fixed width for consistent A4-like rendering regardless of screen size
       const originalWidth = element.style.width;
-      element.style.width = '794px'; // A4 width at 96dpi
+      element.style.width = '794px';
       
       const canvas = await html2canvas(element, {
         scale: 2,
@@ -119,7 +138,6 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         windowWidth: 794,
       });
       
-      // Restore original width
       element.style.width = originalWidth;
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -160,13 +178,67 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const signatureResponses = formResponses.filter(r => r.question?.question_type === 'signature');
   const otherResponses = formResponses.filter(r => r.question?.question_type !== 'signature');
 
+  // Group responses by template_id for multi-equipment OS
+  const responsesByTemplate = (() => {
+    if (equipmentItems.length <= 1) {
+      // Single equipment or legacy: show flat
+      return [{ 
+        label: serviceOrder.equipment?.name || (serviceOrder.form_template ? serviceOrder.form_template.name : 'Checklist'),
+        responses: otherResponses 
+      }];
+    }
+    // Group by template_id
+    const groups: { label: string; responses: FormResponseData[] }[] = [];
+    for (const item of equipmentItems) {
+      if (!item.form_template_id) continue;
+      const templateResponses = otherResponses.filter(r => r.question?.template_id === item.form_template_id);
+      if (templateResponses.length > 0) {
+        const label = item.equipment?.name 
+          ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
+          : (item.form_template?.name || 'Checklist');
+        groups.push({ label, responses: templateResponses });
+      }
+    }
+    // Any remaining responses not matched to a template
+    const matchedIds = new Set(groups.flatMap(g => g.responses.map(r => r.id)));
+    const unmatched = otherResponses.filter(r => !matchedIds.has(r.id));
+    if (unmatched.length > 0) {
+      groups.push({ label: 'Outros', responses: unmatched });
+    }
+    return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
+  })();
+
+  const renderResponseItem = (response: FormResponseData, idx: number) => (
+    <div key={response.id} className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
+      <span className="text-xs font-bold text-slate-400 mt-0.5 min-w-[20px]">{idx + 1}.</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
+        <div className="mt-1">
+          {response.question?.question_type === 'boolean' ? (
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+              response.response_value === 'true' 
+                ? 'bg-emerald-100 text-emerald-700' 
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+              {response.response_value === 'true' ? 'Sim' : 'Não'}
+            </span>
+          ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
+            <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
+          ) : (
+            <p className="text-sm text-slate-600 break-words">{response.response_value || '-'}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      {/* Report content - always white bg with dark text for print consistency */}
+      {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         {/* Company header */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
-          {/* Mobile: vertical stack / Desktop: horizontal */}
           <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
               {company?.logo_url ? (
@@ -219,7 +291,6 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Client & Equipment */}
           <div className="grid grid-cols-1 gap-4">
-            {/* Client */}
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
@@ -240,8 +311,24 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               )}
             </div>
 
-            {/* Equipment(s) */}
-            {serviceOrder.equipment && (
+            {/* Equipment(s) - show all from junction or fallback */}
+            {equipmentItems.length > 0 ? (
+              <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
+                </h3>
+                <div className="space-y-2">
+                  {equipmentItems.map(item => item.equipment && (
+                    <div key={item.equipment_id}>
+                      <p className="font-semibold text-slate-900">{item.equipment.name}</p>
+                      <p className="text-sm text-slate-600">
+                        {item.equipment.brand} {item.equipment.model}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : serviceOrder.equipment && (
               <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
@@ -260,7 +347,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             )}
           </div>
 
-          {/* Description - only show for pendente/em_andamento */}
+          {/* Description */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.description || (serviceOrder as any).service_type) && (
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição do Chamado</h3>
@@ -353,43 +440,21 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             </div>
           )}
 
-          {/* Questionnaire Responses */}
-          {otherResponses.length > 0 && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <ClipboardCheck className="h-3.5 w-3.5" /> 
-                {serviceOrder.equipment?.name || (serviceOrder.form_template ? (serviceOrder as any).form_template.name : 'Checklist')}
-              </h3>
-              <div className="space-y-2">
-                {otherResponses.map((response, idx) => (
-                  <div key={response.id} className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
-                    <span className="text-xs font-bold text-slate-400 mt-0.5 min-w-[20px]">{idx + 1}.</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
-                      <div className="mt-1">
-                        {response.question?.question_type === 'boolean' ? (
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            response.response_value === 'true' 
-                              ? 'bg-emerald-100 text-emerald-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                            {response.response_value === 'true' ? 'Sim' : 'Não'}
-                          </span>
-                        ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
-                          <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
-                        ) : (
-                          <p className="text-sm text-slate-600 break-words">{response.response_value || '-'}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          {/* Questionnaire Responses - grouped by equipment */}
+          {responsesByTemplate.map((group, gi) => (
+            group.responses.length > 0 && (
+              <div key={gi} className="border border-slate-200 rounded-lg p-3 sm:p-4">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
+                </h3>
+                <div className="space-y-2">
+                  {group.responses.map((response, idx) => renderResponseItem(response, idx))}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          ))}
 
-          {/* Service Details - only show for pendente/em_andamento */}
+          {/* Service Details */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">

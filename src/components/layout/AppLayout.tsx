@@ -24,7 +24,7 @@ function HeaderContent() {
           </Button>
         )}
         {isMobile && (
-          <img src={logoDark} alt="Dominex" className="h-6 w-auto" />
+          <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
         )}
       </div>
 
@@ -79,7 +79,7 @@ function TopbarAppLayout() {
       <TopbarLayout />
       {/* Mobile fallback header — hidden on lg+ where topbar shows */}
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:hidden">
-        <img src={logoDark} alt="Dominex" className="h-6 w-auto" />
+        <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
         <div className="flex items-center gap-1">
           {user && (
             <>
