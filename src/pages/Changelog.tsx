@@ -719,6 +719,27 @@ export default function Changelog() {
           </div>
         )}
       </div>
+
+      {/* Versioning explanation */}
+      <Card>
+        <CardContent className="p-4 sm:p-6 space-y-4">
+          <h3 className="text-base font-bold text-foreground">Como funciona o versionamento?</h3>
+          <div className="space-y-4 divide-y divide-border">
+            <div className="space-y-0.5">
+              <p className="text-sm font-bold text-success">Versão Principal (X.0.0)</p>
+              <p className="text-sm text-muted-foreground">Mudanças grandes no sistema, como redesign completo ou novas funcionalidades principais.</p>
+            </div>
+            <div className="space-y-0.5 pt-4">
+              <p className="text-sm font-bold text-primary">Nova Versão (0.X.0)</p>
+              <p className="text-sm text-muted-foreground">Novas funcionalidades e melhorias importantes no sistema.</p>
+            </div>
+            <div className="space-y-0.5 pt-4">
+              <p className="text-sm font-bold text-warning">Atualização (0.0.X)</p>
+              <p className="text-sm text-muted-foreground">Correções de bugs e pequenas melhorias de usabilidade.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
