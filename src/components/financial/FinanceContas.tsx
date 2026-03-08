@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/table';
 import { Check, AlertTriangle, Clock, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,6 +29,7 @@ interface FinanceContasProps {
 export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: FinanceContasProps) {
   const [subTab, setSubTab] = useState<SubTab>('pagar');
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
+  const isMobile = useIsMobile();
 
   const today = startOfDay(new Date());
   const next7Days = addDays(today, 7);
@@ -93,37 +95,37 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-full bg-warning p-2.5">
+            <div className="rounded-full bg-warning p-2.5 shrink-0">
               <Clock className="h-4 w-4 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Pendente</p>
-              <p className="text-lg font-bold">{formatCurrency(summary.pendente)}</p>
+              <p className="text-lg font-bold truncate">{formatCurrency(summary.pendente)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-full bg-destructive p-2.5">
+            <div className="rounded-full bg-destructive p-2.5 shrink-0">
               <AlertTriangle className="h-4 w-4 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Vencido</p>
-              <p className="text-lg font-bold text-destructive">{formatCurrency(summary.vencido)}</p>
+              <p className="text-lg font-bold text-destructive truncate">{formatCurrency(summary.vencido)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-full bg-primary p-2.5">
+            <div className="rounded-full bg-primary p-2.5 shrink-0">
               <DollarSign className="h-4 w-4 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Próximos 7 dias</p>
-              <p className="text-lg font-bold">{formatCurrency(summary.prox7)}</p>
+              <p className="text-lg font-bold truncate">{formatCurrency(summary.prox7)}</p>
             </div>
           </CardContent>
         </Card>
@@ -143,20 +145,57 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         ))}
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-4">
-              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">Nenhuma conta encontrada</h3>
-              <p className="text-muted-foreground text-sm">Nenhum registro para o filtro selecionado</p>
-            </div>
-          ) : (
+      {/* Content */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Nenhuma conta encontrada</h3>
+          <p className="text-muted-foreground text-sm">Nenhum registro para o filtro selecionado</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {filtered.map((t) => (
+            <Card key={t.id} className={cn(isOverdue(t) && 'border-destructive/40')}>
+              <CardContent className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{t.description}</p>
+                    {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
+                  </div>
+                  {t.is_paid ? (
+                    <Badge className="bg-success text-white shrink-0 text-[10px]">Pago</Badge>
+                  ) : isOverdue(t) ? (
+                    <Badge className="bg-destructive text-white shrink-0 text-[10px]">Vencida</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="shrink-0 text-[10px]">Pendente</Badge>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {t.due_date ? format(new Date(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
+                  </span>
+                  <span className={`font-semibold text-sm ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
+                    {formatCurrency(t.amount)}
+                  </span>
+                </div>
+                {!t.is_paid && (
+                  <div className="flex justify-end pt-1 border-t">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-success gap-1" onClick={() => onMarkAsPaid(t.id)}>
+                      <Check className="h-3 w-3" /> Marcar pago
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -217,9 +256,9 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 </TableBody>
               </Table>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

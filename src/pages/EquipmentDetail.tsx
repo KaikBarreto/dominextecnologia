@@ -155,25 +155,27 @@ export default function EquipmentDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/equipamentos')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{equipment.name}</h1>
-          <p className="text-muted-foreground text-sm">
-            {equipment.identifier && <span className="font-mono mr-3">ID: {equipment.identifier}</span>}
-            <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
-              {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
-            </Badge>
-          </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/equipamentos')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">{equipment.name}</h1>
+            <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
+              {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
+              <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
+                {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
+              </Badge>
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 pl-11 sm:pl-0">
           <Button variant="edit-ghost" size="sm" onClick={() => setEditEquipOpen(true)}>
-            <Edit className="h-4 w-4 mr-1" /> Editar
+            <Edit className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Editar</span>
           </Button>
           <Button variant="destructive-ghost" size="sm" onClick={() => setDeleteEquipOpen(true)}>
-            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+            <Trash2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Excluir</span>
           </Button>
         </div>
       </div>

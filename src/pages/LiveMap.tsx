@@ -366,6 +366,7 @@ export default function LiveMap() {
   return (
     <div className="space-y-4">
       <style>{`
+        .leaflet-container { z-index: 0 !important; }
         .leaflet-tooltip-custom {
           background: white;
           border: 1px solid #e2e8f0;
@@ -379,18 +380,18 @@ export default function LiveMap() {
         }
       `}</style>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Mapa ao Vivo</h1>
-          <p className="text-muted-foreground">Posição em tempo real dos técnicos em campo</p>
+          <p className="text-muted-foreground text-sm">Posição em tempo real dos técnicos em campo</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
             {darkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
           </Button>
           <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Atualizar
+            <span className="hidden sm:inline">Atualizar</span>
           </Button>
           <Badge variant="secondary" className="gap-1">
             <MapPin className="h-3 w-3" />
