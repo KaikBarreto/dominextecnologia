@@ -67,7 +67,7 @@ export default function Auth() {
   const registerSession = useCallback(async (userId: string) => {
     const sessionToken = generateSessionToken();
     await supabase
-      .from('active_sessions' as any)
+      .from('active_sessions')
       .insert({
         user_id: userId,
         session_token: sessionToken,
@@ -82,7 +82,7 @@ export default function Auth() {
     const currentToken = localStorage.getItem("session_token");
     if (!currentToken) return;
     await supabase
-      .from('active_sessions' as any)
+      .from('active_sessions')
       .delete()
       .eq("user_id", userId)
       .neq("session_token", currentToken);
@@ -123,14 +123,14 @@ export default function Auth() {
       // Check for existing sessions
       const currentToken = localStorage.getItem("session_token");
       const { data: otherSessions } = await supabase
-        .from('active_sessions' as any)
+        .from('active_sessions')
         .select("device_info, last_activity, session_token")
         .eq("user_id", sessionData.user.id)
         .neq("session_token", currentToken || "none");
 
       // Filter recent sessions (last 60 min)
-      const recentSessions = ((otherSessions as any[]) || []).filter((s: any) => {
-        const diff = (Date.now() - new Date(s.last_activity).getTime()) / 60000;
+      const recentSessions = (otherSessions || []).filter((s) => {
+        const diff = (Date.now() - new Date(s.last_activity!).getTime()) / 60000;
         return diff < 60;
       });
 
@@ -157,10 +157,18 @@ export default function Auth() {
     if (!pendingLoginData || !pendingUserId) return;
     setIsLoading(true);
     try {
-      await completeLogin(pendingLoginData, pendingUserId);
+      // Re-authenticate (session already exists from handleLogin)
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: pendingLoginData.email,
+        password: pendingLoginData.password,
+      });
+      if (error) throw error;
+
+      await completeLogin(pendingLoginData, authData.user?.id || pendingUserId);
       
-      if (disconnectOthers) {
-        await disconnectOtherSessions(pendingUserId);
+      // If user chose to disconnect others, do it AFTER registering new session
+      if (disconnectOthers && authData.user) {
+        await disconnectOtherSessions(authData.user.id);
         toast({ title: 'Outras sessões desconectadas' });
       }
 
