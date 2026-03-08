@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,9 @@ export default function Settings() {
   const [companyState, setCompanyState] = useState('');
   const [companyZip, setCompanyZip] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [wlUploading, setWlUploading] = useState(false);
+  const [wlEnabled, setWlEnabled] = useState(false);
+  const [wlColor, setWlColor] = useState('#00C597');
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
@@ -67,6 +70,8 @@ export default function Settings() {
       setCompanyZip(settings.zip_code || '');
       setCompanyNeighborhood((settings as any).neighborhood || '');
       setCompanyComplement((settings as any).complement || '');
+      setWlEnabled(!!(settings as any).white_label_enabled);
+      setWlColor((settings as any).white_label_primary_color || '#00C597');
     }
   }, [settings]);
 
@@ -126,6 +131,50 @@ export default function Settings() {
     }
   };
 
+  const handleWlLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
+    file = await processImageFile(file);
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      return;
+    }
+    setWlUploading(true);
+    try {
+      const currentWlLogo = (settings as any)?.white_label_logo_url;
+      if (currentWlLogo) {
+        try {
+          const oldPath = currentWlLogo.split('/company-logos/')[1];
+          if (oldPath) await supabase.storage.from('company-logos').remove([oldPath]);
+        } catch {}
+      }
+      const filePath = `wl_logo_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+      updateSettings.mutate({ white_label_logo_url: publicUrl } as any);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: err.message });
+    } finally {
+      setWlUploading(false);
+    }
+  };
+
+  const handleRemoveWlLogo = () => {
+    updateSettings.mutate({ white_label_logo_url: null } as any);
+  };
+
+  const handleSaveWhiteLabel = () => {
+    updateSettings.mutate({
+      white_label_enabled: wlEnabled,
+      white_label_primary_color: wlColor || null,
+    } as any);
+  };
+
   const updateUsability = (key: string, value: boolean) => {
     const updated = { ...usabilitySettings, [key]: value };
     setUsabilitySettings(updated);
@@ -146,6 +195,7 @@ export default function Settings() {
     switch (activeTab) {
       case 'empresa':
         return (
+          <>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -278,7 +328,109 @@ export default function Settings() {
               </Button>
             </CardContent>
           </Card>
-        );
+
+          {/* White Label Section */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paintbrush className="h-5 w-5 text-primary" />
+                White Label
+              </CardTitle>
+              <CardDescription>Personalize o sistema com a identidade visual da sua empresa</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="font-medium text-sm">Ativar White Label</p>
+                  <p className="text-sm text-muted-foreground">Substitui o logo e a cor padrão do sistema</p>
+                </div>
+                <Switch checked={wlEnabled} onCheckedChange={setWlEnabled} />
+              </div>
+
+              {wlEnabled && (
+                <>
+                  <Separator />
+
+                  {/* WL Logo */}
+                  <div className="space-y-2">
+                    <Label>Logo personalizado</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {(settings as any)?.white_label_logo_url
+                        ? 'Logo personalizado configurado'
+                        : 'Por padrão, será utilizado o logo da empresa acima'}
+                    </p>
+                    {(settings as any)?.white_label_logo_url ? (
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={(settings as any).white_label_logo_url}
+                          alt="WL Logo"
+                          className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-muted p-1"
+                        />
+                        <div className="flex flex-col gap-2">
+                          <Button variant="outline" size="sm" asChild disabled={wlUploading}>
+                            <label className="cursor-pointer">
+                              {wlUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                              Substituir
+                              <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} />
+                            </label>
+                          </Button>
+                          <Button variant="destructive-ghost" size="sm" onClick={handleRemoveWlLogo}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Remover
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
+                        {wlUploading ? (
+                          <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                        ) : (
+                          <>
+                            <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                            <span className="text-xs text-muted-foreground">Enviar logo personalizado (opcional)</span>
+                          </>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
+                      </label>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* WL Color */}
+                  <div className="space-y-2">
+                    <Label>Cor primária</Label>
+                    <p className="text-xs text-muted-foreground">Substitui a cor verde padrão do sistema</p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={wlColor}
+                        onChange={e => setWlColor(e.target.value)}
+                        className="h-10 w-14 rounded-md border border-input cursor-pointer bg-transparent"
+                      />
+                      <Input
+                        value={wlColor}
+                        onChange={e => setWlColor(e.target.value)}
+                        placeholder="#00C597"
+                        className="w-32 uppercase font-mono"
+                        maxLength={7}
+                      />
+                      <div
+                        className="h-10 flex-1 rounded-md border"
+                        style={{ backgroundColor: wlColor }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <Button onClick={handleSaveWhiteLabel} disabled={updateSettings.isPending}>
+                {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar White Label
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      );
 
       case 'usabilidade':
         return (
