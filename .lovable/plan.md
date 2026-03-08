@@ -1,85 +1,74 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Diagnóstico: O que falta no módulo de Orçamentos
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+Analisei todo o código atual. Segue o que **existe** e o que **falta** para o módulo ser completo:
 
-### 2. Permissions System - Database Changes
+### O que JA funciona
+- CRUD de orçamentos com itens (serviços + materiais)
+- Prospect sem cliente cadastrado
+- Link publico para aprovacao/rejeicao pelo cliente
+- KPIs basicos (total em aberto, taxa de conversao, ticket medio)
+- Filtros por status e busca textual
 
-Create 2 new tables via migration:
+### O que FALTA (10 itens)
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+| # | Funcionalidade | Impacto |
+|---|---|---|
+| 1 | **Visualizar orçamento (detalhe interno)** -- Nao existe pagina/modal de visualizacao completa. So tem editar e excluir. | Alto |
+| 2 | **PDF / Impressao** -- Nao existe geracao de PDF com logo da empresa, dados do cliente, itens. Planejado no plano original mas nunca implementado. | Alto |
+| 3 | **Converter orçamento aprovado em OS** -- Botao "Gerar OS" que cria service_order a partir do orcamento. Integracao central do fluxo. | Alto |
+| 4 | **Converter orçamento aprovado em transacao financeira** -- Gerar conta a receber no modulo financeiro ao aprovar. | Medio |
+| 5 | **Duplicar orçamento** -- Copiar orcamento existente como novo rascunho (muito comum no mercado). | Medio |
+| 6 | **Expiração automatica** -- Orcamentos com `valid_until` no passado devem virar status "expirado" automaticamente. | Medio |
+| 7 | **Carregar itens ao editar** -- O `quotesQuery` nao faz `select('*, quote_items(*)')`, entao ao editar um orcamento os itens nao carregam. | Critico (bug) |
+| 8 | **Envio por WhatsApp/E-mail** -- Botao para compartilhar o link publico via WhatsApp ou copiar mensagem formatada. | Medio |
+| 9 | **Historico de status** -- Registrar quando mudou de status e por quem (audit trail). | Baixo |
+| 10 | **Pagina publica com dados da empresa** -- A pagina publica nao mostra logo, nome da empresa, contato. Parece generica. | Medio |
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+### Plano de implementacao
 
-The permissions will be a flat list of string keys covering:
+**1. Corrigir bug critico: carregar itens na edicao**
+- Em `useQuotes.ts`, alterar query principal para incluir `quote_items(*)` no select.
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+**2. Modal de visualizacao do orcamento**
+- Criar `QuoteViewDialog.tsx` com layout profissional mostrando dados do cliente/prospect, itens separados por secao, totais, condicoes/termos.
+- Conectar o botao `Eye` que ja esta importado mas nao utilizado na listagem.
 
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
+**3. Geracao de PDF**
+- Criar `QuotePDF.tsx` usando `jspdf` (ja instalado) + `html2canvas-pro` (ja instalado).
+- Template com logo da empresa (via `useCompanySettings`), dados do cliente, tabela de itens, totais, condicoes.
+- Botao "Baixar PDF" no dialog de visualizacao.
 
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
+**4. Converter em OS**
+- Botao "Gerar OS" visivel em orcamentos com status `aprovado`.
+- Abre `ServiceOrderFormDialog` pre-preenchido com `customer_id`, itens do orcamento mapeados para `parts_used`, e valor total.
 
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
+**5. Gerar conta a receber**
+- Ao converter/aprovar, opcao de criar `financial_transaction` com type `receita`, valor do orcamento, cliente vinculado.
 
-### 4. New Components
+**6. Duplicar orcamento**
+- Botao na listagem que cria novo orcamento como rascunho copiando todos os campos e itens.
 
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+**7. Expiracao automatica**
+- Adicionar logica no `quotesQuery` ou no banco (trigger/cron) que marca orcamentos com `valid_until < today` e `status = 'enviado'` como `expirado`.
 
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
+**8. Compartilhar via WhatsApp**
+- Botao que abre `https://wa.me/?text=...` com mensagem formatada incluindo link publico.
 
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
+**9. Pagina publica melhorada**
+- Buscar `company_settings` para exibir logo, nome da empresa, telefone e endereco na pagina publica.
 
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
+**10. Historico de status (opcional)**
+- Tabela `quote_status_history` com `quote_id`, `old_status`, `new_status`, `changed_by`, `changed_at`.
 
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
+### Ordem de prioridade sugerida
+1. Bug dos itens na edicao (#7)
+2. Visualizacao (#1) + PDF (#2) + Pagina publica melhorada (#9)
+3. Converter em OS (#3) + Financeiro (#4)
+4. Duplicar (#5) + WhatsApp (#8) + Expiracao (#6)
+5. Historico (#10)
 
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
-
-### Technical Details
-
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
-```
-
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
-
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+### Nenhuma alteracao de banco necessaria para itens 1-8
+Exceto item 10 (historico) que precisaria de nova tabela, e item 6 (expiracao) que pode ser feito via trigger ou no frontend.
 
