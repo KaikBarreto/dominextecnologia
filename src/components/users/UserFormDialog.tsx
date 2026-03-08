@@ -52,6 +52,7 @@ interface UserFormDialogProps {
     preset_id?: string | null;
     avatar_url?: string | null;
     employee_id?: string | null;
+    email?: string | null;
   } | null;
 }
 
@@ -78,7 +79,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     if (editingUser) {
       setForm({
         full_name: editingUser.full_name,
-        email: '',
+        email: editingUser.email || '',
         password: '',
         phone: editingUser.phone || '',
         role: editingUser.role || '',
@@ -211,17 +212,16 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
               <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Nome do usuário" />
             </div>
             {!isEditing && (
-              <>
-                <div>
-                  <Label className="text-[13px] font-normal uppercase tracking-wider">Email *</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@exemplo.com" />
-                </div>
-                <div>
-                  <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
-                  <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
-                </div>
-              </>
+              <div>
+                <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
+                <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
+              </div>
             )}
+            <div>
+              <Label className="text-[13px] font-normal uppercase tracking-wider">Email {!isEditing ? '*' : ''}</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@exemplo.com" />
+              {isEditing && <p className="text-xs text-muted-foreground mt-1">Alterar o email mudará o login de acesso do usuário</p>}
+            </div>
             <div>
               <Label className="text-[13px] font-normal uppercase tracking-wider">Telefone</Label>
               <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: phoneMask(e.target.value) }))} placeholder="(00) 00000-0000" />

@@ -147,6 +147,15 @@ export default function Users() {
         await supabase.from('employees').update({ user_id: editingUser.user_id }).eq('id', data.employee_id);
       }
 
+      // Update email if changed
+      if (data.email && data.email !== editingUser.email) {
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke('manage-user', {
+          body: { action: 'update_email', user_id: editingUser.user_id, email: data.email },
+        });
+        if (emailError) throw emailError;
+        if (emailResult?.error) throw new Error(emailResult.error);
+      }
+
       toast({ title: 'Usuário atualizado!' });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -163,9 +172,19 @@ export default function Users() {
     }
   };
 
-  const openEditUser = (userProfile: UserWithRole) => {
+  const openEditUser = async (userProfile: UserWithRole) => {
     const perm = getUserPermission(userProfile.user_id);
     const linkedEmployee = employees.find(e => e.user_id === userProfile.user_id);
+    
+    // Fetch current email from auth
+    let currentEmail = '';
+    try {
+      const { data: emailData } = await supabase.functions.invoke('manage-user', {
+        body: { action: 'get_email', user_id: userProfile.user_id },
+      });
+      currentEmail = emailData?.email || '';
+    } catch {}
+
     setEditingUser({
       user_id: userProfile.user_id,
       full_name: userProfile.full_name,
@@ -175,6 +194,7 @@ export default function Users() {
       preset_id: perm?.preset_id || null,
       avatar_url: userProfile.avatar_url,
       employee_id: linkedEmployee?.id || null,
+      email: currentEmail,
     });
     setUserFormOpen(true);
   };
