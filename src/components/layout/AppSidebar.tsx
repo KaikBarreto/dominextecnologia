@@ -125,12 +125,12 @@ export function AppSidebar() {
     <Sidebar className="border-r border-border bg-background">
       <SidebarContent className="flex flex-1 flex-col p-0 overflow-hidden">
         {/* Logo */}
-        <div className="relative overflow-hidden h-14 flex items-center justify-center bg-black shrink-0">
+        <NavLink to="/dashboard" className="relative overflow-hidden h-14 flex items-center justify-center bg-black shrink-0 cursor-pointer">
           <div className="absolute inset-0">
             <DarkVeil hueShift={53} speed={0.3} resolutionScale={0.3} />
           </div>
           <img src={logoWhite} alt="Dominex" className="h-8 w-auto mx-auto relative z-10" />
-        </div>
+        </NavLink>
 
         {/* Scrollable content */}
         <div className="flex flex-1 flex-col gap-0.5 p-4 overflow-y-auto">
