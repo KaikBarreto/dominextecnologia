@@ -157,6 +157,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Endereço</Label>
             <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Endereço completo" />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Chave PIX</Label>
+            <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, email, telefone ou chave aleatória" />
+          </div>
         </div>
 
         {/* Link to existing user */}
@@ -179,10 +184,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Vincula este funcionário a um usuário existente no sistema</p>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Chave PIX</Label>
-            <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, email, telefone ou chave aleatória" />
-          </div>
         </div>
 
         {/* Create system access toggle - only on creation */}
