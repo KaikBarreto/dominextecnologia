@@ -187,6 +187,43 @@ export default function Settings() {
     updateSettings.mutate({ white_label_logo_url: null } as any);
   };
 
+  const handleWlIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
+    file = await processImageFile(file);
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 5MB)' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Apenas imagens são permitidas' });
+      return;
+    }
+    setWlIconUploading(true);
+    try {
+      const currentIcon = (settings as any)?.white_label_icon_url;
+      if (currentIcon) {
+        try {
+          const oldPath = currentIcon.split('/company-logos/')[1];
+          if (oldPath) await supabase.storage.from('company-logos').remove([oldPath]);
+        } catch {}
+      }
+      const filePath = `wl_icon_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+      updateSettings.mutate({ white_label_icon_url: publicUrl } as any);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao enviar ícone', description: err.message });
+    } finally {
+      setWlIconUploading(false);
+    }
+  };
+
+  const handleRemoveWlIcon = () => {
+    updateSettings.mutate({ white_label_icon_url: null } as any);
+  };
+
   const handleSaveWhiteLabel = () => {
     updateSettings.mutate({
       white_label_enabled: wlEnabled,
