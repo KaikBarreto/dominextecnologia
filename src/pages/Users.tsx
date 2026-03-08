@@ -74,13 +74,9 @@ export default function Users() {
 
       // Upload photo if provided
       if (data.photo && result?.user?.id) {
-        try {
-          const avatarUrl = await uploadPhoto(result.user.id, data.photo);
-          if (avatarUrl) {
-            await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('user_id', result.user.id);
-          }
-        } catch (photoErr) {
-          console.error('Photo upload failed:', photoErr);
+        const avatarUrl = await uploadPhoto(result.user.id, data.photo);
+        if (avatarUrl) {
+          await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('user_id', result.user.id);
         }
       }
 
