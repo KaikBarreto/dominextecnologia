@@ -1,85 +1,127 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+# Plano: Refatorar PMOC → Módulo "Contratos" Agnóstico
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+## Visão Geral
 
-### 2. Permissions System - Database Changes
+Transformar o módulo PMOC em um módulo genérico "Contratos" para qualquer empresa que ofereça serviços recorrentes. O fluxo central: Criar Contrato → Definir Frequência → Vincular Itens → Revisar → Gerar OSs.
 
-Create 2 new tables via migration:
+Este é um trabalho grande que será dividido em fases. A abordagem reutiliza a lógica existente do stepper de 4 etapas do `PmocPlanFormDialog` e a geração em massa de OSs, renomeando e expandindo a funcionalidade.
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+---
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+## Fase 1: Banco de Dados (Migrações)
 
-The permissions will be a flat list of string keys covering:
+Criar 3 novas tabelas e adicionar colunas à `service_orders`:
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+**Tabela `contracts`** (substitui `pmoc_plans` conceitualmente):
+- `id`, `company_id` (FK companies), `name`, `customer_id` (FK customers), `technician_id`, `service_type_id`, `form_template_id`, `status` (active/paused/cancelled/expired), `notes`, `frequency_type` (days/months), `frequency_value`, `start_date`, `horizon_months`, `created_by`, `created_at`, `updated_at`
 
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
+**Tabela `contract_items`**:
+- `id`, `contract_id` (FK contracts ON DELETE CASCADE), `equipment_id` (nullable FK equipment), `item_name`, `item_description`, `form_template_id` (override por item), `sort_order`
 
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
+**Tabela `contract_occurrences`**:
+- `id`, `contract_id` (FK contracts ON DELETE CASCADE), `scheduled_date`, `service_order_id` (nullable FK service_orders), `status` (scheduled/completed/skipped/rescheduled), `occurrence_number`
 
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
+**Alterar `service_orders`**:
+- Adicionar `contract_id uuid references contracts(id)` (nullable)
+- Adicionar `origin text default 'manual'` (manual/contract)
 
-### 4. New Components
+**RLS**: Todas as tabelas isoladas por `company_id` via `get_user_company_id(auth.uid())`, seguindo o padrão existente. Trigger `update_updated_at_column` em `contracts`.
 
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+As tabelas PMOC antigas (`pmoc_plans`, `pmoc_items`, `pmoc_generated_os`, `pmoc_contracts`, `pmoc_schedules`) ficam intactas por ora (não serão deletadas para não perder dados).
 
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
+---
 
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
+## Fase 2: Hooks e Lógica
 
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
+**Novo hook `useContracts.ts`**:
+- Queries: listar contratos com join em customers, contract_items, contract_occurrences
+- Mutations: criar/editar/deletar contratos
+- Lógica de geração de ocorrências (função pura `generateOccurrences`)
+- Stats: ativos, OSs geradas no mês, próximas 7 dias, vencendo em 30 dias
 
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
+**Novo hook `useContractDetail.ts`**:
+- Query por ID com items + occurrences + service_orders vinculadas
+- Mutations: atualizar status de ocorrência (skip, reschedule), adicionar/remover itens
 
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
+---
 
-### Technical Details
+## Fase 3: Componentes e Páginas
 
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
-```
+### 3a. Modal Stepper (refatorar `PmocPlanFormDialog` → `ContractFormDialog`)
 
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
+4 etapas mantendo a UX existente, expandida:
+1. **Informações**: Nome, Cliente, Técnico, Tipo de Serviço, Questionário, Observações, Toggle Ativo
+2. **Frequência**: Toggle dias/meses, atalhos rápidos, intervalo, data início, horizonte, prévia de datas com indicação de fim de semana
+3. **Itens**: Lista de equipamentos do cliente + opção de adicionar item manual (nome + descrição), questionário por item
+4. **Revisão**: Resumo completo com destaque de quantas OSs serão geradas e aviso de fins de semana
 
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+Usar Sheet lateral (700px desktop, fullscreen mobile) em vez do Dialog atual.
+
+### 3b. Página Principal `/contratos`
+
+- Header com título + botão "Novo Contrato"
+- 4 KPI cards: Ativos, OSs Geradas (mês), Próximas Ocorrências (7d), Vencendo (30d)
+- Filtros: busca, status, período
+- Tabela: Contrato, Cliente, Frequência, Próxima OS (com badges de cor por urgência), Itens, Status, Ações
+- Empty state com ícone e CTA
+
+### 3c. Página de Detalhe `/contratos/:id`
+
+Layout 2 colunas (desktop) / stack (mobile):
+- **Esquerda**: Cards de Informações, Itens do Contrato, Tabela de Ocorrências (com ações: ver OS, pular, reagendar)
+- **Direita**: Card Resumo (frequência, início, horizonte, próxima OS) + Card Progresso (barra visual concluídas/total)
+
+---
+
+## Fase 4: Navegação e Renomeação
+
+**Arquivos a editar**:
+- `src/App.tsx`: Rota `/contratos` + `/contratos/:id`, redirect `/pmoc` → `/contratos`
+- `src/components/layout/AppSidebar.tsx`: "PMOC" → "Contratos", ícone `ScrollText`, path `/contratos`
+- `src/components/layout/TopbarLayout.tsx`: Idem
+- `src/pages/MobileMenu.tsx`: Idem
+- `src/hooks/usePermissions.ts`: `screen:pmoc` → `screen:contracts`, label "Contratos"
+
+---
+
+## Fase 5: Integração com Agenda e OS
+
+- Na OS gerada por contrato: banner no topo com link "Ver contrato"
+- No `ServiceOrderViewDialog` e `ServiceOrderFormDialog`: detectar `origin === 'contract'` e exibir contexto
+- Na agenda: tooltip diferenciado para OSs de contrato
+
+---
+
+## Arquivos Envolvidos
+
+**Criar**:
+- `src/hooks/useContracts.ts`
+- `src/hooks/useContractDetail.ts`
+- `src/components/contracts/ContractFormDialog.tsx`
+- `src/pages/Contracts.tsx`
+- `src/pages/ContractDetail.tsx`
+
+**Editar**:
+- `src/App.tsx` (rotas)
+- `src/components/layout/AppSidebar.tsx` (menu)
+- `src/components/layout/TopbarLayout.tsx` (menu)
+- `src/pages/MobileMenu.tsx` (menu)
+- `src/hooks/usePermissions.ts` (permissão)
+- `src/components/service-orders/ServiceOrderViewDialog.tsx` (banner contrato)
+
+**Manter (não deletar)**:
+- Arquivos PMOC antigos — ficam disponíveis como referência, a rota `/pmoc` redireciona para `/contratos`
+
+**Migrações**:
+- 1 migração SQL com as 3 tabelas + ALTER em service_orders + RLS policies + trigger updated_at
+
+---
+
+## Nota Técnica
+
+O ponto arquitetural central é o campo `origin` e a FK `contract_id` na tabela `service_orders` — isso cria rastreabilidade entre Agenda, OS e Contrato sem acoplamento. Qualquer tela que exibe OS pode verificar se veio de um contrato e exibir o contexto adequado.
+
+Devido à extensão, a implementação será feita em etapas sequenciais, começando pelo banco de dados, depois hooks, componentes e por fim a integração.
 
