@@ -127,13 +127,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
       <QuoteItemsTable items={items} onChange={setItems} />
 
-      <div className="flex justify-end gap-4 text-sm border-t pt-3">
-        <div className="text-muted-foreground">
-          Desconto: <span className="font-medium text-foreground">R$ {discountAmount.toFixed(2)}</span>
-        </div>
-        <div className="text-foreground font-bold text-base">
+      <div className="flex flex-col items-end gap-1 text-sm border-t pt-3">
+        {discountAmount > 0 && (
+          <span className="text-muted-foreground">
+            Desconto: <span className="font-medium text-destructive">- R$ {discountAmount.toFixed(2)}</span>
+          </span>
+        )}
+        <span className="text-foreground font-bold text-base">
           Total: R$ {totalValue.toFixed(2)}
-        </div>
+        </span>
       </div>
 
       <div className="space-y-2">
