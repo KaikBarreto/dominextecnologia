@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const faqs = [
   {
@@ -33,9 +34,11 @@ const faqs = [
 ];
 
 export default function FaqSection() {
+  const ref = useScrollReveal();
+
   return (
     <section className="py-24 bg-[hsl(0,0%,4%)]">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-12">
           Perguntas frequentes
         </h2>

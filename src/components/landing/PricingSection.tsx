@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const plans = [
   {
@@ -52,15 +53,15 @@ const plans = [
 
 export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
+  const ref = useScrollReveal();
 
   return (
     <section id="pricing" className="py-24 bg-[hsl(0,0%,5%)]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
           Planos que crescem com a sua operação
         </h2>
 
-        {/* Toggle */}
         <div className="flex items-center justify-center gap-3 mb-16">
           <span className={`text-sm ${!annual ? 'text-white' : 'text-white/40'}`}>Mensal</span>
           <button
