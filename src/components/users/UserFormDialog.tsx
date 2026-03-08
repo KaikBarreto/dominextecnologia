@@ -217,7 +217,27 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
                 <div>
                   <Label className="text-[13px] font-normal uppercase tracking-wider">Senha *</Label>
                   <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
-                </div>
+            </div>
+
+            {/* Link to employee */}
+            <div>
+              <Label className="text-[13px] font-normal uppercase tracking-wider flex items-center gap-1.5">
+                <Link2 className="h-3.5 w-3.5" /> Vincular a Funcionário
+              </Label>
+              <Select value={form.employee_id || '_none'} onValueChange={(v) => setForm(f => ({ ...f, employee_id: v === '_none' ? null : v }))}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Nenhum funcionário vinculado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Nenhum</SelectItem>
+                  {employees.map(emp => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.name} {emp.position ? `(${emp.position})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Vincula este usuário a um funcionário cadastrado</p>
               </>
             )}
             <div>
