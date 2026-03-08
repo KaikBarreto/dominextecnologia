@@ -98,14 +98,17 @@ export function EquipmentFormDialog({
     if (open) {
       const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
 
-      // Try to restore from cache if same context (same equipment or new)
+      // Try to restore from cache only if same context (same equipment id or both new)
       const cached = sessionStorage.getItem(CACHE_KEY);
       let restored = false;
+      const currentEditingId = equipment?.id ?? null;
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          const sameContext = (equipment?.id ?? null) === (parsed.editingId ?? null);
-          if (sameContext && parsed.values) {
+          const cachedEditingId = parsed.editingId ?? null;
+          const sameContext = currentEditingId === cachedEditingId;
+          // Only restore if values have meaningful content (not all empty)
+          if (sameContext && parsed.values && (parsed.values.name || parsed.values.customer_id)) {
             form.reset(parsed.values);
             setCustomFieldValues(parsed.customFieldValues ?? {});
             restored = true;
@@ -113,7 +116,9 @@ export function EquipmentFormDialog({
         } catch { /* ignore */ }
       }
 
+      // Always clear stale cache if context changed
       if (!restored) {
+        sessionStorage.removeItem(CACHE_KEY);
         form.reset({
           customer_id: defaultCustomerId,
           name: equipment?.name ?? '',
