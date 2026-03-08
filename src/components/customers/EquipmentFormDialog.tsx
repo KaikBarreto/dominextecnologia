@@ -180,8 +180,9 @@ export function EquipmentFormDialog({
     }
 
     const cleaned: any = { ...data, photo_url };
+    // Convert empty strings to null so updates actually clear values
     Object.keys(cleaned).forEach(key => {
-      if (cleaned[key] === '') cleaned[key] = undefined;
+      if (cleaned[key] === '') cleaned[key] = null;
     });
     cleaned.customer_id = data.customer_id;
     cleaned.name = data.name;
