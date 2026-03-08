@@ -17,18 +17,24 @@ function HeaderContent() {
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center gap-2">
+      {/* Left: menu hamburger */}
+      <div className="flex items-center gap-2 w-10">
         {isMobile && (
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
             <Menu className="h-5 w-5" />
           </Button>
         )}
-        {isMobile && (
-          <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
-        )}
       </div>
 
-      <div className="flex items-center gap-1">
+      {/* Center: logo */}
+      {isMobile && (
+        <div className="flex-1 flex justify-center">
+          <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+        </div>
+      )}
+
+      {/* Right: actions */}
+      <div className="flex items-center gap-1 w-auto">
         {user && (
           <>
             <span className="text-sm text-muted-foreground hidden sm:inline mr-1">{user.email}</span>

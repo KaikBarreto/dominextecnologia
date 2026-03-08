@@ -1,62 +1,17 @@
 
 
-# Plano: Renovação do Dashboard + Logo Centralizado no Mobile
+## Plan: Módulo Contratos (ex-PMOC) — Implementado ✅
 
-## 1. Logo Centralizado no Header Mobile
+### Implementado
 
-**Arquivo:** `src/components/layout/AppLayout.tsx`
+1. **Banco de dados**: Tabelas `contracts`, `contract_items`, `contract_occurrences` criadas com RLS por `company_id`. Colunas `contract_id` e `origin` adicionadas a `service_orders`.
 
-No `HeaderContent` (sidebar layout, usado em mobile), o logo está à esquerda ao lado do menu hamburger. Mudar para layout com 3 colunas: hamburger à esquerda, logo centralizado (`flex-1 flex justify-center`), ações à direita.
+2. **Hooks**: `useContracts.ts` (CRUD, stats, geração de OSs em batch) e `useContractDetail.ts` (detalhe, ocorrências, progresso).
 
-## 2. Dashboard Renovado — Bento Grid Inspirado no EcoSistema
+3. **ContractFormDialog**: Sheet lateral com stepper de 4 etapas (Informações → Frequência → Itens → Revisão). Atalhos rápidos de frequência, prévia de datas, aviso de fins de semana, itens manuais.
 
-**Arquivo:** `src/pages/Dashboard.tsx`
+4. **Páginas**: `/contratos` (listagem com KPIs, filtros, tabela) e `/contratos/:id` (detalhe 2 colunas com progresso e ocorrências).
 
-Redesign completo do dashboard com:
+5. **Navegação**: PMOC → Contratos em sidebar, topbar, mobile menu. Rota `/pmoc` redireciona para `/contratos`. Permissão `screen:contracts`.
 
-### 2.1 Stats Cards com Cores Sólidas (estilo EcoSistema)
-- Cards com fundo colorido sólido (azul, verde, amarelo/warning, etc.) + `dark:bg-card dark:border-[color]/30`
-- Layout mobile: centrado verticalmente; desktop: icon à direita, texto à esquerda
-- 4 cards: OS Abertas (primary), Clientes (success), Faturamento (blue-500), Taxa Conclusão (warning)
-- Grid: `grid-cols-2 lg:grid-cols-4`
-
-### 2.2 Gráficos com Gradientes e Tooltips Estilizados
-- **Fluxo de Caixa (BarChart):** Adicionar `<linearGradient>` para Entradas (verde) e Saídas (vermelho), tooltip com `contentStyle` usando cores do tema (`hsl(var(--card))`, border, borderRadius: 8px, boxShadow)
-- **OS por Tipo (PieChart):** Trocar por donut chart com gradients por fatia, legendas listadas abaixo do gráfico em lista estilo EcoSistema (dot colorido + nome + percentual + valor)
-- **Novo: Gráfico de Área — Evolução de OS Concluídas** por mês (AreaChart com gradient fill)
-
-### 2.3 Bento Grid Layout
-Desktop: grid assimétrico visualmente rico
-```text
-┌──────────────────┬──────────────────┐
-│   Fluxo de Caixa │  OS por Tipo     │
-│   (BarChart)      │  (Donut + List)  │
-├──────────────────┼──────────────────┤
-│ Evolução OS      │  Resumo Status   │
-│ (AreaChart)       │  (Progress bars) │
-├──────────────────┴──────────────────┤
-│      OS Recentes (full width)        │
-└─────────────────────────────────────┘
-```
-
-Mobile: tudo empilhado em coluna única, charts com `height={220}` reduzido, `-mx-2` para usar espaço lateral.
-
-### 2.4 Melhorias Mobile Específicas
-- Charts: `height={220}` em mobile vs `height={280}` em desktop
-- Cards de OS recente: mais compactos com `p-3`
-- Resumo por status: layout compacto sem icon circle em mobile
-- Date filter: full-width em mobile
-
-### 2.5 Adições de Estilo
-- `Legend` nos gráficos com `wrapperStyle={{ fontSize: '12px' }}`
-- `CartesianGrid` com `className="opacity-30"`
-- Lazy load dos componentes pesados de Recharts (como no EcoSistema)
-
-### 2.6 Novo dado: Evolução Mensal de OS
-No hook `useDashboardStats`, computar OS concluídas por mês para alimentar o AreaChart.
-
-**Arquivos impactados:**
-- `src/components/layout/AppLayout.tsx` — logo centralizado
-- `src/pages/Dashboard.tsx` — redesign completo
-- `src/hooks/useDashboardStats.ts` — adicionar dados de evolução mensal de OS
-
+### Tabelas PMOC antigas mantidas (sem perda de dados)
