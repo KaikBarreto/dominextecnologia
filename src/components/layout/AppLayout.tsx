@@ -8,11 +8,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import logoDark from '@/assets/logo-dark.png';
 
 function HeaderContent() {
   const { user, signOut } = useAuth();
   const { toggleSidebar, isMobile, state } = useSidebar();
+  const { isLoading: logoLoading } = useWhiteLabel();
   const navigate = useNavigate();
 
   return (
@@ -33,7 +35,11 @@ function HeaderContent() {
       {/* Center: logo (mobile only) */}
       {isMobile && (
         <div className="flex-1 flex justify-center">
-          <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+          {logoLoading ? (
+            <div className="h-6 w-24 rounded bg-muted animate-pulse" />
+          ) : (
+            <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+          )}
         </div>
       )}
 
@@ -80,6 +86,7 @@ function TopbarAppLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { isLoading: logoLoading } = useWhiteLabel();
 
   // On mobile, fallback to sidebar layout
   if (isMobile) {
@@ -90,7 +97,11 @@ function TopbarAppLayout() {
     <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
       <TopbarLayout />
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:hidden">
-        <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+        {logoLoading ? (
+          <div className="h-6 w-24 rounded bg-muted animate-pulse" />
+        ) : (
+          <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+        )}
         <div className="flex items-center gap-1">
           {user && (
             <>
