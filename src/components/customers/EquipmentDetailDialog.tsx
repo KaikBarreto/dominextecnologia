@@ -44,11 +44,20 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
 
   const qrValue = equipment ? `EQ-${equipment.identifier || equipment.id}` : '';
 
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !equipment) return;
-    await uploadAttachment.mutateAsync({ equipmentId: equipment.id, file });
-    e.target.value = '';
+    const files = e.target.files;
+    if (!files || files.length === 0 || !equipment) return;
+    setUploadingFiles(true);
+    try {
+      for (const file of Array.from(files)) {
+        await uploadAttachment.mutateAsync({ equipmentId: equipment.id, file });
+      }
+    } finally {
+      setUploadingFiles(false);
+      e.target.value = '';
+    }
   };
 
   const handleAddTask = () => {
@@ -216,11 +225,11 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Arquivos anexados</p>
-              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFiles}>
                 <Upload className="mr-2 h-4 w-4" />
-                Enviar arquivo
+                {uploadingFiles ? 'Enviando...' : 'Enviar arquivos'}
               </Button>
-              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+              <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
             </div>
 
             {attachLoading ? (
