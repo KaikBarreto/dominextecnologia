@@ -39,6 +39,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [createAccess, setCreateAccess] = useState(false);
+  const [useTemporaryPassword, setUseTemporaryPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
 
@@ -60,7 +61,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setPixKey(employee?.pix_key || '');
       setPhotoUrl(employee?.photo_url || '');
       setCreateAccess(false);
-      setPassword(generatePassword());
+      setUseTemporaryPassword(false);
+      setPassword('');
       setLinkedUserId(employee?.user_id || null);
     }
   }, [open, employee]);
@@ -91,7 +93,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     e.preventDefault();
     if (!name.trim()) { toast({ variant: 'destructive', title: 'Nome é obrigatório' }); return; }
     if (createAccess && !email.trim()) { toast({ variant: 'destructive', title: 'Email é obrigatório para criar acesso' }); return; }
-    if (createAccess && password.length < 6) { toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
+    const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
+    if (createAccess && finalPassword.length < 6) { toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
     onSubmit({
       name: name.trim(),
       cpf: cpf || null,
@@ -105,7 +108,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       photo_url: photoUrl || null,
       user_id: linkedUserId,
       _createAccess: createAccess,
-      _password: password,
+      _password: finalPassword,
     } as any);
   };
 
@@ -193,22 +196,38 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         {!employee && (
           <div className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center gap-2">
-              <Switch checked={createAccess} onCheckedChange={setCreateAccess} />
+              <Switch checked={createAccess} onCheckedChange={(v) => { setCreateAccess(v); if (v && !password) setPassword(''); }} />
               <div>
                 <Label className="text-sm cursor-pointer">Criar acesso ao sistema</Label>
                 <p className="text-xs text-muted-foreground">Cria automaticamente um usuário com perfil Técnico</p>
               </div>
             </div>
             {createAccess && (
-              <div className="space-y-2">
+              <div className="space-y-3 pt-1">
                 {!email && <p className="text-xs text-destructive">Preencha o email acima para criar o acesso</p>}
-                <div className="space-y-1.5">
-                  <Label>Senha temporária</Label>
-                  <div className="flex gap-2">
-                    <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
-                    <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
+                {email && (
+                  <div className="rounded-md bg-muted/50 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">Login de acesso</p>
+                    <p className="text-sm font-medium">{email}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">Anote a senha — ela será exibida apenas uma vez</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Switch checked={useTemporaryPassword} onCheckedChange={(v) => { setUseTemporaryPassword(v); if (v) setPassword(generatePassword()); else setPassword(''); }} />
+                  <Label className="text-xs cursor-pointer">Senha temporária (gerada automaticamente)</Label>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{useTemporaryPassword ? 'Senha temporária' : 'Senha *'}</Label>
+                  {useTemporaryPassword ? (
+                    <div className="flex gap-2">
+                      <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
+                      <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
+                    </div>
+                  ) : (
+                    <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {useTemporaryPassword ? 'Anote a senha — ela será exibida apenas uma vez' : 'Defina a senha que o funcionário usará para acessar o sistema'}
+                  </p>
                 </div>
               </div>
             )}
