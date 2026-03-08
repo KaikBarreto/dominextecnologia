@@ -52,14 +52,14 @@ export default function Quotes() {
   }, [quotes, statusFilter, search]);
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/orcamento/${token}`;
+    const url = `${window.location.origin}/proposta/${token}`;
     navigator.clipboard.writeText(url);
-    toast({ title: 'Link copiado!' });
+    toast({ title: 'Link da proposta copiado!' });
   };
 
   const shareWhatsApp = (q: Quote) => {
-    const url = `${window.location.origin}/orcamento/${q.token}`;
-    const msg = `Olá! Segue o orçamento #${q.quote_number} no valor de R$ ${(q.total_value ?? 0).toFixed(2)}.\n\nAcesse: ${url}`;
+    const url = `${window.location.origin}/proposta/${q.token}`;
+    const msg = `Olá! Segue a proposta #${q.quote_number} no valor de R$ ${(q.total_value ?? 0).toFixed(2)}.\n\nAcesse: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

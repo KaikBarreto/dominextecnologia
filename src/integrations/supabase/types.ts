@@ -1620,6 +1620,33 @@ export type Database = {
           },
         ]
       }
+      proposal_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          preview_color: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          preview_color?: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          preview_color?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       quote_items: {
         Row: {
           created_at: string
@@ -1695,6 +1722,7 @@ export type Database = {
           discount_value: number | null
           id: string
           notes: string | null
+          proposal_template_id: string | null
           prospect_email: string | null
           prospect_name: string | null
           prospect_phone: string | null
@@ -1717,6 +1745,7 @@ export type Database = {
           discount_value?: number | null
           id?: string
           notes?: string | null
+          proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
           prospect_phone?: string | null
@@ -1739,6 +1768,7 @@ export type Database = {
           discount_value?: number | null
           id?: string
           notes?: string | null
+          proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
           prospect_phone?: string | null
@@ -1757,6 +1787,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_proposal_template_id_fkey"
+            columns: ["proposal_template_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_templates"
             referencedColumns: ["id"]
           },
         ]

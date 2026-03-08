@@ -1,92 +1,85 @@
 
 
-## Plano: Sistema de Propostas com Templates
+## Plan: Login Layout Fix + Full Permissions System
 
-### Conceito
+### 1. Login Mobile Layout Fix
+In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
 
-Todo orcamento gera uma **Proposta** — uma pagina HTML publica e estilizada, acessivel via link. O usuario pode escolher entre templates pre-definidos ao criar o orcamento. O botao "Visualizar" abre a proposta (nao mais o dialog atual). O link copiavel ja aponta para a pagina da proposta.
+### 2. Permissions System - Database Changes
 
-### Estrutura
+Create 2 new tables via migration:
 
-```text
-┌─────────────────────────────────────────────┐
-│  DB: proposal_templates (seed com 3 templates)  │
-│  - id, name, slug, html_structure, thumbnail_url│
-│                                                 │
-│  DB: quotes.proposal_template_id (novo campo)   │
-└─────────────────────────────────────────────┘
+**`permission_presets`** (cargos/kits de permissão):
+- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, authenticated can view
 
-┌─────────────────────────────────────────────┐
-│  /proposta/:token  (nova rota publica)          │
-│  - Renderiza a proposta HTML com dados do quote │
-│  - Botoes aprovar/rejeitar mantidos             │
-│  - Substitui /orcamento/:token como link publico│
-└─────────────────────────────────────────────┘
+**`user_permissions`** (permissões individuais por usuário):
+- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
+- RLS: admin/gestor can manage, users can view own
+
+The permissions will be a flat list of string keys covering:
+
+**Screen permissions (telas):**
+- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+
+**Function permissions (funções):**
+- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
+- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
+- `fn:manage_equipment`, `fn:manage_inventory`
+- `fn:manage_finance`, `fn:view_finance_totals`
+- `fn:manage_users`, `fn:manage_settings`
+- `fn:manage_crm`, `fn:manage_pmoc`
+
+### 3. Users Page Redesign (`src/pages/Users.tsx`)
+
+Redesign as a full CRUD inspired by the reference screenshots:
+- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
+- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
+- **Search bar** at the top
+
+### 4. New Components
+
+**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
+- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
+- "Perfil de Acesso" select: choose a preset or "Personalizado"
+- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
+- **Funções section**: Checkboxes for action permissions
+- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+
+**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
+- Name, description, and same checkbox structure as above
+- Accessible from a gear icon on the Users page header
+
+### 5. New Hook: `usePermissions.ts`
+- Fetch user's permissions from `user_permissions` table
+- Provide `hasPermission(key: string)` helper
+- Provide `hasScreenAccess(screenKey: string)` helper
+
+### 6. Auth Context Updates
+- Add `permissions: string[]` to AuthContext state
+- Fetch from `user_permissions` table on login
+- Expose `hasPermission()` method
+
+### 7. Sidebar & Menu Filtering
+- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
+- Each menu item maps to a `screen:*` permission
+- Fallback: if user has no `user_permissions` row, use legacy role-based access
+- Update `MobileNav.tsx` similarly
+
+### 8. Edge Function for User Creation
+Create `supabase/functions/create-user/index.ts`:
+- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
+- Also creates the profile and user_permissions records
+- This is needed because client-side `signUp` sends a confirmation email and logs in
+
+### Technical Details
+
+The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
+```json
+["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
 ```
 
-### Templates fornecidos (3 iniciais)
+Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
 
-1. **Classico** — Layout limpo, logo topo-esquerda, tabelas com bordas sutis, cores neutras. Profissional corporativo.
-2. **Moderno** — Header com fundo colorido (cor primaria da empresa), cards arredondados para itens, visual tech/startup.
-3. **Minimalista** — Muito branco, tipografia grande, sem bordas, estilo Apple/clean.
-
-### Alteracoes
-
-**1. Migracao de banco**
-- Criar tabela `proposal_templates` com: `id`, `name`, `slug`, `description`, `preview_color` (cor de preview), `created_at`
-- Adicionar coluna `proposal_template_id` (uuid, nullable, default ao template "classico") na tabela `quotes`
-- Seed com 3 registros (classico, moderno, minimalista)
-
-**2. Nova pagina: `src/pages/ProposalPublic.tsx`**
-- Rota: `/proposta/:token`
-- Busca quote + company_settings + proposal_template
-- Renderiza HTML da proposta segundo o template selecionado (logica de render por slug)
-- Mantem botoes aprovar/rejeitar para status `enviado`
-- Design full-page profissional (nao card dentro de fundo cinza)
-
-**3. Componente: `src/components/quotes/ProposalRenderer.tsx`**
-- Recebe `quote`, `company`, `templateSlug` como props
-- Switch/map de templates: cada slug renderiza um layout React diferente
-- Reutilizado tanto na pagina publica quanto no dialog de visualizacao
-
-**4. Atualizar `QuoteViewDialog.tsx`**
-- Substituir o conteudo atual pelo `ProposalRenderer`
-- Manter botoes PDF e WhatsApp
-- O PDF agora captura a proposta renderizada
-
-**5. Atualizar `QuoteFormDialog.tsx`**
-- Adicionar campo `Select` para escolher template de proposta
-- Usar hook `useProposalTemplates` para listar opcoes
-- Salvar `proposal_template_id` no payload
-
-**6. Hook: `src/hooks/useProposalTemplates.ts`**
-- Query simples na tabela `proposal_templates`
-
-**7. Atualizar `useQuotes.ts`**
-- Adicionar `proposal_template_id` ao `QuoteInput` e mutations
-- Adicionar join com `proposal_templates(slug, name)` na query principal
-
-**8. Atualizar rotas e links**
-- `App.tsx`: adicionar rota `/proposta/:token` com `ProposalPublic`
-- `Quotes.tsx`: botao copiar link agora usa `/proposta/:token`
-- Manter `/orcamento/:token` como redirect para `/proposta/:token` (retrocompatibilidade)
-
-**9. Atualizar `QuotePublic.tsx`**
-- Redirecionar para `/proposta/:token`
-
-### Arquivos novos
-- `src/pages/ProposalPublic.tsx`
-- `src/components/quotes/ProposalRenderer.tsx`
-- `src/components/quotes/templates/ClassicTemplate.tsx`
-- `src/components/quotes/templates/ModernTemplate.tsx`
-- `src/components/quotes/templates/MinimalTemplate.tsx`
-- `src/hooks/useProposalTemplates.ts`
-
-### Arquivos editados
-- `src/hooks/useQuotes.ts` — adicionar `proposal_template_id`
-- `src/components/quotes/QuoteFormDialog.tsx` — campo de template
-- `src/components/quotes/QuoteViewDialog.tsx` — usar ProposalRenderer
-- `src/pages/Quotes.tsx` — link aponta para `/proposta/`
-- `src/pages/QuotePublic.tsx` — redirect
-- `src/App.tsx` — nova rota
+The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
 

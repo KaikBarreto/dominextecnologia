@@ -10,9 +10,10 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, type QuoteInput, type QuoteItem, type Quote } from '@/hooks/useQuotes';
+import { useProposalTemplates } from '@/hooks/useProposalTemplates';
 import { QuoteItemsTable } from './QuoteItemsTable';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { User, UserPlus } from 'lucide-react';
+import { User, UserPlus, Palette } from 'lucide-react';
 
 interface QuoteFormDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const isMobile = useIsMobile();
   const { customers } = useCustomers();
   const { createQuote, updateQuote } = useQuotes();
+  const { templates } = useProposalTemplates();
 
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
   const [customerId, setCustomerId] = useState('');
@@ -36,6 +38,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [notes, setNotes] = useState('');
   const [terms, setTerms] = useState('');
   const [items, setItems] = useState<QuoteItem[]>([]);
+  const [proposalTemplateId, setProposalTemplateId] = useState('');
 
   useEffect(() => {
     if (quote) {
@@ -50,6 +53,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setNotes(quote.notes ?? '');
       setTerms(quote.terms ?? '');
       setItems(quote.quote_items ?? []);
+      setProposalTemplateId(quote.proposal_template_id ?? '');
     } else {
       setCustomerMode('existing');
       setCustomerId('');
@@ -62,8 +66,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setNotes('');
       setTerms('');
       setItems([]);
+      // Default to first template
+      setProposalTemplateId(templates[0]?.id ?? '');
     }
-  }, [quote, open]);
+  }, [quote, open, templates]);
 
   const subtotal = items.reduce((s, i) => s + (i.quantity * i.unit_price), 0);
   const discountAmount = discountType === 'percentual'
@@ -94,6 +100,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       total_value: totalValue,
       notes: notes || undefined,
       terms: terms || undefined,
+      proposal_template_id: proposalTemplateId || undefined,
       items,
     };
 
@@ -160,7 +167,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </Tabs>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label>Válido até</Label>
           <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
@@ -185,6 +192,26 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               step="0.01"
             />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <Palette className="h-3.5 w-3.5" /> Template da Proposta
+          </Label>
+          <Select value={proposalTemplateId} onValueChange={setProposalTemplateId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o template" />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map(t => (
+                <SelectItem key={t.id} value={t.id}>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.preview_color }} />
+                    {t.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
