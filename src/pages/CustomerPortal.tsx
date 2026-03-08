@@ -259,6 +259,54 @@ export default function CustomerPortal() {
       </div>
 
       <main className="mx-auto max-w-4xl p-4 space-y-6">
+        {/* Active OS highlight */}
+        {serviceOrders.filter(os => ACTIVE_STATUSES.includes(os.status)).length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+              Ordens de Serviço Ativas
+            </h2>
+            {serviceOrders.filter(os => ACTIVE_STATUSES.includes(os.status)).map(os => {
+              const statusCfg = OS_STATUS_LABELS[os.status] || OS_STATUS_LABELS.pendente;
+              const isEnRoute = os.status === 'a_caminho' || os.status === 'em_andamento';
+              return (
+                <Card key={os.id} className="border-primary/30 bg-primary/5">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(4, '0')}</span>
+                          <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>
+                            {statusCfg.label}
+                          </Badge>
+                        </div>
+                        {os.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">{os.description}</p>
+                        )}
+                        {os.scheduled_date && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Agendada: {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                          </p>
+                        )}
+                      </div>
+                      {isEnRoute && (
+                        <a href={`${window.location.origin}/acompanhamento/${os.id}`} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" variant="default" className="gap-1 text-xs">
+                            📍 Acompanhar
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
         <Tabs defaultValue={defaultTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="os">
