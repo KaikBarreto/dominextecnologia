@@ -264,7 +264,10 @@ export function ServiceOrderFormDialog({
   const currentStepKey = activeSteps[step]?.key || 'client';
 
   const canGoNext = () => {
-    if (currentStepKey === 'client') return !!form.getValues('customer_id');
+    if (currentStepKey === 'client') {
+      if (customerMode === 'adhoc') return !!adhocName.trim();
+      return !!form.getValues('customer_id');
+    }
     return true;
   };
 
