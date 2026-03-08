@@ -3,7 +3,7 @@ import { AppSidebar } from './AppSidebar';
 import { TopbarLayout } from './TopbarLayout';
 import { SystemFooter } from './SystemFooter';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, UserCircle } from 'lucide-react';
+import { LogOut, PanelLeftClose, PanelLeft, Menu, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
@@ -12,21 +12,25 @@ import logoDark from '@/assets/logo-dark.png';
 
 function HeaderContent() {
   const { user, signOut } = useAuth();
-  const { toggleSidebar, isMobile } = useSidebar();
+  const { toggleSidebar, isMobile, state } = useSidebar();
   const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Left: menu hamburger */}
+      {/* Left: sidebar toggle */}
       <div className="flex items-center gap-2 w-10">
-        {isMobile && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
+          {isMobile ? (
             <Menu className="h-5 w-5" />
-          </Button>
-        )}
+          ) : state === 'expanded' ? (
+            <PanelLeftClose className="h-5 w-5" />
+          ) : (
+            <PanelLeft className="h-5 w-5" />
+          )}
+        </Button>
       </div>
 
-      {/* Center: logo */}
+      {/* Center: logo (mobile only) */}
       {isMobile && (
         <div className="flex-1 flex justify-center">
           <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
