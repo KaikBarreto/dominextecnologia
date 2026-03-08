@@ -113,9 +113,9 @@ export default function Customers() {
           ) : (
             <>
             {isMobile ? (
-              <div className="space-y-3">
+              <div className="space-y-3 w-full min-w-0">
                 {pagination.paginatedItems.map((customer) => (
-                  <Card key={customer.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${customer.id}`)}>
+                  <Card key={customer.id} className="cursor-pointer w-full max-w-full overflow-hidden" onClick={() => navigate(`/clientes/${customer.id}`)}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className="shrink-0">
