@@ -45,6 +45,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
+import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
