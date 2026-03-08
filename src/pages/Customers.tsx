@@ -65,7 +65,7 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 overflow-hidden">
       <div>
         <h1 className="text-2xl font-bold">Clientes</h1>
         <p className="text-muted-foreground">Gerencie seus clientes</p>
