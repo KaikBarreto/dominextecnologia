@@ -34,6 +34,10 @@ import NotFound from "./pages/NotFound";
 import Changelog from "./pages/Changelog";
 import Tutorials from "./pages/Tutorials";
 import Employees from "./pages/Employees";
+import Billing from "./pages/Billing";
+import Checkout from "./pages/Checkout";
+import AdminCompanies from "./pages/admin/AdminCompanies";
+import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -134,6 +138,10 @@ const AppRoutes = () => (
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Teams />} />
       <Route path="/funcionarios" element={<Employees />} />
+      <Route path="/assinatura" element={<Billing />} />
+      <Route path="/checkout" element={<Checkout />} />
+      <Route path="/admin/empresas" element={<AdminCompanies />} />
+      <Route path="/admin/empresas/:id" element={<AdminCompanyDetail />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Tutorials />} />
