@@ -189,61 +189,41 @@ export default function CRM() {
         </div>
       </div>
 
-      {/* Stats Cards - saturated backgrounds */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Cards */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="border-0 bg-primary text-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
+              <div className="min-w-0 w-full">
                 <p className="text-sm text-white/70">Total de Leads</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-12 mt-1 bg-white/20" />
-                ) : (
-                  <p className="text-3xl font-bold">{stats.total}</p>
-                )}
+                {isLoading ? <Skeleton className="h-8 w-12 mt-1 bg-white/20" /> : <p className="text-2xl sm:text-3xl font-bold">{stats.total}</p>}
               </div>
-              <div className="rounded-full bg-white/20 p-3">
-                <Target className="h-6 w-6" />
-              </div>
+              <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><Target className="h-6 w-6" /></div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-0 bg-success text-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
+              <div className="min-w-0 w-full">
                 <p className="text-sm text-white/70">Valor Total</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
-                ) : (
-                  <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
-                )}
+                {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(stats.totalValue)}</p>}
               </div>
-              <div className="rounded-full bg-white/20 p-3">
-                <DollarSign className="h-6 w-6" />
-              </div>
+              <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><DollarSign className="h-6 w-6" /></div>
             </div>
           </CardContent>
         </Card>
 
         {stages.filter(s => s.is_won).slice(0, 1).map(wonStage => (
           <Card key={wonStage.id} className="border-0 bg-info text-white">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white/70">{wonStage.name}</p>
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
-                  ) : (
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(valueByStage[wonStage.id] || 0)}
-                    </p>
-                  )}
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
+                <div className="min-w-0 w-full">
+                  <p className="text-sm text-white/70 truncate">{wonStage.name}</p>
+                  {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(valueByStage[wonStage.id] || 0)}</p>}
                 </div>
-                <div className="rounded-full bg-white/20 p-3">
-                  <TrendingUp className="h-6 w-6" />
-                </div>
+                <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><TrendingUp className="h-6 w-6" /></div>
               </div>
             </CardContent>
           </Card>
@@ -251,21 +231,13 @@ export default function CRM() {
 
         {stages.filter(s => !s.is_won && !s.is_lost).slice(0, 1).map((stage) => (
           <Card key={stage.id} className="border-0 bg-warning text-white">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white/70">{stage.name}</p>
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
-                  ) : (
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(valueByStage[stage.id] || 0)}
-                    </p>
-                  )}
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
+                <div className="min-w-0 w-full">
+                  <p className="text-sm text-white/70 truncate">{stage.name}</p>
+                  {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(valueByStage[stage.id] || 0)}</p>}
                 </div>
-                <div className="rounded-full bg-white/20 p-3">
-                  <Users className="h-6 w-6" />
-                </div>
+                <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><Users className="h-6 w-6" /></div>
               </div>
             </CardContent>
           </Card>
