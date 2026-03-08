@@ -183,9 +183,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const isTeam = technicianId.startsWith('team:');
-      const actualTechnicianId = isTeam ? null : (technicianId || null);
-      const actualTeamId = isTeam ? technicianId.replace('team:', '') : null;
+      const isAll = technicianId === 'all';
+      const isTeam = !isAll && technicianId.startsWith('team:');
+      const actualTechnicianId = isAll ? null : (isTeam ? null : (technicianId || null));
+      const actualTeamId = isAll ? null : (isTeam ? technicianId.replace('team:', '') : null);
 
       if (isEditing) {
         // Update existing contract metadata only
