@@ -473,6 +473,33 @@ export type Database = {
           },
         ]
       }
+      customer_origins: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
       customer_portals: {
         Row: {
           created_at: string
@@ -525,6 +552,7 @@ export type Database = {
           name: string
           neighborhood: string | null
           notes: string | null
+          origin: string | null
           phone: string | null
           photo_url: string | null
           state: string | null
@@ -550,6 +578,7 @@ export type Database = {
           name: string
           neighborhood?: string | null
           notes?: string | null
+          origin?: string | null
           phone?: string | null
           photo_url?: string | null
           state?: string | null
@@ -575,6 +604,7 @@ export type Database = {
           name?: string
           neighborhood?: string | null
           notes?: string | null
+          origin?: string | null
           phone?: string | null
           photo_url?: string | null
           state?: string | null
