@@ -185,7 +185,7 @@ export function EquipmentPanel() {
                     <TableRow>
                       <TableHead className="w-[60px] text-xs uppercase tracking-wider">Foto</TableHead>
                       <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Marca/Modelo</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Local</TableHead>
                       <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Cliente</TableHead>
                       <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Categoria</TableHead>
                       <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Status</TableHead>
@@ -213,10 +213,7 @@ export function EquipmentPanel() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <div className="text-sm">
-                            {eq.brand && <span>{eq.brand}</span>}
-                            {eq.model && <span className="text-muted-foreground"> {eq.model}</span>}
-                          </div>
+                          <span className="text-sm">{(eq as any).location || '-'}</span>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {eq.customer?.name || '-'}
