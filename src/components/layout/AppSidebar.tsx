@@ -97,9 +97,9 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="relative overflow-hidden px-4 py-4">
+      <SidebarHeader className="relative overflow-hidden px-4 py-4 bg-black">
         <div className="absolute inset-0">
-          <DarkVeil hueShift={53} speed={0.3} resolutionScale={0.5} />
+          <DarkVeil hueShift={53} speed={0.3} resolutionScale={0.3} />
         </div>
         <img src={logoWhite} alt="Dominex" className="h-9 w-auto mx-auto relative z-10" />
       </SidebarHeader>
