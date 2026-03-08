@@ -153,7 +153,13 @@ export default function CustomerDetail() {
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</p>
               <p className="text-sm font-medium mt-1 flex items-center gap-1">
                 <MapPin className="h-3 w-3 shrink-0" />
-                {[customer.address, (customer as any).complement, customer.city, customer.state, customer.zip_code].filter(Boolean).join(', ')}
+                {[
+                  customer.address && customer.address_number ? `${customer.address}, ${customer.address_number}` : customer.address,
+                  customer.complement,
+                  customer.neighborhood,
+                  customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
+                  customer.zip_code
+                ].filter(Boolean).join(', ')}
               </p>
             </CardContent></Card>
           )}
