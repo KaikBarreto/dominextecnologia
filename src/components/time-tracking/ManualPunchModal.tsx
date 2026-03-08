@@ -17,12 +17,12 @@ const TYPE_OPTIONS: { value: PunchType; label: string }[] = [
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userId: string;
-  userName: string;
-  onSubmit: (data: { userId: string; type: PunchType; recordedAt: string; notes: string }) => Promise<void>;
+  employeeId: string;
+  employeeName: string;
+  onSubmit: (data: { employeeId: string; type: PunchType; recordedAt: string; notes: string }) => Promise<void>;
 }
 
-export function ManualPunchModal({ open, onOpenChange, userId, userName, onSubmit }: Props) {
+export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName, onSubmit }: Props) {
   const [type, setType] = useState<PunchType>('clock_in');
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -34,7 +34,7 @@ export function ManualPunchModal({ open, onOpenChange, userId, userName, onSubmi
     try {
       const today = new Date().toISOString().split('T')[0];
       const recordedAt = new Date(`${today}T${time}`).toISOString();
-      await onSubmit({ userId, type, recordedAt, notes });
+      await onSubmit({ employeeId, type, recordedAt, notes });
       setType('clock_in');
       setTime('');
       setNotes('');
@@ -44,7 +44,7 @@ export function ManualPunchModal({ open, onOpenChange, userId, userName, onSubmi
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registro manual — ${userName}`}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registro manual — ${employeeName}`}>
       <div className="space-y-4 py-2">
         <div className="space-y-2">
           <Label>Tipo de registro</Label>

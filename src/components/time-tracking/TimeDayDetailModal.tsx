@@ -1,8 +1,8 @@
 import { format } from 'date-fns';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { useTimeRecordsForDay, calculateWorkedMinutes, formatMinutes, type TimeRecord } from '@/hooks/useTimeRecords';
+import { useTimeRecordsForDay, calculateWorkedMinutes, formatMinutes } from '@/hooks/useTimeRecords';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Camera, Clock } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -22,18 +22,18 @@ const TYPE_COLORS: Record<string, string> = {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userId: string | null;
-  userName: string;
+  employeeId: string | null;
+  employeeName: string;
   date: string;
 }
 
-export function TimeDayDetailModal({ open, onOpenChange, userId, userName, date }: Props) {
-  const { data: records = [], isLoading } = useTimeRecordsForDay(userId, date);
+export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeName, date }: Props) {
+  const { data: records = [], isLoading } = useTimeRecordsForDay(employeeId, date);
   const { worked, breakMin } = calculateWorkedMinutes(records);
   const balance = worked - 480;
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registros do dia — ${userName}`} className="sm:max-w-[500px]">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registros do dia — ${employeeName}`} className="sm:max-w-[500px]">
       {isLoading ? (
         <div className="space-y-3 py-4">{[1,2,3].map(i => <Skeleton key={i} className="h-12" />)}</div>
       ) : records.length === 0 ? (
@@ -43,7 +43,7 @@ export function TimeDayDetailModal({ open, onOpenChange, userId, userName, date 
           {/* Timeline */}
           <div className="relative pl-6">
             <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border" />
-            {records.map((rec, i) => (
+            {records.map((rec) => (
               <div key={rec.id} className="relative flex gap-3 pb-4">
                 <div className={cn('absolute left-[-13px] top-1 h-3 w-3 rounded-full border-2 border-background', TYPE_COLORS[rec.type])} />
                 <div className="flex-1 min-w-0">

@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, UserX, Coffee, CheckCircle2, Clock, Eye, PenLine } from 'lucide-react';
+import { Users, UserX, Coffee, CheckCircle2, Eye, PenLine } from 'lucide-react';
 import { useAdminTimeSheet, calculateWorkedMinutes, formatMinutes } from '@/hooks/useTimeRecords';
 import { TimeDayDetailModal } from './TimeDayDetailModal';
 import { ManualPunchModal } from './ManualPunchModal';
@@ -20,9 +20,9 @@ const STATUS_CONFIG = {
 };
 
 export function TimeToday() {
-  const { profiles, isLoading, getRecordsForUser, getUserStatus, kpis, registerManualPunch } = useAdminTimeSheet();
-  const [selectedUser, setSelectedUser] = useState<{ userId: string; name: string } | null>(null);
-  const [manualUser, setManualUser] = useState<{ userId: string; name: string } | null>(null);
+  const { employees, isLoading, getRecordsForEmployee, getEmployeeStatus, kpis, registerManualPunch } = useAdminTimeSheet();
+  const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
+  const [manualEmployee, setManualEmployee] = useState<{ id: string; name: string } | null>(null);
   const [, setTick] = useState(0);
 
   // Live counter
@@ -57,7 +57,7 @@ export function TimeToday() {
         ))}
       </div>
 
-      {/* Users table */}
+      {/* Employees table */}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -74,9 +74,9 @@ export function TimeToday() {
                 </tr>
               </thead>
               <tbody>
-                {profiles.map(profile => {
-                  const records = getRecordsForUser(profile.user_id);
-                  const status = getUserStatus(profile.user_id);
+                {employees.map(emp => {
+                  const records = getRecordsForEmployee(emp.id);
+                  const status = getEmployeeStatus(emp.id);
                   const cfg = STATUS_CONFIG[status];
                   const clockIn = records.find(r => r.type === 'clock_in');
                   const clockOut = records.find(r => r.type === 'clock_out');
@@ -86,19 +86,22 @@ export function TimeToday() {
 
                   return (
                     <tr
-                      key={profile.user_id}
+                      key={emp.id}
                       className="border-b hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => setSelectedUser({ userId: profile.user_id, name: profile.full_name })}
+                      onClick={() => setSelectedEmployee({ id: emp.id, name: emp.name })}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={profile.avatar_url || undefined} />
+                            <AvatarImage src={emp.photo_url || undefined} />
                             <AvatarFallback className="text-xs bg-muted">
-                              {profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                              {emp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium truncate max-w-[150px]">{profile.full_name}</span>
+                          <div className="min-w-0">
+                            <span className="font-medium truncate max-w-[150px] block">{emp.name}</span>
+                            {emp.position && <span className="text-xs text-muted-foreground">{emp.position}</span>}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
@@ -126,11 +129,11 @@ export function TimeToday() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" className="h-8 w-8"
-                            onClick={() => setSelectedUser({ userId: profile.user_id, name: profile.full_name })}>
+                            onClick={() => setSelectedEmployee({ id: emp.id, name: emp.name })}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8"
-                            onClick={() => setManualUser({ userId: profile.user_id, name: profile.full_name })}>
+                            onClick={() => setManualEmployee({ id: emp.id, name: emp.name })}>
                             <PenLine className="h-4 w-4" />
                           </Button>
                         </div>
@@ -146,20 +149,20 @@ export function TimeToday() {
 
       {/* Modals */}
       <TimeDayDetailModal
-        open={!!selectedUser}
-        onOpenChange={() => setSelectedUser(null)}
-        userId={selectedUser?.userId || null}
-        userName={selectedUser?.name || ''}
+        open={!!selectedEmployee}
+        onOpenChange={() => setSelectedEmployee(null)}
+        employeeId={selectedEmployee?.id || null}
+        employeeName={selectedEmployee?.name || ''}
         date={today}
       />
       <ManualPunchModal
-        open={!!manualUser}
-        onOpenChange={() => setManualUser(null)}
-        userId={manualUser?.userId || ''}
-        userName={manualUser?.name || ''}
+        open={!!manualEmployee}
+        onOpenChange={() => setManualEmployee(null)}
+        employeeId={manualEmployee?.id || ''}
+        employeeName={manualEmployee?.name || ''}
         onSubmit={async (data) => {
           await registerManualPunch.mutateAsync(data);
-          setManualUser(null);
+          setManualEmployee(null);
         }}
       />
     </div>

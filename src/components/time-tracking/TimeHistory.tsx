@@ -21,20 +21,20 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 };
 
 export function TimeHistory() {
-  const { profiles } = useAdminTimeSheet();
-  const [userId, setUserId] = useState('all');
+  const { employees } = useAdminTimeSheet();
+  const [employeeId, setEmployeeId] = useState('all');
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [statusFilter, setStatusFilter] = useState('all');
 
   const { data: sheets = [], isLoading } = useTimeHistory({
-    userId: userId !== 'all' ? userId : undefined,
+    employeeId: employeeId !== 'all' ? employeeId : undefined,
     startDate,
     endDate,
     status: statusFilter,
   });
 
-  const getName = (uid: string) => profiles.find(p => p.user_id === uid)?.full_name || '—';
+  const getName = (empId: string | null) => employees.find(e => e.id === empId)?.name || '—';
 
   const totals = useMemo(() => {
     const totalExpected = sheets.reduce((s, sh) => s + (sh.expected_min || 0), 0);
@@ -46,11 +46,11 @@ export function TimeHistory() {
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <Select value={userId} onValueChange={setUserId}>
+        <Select value={employeeId} onValueChange={setEmployeeId}>
           <SelectTrigger className="sm:w-[200px]"><SelectValue placeholder="Funcionário" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {profiles.map(p => <SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>)}
+            {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="sm:w-[160px]" />
@@ -64,7 +64,7 @@ export function TimeHistory() {
             <SelectItem value="justified">Justificado</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => exportToCSV(sheets, profiles)}>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => exportToCSV(sheets, employees)}>
           <Download className="h-4 w-4" /> CSV
         </Button>
       </div>
@@ -91,7 +91,7 @@ export function TimeHistory() {
                   return (
                     <tr key={sh.id} className="border-b hover:bg-muted/30">
                       <td className="px-4 py-3">{format(new Date(sh.date + 'T12:00:00'), 'dd/MM/yyyy')}</td>
-                      <td className="px-4 py-3 font-medium">{getName(sh.user_id)}</td>
+                      <td className="px-4 py-3 font-medium">{getName(sh.employee_id)}</td>
                       <td className="px-4 py-3 hidden sm:table-cell">{sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}</td>
                       <td className="px-4 py-3 hidden sm:table-cell">{sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}</td>
                       <td className="px-4 py-3">{sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</td>

@@ -14,9 +14,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function exportToCSV(
   sheets: TimeSheet[],
-  profiles: { user_id: string; full_name: string }[],
+  employees: { id: string; name: string }[],
 ) {
-  const getName = (uid: string) => profiles.find(p => p.user_id === uid)?.full_name || uid;
+  const getName = (empId: string | null) => employees.find(e => e.id === empId)?.name || empId || '—';
 
   const header = [
     'Funcionário', 'Data', 'Dia da semana', 'Entrada', 'Saída',
@@ -26,7 +26,7 @@ export function exportToCSV(
   const rows = sheets.map(s => {
     const d = new Date(s.date + 'T12:00:00');
     return [
-      getName(s.user_id),
+      getName(s.employee_id),
       format(d, 'dd/MM/yyyy'),
       format(d, 'EEEE', { locale: ptBR }),
       s.first_clock_in ? format(new Date(s.first_clock_in), 'HH:mm') : '—',
