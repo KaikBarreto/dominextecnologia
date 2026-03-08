@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useProposalTemplates, type ProposalTemplate } from '@/hooks/useProposalTemplates';
+import { useProposalTemplates } from '@/hooks/useProposalTemplates';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { ProposalRenderer } from './ProposalRenderer';
-import { Badge } from '@/components/ui/badge';
-import { Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Check, Save, Loader2 } from 'lucide-react';
 import type { Quote } from '@/hooks/useQuotes';
+import type { ProposalCustomization } from './templates/types';
 
 interface ProposalConfigDialogProps {
   open: boolean;
@@ -52,9 +54,33 @@ const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
 
 export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialogProps) {
   const isMobile = useIsMobile();
-  const { templates, isLoading } = useProposalTemplates();
-  const { settings: company } = useCompanySettings();
+  const { templates } = useProposalTemplates();
+  const { settings: company, updateSettings } = useCompanySettings();
   const [selectedSlug, setSelectedSlug] = useState<string>('classico');
+  const [saving, setSaving] = useState(false);
+
+  const existing = company?.proposal_customization;
+  const [colors, setColors] = useState<ProposalCustomization>({
+    primary_color: '#2563eb',
+    accent_color: '#f97316',
+    header_bg: '#1e3a5f',
+  });
+
+  useEffect(() => {
+    if (existing) {
+      setColors({
+        primary_color: existing.primary_color || '#2563eb',
+        accent_color: existing.accent_color || '#f97316',
+        header_bg: existing.header_bg || '#1e3a5f',
+      });
+    }
+  }, [existing]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await updateSettings.mutateAsync({ proposal_customization: colors } as any);
+    setSaving(false);
+  };
 
   const content = (
     <div className="space-y-6">
@@ -86,6 +112,53 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         ))}
       </div>
 
+      {/* Color customization */}
+      <div className="rounded-xl border border-border p-4 space-y-4">
+        <p className="text-sm font-semibold text-foreground">Personalizar Cores</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Cor Primária</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={colors.primary_color || '#2563eb'}
+                onChange={(e) => setColors(c => ({ ...c, primary_color: e.target.value }))}
+                className="h-9 w-12 rounded border border-border cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground font-mono">{colors.primary_color}</span>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Cor de Destaque</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={colors.accent_color || '#f97316'}
+                onChange={(e) => setColors(c => ({ ...c, accent_color: e.target.value }))}
+                className="h-9 w-12 rounded border border-border cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground font-mono">{colors.accent_color}</span>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Fundo do Cabeçalho</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={colors.header_bg || '#1e3a5f'}
+                onChange={(e) => setColors(c => ({ ...c, header_bg: e.target.value }))}
+                className="h-9 w-12 rounded border border-border cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground font-mono">{colors.header_bg}</span>
+            </div>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving} size="sm" className="mt-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          Salvar cores
+        </Button>
+      </div>
+
       {/* Preview */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pré-visualização</p>
@@ -95,6 +168,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
               quote={SAMPLE_QUOTE}
               company={company ?? null}
               templateSlug={selectedSlug}
+              customization={colors}
             />
           </div>
         </div>

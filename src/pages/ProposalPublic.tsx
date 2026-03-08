@@ -45,7 +45,7 @@ export default function ProposalPublic() {
           if (tpl) setTemplateSlug(tpl.slug);
         }
       }
-      if (companyRes.data) setCompany(companyRes.data as CompanySettings);
+      if (companyRes.data) setCompany(companyRes.data as unknown as CompanySettings);
       setLoading(false);
     })();
   }, [token]);
@@ -84,7 +84,7 @@ export default function ProposalPublic() {
       <div className="max-w-3xl mx-auto py-8 px-4">
         {/* Proposal content */}
         <div className="shadow-xl rounded-xl overflow-hidden">
-          <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} />
+          <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
 
         {/* Action buttons */}

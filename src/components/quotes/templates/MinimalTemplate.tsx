@@ -2,13 +2,15 @@ import type { ProposalTemplateProps } from './types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export function MinimalTemplate({ quote, company, items }: ProposalTemplateProps) {
+export function MinimalTemplate({ quote, company, items, customization }: ProposalTemplateProps) {
   const clientName = quote.customers?.name ?? quote.prospect_name ?? '—';
   const allItems = [...items].sort((a, b) => a.position - b.position);
 
+  const primary = customization?.primary_color || '#111827';
+
   return (
     <div className="bg-white text-gray-900 px-12 py-14 min-h-[800px]" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      {/* Minimal header — just logo and date */}
+      {/* Minimal header */}
       <div className="flex justify-between items-center mb-20">
         {company?.logo_url ? (
           <img src={company.logo_url} alt="Logo" className="h-8 object-contain opacity-60" crossOrigin="anonymous" />
@@ -22,16 +24,16 @@ export function MinimalTemplate({ quote, company, items }: ProposalTemplateProps
 
       {/* Title */}
       <div className="mb-20">
-        <h1 className="text-5xl font-extralight text-gray-900 tracking-tight leading-tight">
+        <h1 className="text-5xl font-extralight tracking-tight leading-tight" style={{ color: primary }}>
           Proposta
         </h1>
         <div className="flex items-baseline gap-4 mt-2">
-          <span className="text-5xl font-bold text-gray-900">#{quote.quote_number}</span>
+          <span className="text-5xl font-bold" style={{ color: primary }}>#{quote.quote_number}</span>
         </div>
         <p className="text-xl text-gray-300 mt-4 font-light">Para {clientName}</p>
       </div>
 
-      {/* Items — ultra clean list */}
+      {/* Items */}
       <div className="mb-20">
         {allItems.map((item, i) => (
           <div key={i} className="flex justify-between items-baseline py-5" style={{ borderBottom: '1px solid #f3f4f6' }}>
@@ -41,14 +43,14 @@ export function MinimalTemplate({ quote, company, items }: ProposalTemplateProps
                 {item.quantity} × R$ {(item.unit_price || 0).toFixed(2)}
               </p>
             </div>
-            <p className="text-xl font-light text-gray-900 tabular-nums ml-8">
+            <p className="text-xl font-light tabular-nums ml-8" style={{ color: primary }}>
               R$ {(item.total_price || 0).toFixed(2)}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Total — large and centered */}
+      {/* Total */}
       <div className="text-right mb-20">
         {(quote.discount_amount ?? 0) > 0 && (
           <div className="space-y-1 mb-4">
@@ -56,7 +58,7 @@ export function MinimalTemplate({ quote, company, items }: ProposalTemplateProps
             <p className="text-sm text-gray-300">Desconto −R$ {(quote.discount_amount ?? 0).toFixed(2)}</p>
           </div>
         )}
-        <p className="text-6xl font-extralight tracking-tight text-gray-900">
+        <p className="text-6xl font-extralight tracking-tight" style={{ color: primary }}>
           R$ {(quote.total_value ?? 0).toFixed(2)}
         </p>
         {quote.valid_until && (
@@ -66,7 +68,7 @@ export function MinimalTemplate({ quote, company, items }: ProposalTemplateProps
         )}
       </div>
 
-      {/* Terms & Notes — minimal dividers */}
+      {/* Terms & Notes */}
       {quote.terms && (
         <div className="mb-10">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gray-300 mb-3">Condições</p>
@@ -81,7 +83,7 @@ export function MinimalTemplate({ quote, company, items }: ProposalTemplateProps
         </div>
       )}
 
-      {/* Footer — barely visible */}
+      {/* Footer */}
       <div className="mt-24 pt-8 text-[10px] text-gray-200 flex justify-between tracking-wider" style={{ borderTop: '1px solid #f3f4f6' }}>
         <span>{company?.name?.toUpperCase()}</span>
         <span>{company?.phone}{company?.email ? ` · ${company.email}` : ''}</span>

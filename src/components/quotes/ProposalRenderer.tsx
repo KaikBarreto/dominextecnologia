@@ -1,5 +1,6 @@
 import type { Quote, QuoteItem } from '@/hooks/useQuotes';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
+import type { ProposalCustomization } from './templates/types';
 import { ClassicTemplate } from './templates/ClassicTemplate';
 import { ModernTemplate } from './templates/ModernTemplate';
 import { MinimalTemplate } from './templates/MinimalTemplate';
@@ -9,13 +10,14 @@ interface ProposalRendererProps {
   quote: Quote;
   company: CompanySettings | null | undefined;
   templateSlug?: string;
+  customization?: ProposalCustomization;
 }
 
 export const ProposalRenderer = forwardRef<HTMLDivElement, ProposalRendererProps>(
-  ({ quote, company, templateSlug = 'classico' }, ref) => {
+  ({ quote, company, templateSlug = 'classico', customization }, ref) => {
     const items: QuoteItem[] = quote.quote_items ?? [];
 
-    const props = { quote, company, items };
+    const props = { quote, company, items, customization };
 
     return (
       <div ref={ref}>
