@@ -28,6 +28,7 @@ import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
 import type { ServiceOrder, OsStatus } from '@/types/database';
+import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
