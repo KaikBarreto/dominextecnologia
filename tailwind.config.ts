@@ -70,16 +70,16 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         brand: {
-          50: "hsl(210 60% 97%)",
-          100: "hsl(210 60% 90%)",
-          200: "hsl(210 65% 78%)",
-          300: "hsl(210 70% 65%)",
-          400: "hsl(210 79% 52%)",
-          500: "hsl(210 79% 42%)",
-          600: "hsl(210 82% 36%)",
-          700: "hsl(210 85% 30%)",
-          800: "hsl(210 80% 25%)",
-          900: "hsl(210 75% 20%)",
+          50: "hsl(160 60% 97%)",
+          100: "hsl(160 60% 90%)",
+          200: "hsl(160 65% 78%)",
+          300: "hsl(160 70% 65%)",
+          400: "hsl(160 90% 48%)",
+          500: "hsl(160 100% 39%)",
+          600: "hsl(160 100% 33%)",
+          700: "hsl(160 100% 27%)",
+          800: "hsl(160 90% 22%)",
+          900: "hsl(160 80% 17%)",
         },
       },
       borderRadius: {
@@ -91,30 +91,20 @@ export default {
         sans: ["Montserrat", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        "brand-glow": "0 0 20px -5px hsl(210 79% 42% / 0.3)",
+        "brand-glow": "0 0 20px -5px hsl(160 100% 39% / 0.3)",
         "card-hover": "0 10px 40px -10px hsl(0 0% 0% / 0.1)",
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
         shimmer: {
-          "100%": {
-            transform: "translateX(100%)",
-          },
+          "100%": { transform: "translateX(100%)" },
         },
       },
       animation: {

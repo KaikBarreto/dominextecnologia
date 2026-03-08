@@ -94,7 +94,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-border bg-background">
       <SidebarHeader className="border-b border-border px-4 py-4">
-        <img src={logoDark} alt="Glacial Cold Brasil" className="h-9 w-auto mx-auto" />
+        <img src={logoDark} alt="Dominex" className="h-9 w-auto mx-auto" />
       </SidebarHeader>
 
       {profile && (
