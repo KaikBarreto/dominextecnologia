@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { SettingsAppearanceContent } from '@/components/settings/SettingsAppearanceContent';
 import { CepLookup } from '@/components/CepLookup';
+import { StateCitySelector } from '@/components/StateCitySelector';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 const settingsTabs: SettingsTab[] = [
   { value: 'empresa', label: 'Empresa', icon: Building },
@@ -238,7 +240,7 @@ export default function Settings() {
               <div className="pl-0 sm:pl-6">
                 {settings?.logo_url ? (
                   <div className="flex items-center gap-4">
-                    <img src={settings.logo_url} alt="Logo" className="h-20 w-20 rounded-lg object-contain border bg-muted" />
+                    <img src={settings.logo_url} alt="Logo" className="h-20 w-20 rounded-lg object-contain border bg-white" />
                     <div className="flex flex-col gap-2">
                       <Button variant="outline" size="sm" asChild disabled={uploading}>
                         <label className="cursor-pointer">
@@ -338,6 +340,25 @@ export default function Settings() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Buscar endereço</Label>
+                  <AddressAutocomplete
+                    value={companyAddress}
+                    onChange={setCompanyAddress}
+                    onAddressSelected={(addr) => {
+                      setCompanyAddress(addr.logradouro);
+                      setCompanyNumber(addr.numero);
+                      setCompanyNeighborhood(addr.bairro);
+                      setCompanyCity(addr.cidade);
+                      setCompanyState(addr.estado);
+                      if (addr.cep) {
+                        const c = addr.cep.replace(/\D/g, '');
+                        setCompanyZip(c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+                      }
+                    }}
+                    placeholder="Digite o endereço para buscar..."
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label>CEP</Label>
                   <CepLookup
@@ -367,13 +388,14 @@ export default function Settings() {
                   <Label>Bairro</Label>
                   <Input value={companyNeighborhood} onChange={e => setCompanyNeighborhood(e.target.value)} placeholder="Bairro" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Cidade</Label>
-                  <Input value={companyCity} onChange={e => setCompanyCity(e.target.value)} placeholder="Cidade" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Estado</Label>
-                  <Input value={companyState} onChange={e => setCompanyState(e.target.value)} placeholder="UF" maxLength={2} />
+                <div className="sm:col-span-2">
+                  <Label>UF / Cidade</Label>
+                  <StateCitySelector
+                    selectedState={companyState}
+                    selectedCity={companyCity}
+                    onStateChange={setCompanyState}
+                    onCityChange={setCompanyCity}
+                  />
                 </div>
               </div>
 
@@ -407,14 +429,16 @@ export default function Settings() {
                       <p className="text-xs text-muted-foreground">
                         {(settings as any)?.white_label_logo_url
                           ? 'Logo personalizado configurado'
-                          : 'Por padrão, será utilizado o logo da empresa acima'}
+                          : settings?.logo_url
+                            ? 'Usando o logo da empresa por padrão'
+                            : 'Por padrão, será utilizado o logo da empresa acima'}
                       </p>
-                      {(settings as any)?.white_label_logo_url ? (
+                      {((settings as any)?.white_label_logo_url || settings?.logo_url) ? (
                         <div className="flex items-center gap-4">
                           <img
-                            src={(settings as any).white_label_logo_url}
+                            src={(settings as any)?.white_label_logo_url || settings?.logo_url}
                             alt="WL Logo"
-                            className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-muted p-1"
+                            className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-white p-1"
                           />
                           <div className="flex flex-col gap-2">
                             <Button variant="outline" size="sm" asChild disabled={wlUploading}>
