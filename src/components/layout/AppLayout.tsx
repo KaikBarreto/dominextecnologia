@@ -54,12 +54,12 @@ function HeaderContent() {
 function SidebarAppLayout() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full max-w-full">
         <AppSidebar />
-        <SidebarInset className="flex flex-col">
+        <SidebarInset className="flex flex-col min-w-0 max-w-full">
           <HeaderContent />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
-            <div className="min-w-0">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
+            <div className="min-w-0 max-w-full">
               <Outlet />
             </div>
           </main>
@@ -83,9 +83,8 @@ function TopbarAppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
       <TopbarLayout />
-      {/* Mobile fallback header — hidden on lg+ where topbar shows */}
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:hidden">
         <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
         <div className="flex items-center gap-1">
@@ -101,8 +100,8 @@ function TopbarAppLayout() {
           )}
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
-        <div className="min-w-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
+        <div className="min-w-0 max-w-full">
           <Outlet />
         </div>
       </main>

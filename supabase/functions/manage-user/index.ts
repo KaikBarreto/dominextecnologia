@@ -26,46 +26,20 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    const callerId = claimsData?.claims?.sub;
-
-    if (claimsError || !callerId) {
+    const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token);
+    if (!caller) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check admin/gestor role OR fn:manage_users permission
-    const { data: callerRole } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', callerId)
-      .in('role', ['admin', 'gestor'])
-      .maybeSingle();
+    const callerId = caller.id;
 
-    let hasAccess = !!callerRole;
+    // Check authorization using centralized function
+    const { data: canManage } = await supabaseAdmin.rpc('can_manage_users', { _user_id: callerId });
 
-    if (!hasAccess) {
-      // Check user_permissions for fn:manage_users or full access
-      const { data: permsData } = await supabaseAdmin
-        .from('user_permissions')
-        .select('permissions')
-        .eq('user_id', callerId)
-        .eq('is_active', true)
-        .maybeSingle();
-      
-      const perms = (permsData?.permissions as string[]) || [];
-      hasAccess = perms.includes('fn:manage_users') || perms.length >= 27;
-    }
-
-    if (!hasAccess) {
+    if (!canManage) {
       return new Response(JSON.stringify({ error: 'Forbidden: insufficient permissions' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

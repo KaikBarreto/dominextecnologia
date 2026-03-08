@@ -34,29 +34,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if caller is admin/gestor OR has manage_users permission
-    const { data: callerRole } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', caller.id)
-      .in('role', ['admin', 'gestor'])
-      .maybeSingle();
+    // Check if caller can manage users using centralized function
+    const { data: canManage } = await supabaseAdmin.rpc('can_manage_users', { _user_id: caller.id });
 
-    let authorized = !!callerRole;
-
-    if (!authorized) {
-      const { data: permsData } = await supabaseAdmin
-        .from('user_permissions')
-        .select('permissions')
-        .eq('user_id', caller.id)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      const perms = Array.isArray(permsData?.permissions) ? permsData.permissions as string[] : [];
-      authorized = perms.includes('fn:manage_users') || perms.length >= 27;
-    }
-
-    if (!authorized) {
+    if (!canManage) {
       return new Response(JSON.stringify({ error: 'Forbidden: requires admin, gestor role or manage_users permission' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
