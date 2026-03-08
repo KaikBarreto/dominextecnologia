@@ -25,6 +25,7 @@ import Finance from "./pages/Finance";
 import PMOC from "./pages/PMOC";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import MobileMenu from "./pages/MobileMenu";
 import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
@@ -123,6 +124,7 @@ const AppRoutes = () => (
       <Route path="/pmoc" element={<PMOC />} />
       <Route path="/usuarios" element={<Users />} />
       <Route path="/configuracoes" element={<Settings />} />
+      <Route path="/perfil" element={<Profile />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Tutorials />} />
