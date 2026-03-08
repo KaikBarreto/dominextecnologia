@@ -123,6 +123,78 @@ export default function ContractDetail() {
     }
   };
 
+  const handleDeleteContract = async () => {
+    if (!contract || !id) return;
+    setIsDeleting(true);
+    try {
+      // Delete linked financial transactions
+      await supabase.from('financial_transactions').delete().eq('contract_id', id);
+      // Delete service orders linked to this contract
+      const osIds = (contract.contract_occurrences || []).filter(o => o.service_order_id).map(o => o.service_order_id!);
+      if (osIds.length > 0) {
+        // Delete related service_order_equipment
+        await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
+        await supabase.from('service_orders').delete().in('id', osIds);
+      }
+      // Delete occurrences
+      await supabase.from('contract_occurrences').delete().eq('contract_id', id);
+      // Delete items
+      await supabase.from('contract_items').delete().eq('contract_id', id);
+      // Delete contract
+      const { error } = await supabase.from('contracts').delete().eq('id', id);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      toast({ title: 'Contrato excluído com sucesso!' });
+      navigate('/contratos');
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: err.message });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  const handleRenewContract = async () => {
+    if (!contract) return;
+    setIsRenewing(true);
+    try {
+      const lastOcc = sortedOccurrences[sortedOccurrences.length - 1];
+      const newStartDate = lastOcc
+        ? format(addDays(parseISO(lastOcc.scheduled_date), 1), 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd');
+
+      const result = await createContract.mutateAsync({
+        name: contract.name,
+        customer_id: contract.customer_id,
+        technician_id: contract.technician_id || null,
+        team_id: (contract as any).team_id || null,
+        service_type_id: contract.service_type_id || null,
+        form_template_id: contract.form_template_id || null,
+        status: 'active',
+        notes: contract.notes || null,
+        frequency_type: contract.frequency_type,
+        frequency_value: contract.frequency_value,
+        start_date: newStartDate,
+        horizon_months: contract.horizon_months,
+        items: (contract.contract_items || []).map(i => ({
+          equipment_id: i.equipment_id || null,
+          item_name: i.item_name,
+          item_description: i.item_description || null,
+          form_template_id: i.form_template_id || null,
+        })),
+      });
+      toast({ title: 'Contrato renovado com sucesso!' });
+      if (result) navigate(`/contratos/${(result as any).id}`);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao renovar', description: err.message });
+    } finally {
+      setIsRenewing(false);
+      setShowRenewDialog(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
