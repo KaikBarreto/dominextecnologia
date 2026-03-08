@@ -39,6 +39,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [createAccess, setCreateAccess] = useState(false);
+  const [useTemporaryPassword, setUseTemporaryPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
 
