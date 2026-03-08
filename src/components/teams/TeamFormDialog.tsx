@@ -12,7 +12,7 @@ import type { TeamWithMembers, TeamInput } from '@/hooks/useTeams';
 interface Profile {
   user_id: string;
   full_name: string;
-  avatar_url: string | null;
+  avatar_url?: string | null;
 }
 
 interface TeamFormDialogProps {
