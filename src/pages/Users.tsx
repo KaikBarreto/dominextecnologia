@@ -103,7 +103,11 @@ export default function Users() {
       toast({ title: 'Usuário criado com sucesso!' });
       window.location.reload();
     } catch (e: any) {
-      toast({ title: 'Erro ao criar usuário', description: e.message, variant: 'destructive' });
+      const msg = (e.message || '').toLowerCase();
+      const friendlyMsg = msg.includes('already') || msg.includes('duplicate') || msg.includes('already been registered')
+        ? 'Este e-mail já está cadastrado no sistema.'
+        : e.message;
+      toast({ title: 'Erro ao criar usuário', description: friendlyMsg, variant: 'destructive' });
       throw e;
     }
   };

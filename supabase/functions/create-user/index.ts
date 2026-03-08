@@ -67,7 +67,9 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
+      const isDuplicate = createError.message.toLowerCase().includes('already') || createError.message.toLowerCase().includes('duplicate');
+      const friendlyMessage = isDuplicate ? 'Este e-mail já está cadastrado no sistema.' : createError.message;
+      return new Response(JSON.stringify({ error: friendlyMessage }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
