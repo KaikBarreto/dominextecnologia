@@ -1,0 +1,264 @@
+import { useState, useMemo } from 'react';
+import {
+  FileText, Plus, Search, Pencil, Trash2, Eye, Send, CheckCircle2, XCircle, Copy,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/useQuotes';
+import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+export default function Quotes() {
+  const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
+  const { toast } = useToast();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [formOpen, setFormOpen] = useState(false);
+  const [editQuote, setEditQuote] = useState<Quote | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    let list = quotes;
+    if (statusFilter !== 'all') list = list.filter((q) => q.status === statusFilter);
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(
+        (q) =>
+          q.customers?.name?.toLowerCase().includes(s) ||
+          String(q.quote_number).includes(s)
+      );
+    }
+    return list;
+  }, [quotes, statusFilter, search]);
+
+  const copyLink = (token: string) => {
+    const url = `${window.location.origin}/orcamento/${token}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: 'Link copiado!' });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
+            <p className="text-sm text-muted-foreground">{quotes.length} orçamentos</p>
+          </div>
+        </div>
+        <Button onClick={() => { setEditQuote(null); setFormOpen(true); }}>
+          <Plus className="h-4 w-4 mr-2" /> Novo Orçamento
+        </Button>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Total em Aberto</p>
+            <p className="text-lg font-bold text-foreground">R$ {kpis.totalOpen.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
+            <p className="text-lg font-bold text-foreground">{kpis.conversionRate}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Ticket Médio</p>
+            <p className="text-lg font-bold text-foreground">R$ {kpis.avgTicket.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-lg font-bold text-foreground">{kpis.total}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por cliente ou número..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {Object.entries(STATUS_LABELS).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground">Nenhum orçamento encontrado</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nº</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="hidden md:table-cell">Data</TableHead>
+                <TableHead className="hidden sm:table-cell">Validade</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((q) => (
+                <TableRow key={q.id}>
+                  <TableCell className="font-medium">#{q.quote_number}</TableCell>
+                  <TableCell>{q.customers?.name ?? '—'}</TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
+                    {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
+                    {q.valid_until ? format(new Date(q.valid_until), 'dd/MM/yy', { locale: ptBR }) : '—'}
+                  </TableCell>
+                  <TableCell className="font-semibold">R$ {(q.total_value ?? 0).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge className={STATUS_COLORS[q.status] ?? ''}>
+                      {STATUS_LABELS[q.status] ?? q.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      {q.status === 'rascunho' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Enviar"
+                          onClick={() => updateStatus.mutate({ id: q.id, status: 'enviado' })}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {q.status === 'enviado' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-success"
+                            title="Aprovar"
+                            onClick={() => updateStatus.mutate({ id: q.id, status: 'aprovado' })}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            title="Rejeitar"
+                            onClick={() => updateStatus.mutate({ id: q.id, status: 'rejeitado' })}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Copiar Link"
+                        onClick={() => copyLink(q.token)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="edit-ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Editar"
+                        onClick={() => { setEditQuote(q); setFormOpen(true); }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive-ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Excluir"
+                        onClick={() => setDeleteId(q.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      <QuoteFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        quote={editQuote}
+      />
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Orçamento</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteId) deleteQuote.mutate(deleteId); setDeleteId(null); }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
