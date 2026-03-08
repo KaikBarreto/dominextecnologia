@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import logoDark from '@/assets/logo-dark.png';
+import logoWhite from '@/assets/logo-white.png';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -95,8 +96,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="border-b border-border px-4 py-4">
-        <img src={logoDark} alt="Dominex" className="h-9 w-auto mx-auto" />
+      <SidebarHeader className="bg-black px-4 py-4">
+        <img src={logoWhite} alt="Dominex" className="h-9 w-auto mx-auto" />
       </SidebarHeader>
 
       {profile && (
