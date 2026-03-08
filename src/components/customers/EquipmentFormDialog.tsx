@@ -419,6 +419,18 @@ export function EquipmentFormDialog({
 
             <FormField
               control={form.control}
+              name="warranty_until"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Validade da Garantia</FormLabel>
+                  <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
