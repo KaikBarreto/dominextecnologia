@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Form,
+  Form,
   FormControl,
   FormField,
   FormItem,
@@ -33,6 +34,7 @@ const transactionSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
   amount: z.coerce.number().positive('Valor deve ser positivo'),
   transaction_date: z.string().min(1, 'Data é obrigatória'),
+  is_paid: z.boolean().default(true),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -87,6 +89,7 @@ export function TransactionFormDialog({
         description: transaction?.description ?? '',
         amount: transaction?.amount ?? 0,
         transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
+        is_paid: transaction?.is_paid ?? true,
       });
     }
   }, [open, defaultType, transaction]);
