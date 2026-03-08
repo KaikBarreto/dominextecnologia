@@ -33,7 +33,7 @@ import { Sidebar, SidebarContent, useSidebar } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import iconePreto from '@/assets/icone_preto.png';
 
@@ -105,6 +105,13 @@ export function AppSidebar() {
       .filter(item => item.children?.some(c => location.pathname === c.path))
       .map(item => item.title);
   });
+  const menuScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (collapsed && menuScrollRef.current) {
+      menuScrollRef.current.scrollTop = 0;
+    }
+  }, [collapsed]);
 
   const isSuperAdmin = roles.includes('super_admin');
 
@@ -176,7 +183,7 @@ export function AppSidebar() {
         )}
 
         {/* ── Menu ── */}
-        <div className={cn("flex-1 overflow-y-auto pt-2", collapsed ? "px-1.5" : "px-4")}>
+        <div ref={menuScrollRef} className={cn("flex-1 overflow-y-auto pt-2", collapsed ? "px-1.5" : "px-4")}>
           <nav className="space-y-0.5">
             {filteredMenu.map((item) => {
               if (item.children) {
