@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Verify caller is admin/gestor
+    // Verify caller is authorized
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check admin/gestor role OR fn:manage_users permission
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles')
       .select('role')
@@ -41,14 +42,30 @@ Deno.serve(async (req) => {
       .in('role', ['admin', 'gestor'])
       .maybeSingle();
 
-    if (!callerRole) {
-      return new Response(JSON.stringify({ error: 'Forbidden: requires admin or gestor role' }), {
+    let hasAccess = !!callerRole;
+
+    if (!hasAccess) {
+      // Check user_permissions for fn:manage_users or full access
+      const { data: permsData } = await supabaseAdmin
+        .from('user_permissions')
+        .select('permissions')
+        .eq('user_id', caller.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      const perms = (permsData?.permissions as string[]) || [];
+      hasAccess = perms.includes('fn:manage_users') || perms.length >= 27;
+    }
+
+    if (!hasAccess) {
+      return new Response(JSON.stringify({ error: 'Forbidden: insufficient permissions' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { action, user_id, email } = await req.json();
+    const body = await req.json();
+    const { action, user_id, email } = body;
 
     if (!user_id) {
       return new Response(JSON.stringify({ error: 'Missing user_id' }), {
@@ -59,17 +76,24 @@ Deno.serve(async (req) => {
 
     // GET user email
     if (action === 'get_email') {
-      const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
-      if (getUserError || !userData?.user) {
-        return new Response(JSON.stringify({ error: getUserError?.message || 'User not found' }), {
-          status: 404,
+      try {
+        const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+        if (getUserError || !userData?.user) {
+          return new Response(JSON.stringify({ email: '' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ email: userData.user.email || '' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch {
+        return new Response(JSON.stringify({ email: '' }), {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      return new Response(JSON.stringify({ email: userData.user.email }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
 
     // UPDATE user email
@@ -88,6 +112,33 @@ Deno.serve(async (req) => {
 
       if (updateError) {
         return new Response(JSON.stringify({ error: updateError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // DELETE user permanently
+    if (action === 'delete_user') {
+      // Delete user_permissions
+      await supabaseAdmin.from('user_permissions').delete().eq('user_id', user_id);
+      // Delete user_roles
+      await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id);
+      // Unlink employees
+      await supabaseAdmin.from('employees').update({ user_id: null }).eq('user_id', user_id);
+      // Delete profile
+      await supabaseAdmin.from('profiles').delete().eq('user_id', user_id);
+      // Delete active sessions
+      await supabaseAdmin.from('active_sessions').delete().eq('user_id', user_id);
+      // Delete auth user
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user_id);
+      if (deleteError) {
+        return new Response(JSON.stringify({ error: deleteError.message }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

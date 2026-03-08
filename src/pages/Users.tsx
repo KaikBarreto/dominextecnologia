@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
 import { useUserPermissions, usePermissionPresets } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +28,8 @@ export default function Users() {
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('users');
+  const [deletingUser, setDeletingUser] = useState<UserWithRole | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const filteredUsers = users.filter(u =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -182,6 +185,25 @@ export default function Users() {
       await toggleActive.mutateAsync({ user_id: userId, is_active: !currentActive });
     } else {
       await upsertPermissions.mutateAsync({ user_id: userId, permissions: [], is_active: false });
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    setDeleteLoading(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('manage-user', {
+        body: { action: 'delete_user', user_id: deletingUser.user_id },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      toast({ title: 'Usuário excluído permanentemente!' });
+      setDeletingUser(null);
+      window.location.reload();
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -370,6 +392,15 @@ export default function Users() {
                                     </>
                                   )}
                                 </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDeletingUser(userProfile)}
+                                  title="Excluir usuário permanentemente"
+                                  className="hover:bg-destructive hover:text-white hover:border-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </>
                             )}
                           </div>
@@ -400,6 +431,28 @@ export default function Users() {
         onUpdate={async (d) => { await updatePreset.mutateAsync(d); }}
         onDelete={async (id) => { await deletePreset.mutateAsync(id); }}
       />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingUser} onOpenChange={(open) => { if (!open) setDeletingUser(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível. O usuário <strong>{deletingUser?.full_name}</strong> será removido permanentemente do sistema, incluindo login, permissões e vínculos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? 'Excluindo...' : 'Excluir Permanentemente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
