@@ -104,12 +104,50 @@ export default function Employees() {
     
     if (editingEmployee) {
       updateEmployee.mutate({ id: editingEmployee.id, ...employeeData }, {
-        onSuccess: async () => {
+        onSuccess: async (updatedEmp: any) => {
           // Sync photo to linked user profile if employee has a user_id
           const linkedUserId = employeeData.user_id || editingEmployee.user_id;
           if (linkedUserId && employeeData.photo_url) {
             await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
           }
+          
+          // Create access for existing employee if requested
+          if (_createAccess && employeeData.email && _password) {
+            try {
+              const response = await supabase.functions.invoke('create-user', {
+                body: {
+                  email: employeeData.email,
+                  password: _password,
+                  full_name: employeeData.name || editingEmployee.name,
+                  phone: employeeData.phone || editingEmployee.phone || undefined,
+                  avatar_url: employeeData.photo_url || editingEmployee.photo_url || undefined,
+                  role: 'tecnico',
+                },
+              });
+              
+              if (response.error) throw new Error(response.error.message || 'Erro na chamada da função');
+              const fnData = response.data;
+              if (fnData?.error) throw new Error(fnData.error);
+              
+              // Link user_id to employee
+              if (fnData?.user?.id) {
+                await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', editingEmployee.id);
+              }
+              
+              toast({
+                title: 'Acesso ao sistema criado!',
+                description: `Email: ${employeeData.email} — Senha: ${_password}`,
+                duration: 15000,
+              });
+            } catch (err: any) {
+              toast({
+                variant: 'destructive',
+                title: 'Funcionário atualizado, mas erro ao criar acesso',
+                description: err.message,
+              });
+            }
+          }
+          
           setFormOpen(false);
           setEditingEmployee(null);
         },
