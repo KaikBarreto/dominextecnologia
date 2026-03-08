@@ -99,8 +99,8 @@ export default function Inventory() {
                   <p className="text-2xl font-bold text-warning">{stats.lowStockItems}</p>
                 )}
               </div>
-              <div className="rounded-full bg-warning/10 p-3">
-                <AlertTriangle className="h-6 w-6 text-warning" />
+              <div className="rounded-full bg-warning p-3">
+                <AlertTriangle className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -117,8 +117,8 @@ export default function Inventory() {
                   <p className="text-2xl font-bold text-success">{formatCurrency(stats.totalValue)}</p>
                 )}
               </div>
-              <div className="rounded-full bg-success/10 p-3">
-                <DollarSign className="h-6 w-6 text-success" />
+              <div className="rounded-full bg-success p-3">
+                <DollarSign className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>

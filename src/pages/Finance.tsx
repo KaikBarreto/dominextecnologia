@@ -90,6 +90,8 @@ export default function Finance() {
               transactions={transactions}
               summary={summary}
               onNavigate={setActiveTab}
+              onNewReceita={() => handleNew('entrada')}
+              onNewDespesa={() => handleNew('saida')}
             />
           )}
 

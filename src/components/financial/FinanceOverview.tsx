@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Wallet, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, Wallet, Clock, Plus } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
@@ -20,6 +21,8 @@ interface FinanceOverviewProps {
     aReceber: number;
   };
   onNavigate: (tab: string) => void;
+  onNewReceita: () => void;
+  onNewDespesa: () => void;
 }
 
 const CHART_COLORS = [
@@ -28,7 +31,7 @@ const CHART_COLORS = [
   'hsl(160, 60%, 45%)', 'hsl(30, 80%, 55%)',
 ];
 
-export function FinanceOverview({ transactions, summary, onNavigate }: FinanceOverviewProps) {
+export function FinanceOverview({ transactions, summary, onNavigate, onNewReceita, onNewDespesa }: FinanceOverviewProps) {
   // Category breakdown for chart
   const categoryMap = new Map<string, number>();
   transactions.forEach((t) => {
@@ -55,34 +58,34 @@ export function FinanceOverview({ transactions, summary, onNavigate }: FinanceOv
                   {formatCurrency(summary.saldo)}
                 </p>
               </div>
-              <div className="rounded-full bg-primary/10 p-3">
-                <Wallet className="h-5 w-5 text-primary" />
+              <div className="rounded-full bg-primary p-3">
+                <Wallet className="h-5 w-5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-success/20 bg-success/5">
+        <Card className="bg-success border-0">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Receitas</p>
-                <p className="text-2xl font-bold mt-1 text-success">{formatCurrency(summary.totalEntradas)}</p>
+                <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Receitas</p>
+                <p className="text-2xl font-bold mt-1 text-white">{formatCurrency(summary.totalEntradas)}</p>
               </div>
-              <div className="rounded-full bg-success/10 p-3">
-                <TrendingUp className="h-5 w-5 text-success" />
+              <div className="rounded-full bg-white/20 p-3">
+                <TrendingUp className="h-5 w-5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-destructive/20 bg-destructive/5">
+        <Card className="bg-destructive border-0">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Despesas</p>
-                <p className="text-2xl font-bold mt-1 text-destructive">{formatCurrency(summary.totalSaidas)}</p>
+                <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Despesas</p>
+                <p className="text-2xl font-bold mt-1 text-white">{formatCurrency(summary.totalSaidas)}</p>
               </div>
-              <div className="rounded-full bg-destructive/10 p-3">
-                <TrendingDown className="h-5 w-5 text-destructive" />
+              <div className="rounded-full bg-white/20 p-3">
+                <TrendingDown className="h-5 w-5 text-white" />
               </div>
             </div>
           </CardContent>
@@ -94,12 +97,24 @@ export function FinanceOverview({ transactions, summary, onNavigate }: FinanceOv
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
                 <p className="text-2xl font-bold mt-1 text-warning">{formatCurrency(summary.aReceber)}</p>
               </div>
-              <div className="rounded-full bg-warning/10 p-3">
-                <Clock className="h-5 w-5 text-warning" />
+              <div className="rounded-full bg-warning p-3">
+                <Clock className="h-5 w-5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex gap-3">
+        <Button className="bg-success hover:bg-success/90 text-white gap-2" onClick={onNewReceita}>
+          <Plus className="h-4 w-4" />
+          Nova Receita
+        </Button>
+        <Button className="bg-destructive hover:bg-destructive/90 text-white gap-2" onClick={onNewDespesa}>
+          <Plus className="h-4 w-4" />
+          Nova Despesa
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -167,11 +182,11 @@ export function FinanceOverview({ transactions, summary, onNavigate }: FinanceOv
                 {recentTransactions.map((t) => (
                   <div key={t.id} className="flex items-center justify-between py-2 border-b last:border-0">
                     <div className="flex items-center gap-3">
-                      <div className={`rounded-full p-1.5 ${t.transaction_type === 'entrada' ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                      <div className={`rounded-full p-1.5 ${t.transaction_type === 'entrada' ? 'bg-success' : 'bg-destructive'}`}>
                         {t.transaction_type === 'entrada' ? (
-                          <TrendingUp className="h-3.5 w-3.5 text-success" />
+                          <TrendingUp className="h-3.5 w-3.5 text-white" />
                         ) : (
-                          <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+                          <TrendingDown className="h-3.5 w-3.5 text-white" />
                         )}
                       </div>
                       <div>

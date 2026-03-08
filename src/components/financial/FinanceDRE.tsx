@@ -80,10 +80,10 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
     <div className="space-y-6">
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className={dre.margem >= 0 ? 'border-success/20 bg-success/5' : 'border-destructive/20 bg-destructive/5'}>
+        <Card className={`${dre.margem >= 0 ? 'bg-success' : 'bg-destructive'} border-0`}>
           <CardContent className="p-5">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Margem de Lucro</p>
-            <p className={`text-3xl font-bold mt-1 ${dre.margem >= 0 ? 'text-success' : 'text-destructive'}`}>
+            <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Margem de Lucro</p>
+            <p className="text-3xl font-bold mt-1 text-white">
               {dre.margem.toFixed(1)}%
             </p>
           </CardContent>
@@ -94,10 +94,10 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
             <p className="text-3xl font-bold mt-1">{formatCurrency(dre.receitaLiquida)}</p>
           </CardContent>
         </Card>
-        <Card className={dre.resultadoLiquido >= 0 ? 'border-success/20 bg-success/5' : 'border-destructive/20 bg-destructive/5'}>
+        <Card className={`${dre.resultadoLiquido >= 0 ? 'bg-success' : 'bg-destructive'} border-0`}>
           <CardContent className="p-5">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resultado (EBITDA)</p>
-            <p className={`text-3xl font-bold mt-1 ${dre.resultadoLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
+            <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Resultado (EBITDA)</p>
+            <p className="text-3xl font-bold mt-1 text-white">
               {formatCurrency(dre.resultadoLiquido)}
             </p>
           </CardContent>
@@ -140,20 +140,18 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
               <div
                 key={row.label}
                 className={`flex items-center justify-between px-6 py-3 ${
-                  row.highlight ? 'bg-muted/50 font-bold' : ''
-                } ${row.final ? (row.value >= 0 ? 'bg-success/10' : 'bg-destructive/10') : ''} ${
+                  row.highlight && !row.final ? 'bg-muted/50 font-bold' : ''
+                } ${row.final ? (row.value >= 0 ? 'bg-success text-white' : 'bg-destructive text-white') : ''} ${
                   row.indent ? 'pl-10' : ''
                 }`}
               >
-                <span className={`text-sm ${row.highlight ? 'font-bold' : 'text-muted-foreground'}`}>
+                <span className={`text-sm ${row.final ? 'font-bold text-white' : row.highlight ? 'font-bold' : 'text-muted-foreground'}`}>
                   {row.label}
                 </span>
                 <span
                   className={`text-sm font-semibold ${
                     row.final
-                      ? row.value >= 0
-                        ? 'text-success'
-                        : 'text-destructive'
+                      ? 'text-white'
                       : row.value < 0
                       ? 'text-destructive'
                       : ''
