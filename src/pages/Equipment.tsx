@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Package, Tag, Plus, Pencil, Trash2 } from 'lucide-react';
 import { EquipmentPanel } from '@/components/customers/EquipmentPanel';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -15,6 +17,12 @@ import { cn } from '@/lib/utils';
 
 export default function EquipmentPage() {
   const [activeTab, setActiveTab] = useState('equipamentos');
+  const isMobile = useIsMobile();
+
+  const tabItems = [
+    { key: 'equipamentos', label: 'Equipamentos', icon: Package },
+    { key: 'categorias', label: 'Categorias', icon: Tag },
+  ];
 
   return (
     <div className="space-y-6">
@@ -23,38 +31,54 @@ export default function EquipmentPage() {
         <p className="text-muted-foreground">Gerencie equipamentos e categorias</p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <nav className="lg:w-52 shrink-0">
-          <div className="flex lg:flex-col gap-1">
-            {[
-              { key: 'equipamentos', label: 'Equipamentos', icon: Package },
-              { key: 'categorias', label: 'Categorias', icon: Tag },
-            ].map((item) => {
-              const isActive = activeTab === item.key;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => setActiveTab(item.key)}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-left w-full',
-                    isActive
-                      ? 'bg-primary text-white'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                </button>
-              );
-            })}
+      {isMobile ? (
+        <>
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {tabItems.map((item) => (
+                <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="min-w-0">
+            {activeTab === 'equipamentos' && <EquipmentPanel />}
+            {activeTab === 'categorias' && <CategoriesPanel />}
           </div>
-        </nav>
+        </>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-6">
+          <nav className="lg:w-52 shrink-0">
+            <div className="flex lg:flex-col gap-1">
+              {tabItems.map((item) => {
+                const isActive = activeTab === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveTab(item.key)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-left w-full',
+                      isActive
+                        ? 'bg-primary text-white'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
 
-        <div className="flex-1 min-w-0">
-          {activeTab === 'equipamentos' && <EquipmentPanel />}
-          {activeTab === 'categorias' && <CategoriesPanel />}
+          <div className="flex-1 min-w-0">
+            {activeTab === 'equipamentos' && <EquipmentPanel />}
+            {activeTab === 'categorias' && <CategoriesPanel />}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
