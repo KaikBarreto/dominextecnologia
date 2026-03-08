@@ -48,13 +48,13 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saldo</p>
-                <p className={`text-2xl font-bold mt-1 ${summary.saldo >= 0 ? 'text-success' : 'text-destructive'}`}>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">Saldo</p>
+                <p className={`text-lg sm:text-2xl font-bold mt-1 truncate ${summary.saldo >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {formatCurrency(summary.saldo)}
                 </p>
               </div>
@@ -65,40 +65,40 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           </CardContent>
         </Card>
         <Card className="bg-success border-0">
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Receitas</p>
-                <p className="text-2xl font-bold mt-1 text-white">{formatCurrency(summary.totalEntradas)}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Receitas</p>
+                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalEntradas)}</p>
               </div>
-              <div className="rounded-full bg-white/20 p-3">
-                <TrendingUp className="h-5 w-5 text-white" />
+              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-destructive border-0">
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Despesas</p>
-                <p className="text-2xl font-bold mt-1 text-white">{formatCurrency(summary.totalSaidas)}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Despesas</p>
+                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalSaidas)}</p>
               </div>
-              <div className="rounded-full bg-white/20 p-3">
-                <TrendingDown className="h-5 w-5 text-white" />
+              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
+                <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5">
+          <CardContent className="p-3 sm:p-5">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
-                <p className="text-2xl font-bold mt-1 text-warning">{formatCurrency(summary.aReceber)}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
+                <p className="text-lg sm:text-2xl font-bold mt-1 text-warning truncate">{formatCurrency(summary.aReceber)}</p>
               </div>
-              <div className="rounded-full bg-warning p-3">
-                <Clock className="h-5 w-5 text-white" />
+              <div className="rounded-full bg-warning p-2 sm:p-3 shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
             </div>
           </CardContent>
@@ -106,14 +106,14 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       </div>
 
       {/* Quick Actions */}
-      <div className="flex gap-3">
-        <Button className="bg-success hover:bg-success/90 text-white gap-2" onClick={onNewReceita}>
+      <div className="flex flex-wrap gap-3">
+        <Button size="sm" className="bg-success hover:bg-success/90 text-white gap-2" onClick={onNewReceita}>
           <Plus className="h-4 w-4" />
-          Nova Receita
+          <span className="hidden sm:inline">Nova</span> Receita
         </Button>
-        <Button className="bg-destructive hover:bg-destructive/90 text-white gap-2" onClick={onNewDespesa}>
+        <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-white gap-2" onClick={onNewDespesa}>
           <Plus className="h-4 w-4" />
-          Nova Despesa
+          <span className="hidden sm:inline">Nova</span> Despesa
         </Button>
       </div>
 

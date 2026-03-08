@@ -31,11 +31,11 @@ export function DataTablePagination({
 }: DataTablePaginationProps) {
   return (
     <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-xs text-muted-foreground">
+      <div className="text-xs text-muted-foreground text-center sm:text-left">
         Mostrando {from}-{to} de {totalItems}
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 items-center sm:flex-row sm:items-center">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground whitespace-nowrap">Por página</span>
           <Select

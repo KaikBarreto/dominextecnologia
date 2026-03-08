@@ -25,7 +25,7 @@ export default function HeroSection() {
           {/* Left */}
           <div className="space-y-8">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary animate-pulse">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary animate-glow-pulse">
               <span>✦</span>
               <span>Mais de 3.000 equipes gerenciadas</span>
             </div>

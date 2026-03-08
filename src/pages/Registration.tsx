@@ -403,11 +403,11 @@ export default function Registration() {
 
               {/* Login link */}
               {step <= 3 && (
-                <div className="text-center pt-2">
-                  <p className="text-xs text-white/40">
-                    Já tem uma conta?{' '}
-                    <Link to="/login" className="text-primary hover:underline font-medium">Fazer login</Link>
-                  </p>
+                <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
+                  Já tem uma conta?{' '}
+                  <Link to="/login" className="text-white font-bold hover:text-primary transition-colors">
+                    Fazer login
+                  </Link>
                 </div>
               )}
             </div>

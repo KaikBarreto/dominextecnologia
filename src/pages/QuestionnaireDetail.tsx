@@ -223,15 +223,15 @@ export default function QuestionnaireDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/questionarios')}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/questionarios')} className="self-start">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{template.name}</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">{template.name}</h1>
           <p className="text-sm text-muted-foreground">{sortedQuestions.length} perguntas</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 self-start sm:self-center">
           <div className="flex items-center gap-2">
             <Switch
               checked={template.is_active}
@@ -369,7 +369,7 @@ export default function QuestionnaireDetail() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                     <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => openEditModal(question)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>

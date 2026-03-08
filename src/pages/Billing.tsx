@@ -209,7 +209,7 @@ export default function Billing() {
                   <span>Pagamento</span>
                 </CardTitle>
                 {daysRemaining !== null && daysRemaining <= 7 && (
-                  <Badge variant="outline" className="animate-pulse bg-orange-500/10 text-orange-600 border-orange-300 text-xs shrink-0">
+                  <Badge variant="outline" className="animate-glow-pulse bg-orange-500/10 text-orange-600 border-orange-300 text-xs shrink-0">
                     Vence em breve
                   </Badge>
                 )}

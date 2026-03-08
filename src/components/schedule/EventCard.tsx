@@ -65,7 +65,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
           !serviceTypeColor && statusBadge.className,
-          isMoving && 'ring-2 ring-primary ring-offset-1 animate-pulse'
+          isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
         )}
         style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
       >
@@ -92,7 +92,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
         fillHeight && 'h-full',
         !bgColor && 'border bg-card hover:border-primary/30',
-        isMoving && 'ring-2 ring-primary ring-offset-1 animate-pulse'
+        isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
       )}
       style={bgColor ? { backgroundColor: bgColor, color: 'white' } : undefined}
     >

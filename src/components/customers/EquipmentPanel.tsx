@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,6 +30,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export function EquipmentPanel() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -108,18 +110,19 @@ export function EquipmentPanel() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => setConfigOpen(true)}
             title="Configurar campos"
+            size="sm"
             className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
           >
-            <Settings className="mr-2 h-4 w-4" />
-            Configurar Campos
+            <Settings className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Configurar Campos</span>
           </Button>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Equipamento
+          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Novo Equipamento</span>
           </Button>
         </div>
       </div>
@@ -179,6 +182,41 @@ export function EquipmentPanel() {
               </div>
             ) : (
               <>
+              {isMobile ? (
+                <div className="p-3 space-y-3">
+                  {pagination.paginatedItems.map((eq) => (
+                    <Card key={eq.id} className="cursor-pointer" onClick={() => navigate(`/equipamentos/${eq.id}`)}>
+                      <CardContent className="p-3 space-y-2">
+                        <div className="flex items-start gap-3">
+                          {(eq as any).photo_url ? (
+                            <img src={(eq as any).photo_url} alt={eq.name} className="h-10 w-10 rounded object-cover shrink-0" />
+                          ) : (
+                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate">{eq.name}</p>
+                            {eq.identifier && <p className="text-xs text-muted-foreground font-mono">{eq.identifier}</p>}
+                            <p className="text-xs text-muted-foreground truncate">{eq.customer?.name || '—'}</p>
+                          </div>
+                          <Badge variant={(eq as any).status === 'active' ? 'default' : 'secondary'} className="shrink-0 text-[10px]">
+                            {(eq as any).status === 'active' ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-end gap-1 pt-1 border-t" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingEquipment(eq); setFormOpen(true); }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setEquipmentToDelete(eq); setDeleteDialogOpen(true); }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -249,6 +287,7 @@ export function EquipmentPanel() {
                   </TableBody>
                 </Table>
               </div>
+              )}
               <DataTablePagination
                 page={pagination.page}
                 totalPages={pagination.totalPages}
