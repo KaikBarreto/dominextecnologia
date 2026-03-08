@@ -262,26 +262,6 @@ export function CustomerFormDialog({
 
           {step === 1 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              {/* Address autocomplete */}
-              <div className="sm:col-span-2">
-                <FormLabel>Buscar endereço</FormLabel>
-                <AddressAutocomplete
-                  value={form.watch('address') || ''}
-                  onChange={(v) => form.setValue('address', v)}
-                  onAddressSelected={(addr) => {
-                    if (addr.logradouro) form.setValue('address', addr.logradouro);
-                    if (addr.numero) form.setValue('address_number', addr.numero);
-                    if (addr.bairro) form.setValue('neighborhood', addr.bairro);
-                    if (addr.cidade) form.setValue('city', addr.cidade);
-                    if (addr.estado) form.setValue('state', addr.estado);
-                    if (addr.cep) {
-                      const c = addr.cep.replace(/\D/g, '');
-                      form.setValue('zip_code', c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
-                    }
-                  }}
-                  placeholder="Digite o endereço para buscar..."
-                />
-              </div>
               <FormField control={form.control} name="zip_code" render={({ field }) => (
                 <FormItem>
                   <FormLabel>CEP</FormLabel>
@@ -303,7 +283,24 @@ export function CustomerFormDialog({
               <FormField control={form.control} name="address" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Endereço</FormLabel>
-                  <FormControl><Input placeholder="Rua, Avenida..." {...field} /></FormControl>
+                  <FormControl>
+                    <AddressAutocomplete
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      onAddressSelected={(addr) => {
+                        if (addr.logradouro) form.setValue('address', addr.logradouro);
+                        if (addr.numero) form.setValue('address_number', addr.numero);
+                        if (addr.bairro) form.setValue('neighborhood', addr.bairro);
+                        if (addr.cidade) form.setValue('city', addr.cidade);
+                        if (addr.estado) form.setValue('state', addr.estado);
+                        if (addr.cep) {
+                          const c = addr.cep.replace(/\D/g, '');
+                          form.setValue('zip_code', c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+                        }
+                      }}
+                      placeholder="Rua, Avenida..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -328,7 +325,7 @@ export function CustomerFormDialog({
                   <FormMessage />
                 </FormItem>
               )} />
-              <div className="sm:col-span-2">
+              <div>
                 <FormLabel>UF / Cidade</FormLabel>
                 <StateCitySelector
                   selectedState={form.watch('state') || ''}
