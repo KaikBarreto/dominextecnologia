@@ -1,85 +1,75 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Plano: Módulo de Orçamentos
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+### Onde colocar
 
-### 2. Permissions System - Database Changes
+O módulo de **Orçamentos** se encaixa naturalmente no grupo **Operacional** do sidebar, logo abaixo de "Ordens de Serviço", pois o fluxo típico é: Lead/Cliente → Orçamento → Aprovação → OS.
 
-Create 2 new tables via migration:
-
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
-
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
-
-The permissions will be a flat list of string keys covering:
-
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
-
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
-
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
-
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
-
-### 4. New Components
-
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
-
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
-
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
-
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
-
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
-
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
-
-### Technical Details
-
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
+```text
+Operacional
+├── Ordens de Serviço
+├── Orçamentos          ← NOVO
+├── Serviços
+├── Equipes
+├── ...
 ```
 
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
+Rota: `/orcamentos` e `/orcamentos/:id` (detalhe)
 
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+### Estrutura do banco
+
+**Tabela `quotes`** (orçamento principal):
+- `id`, `quote_number` (sequencial), `customer_id` FK, `status` (rascunho, enviado, aprovado, rejeitado, expirado)
+- `valid_until` (data de validade), `discount_type` (percentual/valor), `discount_value`
+- `subtotal`, `discount_amount`, `total_value` (calculados)
+- `notes`, `terms` (condições/observações)
+- `assigned_to` (vendedor/técnico responsável)
+- `created_by`, `created_at`, `updated_at`
+
+**Tabela `quote_items`** (itens do orçamento):
+- `id`, `quote_id` FK, `position` (ordem)
+- `item_type` (servico, material, mao_de_obra)
+- `description`, `quantity`, `unit_price`, `total_price`
+- `inventory_id` FK nullable (link ao estoque)
+- `service_type_id` FK nullable (link ao tipo de serviço)
+
+### Integrações com módulos existentes
+
+1. **CRM → Orçamentos**: Botão "Gerar Orçamento" no lead, pré-preenchendo cliente e valor
+2. **Orçamentos → OS**: Ao aprovar, botão "Converter em OS" que cria a ordem de serviço automaticamente com os dados do orçamento
+3. **Orçamentos → Financeiro**: Ao aprovar, opção de gerar transação financeira (conta a receber)
+4. **Estoque**: Itens do orçamento podem referenciar produtos do estoque (puxa nome e preço)
+5. **Clientes**: Seletor de cliente no formulário, exibe histórico de orçamentos na tela de detalhe do cliente
+
+### Componentes e páginas
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/pages/Quotes.tsx` | Listagem com filtros (status, cliente, data), cards de KPI (total em aberto, taxa de conversão) |
+| `src/pages/QuoteDetail.tsx` | Visualização completa + PDF/impressão do orçamento |
+| `src/components/quotes/QuoteFormDialog.tsx` | Modal de criação/edição com itens dinâmicos (adicionar/remover linhas) |
+| `src/components/quotes/QuoteItemsTable.tsx` | Tabela editável de itens com cálculo automático de totais |
+| `src/components/quotes/QuotePDF.tsx` | Template de impressão/PDF com dados da empresa |
+| `src/hooks/useQuotes.ts` | Hook CRUD + cálculos de totais e conversão |
+
+### Funcionalidades principais
+
+- **Listagem** com filtros por status, cliente, período e busca textual
+- **Formulário** com adição dinâmica de itens (tipo, descrição, qtd, valor unitário, subtotal automático), desconto global (% ou R$), observações e condições
+- **Fluxo de status**: Rascunho → Enviado → Aprovado/Rejeitado, com expiração automática baseada na validade
+- **Conversão em OS**: Um clique para transformar orçamento aprovado em ordem de serviço
+- **PDF/Impressão**: Gerar documento profissional com logo da empresa, dados do cliente e itens detalhados
+- **Envio por link**: Página pública (como a de avaliação) onde o cliente visualiza e aprova/rejeita o orçamento
+- **KPIs**: Total em aberto, taxa de conversão (aprovados/total), ticket médio
+
+### Fluxo resumido
+
+```text
+Cliente/Lead → Criar Orçamento → Enviar ao cliente
+                                       ↓
+                              Cliente aprova/rejeita
+                                       ↓
+                              Se aprovado → Gerar OS + Conta a Receber
+```
 
