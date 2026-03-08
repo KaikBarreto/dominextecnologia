@@ -35,6 +35,7 @@ export interface UserFormData {
   photo?: File | null;
   removePhoto?: boolean;
   employee_id?: string | null;
+  chosen_email?: string | null;
 }
 
 interface UserFormDialogProps {
