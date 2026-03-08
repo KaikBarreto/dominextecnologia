@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
+import { UpdateBanner } from "@/components/pwa/UpdateBanner";
+import { InstallBanner } from "@/components/pwa/InstallBanner";
+import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -163,6 +166,9 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <UpdateBanner />
+      <InstallBanner />
+      <OfflineIndicator />
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
