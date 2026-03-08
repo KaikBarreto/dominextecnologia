@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, MapPin, User, Wrench, Phone, Mail, FileText, ExternalLink, Building2 } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, Mail, FileText, ExternalLink, Building2, Link2, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -42,6 +42,37 @@ function buildGoogleMapsUrl(customer: any): string | null {
 function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void }) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCopyTrackingLink = async () => {
+    if (!order.customer_id) return;
+    let token: string | null = null;
+    const { data: existing } = await supabase
+      .from('customer_portals')
+      .select('token')
+      .eq('customer_id', order.customer_id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    
+    if (existing) {
+      token = (existing as any).token;
+    } else {
+      const { data: created } = await supabase
+        .from('customer_portals')
+        .insert({ customer_id: order.customer_id } as any)
+        .select('token')
+        .single();
+      token = created ? (created as any).token : null;
+    }
+
+    if (token) {
+      const link = `${window.location.origin}/portal/${token}?os=${order.id}`;
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     const fetchEquipment = async () => {
@@ -225,6 +256,15 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
           <Button onClick={onEdit} className="w-full mt-4">
             Editar OS
           </Button>
+        )}
+        {order.customer_id && (
+          <button
+            onClick={handleCopyTrackingLink}
+            className="w-full mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5"
+          >
+            {linkCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+            {linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento do cliente'}
+          </button>
         )}
       </div>
     </ScrollArea>
