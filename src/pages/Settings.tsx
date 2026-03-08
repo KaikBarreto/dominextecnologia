@@ -20,7 +20,6 @@ const tabs = [
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('empresa');
   const { settings, isLoading, updateSettings } = useCompanySettings();
-  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   // Company form
@@ -34,12 +33,6 @@ export default function Settings() {
   const [companyZip, setCompanyZip] = useState('');
   const [uploading, setUploading] = useState(false);
 
-  // Security form
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [showNewPass, setShowNewPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
 
   // Appearance
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
