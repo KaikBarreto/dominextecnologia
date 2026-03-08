@@ -302,10 +302,21 @@ export function ServiceOrderFormDialog({
               )} />
               <FormField control={form.control} name="technician_id" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Técnico</FormLabel>
+                  <FormLabel>Técnico / Equipe</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent>{technicians?.map((t) => <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Técnicos</SelectLabel>
+                        {technicians?.map((t) => <SelectItem key={t.user_id} value={`user:${t.user_id}`}>{t.full_name}</SelectItem>)}
+                      </SelectGroup>
+                      {teams.filter(t => t.is_active).length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Equipes</SelectLabel>
+                          {teams.filter(t => t.is_active).map((t) => <SelectItem key={t.id} value={`team:${t.id}`}>{t.name}</SelectItem>)}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
@@ -423,10 +434,21 @@ export function ServiceOrderFormDialog({
               )} />
               <FormField control={form.control} name="technician_id" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Técnico</FormLabel>
+                  <FormLabel>Técnico / Equipe</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent>{technicians?.map((t) => <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Técnicos</SelectLabel>
+                        {technicians?.map((t) => <SelectItem key={t.user_id} value={`user:${t.user_id}`}>{t.full_name}</SelectItem>)}
+                      </SelectGroup>
+                      {teams.filter(t => t.is_active).length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Equipes</SelectLabel>
+                          {teams.filter(t => t.is_active).map((t) => <SelectItem key={t.id} value={`team:${t.id}`}>{t.name}</SelectItem>)}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
