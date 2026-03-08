@@ -30,7 +30,7 @@ export default function HeroSection() {
               <span>Mais de 3.000 equipes gerenciadas</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight">
               Gestão de equipes de campo que realmente{' '}
               <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
                 funciona.
@@ -45,7 +45,7 @@ export default function HeroSection() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 rounded-full shadow-brand-glow animate-[pulse_3s_ease-in-out_infinite]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 rounded-full shadow-brand-glow animate-[pulse_3s_ease-in-out_infinite] w-full sm:w-auto"
                 asChild
               >
                 <Link to="/cadastro">Começar grátis por 14 dias</Link>
@@ -53,7 +53,7 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 variant="ghost"
-                className="text-white border border-white/20 hover:bg-white/10 hover:text-white rounded-full px-8 py-6"
+                className="text-white border border-white/20 hover:bg-white/10 hover:text-white rounded-full px-8 py-6 w-full sm:w-auto"
                 asChild
               >
                 <a href="#how-it-works">
