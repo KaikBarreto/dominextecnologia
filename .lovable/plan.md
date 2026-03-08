@@ -1,85 +1,138 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Plano: Correções e Melhorias (Foto Funcionário, Saldo, Extrato, Assinatura, Sessões, Cadastro, Admin)
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+### 1. Foto de Funcionário — upload/substituição no card
 
-### 2. Permissions System - Database Changes
+**Arquivo**: `src/components/employees/EmployeeCard.tsx`
+- Adicionar um `<label>` com `<input type="file" hidden>` envolvendo o Avatar
+- Overlay com ícone Camera ao hover (igual ao form)
+- Ao selecionar arquivo: upload para `employee-photos` bucket, depois chamar `onUpdatePhoto(url)` callback
 
-Create 2 new tables via migration:
+**Arquivo**: `src/pages/Employees.tsx`
+- Adicionar prop `onUpdatePhoto` no EmployeeCard que chama `updateEmployee.mutate({ id, photo_url })`
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+---
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+### 2. Saldo do card não atualiza após movimentação
 
-The permissions will be a flat list of string keys covering:
+**Problema**: `balanceMap` em `Employees.tsx` (linha 47-53) calcula saldo com `[]` (movements vazio) para todos os funcionários — ignora movimentações reais.
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+**Solução**: Buscar todas as movimentações de todos os funcionários de uma vez. Modificar `useEmployeeMovements` para aceitar chamada sem filtro (buscar tudo), ou criar query separada.
 
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
+**Arquivo**: `src/pages/Employees.tsx`
+- Criar query `useQuery(['all-employee-movements'])` que busca todos os `employee_movements`
+- Agrupar por `employee_id` e calcular `calculateEmployeeBalance` para cada
+- Invalidar essa query junto com `employee-movements` quando uma movimentação é criada/deletada
 
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
+**Arquivo**: `src/hooks/useEmployeeMovements.ts`
+- No `onSuccess` de `addMovement` e `deleteMovement`, também invalidar `['all-employee-movements']`
 
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
+---
 
-### 4. New Components
+### 3. Modal de Extrato — largura e paginação
 
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
+**Arquivo**: `src/components/employees/EmployeeExtract.tsx`
+- Passar `className="sm:max-w-[900px]"` ao `ResponsiveModal` para largura adequada
+- Importar e usar `useDataPagination` + `DataTablePagination` para paginar movimentações (25 por padrão)
+- Remover `max-h-[400px]` do container da tabela (paginação controla)
 
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
+---
 
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
+### 4. "Nenhuma empresa vinculada" na Assinatura
 
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
+**Problema**: O usuário `kaikchaides123@gmail.com` não tem `company_id` no profile (não se registrou via self-register).
 
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
+**Arquivo**: `src/pages/Billing.tsx`
+- Melhorar fallback: se não há empresa, mostrar mensagem com CTA para "Vincular empresa" ou explicar que o admin precisa vincular
+- Adicionar verificação alternativa: se `company_id` é null, tentar fallback buscando empresa pelo email
 
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
+**Ação SQL (insert tool)**: Vincular o perfil do usuário à empresa correta (update `profiles` set `company_id`). Preciso verificar qual empresa pertence.
 
-### Technical Details
+---
 
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
+### 5. Sessões Ativas (estilo EcoSistema)
+
+**Migração SQL**: Criar tabela `active_sessions`:
+```sql
+CREATE TABLE public.active_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  session_token text NOT NULL,
+  device_info text,
+  last_activity timestamptz DEFAULT now(),
+  created_at timestamptz DEFAULT now()
+);
+-- RLS + realtime
 ```
 
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
+**Criar**: `src/components/SessionConfirmDialog.tsx`
+- Dialog/Drawer responsivo mostrando sessões ativas com ícone Desktop/Mobile
+- Checkbox "Desconectar outros acessos ao entrar"
+- Botões Cancelar / Continuar
 
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+**Criar**: `src/hooks/useForcedLogout.ts`
+- Escuta realtime em `active_sessions` DELETE events
+- Se a sessão atual é deletada, exibe toast e faz signOut
+- Atualiza `last_activity` a cada 2 minutos
+
+**Modificar**: `src/pages/Auth.tsx`
+- Após login bem-sucedido, registrar sessão (insert em `active_sessions`)
+- Verificar sessões ativas existentes do mesmo `user_id`
+- Se existirem sessões recentes (<60min), mostrar `SessionConfirmDialog`
+- Se checkbox marcado, deletar outras sessões ao confirmar
+- Gerar `session_token` único e salvar em `localStorage`
+- Funções auxiliares `generateSessionToken()` e `getDeviceInfo()`
+
+**Modificar**: `src/contexts/AuthContext.tsx`
+- No `signOut`, deletar sessão ativa atual
+
+---
+
+### 6. Remover CNPJ do cadastro (exceto link de venda)
+
+**Arquivo**: `src/pages/Registration.tsx`
+- Remover o campo CNPJ do step 1 (linhas 289-302)
+- O campo será re-adicionado futuramente com flag `?venda=true`
+
+---
+
+### 7. Footer escuro na tela de cadastro
+
+**Arquivo**: `src/pages/Registration.tsx` (linha 431)
+- Alterar `<SystemFooter />` para `<SystemFooter variant="dark" />` para que o texto fique visível sobre fundo escuro
+
+---
+
+### 8. Criar usuário admin super_admin
+
+**Ação**: Usar edge function `create-user` ou SQL insert tool para:
+1. Criar auth user com email `dominextecnologia@gmail.com` e senha `Dominex2026.+-`
+2. Criar profile com `full_name: 'Admin Dominex'`
+3. Inserir role `super_admin` em `user_roles`
+
+Isso será feito via edge function call ou insert tool após a implementação.
+
+---
+
+### Arquivos a Criar
+- `src/components/SessionConfirmDialog.tsx`
+- `src/hooks/useForcedLogout.ts`
+
+### Arquivos a Modificar
+- `src/components/employees/EmployeeCard.tsx` (upload foto)
+- `src/pages/Employees.tsx` (saldo real + prop onUpdatePhoto)
+- `src/components/employees/EmployeeExtract.tsx` (largura + paginação)
+- `src/hooks/useEmployeeMovements.ts` (invalidar all-employee-movements)
+- `src/pages/Billing.tsx` (fallback melhor)
+- `src/pages/Auth.tsx` (sessões ativas)
+- `src/contexts/AuthContext.tsx` (cleanup sessão no signOut)
+- `src/pages/Registration.tsx` (remover CNPJ, footer dark)
+
+### Migrações SQL
+1. Tabela `active_sessions` com RLS e realtime
+
+### Data Operations (insert tool)
+1. Vincular profile do usuário à empresa (se possível identificar)
+2. Criar admin user `dominextecnologia@gmail.com` com role `super_admin`
 
