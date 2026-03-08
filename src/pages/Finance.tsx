@@ -53,7 +53,6 @@ export default function Finance() {
     return s;
   }, [filteredTransactions]);
 
-  const filteredTransactions = filterByDate(transactions, 'transaction_date');
 
   const handleSubmit = async (data: any) => {
     if (editingTransaction) {
