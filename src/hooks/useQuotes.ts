@@ -30,6 +30,7 @@ export interface QuoteInput {
   notes?: string;
   terms?: string;
   assigned_to?: string;
+  proposal_template_id?: string;
   items: QuoteItem[];
 }
 
@@ -50,12 +51,14 @@ export interface Quote {
   notes: string | null;
   terms: string | null;
   assigned_to: string | null;
+  proposal_template_id: string | null;
   token: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   customers?: { name: string; email: string | null; phone: string | null };
   quote_items?: QuoteItem[];
+  proposal_templates?: { slug: string; name: string } | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -86,7 +89,7 @@ export function useQuotes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, customers(name, email, phone), quote_items(*)')
+        .select('*, customers(name, email, phone), quote_items(*), proposal_templates(slug, name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
