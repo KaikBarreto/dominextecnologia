@@ -141,7 +141,7 @@ export default function Tutorials() {
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 overflow-hidden">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Tutoriais</h1>
@@ -164,7 +164,7 @@ export default function Tutorials() {
       </div>
 
       {/* Category pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {categories.map((cat) => (
           <button
             key={cat}
@@ -211,16 +211,16 @@ export default function Tutorials() {
       )}
 
       {/* Modules grid */}
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((mod) => (
           <Card key={mod.id} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardContent className="p-0">
               {/* Module header */}
-              <div className="bg-muted/50 p-5 border-b">
+              <div className="bg-muted/50 p-4 sm:p-5 border-b">
                 <div className="flex items-start gap-3">
-                  <span className="text-3xl">{mod.icon}</span>
+                  <span className="text-2xl sm:text-3xl">{mod.icon}</span>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-base leading-tight">{mod.title}</h3>
+                    <h3 className="font-bold text-sm sm:text-base leading-tight">{mod.title}</h3>
                     <p className="text-xs text-muted-foreground mt-1">{mod.description}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="secondary" className="text-[10px]">

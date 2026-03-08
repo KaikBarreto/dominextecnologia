@@ -79,19 +79,19 @@ export function TimeReport() {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
         <Select value={month} onValueChange={setMonth}>
-          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="sm:w-[150px]"><SelectValue /></SelectTrigger>
           <SelectContent>{MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={year} onValueChange={setYear}>
-          <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="sm:w-[100px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {[2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={employeeId} onValueChange={setEmployeeId}>
-          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Funcionário" /></SelectTrigger>
+          <SelectTrigger className="col-span-2 sm:w-[200px]"><SelectValue placeholder="Funcionário" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
