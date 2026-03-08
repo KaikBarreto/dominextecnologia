@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          address: string | null
+          billing_cycle: string | null
+          cnpj: string | null
+          contact_name: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          max_users: number | null
+          name: string
+          notes: string | null
+          origin: string | null
+          phone: string | null
+          subscription_expires_at: string | null
+          subscription_plan: string | null
+          subscription_status: string
+          subscription_value: number | null
+          trial_days: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          billing_cycle?: string | null
+          cnpj?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          max_users?: number | null
+          name: string
+          notes?: string | null
+          origin?: string | null
+          phone?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string
+          subscription_value?: number | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          billing_cycle?: string | null
+          cnpj?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          max_users?: number | null
+          name?: string
+          notes?: string | null
+          origin?: string | null
+          phone?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string
+          subscription_value?: number | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      company_origins: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       company_settings: {
         Row: {
           address: string | null
@@ -1409,6 +1499,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          company_id: string | null
           created_at: string
           full_name: string
           id: string
@@ -1418,6 +1509,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string
           full_name: string
           id?: string
@@ -1427,6 +1519,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string
           full_name?: string
           id?: string
@@ -1434,7 +1527,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_order_equipment: {
         Row: {
@@ -1662,6 +1763,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          max_users: number | null
+          name: string
+          price: number
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          max_users?: number | null
+          name: string
+          price?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          max_users?: number | null
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string | null
@@ -1789,6 +1926,7 @@ export type Database = {
     }
     Functions: {
       can_bootstrap_admin: { Args: never; Returns: boolean }
+      get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }
       has_role: {
         Args: {
