@@ -27,6 +27,21 @@ export function useContractDetail(contractId: string | undefined) {
     },
   });
 
+  const { data: linkedTransactions = [], isLoading: isLoadingTransactions } = useQuery({
+    queryKey: ['contract-transactions', contractId],
+    enabled: !!contractId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .select('*')
+        .eq('contract_id', contractId!)
+        .order('due_date', { ascending: true });
+
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
   const updateOccurrenceStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
@@ -55,6 +70,8 @@ export function useContractDetail(contractId: string | undefined) {
     contract,
     isLoading,
     updateOccurrenceStatus,
+    linkedTransactions,
+    isLoadingTransactions,
     stats: {
       totalOccurrences,
       completedOccurrences,
