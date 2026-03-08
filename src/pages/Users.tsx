@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
+import { useEmployees } from '@/hooks/useEmployees';
 import { PermissionPresetDialog } from '@/components/users/PermissionPresetDialog';
 
 export default function Users() {
@@ -20,6 +21,7 @@ export default function Users() {
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { employees } = useEmployees();
   const [searchQuery, setSearchQuery] = useState('');
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
@@ -79,6 +81,11 @@ export default function Users() {
         }
       }
 
+      // Link to employee if selected
+      if (data.employee_id && result?.user?.id) {
+        await supabase.from('employees').update({ user_id: result.user.id }).eq('id', data.employee_id);
+      }
+
       toast({ title: 'Usuário criado com sucesso!' });
       window.location.reload();
     } catch (e: any) {
@@ -124,6 +131,14 @@ export default function Users() {
         preset_id: data.preset_id,
       });
 
+      // Update employee link
+      // First unlink any employee that was previously linked to this user
+      await supabase.from('employees').update({ user_id: null }).eq('user_id', editingUser.user_id);
+      // Then link the selected employee
+      if (data.employee_id) {
+        await supabase.from('employees').update({ user_id: editingUser.user_id }).eq('id', data.employee_id);
+      }
+
       toast({ title: 'Usuário atualizado!' });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -142,6 +157,7 @@ export default function Users() {
 
   const openEditUser = (userProfile: UserWithRole) => {
     const perm = getUserPermission(userProfile.user_id);
+    const linkedEmployee = employees.find(e => e.user_id === userProfile.user_id);
     setEditingUser({
       user_id: userProfile.user_id,
       full_name: userProfile.full_name,
@@ -150,6 +166,7 @@ export default function Users() {
       permissions: perm?.permissions || [],
       preset_id: perm?.preset_id || null,
       avatar_url: userProfile.avatar_url,
+      employee_id: linkedEmployee?.id || null,
     });
     setUserFormOpen(true);
   };

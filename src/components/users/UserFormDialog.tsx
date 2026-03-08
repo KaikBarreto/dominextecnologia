@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { phoneMask } from '@/utils/masks';
-import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2 } from 'lucide-react';
+import { Loader2, Monitor, Settings2, Camera, X, Wrench, Building2, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { useEmployees } from '@/hooks/useEmployees';
 import {
   SCREEN_PERMISSIONS,
   FUNCTION_PERMISSIONS,
@@ -32,6 +33,7 @@ export interface UserFormData {
   preset_id: string | null;
   photo?: File | null;
   removePhoto?: boolean;
+  employee_id?: string | null;
 }
 
 interface UserFormDialogProps {
@@ -47,6 +49,7 @@ interface UserFormDialogProps {
     permissions: string[];
     preset_id?: string | null;
     avatar_url?: string | null;
+    employee_id?: string | null;
   } | null;
 }
 
@@ -55,6 +58,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   const [loading, setLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { employees } = useEmployees();
   const [form, setForm] = useState<UserFormData>({
     full_name: '',
     email: '',
@@ -65,6 +69,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
     preset_id: null,
     photo: null,
     removePhoto: false,
+    employee_id: null,
   });
 
   useEffect(() => {
@@ -79,10 +84,11 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
         preset_id: editingUser.preset_id || null,
         photo: null,
         removePhoto: false,
+        employee_id: editingUser.employee_id || null,
       });
       setPhotoPreview(editingUser.avatar_url || null);
     } else {
-      setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null, photo: null, removePhoto: false });
+      setForm({ full_name: '', email: '', password: '', phone: '', role: '', permissions: [], preset_id: null, photo: null, removePhoto: false, employee_id: null });
       setPhotoPreview(null);
     }
   }, [editingUser, open]);
@@ -217,6 +223,27 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
             <div>
               <Label className="text-[13px] font-normal uppercase tracking-wider">Telefone</Label>
               <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: phoneMask(e.target.value) }))} placeholder="(00) 00000-0000" />
+            </div>
+
+            {/* Link to employee */}
+            <div>
+              <Label className="text-[13px] font-normal uppercase tracking-wider flex items-center gap-1.5">
+                <Link2 className="h-3.5 w-3.5" /> Vincular a Funcionário
+              </Label>
+              <Select value={form.employee_id || '_none'} onValueChange={(v) => setForm(f => ({ ...f, employee_id: v === '_none' ? null : v }))}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Nenhum funcionário vinculado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Nenhum</SelectItem>
+                  {employees.map(emp => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.name} {emp.position ? `(${emp.position})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Vincula este usuário a um funcionário cadastrado</p>
             </div>
           </div>
 

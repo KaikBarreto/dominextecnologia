@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Camera } from 'lucide-react';
+import { Loader2, Camera, Link2, Unlink } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Employee } from '@/hooks/useEmployees';
+import { useUsers } from '@/hooks/useUsers';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 
@@ -22,6 +24,7 @@ interface EmployeeFormDialogProps {
 
 export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending }: EmployeeFormDialogProps) {
   const { toast } = useToast();
+  const { users } = useUsers();
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
@@ -35,6 +38,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [uploading, setUploading] = useState(false);
   const [createAccess, setCreateAccess] = useState(false);
   const [password, setPassword] = useState('');
+  const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -55,6 +59,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setPhotoUrl(employee?.photo_url || '');
       setCreateAccess(false);
       setPassword(generatePassword());
+      setLinkedUserId(employee?.user_id || null);
     }
   }, [open, employee]);
 
@@ -95,6 +100,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       address: address || null,
       pix_key: pixKey || null,
       photo_url: photoUrl || null,
+      user_id: linkedUserId,
       _createAccess: createAccess,
       _password: password,
     } as any);
@@ -156,6 +162,28 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <Label>Chave PIX</Label>
             <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, email, telefone ou chave aleatória" />
           </div>
+        </div>
+
+        {/* Link to existing user */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm font-medium">Vincular a um usuário do sistema</Label>
+          </div>
+          <Select value={linkedUserId || '_none'} onValueChange={(v) => setLinkedUserId(v === '_none' ? null : v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Nenhum usuário vinculado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">Nenhum</SelectItem>
+              {users.map(u => (
+                <SelectItem key={u.user_id} value={u.user_id}>
+                  {u.full_name} {u.phone ? `(${u.phone})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Vincula este funcionário a um usuário existente no sistema</p>
         </div>
 
         {/* Create system access toggle - only on creation */}
