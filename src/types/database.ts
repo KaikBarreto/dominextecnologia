@@ -2,7 +2,7 @@
 
 export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro' | 'super_admin';
 
-export type OsStatus = 'pendente' | 'em_andamento' | 'concluida' | 'cancelada';
+export type OsStatus = 'pendente' | 'a_caminho' | 'em_andamento' | 'concluida' | 'cancelada';
 
 export type OsType = 'manutencao_preventiva' | 'manutencao_corretiva' | 'instalacao' | 'visita_tecnica';
 
@@ -221,6 +221,7 @@ export interface PmocContract {
 // Status labels em português
 export const osStatusLabels: Record<OsStatus, string> = {
   pendente: 'Pendente',
+  a_caminho: 'A Caminho',
   em_andamento: 'Em Andamento',
   concluida: 'Concluída',
   cancelada: 'Cancelada',
