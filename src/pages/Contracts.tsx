@@ -141,7 +141,7 @@ export default function Contracts() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map(contract => {
+                  {pagination.paginatedItems.map(contract => {
                     const nextOcc = getNextOccurrence(contract);
                     const statusCfg = STATUS_CONFIG[contract.status] || STATUS_CONFIG.active;
                     const itemCount = contract.contract_items?.length || 0;
@@ -205,6 +205,7 @@ export default function Contracts() {
                 </TableBody>
               </Table>
             </div>
+            <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
           )}
         </CardContent>
       </Card>
