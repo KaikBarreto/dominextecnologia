@@ -342,7 +342,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           )}
 
           {/* Client & Equipment */}
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 max-w-full overflow-hidden">
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
@@ -493,18 +493,20 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           )}
 
           {/* Questionnaire Responses - grouped by equipment */}
-          {responsesByTemplate.map((group, gi) => (
-            group.responses.length > 0 && (
+          {responsesByTemplate.map((group, gi) => {
+            const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
+            if (nonEmptyResponses.length === 0) return null;
+            return (
               <div key={gi} className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
                 </h3>
                 <div className="space-y-2">
-                  {group.responses.map((response, idx) => renderResponseItem(response, idx))}
+                  {nonEmptyResponses.map((response, idx) => renderResponseItem(response, idx))}
                 </div>
               </div>
-            )
-          ))}
+            );
+          })}
 
           {/* Service Details */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
