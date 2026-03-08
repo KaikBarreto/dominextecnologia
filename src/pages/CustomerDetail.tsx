@@ -160,22 +160,22 @@ export default function CustomerDetail() {
             </div>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0 flex-wrap pl-11 sm:pl-0">
+        <div className="flex gap-2 shrink-0 flex-wrap pl-11 sm:pl-0 justify-center sm:justify-end w-full sm:w-auto">
           {portalLink ? (
             <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(portalLink); toast({ title: 'Link copiado!' }); }}>
-              <Copy className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Portal</span>
+              <Copy className="h-4 w-4 mr-1" /> Portal
             </Button>
           ) : (
             <Button variant="outline" size="sm" onClick={handleGeneratePortal} disabled={generatingPortal}>
-              {generatingPortal ? <Loader2 className="h-4 w-4 sm:mr-1 animate-spin" /> : <Link2 className="h-4 w-4 sm:mr-1" />}
-              <span className="hidden sm:inline">Gerar Portal</span>
+              {generatingPortal ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
+              Gerar Portal
             </Button>
           )}
           <Button variant="edit-ghost" size="sm" onClick={() => setEditCustomerOpen(true)}>
-            <Edit className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Editar</span>
+            <Edit className="h-4 w-4 mr-1" /> Editar
           </Button>
           <Button variant="destructive-ghost" size="sm" onClick={() => setDeleteConfirmOpen(true)}>
-            <Trash2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Excluir</span>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
           </Button>
         </div>
       </div>

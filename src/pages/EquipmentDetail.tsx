@@ -173,12 +173,12 @@ export default function EquipmentDetail() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0 pl-11 sm:pl-0">
+        <div className="flex gap-2 shrink-0 pl-11 sm:pl-0 justify-center sm:justify-end w-full sm:w-auto">
           <Button variant="edit-ghost" size="sm" onClick={() => setEditEquipOpen(true)}>
-            <Edit className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Editar</span>
+            <Edit className="h-4 w-4 mr-1" /> Editar
           </Button>
           <Button variant="destructive-ghost" size="sm" onClick={() => setDeleteEquipOpen(true)}>
-            <Trash2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Excluir</span>
+            <Trash2 className="h-4 w-4 mr-1" /> Excluir
           </Button>
         </div>
       </div>
@@ -392,21 +392,21 @@ export default function EquipmentDetail() {
 
             const renderListItem = (att: typeof attachments[0], isImage: boolean) => (
               <Card key={att.id}>
-                <CardContent className="flex items-center gap-3 p-3">
+                <CardContent className="flex items-center gap-3 p-3 min-w-0">
                   {isImage ? (
                     <img
                       src={att.file_url}
                       alt={att.file_name}
-                      className="h-20 w-20 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      className="h-14 w-14 sm:h-20 sm:w-20 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => setPreviewImage(att.file_url)}
                     />
                   ) : (
                     <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
-                  <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm hover:underline truncate">
+                  <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm hover:underline truncate">
                     {att.file_name}
                   </a>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => setDeleteAttachmentId(att.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </CardContent>

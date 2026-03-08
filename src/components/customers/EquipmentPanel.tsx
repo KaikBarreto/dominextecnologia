@@ -117,12 +117,12 @@ export function EquipmentPanel() {
             size="sm"
             className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
           >
-            <Settings className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Configurar Campos</span>
+            <Settings className="h-4 w-4 mr-2" />
+            Configurar Campos
           </Button>
           <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingEquipment(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Novo Equipamento</span>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Equipamento
           </Button>
         </div>
       </div>
