@@ -63,8 +63,11 @@ export default function ContractDetail() {
   const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
 
-  const occurrences = useMemo(() => contract?.contract_occurrences || [], [contract]);
-  const occPagination = useDataPagination(occurrences);
+  const sortedOccurrences = useMemo(() => 
+    (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
+    [contract]
+  );
+  const occPagination = useDataPagination(sortedOccurrences);
   const recPagination = useDataPagination(linkedTransactions || []);
 
   const handleCreateReceivable = async () => {
@@ -132,7 +135,7 @@ export default function ContractDetail() {
   }
 
   const statusCfg = STATUS_LABELS[contract.status] || STATUS_LABELS.active;
-  const occurrences = (contract.contract_occurrences || []).sort((a, b) => a.occurrence_number - b.occurrence_number);
+  const occurrences = sortedOccurrences;
   const items = contract.contract_items || [];
 
   const totalReceivable = (linkedTransactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
