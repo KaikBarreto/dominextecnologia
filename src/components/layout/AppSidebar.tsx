@@ -319,26 +319,6 @@ export function AppSidebar() {
         </div>
       </SidebarContent>
 
-      {/* ── Toggle button on sidebar edge ── */}
-      <button
-        onClick={toggleSidebar}
-        className={cn(
-          'absolute -right-3 top-[72px] z-50',
-          'w-6 h-6 rounded-full',
-          'bg-background border border-border',
-          'flex items-center justify-center',
-          'text-muted-foreground hover:text-foreground',
-          'transition-all duration-200 hover:scale-110',
-          'shadow-md',
-          'hidden md:flex'
-        )}
-        title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-      >
-        {collapsed
-          ? <ChevronRight className="h-3 w-3" />
-          : <ChevronLeft className="h-3 w-3" />
-        }
-      </button>
       </div>
     </Sidebar>
   );
