@@ -128,13 +128,13 @@ export function EquipmentPanel() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="sm:w-[180px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas as categorias</SelectItem>
+            <SelectItem value="all">Todas categorias</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={cat.id}>
                 <div className="flex items-center gap-2">
@@ -146,11 +146,11 @@ export function EquipmentPanel() {
           </SelectContent>
         </Select>
         <Select value={customerFilter} onValueChange={setCustomerFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="sm:w-[200px]">
             <SelectValue placeholder="Cliente" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os clientes</SelectItem>
+            <SelectItem value="all">Todos clientes</SelectItem>
             {customersWithEquipment.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
