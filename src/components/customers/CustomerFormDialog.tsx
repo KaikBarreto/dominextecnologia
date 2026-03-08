@@ -18,6 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
+import { StateCitySelector } from '@/components/StateCitySelector';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import type { Customer, CustomerType } from '@/types/database';
 
@@ -260,6 +262,26 @@ export function CustomerFormDialog({
 
           {step === 1 && (
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Address autocomplete */}
+              <div className="sm:col-span-2">
+                <FormLabel>Buscar endereço</FormLabel>
+                <AddressAutocomplete
+                  value={form.watch('address') || ''}
+                  onChange={(v) => form.setValue('address', v)}
+                  onAddressSelected={(addr) => {
+                    if (addr.logradouro) form.setValue('address', addr.logradouro);
+                    if (addr.numero) form.setValue('address_number', addr.numero);
+                    if (addr.bairro) form.setValue('neighborhood', addr.bairro);
+                    if (addr.cidade) form.setValue('city', addr.cidade);
+                    if (addr.estado) form.setValue('state', addr.estado);
+                    if (addr.cep) {
+                      const c = addr.cep.replace(/\D/g, '');
+                      form.setValue('zip_code', c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+                    }
+                  }}
+                  placeholder="Digite o endereço para buscar..."
+                />
+              </div>
               <FormField control={form.control} name="zip_code" render={({ field }) => (
                 <FormItem>
                   <FormLabel>CEP</FormLabel>
@@ -306,20 +328,15 @@ export function CustomerFormDialog({
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="city" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cidade</FormLabel>
-                  <FormControl><Input placeholder="Cidade" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="state" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>UF</FormLabel>
-                  <FormControl><Input placeholder="UF" maxLength={2} {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <div className="sm:col-span-2">
+                <FormLabel>UF / Cidade</FormLabel>
+                <StateCitySelector
+                  selectedState={form.watch('state') || ''}
+                  selectedCity={form.watch('city') || ''}
+                  onStateChange={(v) => form.setValue('state', v)}
+                  onCityChange={(v) => form.setValue('city', v)}
+                />
+              </div>
               <FormField control={form.control} name="notes" render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Observações</FormLabel>
