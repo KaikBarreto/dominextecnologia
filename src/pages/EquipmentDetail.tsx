@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List, Image } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -317,67 +317,99 @@ export default function EquipmentDetail() {
               <Paperclip className="mb-2 h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Nenhum anexo</p>
             </div>
-          ) : attachViewMode === 'gallery' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {attachments.map((att) => {
-                const isImage = /\.(webp|jpe?g|png|heic)$/i.test(att.file_name);
-                return (
-                  <div key={att.id} className="relative group rounded-lg border overflow-hidden bg-muted/30">
-                    {isImage ? (
-                      <img
-                        src={att.file_url}
-                        alt={att.file_name}
-                        className="w-full aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setPreviewImage(att.file_url)}
-                      />
+          ) : (() => {
+            const imageAttachments = attachments.filter(att => /\.(webp|jpe?g|png|gif|heic|svg)$/i.test(att.file_name));
+            const fileAttachments = attachments.filter(att => !/\.(webp|jpe?g|png|gif|heic|svg)$/i.test(att.file_name));
+
+            const renderGalleryItem = (att: typeof attachments[0], isImage: boolean) => (
+              <div key={att.id} className="relative group rounded-lg border overflow-hidden bg-muted/30">
+                {isImage ? (
+                  <img
+                    src={att.file_url}
+                    alt={att.file_name}
+                    className="w-full aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setPreviewImage(att.file_url)}
+                  />
+                ) : (
+                  <div className="w-full aspect-square flex flex-col items-center justify-center gap-2 p-3">
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground text-center truncate w-full px-2">{att.file_name}</p>
+                  </div>
+                )}
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-background/80 p-1 hover:bg-background shadow-sm">
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                  <button onClick={() => setDeleteAttachmentId(att.id)} className="rounded-full bg-background/80 p-1 hover:bg-destructive hover:text-white shadow-sm">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground truncate px-2 py-1.5 bg-background/80 backdrop-blur-sm">{att.file_name}</p>
+              </div>
+            );
+
+            const renderListItem = (att: typeof attachments[0], isImage: boolean) => (
+              <Card key={att.id}>
+                <CardContent className="flex items-center gap-3 p-3">
+                  {isImage ? (
+                    <img
+                      src={att.file_url}
+                      alt={att.file_name}
+                      className="h-20 w-20 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setPreviewImage(att.file_url)}
+                    />
+                  ) : (
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm hover:underline truncate">
+                    {att.file_name}
+                  </a>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+
+            return (
+              <div className="space-y-6">
+                {imageAttachments.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
+                      <Image className="h-4 w-4" />
+                      <span>Imagens ({imageAttachments.length})</span>
+                    </div>
+                    {attachViewMode === 'gallery' ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {imageAttachments.map(att => renderGalleryItem(att, true))}
+                      </div>
                     ) : (
-                      <div className="w-full aspect-square flex flex-col items-center justify-center gap-2 p-3">
-                        <FileText className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground text-center truncate w-full px-2">{att.file_name}</p>
+                      <div className="space-y-2">
+                        {imageAttachments.map(att => renderListItem(att, true))}
                       </div>
                     )}
-                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                      <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-background/80 p-1 hover:bg-background shadow-sm">
-                        <Download className="h-3.5 w-3.5" />
-                      </a>
-                      <button onClick={() => setDeleteAttachmentId(att.id)} className="rounded-full bg-background/80 p-1 hover:bg-destructive hover:text-white shadow-sm">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate px-2 py-1.5 bg-background/80 backdrop-blur-sm">{att.file_name}</p>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {attachments.map((att) => {
-                const isImage = /\.(webp|jpe?g|png|heic)$/i.test(att.file_name);
-                return (
-                  <Card key={att.id}>
-                    <CardContent className="flex items-center gap-3 p-3">
-                      {isImage ? (
-                         <img
-                          src={att.file_url}
-                          alt={att.file_name}
-                          className="h-20 w-20 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => setPreviewImage(att.file_url)}
-                        />
-                      ) : (
-                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      )}
-                      <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm hover:underline truncate">
-                        {att.file_name}
-                      </a>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+                )}
+                {fileAttachments.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
+                      <FileText className="h-4 w-4" />
+                      <span>Documentos ({fileAttachments.length})</span>
+                    </div>
+                    {attachViewMode === 'gallery' ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {fileAttachments.map(att => renderGalleryItem(att, false))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {fileAttachments.map(att => renderListItem(att, false))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
