@@ -80,13 +80,15 @@ export default function Settings() {
   const handleSaveCompany = () => {
     updateSettings.mutate({
       name: companyName,
-      document: companyDoc || undefined,
-      phone: companyPhone || undefined,
-      email: companyEmail || undefined,
-      address: companyAddress || undefined,
-      city: companyCity || undefined,
-      state: companyState || undefined,
-      zip_code: companyZip || undefined,
+      document: companyDoc || null,
+      phone: companyPhone || null,
+      email: companyEmail || null,
+      address: companyAddress || null,
+      neighborhood: companyNeighborhood || null,
+      complement: companyComplement || null,
+      city: companyCity || null,
+      state: companyState || null,
+      zip_code: companyZip || null,
       white_label_enabled: wlEnabled,
       white_label_primary_color: wlColor || null,
     } as any);
