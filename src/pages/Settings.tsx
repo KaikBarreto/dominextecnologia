@@ -77,6 +77,7 @@ export default function Settings() {
       setCompanyPhone(settings.phone || '');
       setCompanyEmail(settings.email || '');
       setCompanyAddress(settings.address || '');
+      setCompanyNumber(settings.address_number || '');
       setCompanyCity(settings.city || '');
       setCompanyState(settings.state || '');
       setCompanyZip(settings.zip_code || '');
@@ -94,6 +95,7 @@ export default function Settings() {
       phone: companyPhone || null,
       email: companyEmail || null,
       address: companyAddress || null,
+      address_number: companyNumber || null,
       neighborhood: companyNeighborhood || null,
       complement: companyComplement || null,
       city: companyCity || null,
