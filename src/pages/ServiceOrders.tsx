@@ -16,6 +16,7 @@ import {
   LayoutList,
   LayoutGrid,
   Star,
+  BarChart3,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -132,6 +133,7 @@ export default function ServiceOrders() {
 
   const sidebarTabs: SettingsTab[] = [
     { value: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
+    { value: 'report', label: 'Relatório', icon: BarChart3 },
     { value: 'nps', label: 'NPS e Satisfação', icon: Star },
   ];
 
@@ -144,6 +146,7 @@ export default function ServiceOrders() {
 
       <SettingsSidebarLayout tabs={sidebarTabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'nps' && <NpsDashboard />}
+        {activeTab === 'report' && <OsReportDashboard />}
         {activeTab === 'orders' && (
           <div className="space-y-6">
 
