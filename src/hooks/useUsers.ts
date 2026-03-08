@@ -94,7 +94,23 @@ export function useUsers() {
     },
   });
 
-  const canManageRoles = currentUserRole === 'admin' || currentUserRole === 'gestor' || !hasAdmin;
+  // Check user permissions for fn:manage_users or all permissions
+  const { data: userPerms } = useQuery({
+    queryKey: ['currentUserPerms', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('user_permissions')
+        .select('permissions')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return (data?.permissions as string[]) || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const hasManageUsersPermission = userPerms?.includes('fn:manage_users') || (userPerms?.length || 0) >= 27;
+  const canManageRoles = currentUserRole === 'admin' || currentUserRole === 'gestor' || hasManageUsersPermission || !hasAdmin;
 
   const updateUserRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {

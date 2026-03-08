@@ -16,6 +16,7 @@ import {
   Eye,
   Loader2,
   Navigation,
+  Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,6 +61,7 @@ export default function TechnicianOS() {
   const [company, setCompany] = useState<any>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
@@ -88,8 +90,18 @@ export default function TechnicianOS() {
       fetchPhotos();
       fetchCompany();
       fetchEquipmentItems();
+      fetchFormResponses();
     }
   }, [id]);
+
+  const fetchFormResponses = async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from('form_responses')
+      .select('id, question_id, response_value, response_photo_url, question:form_questions(id, question, question_type, options, description, position)')
+      .eq('service_order_id', id);
+    if (data) setPublicFormResponses(data as any[]);
+  };
 
   // Realtime subscription for public (non-authenticated) viewers
   useEffect(() => {
@@ -105,7 +117,7 @@ export default function TechnicianOS() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'form_responses', filter: `service_order_id=eq.${id}` },
-        () => { /* responses updated - will be shown in report */ }
+        () => { fetchFormResponses(); }
       )
       .on(
         'postgres_changes',
@@ -482,6 +494,57 @@ export default function TechnicianOS() {
           {/* Live tracking map for public viewers when a_caminho */}
           {serviceOrder.status === 'a_caminho' && (
             <PublicTrackingMap serviceOrderId={serviceOrder.id} />
+          )}
+
+          {/* Real-time questionnaire responses */}
+          {publicFormResponses.length > 0 && (
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ClipboardCheck className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Questionário</span>
+                </div>
+                <div className="space-y-3">
+                  {publicFormResponses
+                    .filter(r => r.response_value || r.response_photo_url)
+                    .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
+                    .map(r => (
+                      <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                        <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                        {r.response_value && (
+                          <p className="text-sm mt-0.5">
+                            {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
+                              r.response_value.split('|||').map((v: string, i: number) => (
+                                <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
+                              ))
+                            ) : r.response_value}
+                          </p>
+                        )}
+                        {r.response_photo_url && (
+                          <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Photos */}
+          {photos.length > 0 && (
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Camera className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fotos</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {photos.map(photo => (
+                    <img key={photo.id} src={photo.photo_url} alt={photo.description || ''} className="rounded-lg object-cover aspect-square w-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
