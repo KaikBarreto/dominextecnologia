@@ -40,12 +40,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [createAccess, setCreateAccess] = useState(false);
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
-  const [emailChoice, setEmailChoice] = useState<'employee' | 'user'>('employee');
-
-  // Detect email conflict when linking
-  const linkedUser = useMemo(() => users.find(u => u.user_id === linkedUserId), [users, linkedUserId]);
-  const linkedUserEmail = linkedUser?.email || null;
-  const hasEmailConflict = !!(linkedUserId && email && linkedUserEmail && email.toLowerCase() !== linkedUserEmail.toLowerCase());
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
