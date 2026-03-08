@@ -203,8 +203,8 @@ export default function CRM() {
                   <p className="text-3xl font-bold">{stats.total}</p>
                 )}
               </div>
-              <div className="rounded-full bg-primary/10 p-3">
-                <Target className="h-6 w-6 text-primary" />
+              <div className="rounded-full bg-primary p-3">
+                <Target className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -221,8 +221,8 @@ export default function CRM() {
                   <p className="text-2xl font-bold text-success">{formatCurrency(stats.totalValue)}</p>
                 )}
               </div>
-              <div className="rounded-full bg-success/10 p-3">
-                <DollarSign className="h-6 w-6 text-success" />
+              <div className="rounded-full bg-success p-3">
+                <DollarSign className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -243,8 +243,8 @@ export default function CRM() {
                     </p>
                   )}
                 </div>
-                <div className="rounded-full bg-success/10 p-3">
-                  <TrendingUp className="h-6 w-6 text-success" />
+                <div className="rounded-full bg-success p-3">
+                  <TrendingUp className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -268,8 +268,8 @@ export default function CRM() {
                     </p>
                   )}
                 </div>
-                <div className={cn("rounded-full p-3", index === 0 ? "bg-warning/10" : "bg-info/10")}>
-                  {index === 0 ? <TrendingUp className="h-6 w-6 text-warning" /> : <Users className="h-6 w-6 text-info" />}
+                <div className={cn("rounded-full p-3", index === 0 ? "bg-warning" : "bg-info")}>
+                  {index === 0 ? <TrendingUp className="h-6 w-6 text-white" /> : <Users className="h-6 w-6 text-white" />}
                 </div>
               </div>
             </CardContent>
