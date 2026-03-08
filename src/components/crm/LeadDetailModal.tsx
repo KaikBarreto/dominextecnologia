@@ -36,8 +36,8 @@ const STATUSES: { value: LeadStatus; label: string }[] = [
   { value: 'lead', label: 'Lead' },
   { value: 'proposta', label: 'Proposta' },
   { value: 'negociacao', label: 'Negociação' },
-  { value: 'fechado_ganho', label: 'Fechado (Ganho)' },
-  { value: 'fechado_perdido', label: 'Fechado (Perdido)' },
+  { value: 'fechado_ganho', label: 'Negócio Fechado (Ganho)' },
+  { value: 'fechado_perdido', label: 'Negócio Perdido' },
 ];
 
 export function LeadDetailModal({ open, onOpenChange, lead, onEdit }: LeadDetailModalProps) {
