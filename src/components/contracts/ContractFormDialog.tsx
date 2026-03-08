@@ -520,6 +520,48 @@ export function ContractFormDialog({ open, onOpenChange, onCreated }: ContractFo
                 </div>
               </div>
 
+              {/* Per-item questionnaire review */}
+              {selectedItems.length > 1 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Questionário por item</Label>
+                  <p className="text-xs text-muted-foreground">Altere o questionário individualmente se necessário</p>
+                  <div className="rounded-md border divide-y max-h-52 overflow-y-auto">
+                    {selectedItems.map((item, idx) => {
+                      const currentTemplate = item.form_template_id || formTemplateId || '';
+                      const templateName = templates.find(t => t.id === currentTemplate)?.name;
+                      return (
+                        <div key={idx} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{item.item_name}</p>
+                            {item.item_description && <p className="text-xs text-muted-foreground truncate">{item.item_description}</p>}
+                          </div>
+                          <Select
+                            value={item.form_template_id || 'default'}
+                            onValueChange={v => {
+                              setSelectedItems(prev => prev.map((it, i) =>
+                                i === idx ? { ...it, form_template_id: v === 'default' ? undefined : v } : it
+                              ));
+                            }}
+                          >
+                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                              <SelectValue placeholder={templateName || 'Padrão do contrato'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="default">
+                                {formTemplateId ? `Padrão: ${templates.find(t => t.id === formTemplateId)?.name || 'Questionário'}` : 'Nenhum'}
+                              </SelectItem>
+                              {templates.filter(t => t.is_active).map(t => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {isActive && (
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-start gap-3">
                   <CalendarCheck className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
