@@ -84,7 +84,7 @@ export default function ProposalPublic() {
       <div className="max-w-3xl mx-auto py-8 px-4">
         {/* Proposal content */}
         <div className="shadow-xl rounded-xl overflow-hidden">
-          <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} />
+          <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
 
         {/* Action buttons */}

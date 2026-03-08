@@ -59,6 +59,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
           quote={quote}
           company={company ?? null}
           templateSlug={templateSlug}
+          customization={company?.proposal_customization}
         />
       </div>
     </div>
