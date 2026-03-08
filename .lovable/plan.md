@@ -1,85 +1,46 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Plan: Fix pastel colors, seed default categories, add quick-create buttons to Visão Geral
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+### 1. Fix pastel colors across the Finance module
 
-### 2. Permissions System - Database Changes
+**FinanceDRE.tsx** — KPI cards and DRE table rows:
+- Cards "Margem de Lucro" and "Resultado (EBITDA)": Replace `border-success/20 bg-success/5` / `border-destructive/20 bg-destructive/5` with solid `bg-success text-white` / `bg-destructive text-white`. Inner text becomes white instead of `text-success`/`text-destructive`.
+- DRE table final row: Replace `bg-success/10` / `bg-destructive/10` with `bg-success text-white` / `bg-destructive text-white`.
 
-Create 2 new tables via migration:
+**FinanceOverview.tsx** — Summary cards and icon circles:
+- "Receitas" card: Replace `border-success/20 bg-success/5` with solid `bg-success text-white`. All inner text white.
+- "Despesas" card: Replace `border-destructive/20 bg-destructive/5` with solid `bg-destructive text-white`. All inner text white.
+- Icon circles (all 4 cards): Replace `bg-primary/10`, `bg-success/10`, `bg-destructive/10`, `bg-warning/10` with solid `bg-primary`, `bg-success`, `bg-destructive`, `bg-warning` + white icons.
+- Recent transactions icon circles: Replace `bg-success/10` / `bg-destructive/10` with solid `bg-success` / `bg-destructive` + white icons.
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+**Other pages** (CRM.tsx, Inventory.tsx) — Icon circles:
+- Replace all `bg-primary/10 p-3`, `bg-success/10 p-3`, `bg-warning/10 p-3` patterns with solid `bg-primary p-3`, `bg-success p-3`, `bg-warning p-3` + ensure icons use `text-white`.
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+### 2. Seed default financial categories
 
-The permissions will be a flat list of string keys covering:
+Insert default categories into `financial_categories` table using the data insert tool:
+- **Receitas**: Serviços Prestados, Vendas de Peças/Materiais, Contratos PMOC
+- **Impostos/Deduções** (type: saida): Impostos e Taxas
+- **CPV** (type: saida): Custo de Materiais, Fornecedores e Insumos
+- **OPEX** (type: saida): Alimentação, Luz/Energia, Aluguel, Combustível/Transporte, Salários e Encargos, Marketing e Publicidade, Ferramentas e Equipamentos, Outros
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+### 3. Add quick-create buttons to Visão Geral
 
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
+**FinanceOverview.tsx**:
+- Add `onNewReceita` and `onNewDespesa` callback props.
+- Add two buttons below the summary cards row: "Nova Receita" (green solid) and "Nova Despesa" (red solid), using `Plus` icon.
 
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
+**Finance.tsx**:
+- Pass `onNewReceita={() => handleNew('entrada')}` and `onNewDespesa={() => handleNew('saida')}` to `FinanceOverview`.
 
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
+### Files to modify:
+- `src/components/financial/FinanceDRE.tsx`
+- `src/components/financial/FinanceOverview.tsx`
+- `src/pages/Finance.tsx`
+- `src/pages/CRM.tsx`
+- `src/pages/Inventory.tsx`
 
-### 4. New Components
-
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
-
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
-
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
-
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
-
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
-
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
-
-### Technical Details
-
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
-```
-
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
-
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+### Data to insert:
+- ~12 rows into `financial_categories` table
 
