@@ -12,6 +12,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -33,6 +34,7 @@ const transactionSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
   amount: z.coerce.number().positive('Valor deve ser positivo'),
   transaction_date: z.string().min(1, 'Data é obrigatória'),
+  is_paid: z.boolean().default(true),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -87,6 +89,7 @@ export function TransactionFormDialog({
         description: transaction?.description ?? '',
         amount: transaction?.amount ?? 0,
         transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
+        is_paid: transaction?.is_paid ?? true,
       });
     }
   }, [open, defaultType, transaction]);
@@ -94,7 +97,11 @@ export function TransactionFormDialog({
   const transactionType = form.watch('transaction_type');
 
   const handleSubmit = async (data: TransactionFormData) => {
-    await onSubmit(data);
+    const payload = {
+      ...data,
+      paid_date: data.is_paid ? data.transaction_date : undefined,
+    };
+    await onSubmit(payload);
     form.reset();
     onOpenChange(false);
   };
@@ -237,6 +244,28 @@ export function TransactionFormDialog({
                   <Input type="date" {...field} />
                 </FormControl>
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Is Paid toggle */}
+          <FormField
+            control={form.control}
+            name="is_paid"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <FormLabel className="!mt-0 font-medium">Já foi {isEntrada ? 'recebido' : 'pago'}</FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    {field.value
+                      ? (isEntrada ? 'Será registrado como recebido' : 'Será registrado como pago')
+                      : (isEntrada ? 'Irá para contas a receber' : 'Irá para contas a pagar')
+                    }
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
               </FormItem>
             )}
           />
