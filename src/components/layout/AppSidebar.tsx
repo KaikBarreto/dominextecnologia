@@ -87,7 +87,12 @@ const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
 export function AppSidebar() {
   const { profile, roles, hasScreenAccess } = useAuth();
   const location = useLocation();
-  const [openMenus, setOpenMenus] = useState<string[]>([]);
+  const [openMenus, setOpenMenus] = useState<string[]>(() => {
+    // Auto-open the group that contains the current route on mount
+    return menuItems
+      .filter(item => item.children?.some(c => location.pathname === c.path))
+      .map(item => item.title);
+  });
 
   const isSuperAdmin = roles.includes('super_admin');
 
@@ -103,7 +108,7 @@ export function AppSidebar() {
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) =>
-      prev.includes(label) ? [] : [label]
+      prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]
     );
   };
 
@@ -165,7 +170,7 @@ export function AppSidebar() {
                 return (
                   <Collapsible
                     key={item.title}
-                    open={openMenus.includes(item.title) || hasActiveSubmenu}
+                    open={openMenus.includes(item.title)}
                     onOpenChange={() => toggleMenu(item.title)}
                   >
                     <CollapsibleTrigger
