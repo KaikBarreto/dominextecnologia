@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +13,10 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { ContactFormDialog } from '@/components/customers/ContactFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useCustomerContacts } from '@/hooks/useCustomerContacts';
 import { osStatusLabels } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -36,10 +38,15 @@ export default function CustomerDetail() {
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
   const { categories } = useEquipmentCategories();
 
+  const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
+
   const [equipFormOpen, setEquipFormOpen] = useState(false);
   const [osFormOpen, setOsFormOpen] = useState(false);
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [contactFormOpen, setContactFormOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<typeof contacts[0] | null>(null);
+  const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
@@ -203,6 +210,54 @@ export default function CustomerDetail() {
               </CardContent></Card>
             );
           })()}
+          {/* Responsável no Local */}
+          <Card className="sm:col-span-2"><CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <UserCircle className="h-3.5 w-3.5" />
+                Responsável no Local (falar com)
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setEditingContact(null); setContactFormOpen(true); }}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
+              </Button>
+            </div>
+            {contacts.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">Nenhum contato cadastrado</p>
+            ) : (
+              <div className="space-y-2">
+                {contacts.map((c) => (
+                  <div key={c.id} className="flex items-start justify-between gap-3 rounded-lg border p-3 bg-muted/30">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <p className="text-sm font-medium">{c.name}</p>
+                      {c.phone && (
+                        <a href={`tel:${c.phone}`} className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors">
+                          <Phone className="h-3 w-3" />{c.phone}
+                        </a>
+                      )}
+                      {c.email && (
+                        <a href={`mailto:${c.email}`} className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors">
+                          <Mail className="h-3 w-3" />{c.email}
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingContact(c); setContactFormOpen(true); }}>
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteContactId(c.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent></Card>
+
           {customer.notes && (
             <Card className="sm:col-span-2"><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
@@ -419,6 +474,45 @@ export default function CustomerDetail() {
               onClick={async () => {
                 await deleteCustomer.mutateAsync(customer.id);
                 navigate('/clientes');
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Contact Form Dialog */}
+      <ContactFormDialog
+        open={contactFormOpen}
+        onOpenChange={(open) => { setContactFormOpen(open); if (!open) setEditingContact(null); }}
+        contact={editingContact}
+        onSubmit={async (data) => {
+          if (editingContact) {
+            await updateContact.mutateAsync({ id: editingContact.id, ...data });
+          } else {
+            await createContact.mutateAsync({ customer_id: id!, ...data });
+          }
+        }}
+        isLoading={createContact.isPending || updateContact.isPending}
+      />
+
+      {/* Delete Contact Confirmation */}
+      <AlertDialog open={!!deleteContactId} onOpenChange={(open) => { if (!open) setDeleteContactId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir contato</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir este contato?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (deleteContactId) {
+                  await deleteContact.mutateAsync(deleteContactId);
+                  setDeleteContactId(null);
+                }
               }}
             >
               Excluir

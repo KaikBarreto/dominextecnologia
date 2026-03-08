@@ -51,17 +51,17 @@ export default function Auth() {
   const [pendingLoginData, setPendingLoginData] = useState<LoginForm | null>(null);
   const [disconnectOthers, setDisconnectOthers] = useState(false);
 
-  // Ref to prevent auto-redirect while session dialog is open
-  const skipAutoRedirectRef = useRef(false);
+  // Ref to prevent auto-redirect while login flow is in progress
+  const loginInProgressRef = useRef(false);
 
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Replace PublicRoute behavior: redirect to dashboard if already logged in
-  // BUT skip if we're in the middle of a session check
+  // BUT skip if login flow is in progress (session check / dialog)
   useEffect(() => {
-    if (!loading && user && !skipAutoRedirectRef.current) {
+    if (!loading && user && !loginInProgressRef.current) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, loading, navigate]);
@@ -106,26 +106,27 @@ export default function Auth() {
       localStorage.removeItem('rememberedEmail');
     }
     await registerSession(userId);
-    skipAutoRedirectRef.current = false;
     toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
+    // Navigate first, THEN release the ref (navigate is sync scheduling)
     navigate('/dashboard');
+    loginInProgressRef.current = false;
   };
 
   const handleLogin = async (data: LoginForm) => {
     setIsLoading(true);
     setAuthError(null);
-    // Prevent auto-redirect during session check
-    skipAutoRedirectRef.current = true;
+    // CRITICAL: Set ref BEFORE any async call to block the useEffect redirect
+    loginInProgressRef.current = true;
 
     try {
-      // Call signInWithPassword directly to avoid AuthContext auto-redirect race
+      // Call signInWithPassword directly to avoid AuthContext triggering redirect
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
       if (error) {
-        skipAutoRedirectRef.current = false;
+        loginInProgressRef.current = false;
         if (error.message.includes('Invalid login credentials')) {
           setAuthError('Email ou senha incorretos. Verifique suas credenciais e tente novamente.');
         } else if (error.message.includes('Email not confirmed')) {
@@ -139,35 +140,35 @@ export default function Auth() {
       const userId = authData.user?.id;
       if (!userId) throw new Error('Falha na autenticação');
 
-      // Check for existing active sessions
+      // Check for existing active sessions from OTHER devices
       const currentToken = localStorage.getItem("session_token");
       const { data: otherSessions } = await supabase
         .from('active_sessions')
         .select("device_info, last_activity, session_token")
         .eq("user_id", userId)
-        .neq("session_token", currentToken || "none");
+        .neq("session_token", currentToken || "___none___");
 
-      // Filter recent sessions (last 60 min)
+      // Filter recent sessions (active within last 60 min)
       const recentSessions = (otherSessions || []).filter((s) => {
         const diff = (Date.now() - new Date(s.last_activity!).getTime()) / 60000;
         return diff < 60;
       });
 
       if (recentSessions.length > 0) {
-        // Show session dialog — do NOT navigate
+        // Show session dialog — keep loginInProgressRef true to block redirect
         setPendingUserId(userId);
         setPendingLoginData(data);
         setExistingSessionsInfo(recentSessions.map((s: any) => ({ device_info: s.device_info, last_activity: s.last_activity })));
         setDisconnectOthers(false);
         setSessionDialogOpen(true);
         setIsLoading(false);
-        return;
+        return; // loginInProgressRef stays true — blocks useEffect redirect
       }
 
       // No other sessions - login directly
       await completeLogin(data, userId);
     } catch {
-      skipAutoRedirectRef.current = false;
+      loginInProgressRef.current = false;
       setAuthError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
@@ -180,7 +181,6 @@ export default function Auth() {
     try {
       await completeLogin(pendingLoginData, pendingUserId);
 
-      // If user chose to disconnect others, do it AFTER registering new session
       if (disconnectOthers) {
         await disconnectOtherSessions(pendingUserId);
         toast({ title: 'Outras sessões desconectadas' });
@@ -202,7 +202,7 @@ export default function Auth() {
     setPendingLoginData(null);
     setPendingUserId(null);
     setExistingSessionsInfo([]);
-    skipAutoRedirectRef.current = false;
+    loginInProgressRef.current = false;
     supabase.auth.signOut();
     toast({ title: 'Login cancelado' });
   };
@@ -222,7 +222,6 @@ export default function Auth() {
         <DarkVeil hueShift={53} speed={0.5} />
       </div>
       <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
         <div className="mb-8 flex flex-col items-center">
           <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" />
           <p className="text-white/80 text-sm">Sistema de Gestão</p>
@@ -349,7 +348,6 @@ export default function Auth() {
                   </form>
                 </Form>
 
-                {/* Registration Link */}
                 <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
                   Ainda não tem conta?{' '}
                   <Link to="/cadastro" className="text-white font-bold hover:text-primary transition-colors">
@@ -366,7 +364,6 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* Session Dialog */}
       <SessionConfirmDialog
         open={sessionDialogOpen}
         onOpenChange={setSessionDialogOpen}
