@@ -42,6 +42,37 @@ function buildGoogleMapsUrl(customer: any): string | null {
 function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void }) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCopyTrackingLink = async () => {
+    if (!order.customer_id) return;
+    let token: string | null = null;
+    const { data: existing } = await supabase
+      .from('customer_portals')
+      .select('token')
+      .eq('customer_id', order.customer_id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    
+    if (existing) {
+      token = (existing as any).token;
+    } else {
+      const { data: created } = await supabase
+        .from('customer_portals')
+        .insert({ customer_id: order.customer_id } as any)
+        .select('token')
+        .single();
+      token = created ? (created as any).token : null;
+    }
+
+    if (token) {
+      const link = `${window.location.origin}/portal/${token}?os=${order.id}`;
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     const fetchEquipment = async () => {
