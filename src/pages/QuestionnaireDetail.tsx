@@ -52,13 +52,13 @@ export default function QuestionnaireDetail() {
   // Question modal state (create or edit)
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<FormQuestion | null>(null);
-  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[] }>({
-    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [],
+  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[]; answer_mode?: string }>({
+    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive',
   });
   const [newOption, setNewOption] = useState('');
 
   const resetQuestionForm = () => {
-    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [] });
+    setQForm({ question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive' });
     setNewOption('');
     setEditingQuestion(null);
   };
@@ -81,6 +81,7 @@ export default function QuestionnaireDetail() {
       options: opts,
       require_camera: (question as any).require_camera || false,
       answer_types: effectiveTypes,
+      answer_mode: (question as any).answer_mode || 'exclusive',
     });
     setNewOption('');
     setQuestionModalOpen(true);
@@ -133,6 +134,7 @@ export default function QuestionnaireDetail() {
     const primaryType = effectiveTypes[0] || qForm.question_type || 'boolean';
     const hasSelect = effectiveTypes.includes('select');
     const optionsToSave = hasSelect && qForm.options && qForm.options.length > 0 ? qForm.options : null;
+    const answerMode = effectiveTypes.length >= 2 ? ((qForm as any).answer_mode || 'exclusive') : 'exclusive';
 
     if (editingQuestion) {
       updateQuestion.mutate({
