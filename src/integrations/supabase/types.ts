@@ -1810,6 +1810,56 @@ export type Database = {
           },
         ]
       }
+      service_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          nps_score: number | null
+          professionalism_rating: number | null
+          punctuality_rating: number | null
+          quality_rating: number | null
+          rated_at: string | null
+          rated_by_name: string | null
+          service_order_id: string
+          token: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          nps_score?: number | null
+          professionalism_rating?: number | null
+          punctuality_rating?: number | null
+          quality_rating?: number | null
+          rated_at?: string | null
+          rated_by_name?: string | null
+          service_order_id: string
+          token?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          nps_score?: number | null
+          professionalism_rating?: number | null
+          punctuality_rating?: number | null
+          quality_rating?: number | null
+          rated_at?: string | null
+          rated_by_name?: string | null
+          service_order_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_ratings_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: true
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           color: string
