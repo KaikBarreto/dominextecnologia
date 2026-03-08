@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -159,43 +161,58 @@ export default function TechnicianTracking() {
       )}
 
       {/* Timeline */}
-      {loading ? (
-        <p className="text-muted-foreground text-sm">Carregando...</p>
-      ) : locations.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p>{selectedUserId ? 'Nenhum registro encontrado para esta data.' : 'Selecione um técnico para ver o histórico.'}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="relative pl-6 border-l-2 border-border space-y-4">
-          {locations.map((loc, i) => (
-            <div key={loc.id} className="relative">
-              <div className="absolute -left-[calc(1.5rem+5px)] top-1 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                <span className="text-xs text-muted-foreground font-mono min-w-[50px]">
-                  {format(new Date(loc.created_at), 'HH:mm:ss')}
-                </span>
-                <Badge variant={eventTypeBadgeVariant[loc.event_type] || 'secondary'} className="w-fit text-xs">
-                  {eventTypeLabel[loc.event_type] || loc.event_type}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
-                </span>
-                <a
-                  href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline inline-flex items-center gap-0.5"
-                >
-                  <ExternalLink className="h-3 w-3" /> Ver no mapa
-                </a>
-              </div>
+      {(() => {
+        const pagination = useDataPagination(locations);
+        return loading ? (
+          <p className="text-muted-foreground text-sm">Carregando...</p>
+        ) : locations.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p>{selectedUserId ? 'Nenhum registro encontrado para esta data.' : 'Selecione um técnico para ver o histórico.'}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            <div className="relative pl-6 border-l-2 border-border space-y-4">
+              {pagination.paginatedItems.map((loc) => (
+                <div key={loc.id} className="relative">
+                  <div className="absolute -left-[calc(1.5rem+5px)] top-1 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                    <span className="text-xs text-muted-foreground font-mono min-w-[50px]">
+                      {format(new Date(loc.created_at), 'HH:mm:ss')}
+                    </span>
+                    <Badge variant={eventTypeBadgeVariant[loc.event_type] || 'secondary'} className="w-fit text-xs">
+                      {eventTypeLabel[loc.event_type] || loc.event_type}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+                    </span>
+                    <a
+                      href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline inline-flex items-center gap-0.5"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Ver no mapa
+                    </a>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+            <DataTablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              from={pagination.from}
+              to={pagination.to}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 }

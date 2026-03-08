@@ -74,50 +74,54 @@ export default function Quotes() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <FileText className="h-5 w-5 text-primary" />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
+              <p className="text-sm text-muted-foreground">{quotes.length} orçamentos</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
-            <p className="text-sm text-muted-foreground">{quotes.length} orçamentos</p>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
+              <Palette className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Configurar Proposta</span>
+            </Button>
+            <Button size="sm" onClick={() => { setEditQuote(null); setFormOpen(true); }}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Novo Orçamento</span>
+            </Button>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setConfigOpen(true)}>
-            <Palette className="h-4 w-4 mr-2" /> Configurar Proposta
-          </Button>
-          <Button onClick={() => { setEditQuote(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> Novo Orçamento
-          </Button>
         </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total em Aberto</p>
-            <p className="text-lg font-bold text-foreground">R$ {kpis.totalOpen.toFixed(2)}</p>
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total em Aberto</p>
+            <p className="text-sm sm:text-lg font-bold text-foreground truncate">R$ {kpis.totalOpen.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
-            <p className="text-lg font-bold text-foreground">{kpis.conversionRate}%</p>
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Taxa de Conversão</p>
+            <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.conversionRate}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Ticket Médio</p>
-            <p className="text-lg font-bold text-foreground">R$ {kpis.avgTicket.toFixed(2)}</p>
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Ticket Médio</p>
+            <p className="text-sm sm:text-lg font-bold text-foreground truncate">R$ {kpis.avgTicket.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total</p>
-            <p className="text-lg font-bold text-foreground">{kpis.total}</p>
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
+            <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.total}</p>
           </CardContent>
         </Card>
       </div>
