@@ -1,23 +1,20 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, CreditCard, Users, Edit, Trash2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState } from 'react';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
-
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  testing: { label: 'Em Teste', className: 'bg-blue-500 text-white' },
-  active: { label: 'Ativa', className: 'bg-green-500 text-white' },
-  inactive: { label: 'Inativa', className: 'bg-destructive text-white' },
-};
+import { cn } from '@/lib/utils';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -25,25 +22,30 @@ export default function AdminCompanyDetail() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showEdit, setShowEdit] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [notesLoaded, setNotesLoaded] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
-  const { data: company, isLoading } = useQuery({
+  const { data: company, isLoading, refetch } = useQuery({
     queryKey: ['admin-company', id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', id!)
-        .single();
+      const { data, error } = await supabase.from('companies').select('*').eq('id', id!).single();
       if (error) throw error;
-      if (!notesLoaded) {
-        setNotes(data.notes || '');
-        setNotesLoaded(true);
-      }
       return data;
     },
     enabled: !!id,
+  });
+
+  const { data: originData } = useQuery({
+    queryKey: ['company-origin', company?.origin],
+    queryFn: async () => {
+      if (!company?.origin) return null;
+      const { data } = await supabase.from('company_origins').select('*').eq('name', company.origin).single();
+      return data;
+    },
+    enabled: !!company?.origin,
   });
 
   const deleteMutation = useMutation({
@@ -58,16 +60,21 @@ export default function AdminCompanyDetail() {
     onError: () => toast({ variant: 'destructive', title: 'Erro ao excluir' }),
   });
 
-  const saveNotesMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('companies').update({ notes }).eq('id', id!);
+  const handleSaveNotes = async () => {
+    if (!id) return;
+    setIsSavingNotes(true);
+    try {
+      const { error } = await supabase.from('companies').update({ notes: notesValue || null }).eq('id', id);
       if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'Observações salvas' });
-      queryClient.invalidateQueries({ queryKey: ['admin-company', id] });
-    },
-  });
+      toast({ title: 'Observações salvas!' });
+      setIsEditingNotes(false);
+      refetch();
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao salvar' });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
 
   if (isLoading || !company) {
     return (
@@ -77,125 +84,232 @@ export default function AdminCompanyDetail() {
     );
   }
 
-  const st = STATUS_CONFIG[company.subscription_status] || STATUS_CONFIG.inactive;
-
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/admin/empresas')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{company.name}</h1>
-            <Badge className={st.className}>{st.label}</Badge>
-          </div>
-        </div>
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <Button variant="ghost" onClick={() => navigate('/admin/empresas')} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Voltar para Empresas
+        </Button>
+        <div className="flex items-center gap-2">
           {company.phone && (
-            <Button variant="outline" size="sm" className="gap-2" asChild>
-              <a href={`https://wa.me/${company.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="h-4 w-4" /> WhatsApp
-              </a>
+            <Button
+              className="bg-[#25D366] hover:bg-[#25D366]/90 text-white gap-2"
+              onClick={() => window.open(`https://wa.me/55${company.phone!.replace(/\D/g, '')}`, '_blank')}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              WhatsApp
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowEdit(true)}>
+          <Button variant="outline" className="gap-2 hover:bg-yellow-500 hover:text-white" onClick={() => setShowEdit(true)}>
             <Edit className="h-4 w-4" /> Editar
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="gap-2">
-                <Trash2 className="h-4 w-4" /> Excluir
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir empresa?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta ação é irreversível. Todos os dados da empresa "{company.name}" serão perdidos.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button variant="destructive" className="gap-2" onClick={() => setShowDeleteDialog(true)}>
+            <Trash2 className="h-4 w-4" /> Excluir
+          </Button>
         </div>
       </div>
 
-      {/* Info cards */}
-      <div className="grid md:grid-cols-2 gap-6">
+      {/* Title */}
+      <div>
+        <h1 className="text-3xl font-bold">{company.name}</h1>
+        <p className="text-muted-foreground break-all">{company.email}</p>
+      </div>
+
+      {/* Info cards - 2 columns */}
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Building2 className="h-4 w-4" /> Informações Gerais
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Informações Gerais</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { icon: Building2, label: 'CNPJ', value: company.cnpj },
-              { icon: Mail, label: 'Email', value: company.email },
-              { icon: Phone, label: 'Telefone', value: company.phone },
-              { icon: MapPin, label: 'Endereço', value: company.address },
-              { icon: Users, label: 'Responsável', value: company.contact_name },
-              { icon: Calendar, label: 'Cadastro', value: company.created_at ? format(new Date(company.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '-' },
-              { icon: Users, label: 'Origem', value: company.origin },
-            ].map((item) => (
-              <div key={item.label} className="flex items-start gap-3 text-sm">
-                <item.icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">CNPJ/CPF</span>
+                <p className="font-medium">{company.cnpj || 'N/A'}</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</span>
+                <p className="font-medium">{company.phone || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Email</span>
+                <p className="font-medium break-all">{company.email || 'N/A'}</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Responsável</span>
+                <p className="font-medium">{company.contact_name || 'N/A'}</p>
+              </div>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</span>
+              <p className="font-medium">{company.address || 'N/A'}</p>
+            </div>
+            <div className="border-t pt-3 mt-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-muted-foreground">{item.label}: </span>
-                  <span className="font-medium">{item.value || '-'}</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Data de Cadastro</span>
+                  <p className="font-medium">
+                    {company.created_at ? format(new Date(company.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span>
+                  {originData ? (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge className="text-xs text-white border-0" style={{ backgroundColor: originData.color || undefined }}>
+                        {originData.name}
+                      </Badge>
+                    </div>
+                  ) : (
+                    <p className="font-medium">{company.origin || 'N/A'}</p>
+                  )}
                 </div>
               </div>
-            ))}
+            </div>
+            {/* Inline editable notes */}
+            <div>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Observações</span>
+              {isEditingNotes ? (
+                <div className="space-y-2 mt-1">
+                  <Textarea
+                    value={notesValue}
+                    onChange={(e) => setNotesValue(e.target.value)}
+                    placeholder="Adicione observações..."
+                    className="resize-none text-sm"
+                    rows={3}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="h-7 px-2 gap-1">
+                      {isSavingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      Salvar
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditingNotes(false)} className="h-7 px-2 gap-1">
+                      <X className="h-3 w-3" /> Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-1">
+                  <p className="font-medium text-sm">{company.notes || 'Nenhuma'}</p>
+                  <button
+                    onClick={() => { setNotesValue(company.notes || ''); setIsEditingNotes(true); }}
+                    className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Editar observações"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CreditCard className="h-4 w-4" /> Assinatura
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Informações Financeiras</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { label: 'Plano', value: company.subscription_plan?.charAt(0).toUpperCase() + company.subscription_plan?.slice(1) },
-              { label: 'Valor', value: company.subscription_value > 0 ? `R$ ${Number(company.subscription_value).toFixed(2).replace('.', ',')}` : 'Grátis' },
-              { label: 'Ciclo', value: company.billing_cycle === 'yearly' ? 'Anual' : 'Mensal' },
-              { label: 'Máx Usuários', value: company.max_users },
-              { label: 'Vencimento', value: company.subscription_expires_at ? format(new Date(company.subscription_expires_at), 'dd/MM/yyyy') : '-' },
-            ].map((item) => (
-              <div key={item.label} className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{item.label}</span>
-                <span className="font-medium">{item.value || '-'}</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Status</span>
+                <div className="mt-0.5">
+                  <Badge className={cn(
+                    'text-xs text-white border-0',
+                    company.subscription_status === 'active'
+                      ? 'bg-emerald-500 hover:bg-emerald-500'
+                      : company.subscription_status === 'testing'
+                      ? 'bg-amber-500 hover:bg-amber-500'
+                      : 'bg-rose-500 hover:bg-rose-500'
+                  )}>
+                    {company.subscription_status === 'active' ? 'Ativo' : company.subscription_status === 'testing' ? 'Testando' : 'Desativado'}
+                  </Badge>
+                </div>
               </div>
-            ))}
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Plano</span>
+                <p className="font-medium capitalize">{company.subscription_plan || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Valor Mensal</span>
+                <p className="font-semibold text-lg text-primary">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(company.subscription_value || 0)}
+                </p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Ciclo</span>
+                <p className="font-medium">{company.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}</p>
+              </div>
+            </div>
+            <div className="border-t pt-3 mt-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Vencimento</span>
+                  <p className="font-medium">
+                    {company.subscription_expires_at ? format(new Date(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Usuários</span>
+                  <p className="font-medium">{company.max_users || 5}</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Observações</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Adicione observações sobre esta empresa..."
-            rows={4}
-          />
-          <Button size="sm" onClick={() => saveNotesMutation.mutate()} disabled={saveNotesMutation.isPending}>
-            {saveNotesMutation.isPending ? 'Salvando...' : 'Salvar observações'}
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Delete confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmText(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4 text-left">
+              <p className="text-sm">
+                Você está prestes a excluir a empresa <strong className="text-foreground">{company.name}</strong>.
+              </p>
+              <p className="text-sm text-destructive font-medium">Esta ação é irreversível e excluirá permanentemente:</p>
+              <ul className="text-sm space-y-1 list-disc list-inside ml-2">
+                <li>Todos os usuários da empresa</li>
+                <li>Todos os dados cadastrais</li>
+                <li>Todo o histórico financeiro</li>
+              </ul>
+              <div className="space-y-2 pt-2">
+                <Label className="text-sm font-medium">Para confirmar, digite o nome da empresa:</Label>
+                <div className="rounded-md bg-muted p-3 mb-2">
+                  <p className="text-sm font-semibold text-foreground">{company.name}</p>
+                </div>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Digite o nome da empresa"
+                  className="font-mono"
+                />
+                {deleteConfirmText && deleteConfirmText.trim() !== company.name?.trim() && (
+                  <p className="text-sm text-destructive">O nome digitado não corresponde</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteConfirmText.trim() !== company.name?.trim() || deleteMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</>
+              ) : 'Excluir Empresa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <CompanyFormModal
         open={showEdit}

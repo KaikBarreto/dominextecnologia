@@ -29,6 +29,8 @@ interface FormData {
   subscription_status: string;
   subscription_plan: string;
   subscription_value: string;
+  subscription_expires_at: string;
+  billing_cycle: string;
   max_users: string;
   notes: string;
 }
@@ -41,6 +43,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     defaultValues: {
       name: '', cnpj: '', email: '', phone: '', address: '', contact_name: '',
       subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
+      subscription_expires_at: '', billing_cycle: 'monthly',
       max_users: '5', notes: '',
     },
   });
@@ -57,6 +60,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         subscription_status: company.subscription_status || 'testing',
         subscription_plan: company.subscription_plan || 'starter',
         subscription_value: String(company.subscription_value || 0),
+        subscription_expires_at: company.subscription_expires_at ? company.subscription_expires_at.split('T')[0] : '',
+        billing_cycle: company.billing_cycle || 'monthly',
         max_users: String(company.max_users || 5),
         notes: company.notes || '',
       });
@@ -64,6 +69,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       reset({
         name: '', cnpj: '', email: '', phone: '', address: '', contact_name: '',
         subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
+        subscription_expires_at: '', billing_cycle: 'monthly',
         max_users: '5', notes: '',
       });
     }
@@ -81,6 +87,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         subscription_status: data.subscription_status,
         subscription_plan: data.subscription_plan,
         subscription_value: parseFloat(data.subscription_value) || 0,
+        subscription_expires_at: data.subscription_expires_at || null,
+        billing_cycle: data.billing_cycle,
         max_users: parseInt(data.max_users) || 5,
         notes: data.notes || null,
       };
@@ -173,6 +181,23 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             <div>
               <Label>Máx Usuários</Label>
               <Input type="number" {...register('max_users')} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Vencimento</Label>
+              <Input type="date" {...register('subscription_expires_at')} />
+            </div>
+            <div>
+              <Label>Ciclo</Label>
+              <Select value={watch('billing_cycle')} onValueChange={(v) => setValue('billing_cycle', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="yearly">Anual</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
