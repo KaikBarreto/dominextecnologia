@@ -26,6 +26,13 @@ export function useGeoTracking(serviceOrderId: string | undefined, enabled: bool
   useEffect(() => {
     if (!enabled || !serviceOrderId || !navigator.geolocation) return;
 
+    // Send initial location immediately
+    navigator.geolocation.getCurrentPosition(
+      (pos) => sendLocation(pos.coords.latitude, pos.coords.longitude, 'tracking'),
+      () => {},
+      { enableHighAccuracy: true }
+    );
+
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const now = Date.now();
@@ -37,11 +44,26 @@ export function useGeoTracking(serviceOrderId: string | undefined, enabled: bool
       { enableHighAccuracy: true, maximumAge: 10_000 }
     );
 
+    // Fallback interval for when watchPosition pauses in background
+    const fallbackInterval = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const now = Date.now();
+          if (now - lastSentRef.current < INTERVAL_MS) return;
+          lastSentRef.current = now;
+          sendLocation(pos.coords.latitude, pos.coords.longitude, 'tracking');
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 15_000 }
+      );
+    }, INTERVAL_MS);
+
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+      clearInterval(fallbackInterval);
     };
   }, [enabled, serviceOrderId, sendLocation]);
 
@@ -55,7 +77,7 @@ export async function recordLocationEvent(
   serviceOrderId: string,
   lat: number,
   lng: number,
-  eventType: 'check_in' | 'check_out'
+  eventType: 'check_in' | 'check_out' | 'en_route'
 ) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;

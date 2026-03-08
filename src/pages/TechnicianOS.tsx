@@ -15,6 +15,7 @@ import {
   Building2,
   Eye,
   Loader2,
+  Navigation,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +28,7 @@ import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
 import type { ServiceOrder, OsStatus } from '@/types/database';
+import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -203,9 +205,9 @@ export default function TechnicianOS() {
     });
   };
 
-  // Periodic geo tracking while OS is em_andamento
-  const isInProgress = serviceOrder?.status === 'em_andamento' && !!checkInTime && !checkOutTime;
-  useGeoTracking(id, isInProgress && isAuthenticated === true);
+  // Periodic geo tracking while OS is em_andamento or a_caminho
+  const isTracking = (serviceOrder?.status === 'em_andamento' || serviceOrder?.status === 'a_caminho') && isAuthenticated === true;
+  useGeoTracking(id, isTracking);
 
   const handleCheckIn = async () => {
     try {
@@ -326,6 +328,7 @@ export default function TechnicianOS() {
 
   const statusBadgeVariant: Record<OsStatus, 'warning' | 'info' | 'success' | 'destructive'> = {
     pendente: 'warning',
+    a_caminho: 'info',
     em_andamento: 'info',
     concluida: 'success',
     cancelada: 'destructive',
@@ -467,11 +470,17 @@ export default function TechnicianOS() {
               </Badge>
               <p className="text-sm text-muted-foreground mt-2">
                 {serviceOrder.status === 'pendente' && 'Aguardando início do atendimento'}
+                {serviceOrder.status === 'a_caminho' && 'Técnico a caminho...'}
                 {serviceOrder.status === 'em_andamento' && 'Técnico em atendimento...'}
                 {serviceOrder.status === 'cancelada' && 'Esta OS foi cancelada'}
               </p>
             </CardContent>
           </Card>
+
+          {/* Live tracking map for public viewers when a_caminho */}
+          {serviceOrder.status === 'a_caminho' && serviceOrder.technician_id && (
+            <PublicTrackingMap serviceOrderId={serviceOrder.id} />
+          )}
         </div>
       </div>
     );
@@ -480,6 +489,33 @@ export default function TechnicianOS() {
   // AUTHENTICATED MODE - full interactive
   const isCheckedIn = !!checkInTime;
   const isPending = serviceOrder.status === 'pendente';
+  const isACaminho = serviceOrder.status === 'a_caminho';
+
+  const handleEnRoute = async () => {
+    try {
+      const location = await getCurrentLocation();
+      
+      const { error } = await supabase
+        .from('service_orders')
+        .update({ status: 'a_caminho' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      if (id) {
+        recordLocationEvent(id, location.lat, location.lng, 'en_route');
+      }
+
+      setServiceOrder((prev) => prev ? { ...prev, status: 'a_caminho' as OsStatus } : null);
+      toast({ title: 'Status atualizado: A Caminho!' });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar status',
+        description: error.message,
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -524,20 +560,33 @@ export default function TechnicianOS() {
       </div>
 
       <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-32">
-        {/* Step 1: Check-in */}
-        {isPending && (
+        {/* Step 1: En Route or Check-in */}
+        {(isPending || isACaminho) && (
           <Card className="border-primary/30">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Play className="h-4 w-4 text-primary" />
-                Iniciar Atendimento
+                {isPending ? <Navigation className="h-4 w-4 text-primary" /> : <Play className="h-4 w-4 text-primary" />}
+                {isPending ? 'Ir para o Atendimento' : 'Iniciar Atendimento'}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Faça o check-in para registrar sua chegada e iniciar o atendimento.
-              </p>
-              <Button className="w-full" size="lg" onClick={handleCheckIn}>
+            <CardContent className="space-y-2">
+              {isPending && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Informe ao cliente que você está a caminho ou faça o check-in ao chegar.
+                  </p>
+                  <Button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white" size="lg" onClick={handleEnRoute}>
+                    <Navigation className="h-4 w-4 mr-2" />
+                    A Caminho
+                  </Button>
+                </>
+              )}
+              {isACaminho && (
+                <p className="text-sm text-muted-foreground">
+                  Chegou no local? Faça o check-in para iniciar.
+                </p>
+              )}
+              <Button className="w-full" size="lg" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
                 <Play className="h-4 w-4 mr-2" />
                 Fazer Check-in
               </Button>

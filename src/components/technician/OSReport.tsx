@@ -221,41 +221,58 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
   })();
 
-  const renderResponseItem = (response: FormResponseData, idx: number) => (
-    <div key={response.id} className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
-      <span className="text-xs font-bold text-slate-400 mt-0.5 min-w-[20px]">{idx + 1}.</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
-        <div className="mt-1">
-          {response.question?.question_type === 'boolean' ? (
-            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-              response.response_value === 'true' 
-                ? 'bg-emerald-100 text-emerald-700' 
-                : 'bg-red-100 text-red-700'
-            }`}>
-              {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-              {response.response_value === 'true' ? 'Sim' : 'Não'}
-            </span>
-          ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
-            <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
-          ) : (
-            response.response_value?.includes('|||') ? (
-              <div className="flex flex-wrap gap-1.5 mt-0.5">
-                {response.response_value.split('|||').filter(Boolean).map((val, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                    <Check className="h-3 w-3" />
-                    {val.trim()}
-                  </span>
-                ))}
-              </div>
+  const isResponseEmpty = (response: FormResponseData): boolean => {
+    const val = response.response_value;
+    const photo = response.response_photo_url;
+    // Photo type: empty if no photo
+    if (response.question?.question_type === 'photo') return !photo;
+    // Signature type: empty if no value
+    if (response.question?.question_type === 'signature') return !val;
+    // All others: empty if null, empty string, or just '-'
+    if (!val || val.trim() === '' || val.trim() === '-') return true;
+    return false;
+  };
+
+  const renderResponseItem = (response: FormResponseData, idx: number) => {
+    // Skip blank/empty responses
+    if (isResponseEmpty(response)) return null;
+
+    return (
+      <div key={response.id} className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
+        <span className="text-xs font-bold text-slate-400 mt-0.5 min-w-[20px]">{idx + 1}.</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
+          <div className="mt-1">
+            {response.question?.question_type === 'boolean' ? (
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                response.response_value === 'true' 
+                  ? 'bg-emerald-100 text-emerald-700' 
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                {response.response_value === 'true' ? 'Sim' : 'Não'}
+              </span>
+            ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
+              <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
             ) : (
-              <p className="text-sm text-slate-600 break-words">{response.response_value || '-'}</p>
-            )
-          )}
+              response.response_value?.includes('|||') ? (
+                <div className="flex flex-wrap gap-1.5 mt-0.5">
+                  {response.response_value.split('|||').filter(Boolean).map((val, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                      <Check className="h-3 w-3" />
+                      {val.trim()}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600 break-words">{response.response_value}</p>
+              )
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -325,7 +342,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           )}
 
           {/* Client & Equipment */}
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 max-w-full overflow-hidden">
             <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
@@ -476,18 +493,20 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           )}
 
           {/* Questionnaire Responses - grouped by equipment */}
-          {responsesByTemplate.map((group, gi) => (
-            group.responses.length > 0 && (
+          {responsesByTemplate.map((group, gi) => {
+            const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
+            if (nonEmptyResponses.length === 0) return null;
+            return (
               <div key={gi} className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
                 </h3>
                 <div className="space-y-2">
-                  {group.responses.map((response, idx) => renderResponseItem(response, idx))}
+                  {nonEmptyResponses.map((response, idx) => renderResponseItem(response, idx))}
                 </div>
               </div>
-            )
-          ))}
+            );
+          })}
 
           {/* Service Details */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (

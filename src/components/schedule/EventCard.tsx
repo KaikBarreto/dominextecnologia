@@ -23,6 +23,7 @@ const osTypeLabels: Record<OsType, string> = {
 
 const statusConfig: Record<OsStatus, { label: string; className: string }> = {
   pendente: { label: 'Pendente', className: 'bg-info text-info-foreground' },
+  a_caminho: { label: 'A Caminho', className: 'bg-indigo-500 text-white' },
   em_andamento: { label: 'Em Andamento', className: 'bg-primary text-primary-foreground' },
   concluida: { label: 'Concluída', className: 'bg-success text-success-foreground' },
   cancelada: { label: 'Cancelada', className: 'bg-destructive text-destructive-foreground' },
