@@ -61,7 +61,16 @@ export default function ContractDetail() {
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
 
+  const { createContract } = useContracts();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const [showReceivableModal, setShowReceivableModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRenewDialog, setShowRenewDialog] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenewing, setIsRenewing] = useState(false);
   const [recDescription, setRecDescription] = useState('');
   const [recAmount, setRecAmount] = useState('');
   const [recDueDate, setRecDueDate] = useState('');
