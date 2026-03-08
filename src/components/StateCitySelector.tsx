@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface StateCitySelectorProps {
   selectedState: string;
@@ -11,8 +13,6 @@ interface StateCitySelectorProps {
   onCityChange: (city: string) => void;
   disabled?: boolean;
   showLabels?: boolean;
-  /** When true, UF takes ~25% width */
-  compact?: boolean;
 }
 
 interface IBGECity {
@@ -50,7 +50,6 @@ export const BRAZILIAN_STATES = [
   { code: 'TO', name: 'Tocantins' },
 ];
 
-// Cache cities per state to avoid repeated API calls
 const citiesCache: Record<string, { name: string; id: string }[]> = {};
 
 export const StateCitySelector = ({
@@ -60,40 +59,39 @@ export const StateCitySelector = ({
   onCityChange,
   disabled,
   showLabels = false,
-  compact = true,
 }: StateCitySelectorProps) => {
   const [cities, setCities] = useState<{ name: string; id: string }[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [citySearch, setCitySearch] = useState('');
+  const [stateOpen, setStateOpen] = useState(false);
+  const [cityOpen, setCityOpen] = useState(false);
+  const citySearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchCities = async () => {
-      if (!selectedState) {
-        setCities([]);
-        return;
-      }
-      if (citiesCache[selectedState]) {
-        setCities(citiesCache[selectedState]);
-        return;
-      }
+      if (!selectedState) { setCities([]); return; }
+      if (citiesCache[selectedState]) { setCities(citiesCache[selectedState]); return; }
       setLoadingCities(true);
       try {
         const response = await fetch(
           `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios?orderBy=nome`
         );
-        if (!response.ok) throw new Error('Failed to fetch cities');
+        if (!response.ok) throw new Error('Failed');
         const data: IBGECity[] = await response.json();
         const mapped = data.map((c) => ({ name: c.nome, id: c.id.toString() }));
         citiesCache[selectedState] = mapped;
         setCities(mapped);
-      } catch {
-        setCities([]);
-      } finally {
-        setLoadingCities(false);
-      }
+      } catch { setCities([]); }
+      finally { setLoadingCities(false); }
     };
     fetchCities();
   }, [selectedState]);
+
+  useEffect(() => {
+    if (cityOpen && citySearchRef.current) {
+      setTimeout(() => citySearchRef.current?.focus(), 50);
+    }
+  }, [cityOpen]);
 
   const filteredCities = useMemo(() => {
     if (!citySearch) return cities;
@@ -105,71 +103,99 @@ export const StateCitySelector = ({
     onStateChange(value);
     onCityChange('');
     setCitySearch('');
+    setStateOpen(false);
   };
 
   return (
-    <div className={compact ? 'flex gap-2' : 'grid grid-cols-2 gap-3'}>
-      <div className={compact ? 'w-[90px] shrink-0 space-y-2' : 'space-y-2'}>
+    <div className="flex gap-2">
+      {/* UF - compact popover */}
+      <div className="w-[80px] shrink-0 space-y-2">
         {showLabels && <Label>UF</Label>}
-        <Select
-          value={selectedState || undefined}
-          onValueChange={handleStateChange}
-          disabled={disabled}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="UF" />
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px]">
+        <Popover open={stateOpen} onOpenChange={setStateOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              disabled={disabled}
+              className="w-full justify-between font-normal h-10 px-3"
+            >
+              {selectedState || 'UF'}
+              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[120px] p-0 max-h-[300px] overflow-auto" align="start">
             {BRAZILIAN_STATES.map((s) => (
-              <SelectItem key={s.code} value={s.code}>
+              <button
+                key={s.code}
+                type="button"
+                className={cn(
+                  'flex items-center w-full px-3 py-1.5 text-sm hover:bg-accent transition-colors',
+                  selectedState === s.code && 'bg-accent font-medium'
+                )}
+                onClick={() => handleStateChange(s.code)}
+              >
+                {selectedState === s.code && <Check className="mr-1 h-3 w-3" />}
                 {s.code}
-              </SelectItem>
+              </button>
             ))}
-          </SelectContent>
-        </Select>
+          </PopoverContent>
+        </Popover>
       </div>
 
-      <div className={compact ? 'flex-1 space-y-2' : 'space-y-2'}>
+      {/* City - searchable popover */}
+      <div className="flex-1 min-w-0 space-y-2">
         {showLabels && <Label>Cidade</Label>}
-        <Select
-          value={selectedCity || undefined}
-          onValueChange={(v) => onCityChange(v)}
-          disabled={disabled || !selectedState || loadingCities}
-        >
-          <SelectTrigger>
-            {loadingCities ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-muted-foreground text-xs">Carregando...</span>
-              </div>
-            ) : (
-              <SelectValue
-                placeholder={!selectedState ? 'Selecione o UF' : 'Selecione a cidade'}
-              />
-            )}
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px]">
-            <div className="p-2 sticky top-0 bg-popover">
+        <Popover open={cityOpen} onOpenChange={(o) => { setCityOpen(o); if (!o) setCitySearch(''); }}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              disabled={disabled || !selectedState || loadingCities}
+              className="w-full justify-between font-normal h-10 px-3 truncate"
+            >
+              <span className="truncate">
+                {loadingCities ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Carregando...
+                  </span>
+                ) : selectedCity || (!selectedState ? 'Selecione UF' : 'Selecione a cidade')}
+              </span>
+              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+            <div className="p-2 border-b">
               <Input
+                ref={citySearchRef}
                 placeholder="Buscar cidade..."
                 value={citySearch}
                 onChange={(e) => setCitySearch(e.target.value)}
                 className="h-8"
-                autoFocus
               />
             </div>
-            {filteredCities.map((c) => (
-              <SelectItem key={c.id} value={c.name}>
-                {c.name}
-              </SelectItem>
-            ))}
-            {filteredCities.length === 0 && !loadingCities && (
-              <div className="py-4 text-center text-sm text-muted-foreground">
-                Nenhuma cidade encontrada
-              </div>
-            )}
-          </SelectContent>
-        </Select>
+            <div className="max-h-[200px] overflow-auto">
+              {filteredCities.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={cn(
+                    'flex items-center w-full px-3 py-1.5 text-sm hover:bg-accent transition-colors',
+                    selectedCity === c.name && 'bg-accent font-medium'
+                  )}
+                  onClick={() => { onCityChange(c.name); setCityOpen(false); setCitySearch(''); }}
+                >
+                  {selectedCity === c.name && <Check className="mr-1 h-3 w-3" />}
+                  {c.name}
+                </button>
+              ))}
+              {filteredCities.length === 0 && !loadingCities && (
+                <div className="py-4 text-center text-sm text-muted-foreground">
+                  Nenhuma cidade encontrada
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
