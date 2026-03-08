@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,12 +11,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsStatus, FormQuestion } from '@/types/database';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
+import { useServiceRatings } from '@/hooks/useServiceRatings';
 
 interface OSPhoto {
   id: string;
@@ -51,6 +54,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder & { customer: any; equipment: any; form_template: any } | null>(null);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
+  const { toast } = useToast();
+  const { createRatingToken } = useServiceRatings();
 
   useEffect(() => {
     if (open && serviceOrderId) {
@@ -341,6 +346,28 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
                       </div>
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Rating Button */}
+                {serviceOrder.status === 'concluida' && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={async () => {
+                        const result = await createRatingToken.mutateAsync(serviceOrder.id);
+                        if (result?.token) {
+                          const url = `${window.location.origin}/avaliacao/${result.token}`;
+                          await navigator.clipboard.writeText(url);
+                          toast({ title: 'Link de avaliação copiado!' });
+                        }
+                      }}
+                      disabled={createRatingToken.isPending}
+                    >
+                      <Star className="h-4 w-4 mr-2" />
+                      Copiar Link de Avaliação
+                    </Button>
+                  </div>
                 )}
               </div>
             </ScrollArea>
