@@ -71,6 +71,7 @@ export function ServiceOrderFormDialog({
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+  const { teams } = useTeams();
   const [step, setStep] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
@@ -161,15 +162,20 @@ export function ServiceOrderFormDialog({
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const handleCreateSubmit = async () => {
     const data = form.getValues();
+    const assignee = data.technician_id || '';
+    const isTechTeam = assignee.startsWith('team:');
+    const techId = isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined;
+    const teamId = isTechTeam ? assignee.slice(5) : undefined;
+
     const baseData = {
       ...data,
-      technician_id: data.technician_id || undefined,
+      technician_id: techId,
+      team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
     };
 
-    // Build equipment items for junction table
     const equipment_items = selectedEquipmentIds.map(eqId => ({
       equipment_id: eqId,
       form_template_id: equipmentTemplateMap[eqId] || undefined,
@@ -189,10 +195,16 @@ export function ServiceOrderFormDialog({
   };
 
   const handleEditSubmit = async (data: ServiceOrderFormData) => {
+    const assignee = data.technician_id || '';
+    const isTechTeam = assignee.startsWith('team:');
+    const techId = isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined;
+    const teamId = isTechTeam ? assignee.slice(5) : undefined;
+
     const cleanedData = {
       ...data,
       equipment_id: data.equipment_id || undefined,
-      technician_id: data.technician_id || undefined,
+      technician_id: techId,
+      team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
