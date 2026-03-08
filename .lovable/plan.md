@@ -1,85 +1,44 @@
 
 
-## Plan: Login Layout Fix + Full Permissions System
+## Plano: Reestruturar Tela de Usuários e Permissões (Estilo EcoSistema)
 
-### 1. Login Mobile Layout Fix
-In `Auth.tsx`, change the "Lembrar-me" + "Esqueci minha senha" row (line 169) from `flex items-center justify-between` to a stacked layout on mobile: "Lembrar-me" on one line, "Esqueci minha senha" below it, aligned left.
+### Visão Geral
+Adaptar a tela de Usuários e Permissões do Dominex para seguir o padrão da EcoSistema, com separação visual clara entre **Telas** e **Funções**, agrupamento por categorias, cards de usuário mais ricos, e um botão "Configurações" para gerenciar cargos (presets de permissões).
 
-### 2. Permissions System - Database Changes
+### Mudanças Planejadas
 
-Create 2 new tables via migration:
+**1. Reestruturar `usePermissions.ts` - Separar Telas e Funções com Categorias**
+- Adicionar campo `category` às permissões de tela (Geral, Serviços, Comercial, Operacional, Financeiro, Administração)
+- Criar constante `SCREEN_CATEGORIES` com ícones por categoria
+- Exportar funções helper para agrupar por categoria
 
-**`permission_presets`** (cargos/kits de permissão):
-- `id`, `name`, `description`, `permissions` (jsonb array of permission keys), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, authenticated can view
+**2. Refazer `UserFormDialog.tsx` - Layout igual EcoSistema**
+- Seção "Perfil de Acesso" com Select de presets (Acesso Total, cargos do DB, Personalizado)
+- Seção "Telas" com ícone `Monitor`, agrupadas por categoria em cards com bordas
+- Seção "Funções" com ícone `Settings2`, cada item com label + description + checkbox
+- Manter campos de dados do usuário (nome, email, senha, telefone)
+- Remover o campo "Papel (Role)" separado - simplificar usando apenas presets/permissões
 
-**`user_permissions`** (permissões individuais por usuário):
-- `id`, `user_id` (references auth.users), `permissions` (jsonb array of permission keys), `preset_id` (nullable FK to permission_presets), `is_active` (boolean, default true), `created_at`, `updated_at`
-- RLS: admin/gestor can manage, users can view own
+**3. Refazer `Users.tsx` - Cards estilo EcoSistema**
+- Card por usuário com: Avatar (com hover para foto), Nome, Badge Ativo/Inativo, Badge de permissões (estilo gradient escuro), email
+- Botões de ação: Editar (hover amarelo), Ativar/Desativar (hover laranja/verde), Excluir (hover vermelho)
+- Botão "Configurações" no header para abrir o gerenciador de cargos
+- Busca por nome/email
 
-The permissions will be a flat list of string keys covering:
+**4. Atualizar `PermissionPresetDialog.tsx`**
+- Usar o mesmo layout de Telas/Funções por categoria dentro do editor de presets
+- Renomear botão de "Cargos" para "Configurações" com ícone `Settings2`
 
-**Screen permissions (telas):**
-- `screen:dashboard`, `screen:service_orders`, `screen:services`, `screen:questionnaires`, `screen:pmoc`, `screen:schedule`, `screen:customers`, `screen:equipment`, `screen:crm`, `screen:inventory`, `screen:finance`, `screen:users`, `screen:settings`
+### Detalhes Técnicos
 
-**Function permissions (funções):**
-- `fn:create_os`, `fn:edit_os`, `fn:delete_os`
-- `fn:create_customer`, `fn:edit_customer`, `fn:delete_customer`
-- `fn:manage_equipment`, `fn:manage_inventory`
-- `fn:manage_finance`, `fn:view_finance_totals`
-- `fn:manage_users`, `fn:manage_settings`
-- `fn:manage_crm`, `fn:manage_pmoc`
+- Reutilizar a infraestrutura existente de `permission_presets` e `user_permissions` no banco
+- Manter o edge function `create-user` existente
+- As categorias de permissão serão: Geral (Dashboard, Agenda), Serviços (OS, Serviços, Questionários, PMOC, Equipamentos), Comercial (Clientes, CRM), Operacional (Estoque), Financeiro (Financeiro), Administração (Usuários, Configurações)
+- Adicionar descriptions às `FUNCTION_PERMISSIONS` para exibir no formulário
 
-### 3. Users Page Redesign (`src/pages/Users.tsx`)
-
-Redesign as a full CRUD inspired by the reference screenshots:
-- **Header**: Title "Usuários e Permissões" + counter badge + "Criar Usuário" button (blue, primary)
-- **User list**: Cards showing avatar, name, email (from auth metadata), status badge (Ativo/Inativo via `is_active`), permission summary badge, and action buttons (Editar, Ativar/Desativar)
-- **Search bar** at the top
-
-### 4. New Components
-
-**`UserFormDialog.tsx`** - Modal/Drawer for creating/editing users:
-- Fields: Nome Completo, Email, Senha (only on create), Foto (optional)
-- "Perfil de Acesso" select: choose a preset or "Personalizado"
-- **Telas section**: Checkboxes grouped by module (Serviços, Financeiro, etc.) for screen permissions
-- **Funções section**: Checkboxes for action permissions
-- When a preset is selected, auto-fill the checkboxes; user can override (switches to "Personalizado")
-
-**`PermissionPresetDialog.tsx`** - CRUD for managing permission presets (cargos):
-- Name, description, and same checkbox structure as above
-- Accessible from a gear icon on the Users page header
-
-### 5. New Hook: `usePermissions.ts`
-- Fetch user's permissions from `user_permissions` table
-- Provide `hasPermission(key: string)` helper
-- Provide `hasScreenAccess(screenKey: string)` helper
-
-### 6. Auth Context Updates
-- Add `permissions: string[]` to AuthContext state
-- Fetch from `user_permissions` table on login
-- Expose `hasPermission()` method
-
-### 7. Sidebar & Menu Filtering
-- Update `AppSidebar.tsx` menu items to use permission keys instead of role-based filtering
-- Each menu item maps to a `screen:*` permission
-- Fallback: if user has no `user_permissions` row, use legacy role-based access
-- Update `MobileNav.tsx` similarly
-
-### 8. Edge Function for User Creation
-Create `supabase/functions/create-user/index.ts`:
-- Admin-only endpoint that calls `supabase.auth.admin.createUser()` to create a new user with email+password
-- Also creates the profile and user_permissions records
-- This is needed because client-side `signUp` sends a confirmation email and logs in
-
-### Technical Details
-
-The permission keys are stored as a simple JSON array in `user_permissions.permissions`, e.g.:
-```json
-["screen:dashboard", "screen:service_orders", "fn:create_os", "fn:edit_os"]
-```
-
-Presets work the same way - selecting a preset copies its permissions array into the user's record and sets `preset_id`. If the user customizes, `preset_id` is cleared.
-
-The `is_active` field on `user_permissions` controls whether the user can access the system at all (replaces the Ativar/Desativar concept from the reference).
+### Arquivos Modificados
+- `src/hooks/usePermissions.ts` - Adicionar categorias e descriptions
+- `src/components/users/UserFormDialog.tsx` - Refazer layout completo
+- `src/components/users/PermissionPresetDialog.tsx` - Atualizar layout de permissões
+- `src/pages/Users.tsx` - Refazer com cards estilo EcoSistema
 
