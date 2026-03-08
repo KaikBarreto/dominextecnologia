@@ -65,14 +65,14 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-6 min-w-0 overflow-hidden">
+    <div className="space-y-6 min-w-0 w-full max-w-full overflow-x-hidden">
       <div>
         <h1 className="text-2xl font-bold">Clientes</h1>
         <p className="text-muted-foreground">Gerencie seus clientes</p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, empresa, email ou documento..."
@@ -91,7 +91,7 @@ export default function Customers() {
         <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70 mb-4">
           Lista de Clientes
         </h2>
-        <Card className="overflow-hidden">
+        <Card className="w-full max-w-full overflow-hidden">
           <CardContent className="p-0">
           <div className="p-4 sm:p-6">
           {isLoading ? (
@@ -113,9 +113,9 @@ export default function Customers() {
           ) : (
             <>
             {isMobile ? (
-              <div className="space-y-3">
+              <div className="space-y-3 w-full min-w-0">
                 {pagination.paginatedItems.map((customer) => (
-                  <Card key={customer.id} className="cursor-pointer" onClick={() => navigate(`/clientes/${customer.id}`)}>
+                  <Card key={customer.id} className="cursor-pointer w-full max-w-full overflow-hidden" onClick={() => navigate(`/clientes/${customer.id}`)}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className="shrink-0">
@@ -146,11 +146,11 @@ export default function Customers() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex justify-end gap-2 mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="edit-ghost" size="sm" onClick={(e) => handleEdit(customer, e)}>
+                      <div className="mt-3 flex flex-wrap justify-end gap-2 border-t pt-2" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="edit-ghost" size="sm" className="h-8 px-2 text-xs" onClick={(e) => handleEdit(customer, e)}>
                           <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                         </Button>
-                        <Button variant="destructive-ghost" size="sm" onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); setDeleteDialogOpen(true); }}>
+                        <Button variant="destructive-ghost" size="sm" className="h-8 px-2 text-xs" onClick={(e) => { e.stopPropagation(); setCustomerToDelete(customer); setDeleteDialogOpen(true); }}>
                           <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
                         </Button>
                       </div>
