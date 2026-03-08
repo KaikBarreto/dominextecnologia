@@ -1,4 +1,4 @@
-import { Zap } from 'lucide-react';
+import logoWhite from '@/assets/logo-white.png';
 
 const columns = [
   {
@@ -23,10 +23,7 @@ export default function LandingFooter() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Zap className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold text-white">Dominex</span>
+              <img src={logoWhite} alt="Dominex" className="h-8 w-auto" />
             </div>
             <p className="text-sm text-white/30 mb-4">
               Gestão de equipes de campo e ordens de serviço.
@@ -57,16 +54,16 @@ export default function LandingFooter() {
         </div>
 
         <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-white/20">
-            © 2025 Dominex. Todos os direitos reservados. Feito para quem domina o campo.
+          <p className="text-xs text-white/50">
+            © {new Date().getFullYear()} Dominex. Todos os direitos reservados. Feito para quem domina o campo.
           </p>
-          <p className="text-xs text-white/20">
+          <p className="text-xs text-white/50">
             Criado por{' '}
             <a
               href="https://auctustech.com.br"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold text-white/40 hover:text-white/60 transition-colors"
+              className="font-bold text-white/70 hover:text-white transition-colors"
             >
               Auctus
             </a>

@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Play, CheckCircle, Clock, MapPin, Bell } from 'lucide-react';
+import { Play, MapPin, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export default function HeroSection() {
+  const ref = useScrollReveal();
+
   return (
     <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
       {/* Background */}
@@ -17,7 +20,7 @@ export default function HeroSection() {
         />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+      <div ref={ref} className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 lg:py-32 scroll-reveal">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left */}
           <div className="space-y-8">
@@ -50,23 +53,35 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 variant="ghost"
-                className="text-white border border-white/20 hover:bg-white/5 rounded-full px-8 py-6"
+                className="text-white border border-white/20 hover:bg-white/10 hover:text-white rounded-full px-8 py-6"
+                asChild
               >
-                <Play className="h-4 w-4 mr-2" /> Ver demonstração
+                <a href="#how-it-works">
+                  <Play className="h-4 w-4 mr-2" /> Ver demonstração
+                </a>
               </Button>
             </div>
 
             {/* Avatars */}
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2">
-                {[...Array(5)].map((_, i) => (
-                  <div
+                {[
+                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face',
+                  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&fit=crop&crop=face',
+                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face',
+                  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face',
+                  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=face',
+                ].map((src, i) => (
+                  <img
                     key={i}
-                    className="h-8 w-8 rounded-full border-2 border-[hsl(0,0%,4%)] bg-gradient-to-br from-primary/60 to-primary/20"
+                    src={src}
+                    alt="Usuário"
+                    loading="lazy"
+                    className="h-8 w-8 rounded-full border-2 border-[hsl(0,0%,4%)] object-cover"
                   />
                 ))}
               </div>
-              <span className="text-sm text-white/40">Mais de 3.000 gestores já usam</span>
+              <span className="text-sm text-white/50">Mais de 3.000 gestores já usam</span>
             </div>
           </div>
 

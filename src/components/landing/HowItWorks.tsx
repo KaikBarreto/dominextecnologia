@@ -1,4 +1,5 @@
 import { UserPlus, Send, TrendingUp } from 'lucide-react';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const steps = [
   {
@@ -22,15 +23,16 @@ const steps = [
 ];
 
 export default function HowItWorks() {
+  const ref = useScrollReveal();
+
   return (
     <section id="how-it-works" className="py-24 bg-[hsl(0,0%,4%)]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
           Simples de começar, poderoso para escalar
         </h2>
 
         <div className="grid md:grid-cols-3 gap-8 relative">
-          {/* Connector line (desktop) */}
           <div className="hidden md:block absolute top-24 left-[16.67%] right-[16.67%] h-0.5 bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0" />
 
           {steps.map((s) => (

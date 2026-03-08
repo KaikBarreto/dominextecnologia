@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Zap, Settings } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import logoWhite from '@/assets/logo-white.png';
 
 const navLinks = [
   { label: 'Plataforma', href: '#features' },
@@ -30,10 +31,7 @@ export default function LandingNavbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-bold text-white">Dominex</span>
+            <img src={logoWhite} alt="Dominex" className="h-8 w-auto" />
           </Link>
 
           {/* Desktop links */}

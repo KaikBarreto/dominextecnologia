@@ -11,6 +11,7 @@ import PricingSection from '@/components/landing/PricingSection';
 import FaqSection from '@/components/landing/FaqSection';
 import CtaFinalSection from '@/components/landing/CtaFinalSection';
 import LandingFooter from '@/components/landing/LandingFooter';
+import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 
 export default function Landing() {
   return (
@@ -28,6 +29,7 @@ export default function Landing() {
       <FaqSection />
       <CtaFinalSection />
       <LandingFooter />
+      <WhatsAppFloatingButton />
     </div>
   );
 }

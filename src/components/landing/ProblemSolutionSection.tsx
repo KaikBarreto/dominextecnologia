@@ -1,4 +1,5 @@
 import { XCircle, CheckCircle2 } from 'lucide-react';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const problems = [
   'OS em papel ou Excel perdido',
@@ -17,12 +18,13 @@ const solutions = [
 ];
 
 export default function ProblemSolutionSection() {
+  const ref = useScrollReveal();
+
   return (
     <section className="py-24 bg-[hsl(0,0%,4%)]">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)] overflow-hidden">
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/10">
-            {/* Problem */}
             <div className="p-8 lg:p-12">
               <h3 className="text-xl font-bold text-white mb-6">
                 Sua operação travada no improviso?
@@ -36,8 +38,6 @@ export default function ProblemSolutionSection() {
                 ))}
               </ul>
             </div>
-
-            {/* Solution */}
             <div className="p-8 lg:p-12">
               <h3 className="text-xl font-bold text-white mb-6">
                 Com o Dominex, você tem controle total
