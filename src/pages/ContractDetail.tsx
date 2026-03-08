@@ -270,7 +270,7 @@ export default function ContractDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {occurrences.map(occ => {
+                    {occPagination.paginatedItems.map(occ => {
                       const occDate = parseLocalDate(occ.scheduled_date);
                       const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
                       const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
