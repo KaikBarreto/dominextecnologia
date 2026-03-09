@@ -33,8 +33,21 @@ export default function Employees() {
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
+
+  const canManageTime = isAdminOrGestor() || hasPermission('fn:manage_timeclock') || hasPermission('fn:manage_employees');
+
+  const tabs: SettingsTab[] = useMemo(() => {
+    const base: SettingsTab[] = [
+      { value: 'list', label: 'Funcionários', icon: Users },
+      { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    ];
+    if (canManageTime) {
+      base.push({ value: 'timeclock', label: 'Controle de Ponto', icon: Clock });
+    }
+    return base;
+  }, [canManageTime]);
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
