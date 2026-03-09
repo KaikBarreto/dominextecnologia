@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
+import { GlobalCostsTab } from '@/components/service-orders/GlobalCostsTab';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
-import { Settings, DollarSign } from 'lucide-react';
+import { Settings, DollarSign, Boxes } from 'lucide-react';
 
 const tabs = [
   {
@@ -12,8 +13,13 @@ const tabs = [
   },
   {
     value: 'costs',
-    label: 'Custos',
+    label: 'Custos dos Serviços',
     icon: DollarSign,
+  },
+  {
+    value: 'global',
+    label: 'Custos Globais',
+    icon: Boxes,
   },
 ];
 
@@ -34,6 +40,7 @@ export default function ServicesPage() {
       >
         {activeTab === 'types' && <ServiceTypesPanel />}
         {activeTab === 'costs' && <ServiceCostsTab />}
+        {activeTab === 'global' && <GlobalCostsTab />}
       </SettingsSidebarLayout>
     </div>
   );
