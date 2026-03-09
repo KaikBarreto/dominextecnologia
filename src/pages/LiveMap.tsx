@@ -103,6 +103,7 @@ export default function LiveMap() {
   const polylinesRef = useRef<Map<string, any>>(new Map());
   const routeLinesRef = useRef<Map<string, any>>(new Map());
   const destMarkersRef = useRef<Map<string, any>>(new Map());
+  const baseMarkerRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
   const labelsLayerRef = useRef<any>(null);
   const [technicians, setTechnicians] = useState<TechMarker[]>([]);
@@ -110,6 +111,8 @@ export default function LiveMap() {
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const { settings: companySettings } = useCompanySettings();
+  const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const fetchRoutesForTechs = useCallback(async (techs: TechMarker[]) => {
     const enRouteTechs = techs.filter(
