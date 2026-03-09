@@ -68,7 +68,8 @@ function QuotesList() {
     return list;
   }, [quotes, statusFilter, search]);
 
-  const pagination = useDataPagination(filtered);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
+  const pagination = useDataPagination(sortedItems);
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/proposta/${token}`;
