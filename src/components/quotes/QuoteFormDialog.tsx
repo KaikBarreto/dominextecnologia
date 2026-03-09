@@ -599,7 +599,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </AlertDescription>
               </Alert>
             )}
-            <BDISummaryCard data={{ ...bdi, cardInstallments }} />
+            <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
           </section>
         </>
       )}
