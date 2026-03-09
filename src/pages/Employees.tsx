@@ -352,16 +352,6 @@ export default function Employees() {
               </div>
             )}
           </div>
-        ) : activeTab === 'timeclock' ? (
-          <div className="space-y-6">
-            {linkedEmployee && <TechnicianTimeClock />}
-            {canManageTime && <AdminTimePanel />}
-            {!linkedEmployee && !canManageTime && (
-              <div className="text-center py-12 text-muted-foreground">
-                Você não tem permissão para acessar o controle de ponto.
-              </div>
-            )}
-          </div>
         ) : (
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}
