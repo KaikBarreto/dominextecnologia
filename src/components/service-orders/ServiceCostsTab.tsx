@@ -133,7 +133,12 @@ export function ServiceCostsTab() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <Card>
                     <CardContent className="p-4 space-y-3">
-                      <p className="text-sm font-semibold text-foreground">Mão de obra</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground">Mão de obra</p>
+                        <Button size="sm" variant="outline" onClick={() => setLaborCalcOpen(true)}>
+                          <Calculator className="h-3.5 w-3.5 mr-1" />Calcular
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                         <div className="space-y-1.5">
                           <Label className="text-xs">Custo / hora (R$)</Label>
@@ -155,7 +160,7 @@ export function ServiceCostsTab() {
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-foreground">Custos extras</p>
-                        <Button size="sm" variant="outline" onClick={addExtraLine}>
+                        <Button size="sm" variant="outline" onClick={() => setExtraCostModalOpen(true)}>
                           + Adicionar
                         </Button>
                       </div>
