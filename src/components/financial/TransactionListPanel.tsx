@@ -152,13 +152,13 @@ export function TransactionListPanel({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs uppercase tracking-wider">Data</TableHead>
-                    {showTypeColumn && <TableHead className="text-xs uppercase tracking-wider">Tipo</TableHead>}
-                    <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
-                    <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Categoria</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Valor</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                    <TableHead className="w-[120px] text-xs uppercase tracking-wider">Ações</TableHead>
+                    <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
+                    {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
+                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
+                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Categoria</SortableTableHead>
+                    <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
+                    <SortableTableHead sortKey="is_paid" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[120px]">Ações</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
