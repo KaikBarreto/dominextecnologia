@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Download } from 'lucide-react';
+import { Download, Eye } from 'lucide-react';
 import { useTimeHistory, formatMinutes, type TimeSheet } from '@/hooks/useTimeRecords';
 import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { exportToCSV } from '@/utils/exportTimesheets';
+import { TimeDayDetailModal } from './TimeDayDetailModal';
 import { format, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ export function TimeHistory() {
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [statusFilter, setStatusFilter] = useState('all');
+  const [detailSheet, setDetailSheet] = useState<{ employeeId: string; employeeName: string; date: string } | null>(null);
 
   const { data: sheets = [], isLoading } = useTimeHistory({
     employeeId: employeeId !== 'all' ? employeeId : undefined,
@@ -43,6 +45,11 @@ export function TimeHistory() {
     const totalWorked = sheets.reduce((s, sh) => s + (sh.total_worked_min || 0), 0);
     return { totalExpected, totalWorked, balance: totalWorked - totalExpected };
   }, [sheets]);
+
+  const handleViewDetail = (sh: TimeSheet) => {
+    const name = getName(sh.employee_id);
+    setDetailSheet({ employeeId: sh.employee_id || '', employeeName: name, date: sh.date });
+  };
 
   return (
     <div className="space-y-4">
@@ -84,7 +91,12 @@ export function TimeHistory() {
                       <p className="font-medium text-sm truncate">{getName(sh.employee_id)}</p>
                       <p className="text-xs text-muted-foreground">{format(new Date(sh.date + 'T12:00:00'), 'dd/MM/yyyy')}</p>
                     </div>
-                    <Badge className={cn('text-[10px] shrink-0', stCfg.className)}>{stCfg.label}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className={cn('text-[10px] shrink-0', stCfg.className)}>{stCfg.label}</Badge>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleViewDetail(sh)}>
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex gap-3">
@@ -126,6 +138,7 @@ export function TimeHistory() {
                     <th className="text-left px-4 py-3 font-medium">Trabalhado</th>
                     <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Saldo</th>
                     <th className="text-left px-4 py-3 font-medium">Status</th>
+                    <th className="text-right px-4 py-3 font-medium">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -142,11 +155,16 @@ export function TimeHistory() {
                           {sh.balance_min != null ? `${sh.balance_min >= 0 ? '+' : ''}${formatMinutes(sh.balance_min)}` : '—'}
                         </td>
                         <td className="px-4 py-3"><Badge className={cn('text-xs', stCfg.className)}>{stCfg.label}</Badge></td>
+                        <td className="px-4 py-3 text-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetail(sh)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </td>
                       </tr>
                     );
                   })}
                   {sheets.length === 0 && (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Nenhum registro encontrado</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Nenhum registro encontrado</td></tr>
                   )}
                 </tbody>
               </table>
@@ -163,6 +181,14 @@ export function TimeHistory() {
           </CardContent>
         </Card>
       )}
+
+      <TimeDayDetailModal
+        open={!!detailSheet}
+        onOpenChange={() => setDetailSheet(null)}
+        employeeId={detailSheet?.employeeId || null}
+        employeeName={detailSheet?.employeeName || ''}
+        date={detailSheet?.date || format(new Date(), 'yyyy-MM-dd')}
+      />
     </div>
   );
 }
