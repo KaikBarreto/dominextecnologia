@@ -474,11 +474,11 @@ export default function CustomerDetail() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                     <TableRow>
+                      <SortableTableHead sortKey="order_number" sortConfig={osSortConfig} onSort={handleOsSort}>OS</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={osSortConfig} onSort={handleOsSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_date" sortConfig={osSortConfig} onSort={handleOsSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={osSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
