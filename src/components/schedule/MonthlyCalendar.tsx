@@ -23,6 +23,7 @@ interface MonthlyCalendarProps {
   onDateDoubleClick?: (date: Date) => void;
   onOrderSelect?: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onDrop?: (orderId: string, newDate: string, newTime: string) => void;
+  holidayMap?: Record<string, Holiday[]>;
 }
 
 const osTypeColors: Record<OsType, string> = {
