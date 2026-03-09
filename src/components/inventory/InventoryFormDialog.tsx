@@ -44,41 +44,98 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     category: '',
     description: '',
     quantity: 0,
-    min_quantity: 0,
     unit: 'un',
     cost_price: 0,
     sale_price: 0,
     supplier: '',
   });
 
+  const [isSkuGenerating, setIsSkuGenerating] = useState(false);
+
+  const getNextSequentialSku = async (): Promise<string> => {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('sku, created_at')
+      .ilike('sku', 'EST-%')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    let max = 0;
+    for (const row of data ?? []) {
+      const sku = row.sku ?? '';
+      const match = sku.match(/^EST-(\d+)$/);
+      if (match) {
+        const n = Number(match[1]);
+        if (Number.isFinite(n)) max = Math.max(max, n);
+      }
+    }
+
+    const next = max + 1;
+    return `EST-${String(next).padStart(3, '0')}`;
+  };
+
+  const applyAutoSku = async () => {
+    setIsSkuGenerating(true);
+    try {
+      const sku = await getNextSequentialSku();
+      setFormData((prev) => ({ ...prev, sku }));
+    } catch (e) {
+      console.error('Erro ao gerar SKU automático', e);
+    } finally {
+      setIsSkuGenerating(false);
+    }
+  };
+
   useEffect(() => {
-    if (item) {
-      setFormData({
-        name: item.name,
-        sku: item.sku || '',
-        category: item.category || '',
-        description: item.description || '',
-        quantity: item.quantity || 0,
-        min_quantity: item.min_quantity || 0,
-        unit: item.unit || 'un',
-        cost_price: item.cost_price || 0,
-        sale_price: item.sale_price || 0,
-        supplier: item.supplier || '',
-      });
-    } else {
+    let cancelled = false;
+
+    const run = async () => {
+      if (item) {
+        setFormData({
+          name: item.name,
+          sku: item.sku || '',
+          category: item.category || '',
+          description: item.description || '',
+          quantity: item.quantity || 0,
+          unit: item.unit || 'un',
+          cost_price: item.cost_price || 0,
+          sale_price: item.sale_price || 0,
+          supplier: item.supplier || '',
+        });
+        return;
+      }
+
       setFormData({
         name: '',
         sku: '',
         category: '',
         description: '',
         quantity: 0,
-        min_quantity: 0,
         unit: 'un',
         cost_price: 0,
         sale_price: 0,
         supplier: '',
       });
-    }
+
+      if (!open) return;
+
+      try {
+        setIsSkuGenerating(true);
+        const sku = await getNextSequentialSku();
+        if (!cancelled) setFormData((prev) => ({ ...prev, sku }));
+      } catch (e) {
+        console.error('Erro ao gerar SKU automático', e);
+      } finally {
+        if (!cancelled) setIsSkuGenerating(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [item, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
