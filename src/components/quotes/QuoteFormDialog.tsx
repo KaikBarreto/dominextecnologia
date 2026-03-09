@@ -26,7 +26,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
 import {
   User, UserPlus, Palette, Wrench, MapPin,
-  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard,
+  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
