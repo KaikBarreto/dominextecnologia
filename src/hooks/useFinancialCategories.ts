@@ -9,6 +9,7 @@ export interface FinancialCategory {
   color: string;
   icon: string | null;
   is_active: boolean;
+  dre_group: string | null;
   created_at: string;
   updated_at: string;
 }
