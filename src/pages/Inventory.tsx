@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Package, Plus, Search, AlertTriangle, DollarSign, Edit, Trash2 } from 'lucide-react';
+import { Package, Plus, Search, AlertTriangle, DollarSign, Edit, Trash2, TrendingUp, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,62 +70,76 @@ export default function Inventory() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="bg-gradient-to-br from-card to-muted/20">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Itens</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold">{stats.totalItems}</p>
-                )}
+      {/* Stats Cards - Dashboard style */}
+      {isLoading ? (
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}><CardContent className="p-4 lg:p-6"><Skeleton className="h-16 w-full" /></CardContent></Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-[hsl(var(--primary))] text-white dark:bg-card dark:text-card-foreground dark:border dark:border-primary/30 dark:shadow-[0_0_15px_-3px_hsl(var(--primary)/0.15)]">
+            <CardContent className="p-4 lg:p-6">
+              <div className="flex flex-col items-center text-center lg:flex-row lg:items-start lg:justify-between lg:text-left">
+                <div className="p-2 rounded-xl bg-black/10 dark:bg-primary/15 mb-2 lg:mb-0 lg:order-2">
+                  <Boxes className="h-4 w-4 text-white dark:text-primary" />
+                </div>
+                <div className="space-y-1 lg:order-1 min-w-0">
+                  <p className="text-xs font-medium text-white/80 dark:text-muted-foreground">Total de Itens</p>
+                  <p className="text-xl lg:text-2xl font-bold dark:text-primary">{stats.totalItems}</p>
+                  <p className="text-[10px] text-white/60 dark:text-muted-foreground">cadastrados</p>
+                </div>
               </div>
-              <div className="rounded-full bg-primary p-3">
-                <Package className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-gradient-to-br from-card to-warning/5">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Estoque Baixo</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold text-warning">{stats.lowStockItems}</p>
-                )}
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-[hsl(var(--info))] text-white dark:bg-card dark:text-card-foreground dark:border dark:border-info/30 dark:shadow-[0_0_15px_-3px_hsl(var(--info)/0.15)]">
+            <CardContent className="p-4 lg:p-6">
+              <div className="flex flex-col items-center text-center lg:flex-row lg:items-start lg:justify-between lg:text-left">
+                <div className="p-2 rounded-xl bg-black/10 dark:bg-info/15 mb-2 lg:mb-0 lg:order-2">
+                  <DollarSign className="h-4 w-4 text-white dark:text-info" />
+                </div>
+                <div className="space-y-1 lg:order-1 min-w-0">
+                  <p className="text-xs font-medium text-white/80 dark:text-muted-foreground">Valor Investido</p>
+                  <p className="text-xl lg:text-2xl font-bold dark:text-info">{formatCurrency(stats.totalValue)}</p>
+                  <p className="text-[10px] text-white/60 dark:text-muted-foreground">preço de custo</p>
+                </div>
               </div>
-              <div className="rounded-full bg-warning p-3">
-                <AlertTriangle className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-gradient-to-br from-card to-success/5">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Valor Total</p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-24 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold text-success">{formatCurrency(stats.totalValue)}</p>
-                )}
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-[hsl(var(--success))] text-white dark:bg-card dark:text-card-foreground dark:border dark:border-success/30 dark:shadow-[0_0_15px_-3px_hsl(var(--success)/0.15)]">
+            <CardContent className="p-4 lg:p-6">
+              <div className="flex flex-col items-center text-center lg:flex-row lg:items-start lg:justify-between lg:text-left">
+                <div className="p-2 rounded-xl bg-black/10 dark:bg-success/15 mb-2 lg:mb-0 lg:order-2">
+                  <TrendingUp className="h-4 w-4 text-white dark:text-success" />
+                </div>
+                <div className="space-y-1 lg:order-1 min-w-0">
+                  <p className="text-xs font-medium text-white/80 dark:text-muted-foreground">Projeção de Venda</p>
+                  <p className="text-xl lg:text-2xl font-bold dark:text-success">{formatCurrency(stats.totalSaleValue)}</p>
+                  <p className="text-[10px] text-white/60 dark:text-muted-foreground">preço de venda</p>
+                </div>
               </div>
-              <div className="rounded-full bg-success p-3">
-                <DollarSign className="h-6 w-6 text-white" />
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-[hsl(var(--warning))] text-white dark:bg-card dark:text-card-foreground dark:border dark:border-warning/30 dark:shadow-[0_0_15px_-3px_hsl(var(--warning)/0.15)]">
+            <CardContent className="p-4 lg:p-6">
+              <div className="flex flex-col items-center text-center lg:flex-row lg:items-start lg:justify-between lg:text-left">
+                <div className="p-2 rounded-xl bg-black/10 dark:bg-warning/15 mb-2 lg:mb-0 lg:order-2">
+                  <AlertTriangle className="h-4 w-4 text-white dark:text-warning" />
+                </div>
+                <div className="space-y-1 lg:order-1 min-w-0">
+                  <p className="text-xs font-medium text-white/80 dark:text-muted-foreground">Estoque Baixo</p>
+                  <p className="text-xl lg:text-2xl font-bold dark:text-warning">{stats.lowStockItems}</p>
+                  <p className="text-[10px] text-white/60 dark:text-muted-foreground">itens em alerta</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
