@@ -53,11 +53,13 @@ export default function PMOC() {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const { sortedItems: sortedPlans, sortConfig: planSortConfig, handleSort: handlePlanSort } = useTableSort(filteredPlans);
 
   const filteredContracts = contracts.filter(c =>
     c.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.contract_number?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(filteredContracts);
 
   // Timeline from active plans
   const timeline = plans
