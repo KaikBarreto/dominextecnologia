@@ -1927,6 +1927,53 @@ export type Database = {
           },
         ]
       }
+      pricing_settings: {
+        Row: {
+          admin_indirect_rate: number
+          card_discount_rate: number
+          card_installments: number
+          company_id: string
+          created_at: string | null
+          default_profit_rate: number
+          id: string
+          km_cost: number
+          tax_rate: number
+          updated_at: string | null
+        }
+        Insert: {
+          admin_indirect_rate?: number
+          card_discount_rate?: number
+          card_installments?: number
+          company_id: string
+          created_at?: string | null
+          default_profit_rate?: number
+          id?: string
+          km_cost?: number
+          tax_rate?: number
+          updated_at?: string | null
+        }
+        Update: {
+          admin_indirect_rate?: number
+          card_discount_rate?: number
+          card_installments?: number
+          company_id?: string
+          created_at?: string | null
+          default_profit_rate?: number
+          id?: string
+          km_cost?: number
+          tax_rate?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1995,45 +2042,129 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_item_materials: {
+        Row: {
+          id: string
+          is_manual: boolean | null
+          item_name: string
+          purchase_price: number
+          quantity: number
+          quote_item_id: string | null
+          stock_item_id: string | null
+          subtotal: number | null
+          unit: string
+        }
+        Insert: {
+          id?: string
+          is_manual?: boolean | null
+          item_name: string
+          purchase_price: number
+          quantity: number
+          quote_item_id?: string | null
+          stock_item_id?: string | null
+          subtotal?: number | null
+          unit?: string
+        }
+        Update: {
+          id?: string
+          is_manual?: boolean | null
+          item_name?: string
+          purchase_price?: number
+          quantity?: number
+          quote_item_id?: string | null
+          stock_item_id?: string | null
+          subtotal?: number | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_item_materials_quote_item_id_fkey"
+            columns: ["quote_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_item_materials_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
+          bdi: number
           created_at: string
           description: string
           id: string
           inventory_id: string | null
           item_type: string
           position: number
+          price_override: number | null
+          profit_rate: number
           quantity: number
           quote_id: string
           service_type_id: string | null
+          sort_order: number | null
+          total_cost: number | null
           total_price: number
+          unit_extras_cost: number
+          unit_hourly_rate: number
+          unit_hours: number
+          unit_labor_cost: number
+          unit_materials_cost: number
           unit_price: number
+          unit_total_cost: number
         }
         Insert: {
+          bdi?: number
           created_at?: string
           description: string
           id?: string
           inventory_id?: string | null
           item_type?: string
           position?: number
+          price_override?: number | null
+          profit_rate?: number
           quantity?: number
           quote_id: string
           service_type_id?: string | null
+          sort_order?: number | null
+          total_cost?: number | null
           total_price?: number
+          unit_extras_cost?: number
+          unit_hourly_rate?: number
+          unit_hours?: number
+          unit_labor_cost?: number
+          unit_materials_cost?: number
           unit_price?: number
+          unit_total_cost?: number
         }
         Update: {
+          bdi?: number
           created_at?: string
           description?: string
           id?: string
           inventory_id?: string | null
           item_type?: string
           position?: number
+          price_override?: number | null
+          profit_rate?: number
           quantity?: number
           quote_id?: string
           service_type_id?: string | null
+          sort_order?: number | null
+          total_cost?: number | null
           total_price?: number
+          unit_extras_cost?: number
+          unit_hourly_rate?: number
+          unit_hours?: number
+          unit_labor_cost?: number
+          unit_materials_cost?: number
           unit_price?: number
+          unit_total_cost?: number
         }
         Relationships: [
           {
@@ -2061,15 +2192,24 @@ export type Database = {
       }
       quotes: {
         Row: {
+          admin_indirect_rate: number
           assigned_to: string | null
+          bdi: number
+          converted_to_os_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
           discount_amount: number | null
           discount_type: string | null
           discount_value: number | null
+          displacement_cost: number | null
+          distance_km: number | null
+          final_price: number | null
           id: string
+          km_cost: number
           notes: string | null
+          price_override: number | null
+          profit_rate: number
           proposal_template_id: string | null
           prospect_email: string | null
           prospect_name: string | null
@@ -2077,22 +2217,34 @@ export type Database = {
           quote_number: number
           status: string
           subtotal: number | null
+          tax_rate: number
           terms: string | null
           token: string
+          total_cost: number
+          total_price: number
           total_value: number | null
           updated_at: string
           valid_until: string | null
         }
         Insert: {
+          admin_indirect_rate?: number
           assigned_to?: string | null
+          bdi?: number
+          converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
+          displacement_cost?: number | null
+          distance_km?: number | null
+          final_price?: number | null
           id?: string
+          km_cost?: number
           notes?: string | null
+          price_override?: number | null
+          profit_rate?: number
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -2100,22 +2252,34 @@ export type Database = {
           quote_number?: number
           status?: string
           subtotal?: number | null
+          tax_rate?: number
           terms?: string | null
           token?: string
+          total_cost?: number
+          total_price?: number
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
         }
         Update: {
+          admin_indirect_rate?: number
           assigned_to?: string | null
+          bdi?: number
+          converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
+          displacement_cost?: number | null
+          distance_km?: number | null
+          final_price?: number | null
           id?: string
+          km_cost?: number
           notes?: string | null
+          price_override?: number | null
+          profit_rate?: number
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -2123,13 +2287,23 @@ export type Database = {
           quote_number?: number
           status?: string
           subtotal?: number | null
+          tax_rate?: number
           terms?: string | null
           token?: string
+          total_cost?: number
+          total_price?: number
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quotes_converted_to_os_id_fkey"
+            columns: ["converted_to_os_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotes_customer_id_fkey"
             columns: ["customer_id"]
@@ -2142,6 +2316,113 @@ export type Database = {
             columns: ["proposal_template_id"]
             isOneToOne: false
             referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_costs: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          extra_costs: Json | null
+          hourly_rate: number
+          hours: number
+          id: string
+          labor_cost: number | null
+          notes: string | null
+          service_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          extra_costs?: Json | null
+          hourly_rate?: number
+          hours?: number
+          id?: string
+          labor_cost?: number | null
+          notes?: string | null
+          service_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          extra_costs?: Json | null
+          hourly_rate?: number
+          hours?: number
+          id?: string
+          labor_cost?: number | null
+          notes?: string | null
+          service_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_costs_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_materials: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          item_name: string
+          purchase_price: number
+          quantity: number
+          sale_price: number | null
+          service_id: string | null
+          sort_order: number | null
+          stock_item_id: string | null
+          subtotal: number | null
+          unit: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          item_name: string
+          purchase_price?: number
+          quantity?: number
+          sale_price?: number | null
+          service_id?: string | null
+          sort_order?: number | null
+          stock_item_id?: string | null
+          subtotal?: number | null
+          unit?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          item_name?: string
+          purchase_price?: number
+          quantity?: number
+          sale_price?: number | null
+          service_id?: string | null
+          sort_order?: number | null
+          stock_item_id?: string | null
+          subtotal?: number | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_materials_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_materials_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
         ]
