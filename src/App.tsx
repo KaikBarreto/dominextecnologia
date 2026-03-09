@@ -52,6 +52,9 @@ import CustomerPortal from "./pages/CustomerPortal";
 
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminFinancial from "./pages/admin/AdminFinancial";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -163,8 +166,12 @@ const AppRoutes = () => (
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/checkout" element={<Checkout />} />
+      <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/empresas" element={<AdminCompanies />} />
       <Route path="/admin/empresas/:id" element={<AdminCompanyDetail />} />
+      <Route path="/admin/assinaturas" element={<AdminSubscriptions />} />
+      <Route path="/admin/financeiro" element={<AdminFinancial />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Tutorials />} />

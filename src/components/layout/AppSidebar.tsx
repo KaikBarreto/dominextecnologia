@@ -85,7 +85,10 @@ const menuItems: MenuItem[] = [
 ];
 
 const adminMenuItems: MenuItem[] = [
+  { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas' },
+  { title: 'Assinaturas', icon: CreditCard, path: '/admin/assinaturas' },
+  { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes' },
 ];
 
