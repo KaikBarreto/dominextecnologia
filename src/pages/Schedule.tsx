@@ -109,6 +109,11 @@ export default function Schedule() {
     }
   };
 
+  const handleDeleteFromSummary = (id: string) => {
+    deleteServiceOrder.mutate(id);
+    setSummaryOrder(null);
+  };
+
   const handleNewOrder = () => {
     setSelectedOrder(null);
     setDefaultDate(format(currentDate, 'yyyy-MM-dd'));
@@ -301,7 +306,7 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onClearSelection={handleClearSummary}
               onEdit={handleEditFromSummary}
-            />
+              onDelete={handleDeleteFromSummary}
           </div>
         )}
 
@@ -384,7 +389,7 @@ export default function Schedule() {
             onOrderSelect={handleOrderSelect}
             onClearSelection={handleClearSummary}
             onEdit={handleEditFromSummary}
-          />
+            onDelete={handleDeleteFromSummary}
         </div>
       </div>
 
