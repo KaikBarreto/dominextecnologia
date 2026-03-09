@@ -18,7 +18,7 @@ function HeaderContent() {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
       {/* Left: sidebar toggle */}
       <div className="flex items-center gap-2 w-10">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
