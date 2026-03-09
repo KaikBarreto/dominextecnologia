@@ -481,19 +481,36 @@ export default function EquipmentDetail() {
                     )}
                   </div>
                 )}
-                {fileAttachments.length > 0 && (
+                {pdfAttachments.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
                       <FileText className="h-4 w-4" />
-                      <span>Documentos ({fileAttachments.length})</span>
+                      <span>PDFs ({pdfAttachments.length})</span>
                     </div>
                     {attachViewMode === 'gallery' ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {fileAttachments.map(att => renderGalleryItem(att, false))}
+                        {pdfAttachments.map(att => renderGalleryItem(att, false))}
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {fileAttachments.map(att => renderListItem(att, false))}
+                        {pdfAttachments.map(att => renderListItem(att, false))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {otherFileAttachments.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
+                      <FileText className="h-4 w-4" />
+                      <span>Outros Documentos ({otherFileAttachments.length})</span>
+                    </div>
+                    {attachViewMode === 'gallery' ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {otherFileAttachments.map(att => renderGalleryItem(att, false))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {otherFileAttachments.map(att => renderListItem(att, false))}
                       </div>
                     )}
                   </div>
