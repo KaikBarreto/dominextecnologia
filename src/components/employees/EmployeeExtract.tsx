@@ -22,7 +22,8 @@ interface EmployeeExtractProps {
 
 export function EmployeeExtract({ open, onOpenChange, employeeName, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const pagination = useDataPagination(movements, 25);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(movements);
+  const pagination = useDataPagination(sortedItems, 25);
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`} className="sm:max-w-[900px]">
