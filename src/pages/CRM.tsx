@@ -223,7 +223,7 @@ export default function CRM() {
             <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
               <div className="min-w-0 w-full">
                 <p className="text-sm text-white/70">Valor Total</p>
-                {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(stats.totalValue)}</p>}
+                {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(filteredStats.totalValue)}</p>}
               </div>
               <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><DollarSign className="h-6 w-6" /></div>
             </div>
