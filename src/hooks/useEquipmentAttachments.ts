@@ -53,7 +53,6 @@ export function useEquipmentAttachments(equipmentId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment-attachments', equipmentId] });
-      toast({ title: 'Anexo enviado!' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: error.message });

@@ -632,7 +632,10 @@ export function ServiceOrderFormDialog({
                         {[eq.brand, eq.model].filter(Boolean).join(' - ') || 'Sem detalhes'}
                       </p>
                       {(eq as any).location && (
-                        <p className="text-xs text-muted-foreground mt-0.5">📍 {(eq as any).location}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {(eq as any).location}
+                        </p>
                       )}
                     </div>
                     {eq.identifier && (

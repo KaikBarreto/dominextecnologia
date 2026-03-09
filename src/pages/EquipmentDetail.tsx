@@ -106,9 +106,17 @@ export default function EquipmentDetail() {
     const total = files.length;
     setUploadProgress({ current: 0, total });
     try {
+      let successCount = 0;
       for (let i = 0; i < total; i++) {
-        await uploadAttachment.mutateAsync({ equipmentId: id, file: files[i] });
+        try {
+          await uploadAttachment.mutateAsync({ equipmentId: id, file: files[i] });
+          successCount++;
+        } catch {}
         setUploadProgress({ current: i + 1, total });
+      }
+      if (successCount > 0) {
+        const { toast } = await import('@/hooks/use-toast');
+        toast.call(null, { title: `${successCount} anexo${successCount > 1 ? 's' : ''} enviado${successCount > 1 ? 's' : ''}!` });
       }
     } finally {
       setUploadingFiles(false);

@@ -43,7 +43,8 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<TabKey>('geral');
+  const locationState = (window.history.state?.usr as { tab?: string } | undefined);
+  const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
   const { serviceOrders, createServiceOrder } = useServiceOrders();
   const { transactions } = useFinancial();
