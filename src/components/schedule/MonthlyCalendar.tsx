@@ -194,6 +194,7 @@ export function MonthlyCalendar({
           const dayOrders = ordersByDate[dateKey] || [];
           const isCurrentMonth = isSameMonth(day, currentDate);
           const isToday = isSameDay(day, new Date());
+          const dayHolidays = holidayMap[dateKey] || [];
 
           return (
             <div
