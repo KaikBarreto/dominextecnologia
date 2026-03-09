@@ -164,19 +164,46 @@ export function WebhookManagerDialog({ children }: WebhookManagerDialogProps) {
             )}
           </div>
 
-          <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground space-y-2">
-            <p className="font-medium text-foreground">Formato sugerido de payload (POST JSON)</p>
-            <pre className="overflow-x-auto text-xs">
+          <div className="rounded-lg border bg-muted/40 p-4 text-sm space-y-3">
+            <div>
+              <h4 className="font-medium text-foreground mb-2">Como usar o webhook</h4>
+              <p className="text-muted-foreground text-xs mb-3">
+                Faça uma requisição <strong>POST</strong> para a URL do webhook com os dados do lead em JSON.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="font-medium text-foreground text-xs">Campos obrigatórios:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                <li>• <code className="bg-muted px-1 rounded">name</code> - Nome completo do lead</li>
+                <li>• <code className="bg-muted px-1 rounded">phone</code> - Telefone (apenas números)</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <p className="font-medium text-foreground text-xs">Campos opcionais:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                <li>• <code className="bg-muted px-1 rounded">email</code> - E-mail do lead</li>
+                <li>• <code className="bg-muted px-1 rounded">source</code> - Origem do lead (ex: "Meta Ads")</li>
+                <li>• <code className="bg-muted px-1 rounded">title</code> - Título personalizado</li>
+                <li>• <code className="bg-muted px-1 rounded">notes</code> - Observações adicionais</li>
+                <li>• <code className="bg-muted px-1 rounded">value</code> - Valor estimado (número)</li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="font-medium text-foreground text-xs mb-2">Exemplo prático:</p>
+              <pre className="overflow-x-auto text-xs bg-background border rounded p-2">
 {`{
   "name": "João Silva",
   "phone": "11999999999",
-  "email": "joao@email.com",
-  "source": "Meta Ads",
-  "title": "Lead campanha ar-condicionado",
-  "notes": "Preencheu formulário",
-  "value": 1500
+  "email": "joao@email.com"
 }`}
-            </pre>
+              </pre>
+              <p className="text-xs text-muted-foreground mt-1">
+                Exemplo mínimo com apenas os campos obrigatórios + email opcional
+              </p>
+            </div>
           </div>
         </div>
       </DialogContent>
