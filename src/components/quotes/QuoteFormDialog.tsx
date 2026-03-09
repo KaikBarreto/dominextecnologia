@@ -17,7 +17,7 @@ import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
 import { useProposalTemplates } from '@/hooks/useProposalTemplates';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-import { useInventory } from '@/hooks/useInventory';
+// inventory import kept for potential future use
 import { useAuth } from '@/contexts/AuthContext';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
@@ -25,8 +25,8 @@ import { BDISummaryCard } from '@/components/quotes/BDISummaryCard';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  User, UserPlus, Palette, Wrench, Package, MapPin,
-  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift,
+  User, UserPlus, Palette, Wrench, MapPin,
+  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
@@ -67,7 +67,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { templates } = useProposalTemplates();
   const { settings: pricing } = usePricingSettings();
   const { serviceTypes } = useServiceTypes();
-  const { items: inventoryItems } = useInventory();
   const { profile } = useAuth();
 
   // ── Customer ──
@@ -82,6 +81,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [adminRate, setAdminRate] = useState(12);
   const [profitRate, setProfitRate] = useState(10);
   const [kmCostCfg, setKmCostCfg] = useState(1);
+  const [cardDiscountRateCfg, setCardDiscountRateCfg] = useState(6);
+  const [cardInstallmentsCfg, setCardInstallmentsCfg] = useState(10);
 
   // ── Items ──
   const [items, setItems] = useState<FormQuoteItem[]>([]);
@@ -107,10 +108,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [addSvcQty, setAddSvcQty] = useState(1);
   const [isFetchingSvc, setIsFetchingSvc] = useState(false);
 
-  // ── Add-material row state ──
-  const [addMatId, setAddMatId] = useState('');
-  const [addMatQty, setAddMatQty] = useState(1);
-  const [addMatPrice, setAddMatPrice] = useState(0);
+  // (material state removed — materials are now part of services)
 
   // ── Initialize BDI config from pricing settings (new quote) ──
   useEffect(() => {
@@ -119,6 +117,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
       setProfitRate(Number(pricing.default_profit_rate ?? 10));
       setKmCostCfg(Number(pricing.km_cost ?? 1));
+      setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
+      setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
     }
   }, [pricing, quote]);
 
@@ -136,6 +136,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setAdminRate(Number(quote.admin_indirect_rate ?? 12));
       setProfitRate(Number(quote.profit_rate ?? 10));
       setKmCostCfg(Number(quote.km_cost ?? 1));
+      setCardDiscountRateCfg(Number(quote.card_discount_rate ?? 6));
+      setCardInstallmentsCfg(Number(quote.card_installments ?? 10));
       setDistanceKm(Number(quote.distance_km ?? 0));
       setDiscountType((quote.discount_type as 'valor' | 'percentual') ?? 'valor');
       setDiscountValue(Number(quote.discount_value ?? 0));
@@ -185,6 +187,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
         setProfitRate(Number(pricing.default_profit_rate ?? 10));
         setKmCostCfg(Number(pricing.km_cost ?? 1));
+        setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
+        setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
       }
     }
   }, [quote, open]);
@@ -205,8 +209,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     items: bdiItems,
     distanceKm,
     kmCost: kmCostCfg,
-    cardDiscountRate: Number(pricing?.card_discount_rate ?? 6),
-    cardInstallments: Number(pricing?.card_installments ?? 10),
+    cardDiscountRate: cardDiscountRateCfg,
+    cardInstallments: cardInstallmentsCfg,
   });
 
   const bdiFactor = bdi.bdiFactor;
@@ -279,35 +283,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setIsFetchingSvc(false);
   }, [addSvcId, addSvcQty, serviceTypes, profile, bdiFactor, profitRate]);
 
-  // ── Add material handler ──
-  const handleAddMaterial = useCallback(() => {
-    if (!addMatId && addMatPrice <= 0) return;
-    const inv = inventoryItems.find(m => m.id === addMatId);
-    const name = inv?.name ?? 'Material';
-    const costPrice = Number(inv?.cost_price ?? 0);
-    const unitPrice = addMatPrice > 0 ? addMatPrice : Number(inv?.sale_price ?? costPrice);
-
-    setItems(prev => [...prev, {
-      item_type: 'material',
-      description: name,
-      quantity: addMatQty,
-      unit_total_cost: costPrice,
-      unit_price: unitPrice,
-      total_price: Math.round(unitPrice * addMatQty * 100) / 100,
-      service_type_id: null,
-      inventory_id: addMatId || null,
-      unit_hourly_rate: 0,
-      unit_hours: 0,
-      unit_labor_cost: 0,
-      unit_materials_cost: costPrice,
-      unit_extras_cost: 0,
-      profit_rate: profitRate,
-      bdi: bdiFactor,
-    }]);
-    setAddMatId('');
-    setAddMatQty(1);
-    setAddMatPrice(0);
-  }, [addMatId, addMatQty, addMatPrice, inventoryItems, profitRate, bdiFactor]);
+  // (material handler removed — materials are sub-items of services)
 
   // ── Item price update ──
   const updateItemPrice = (idx: number, newPrice: number) => {
@@ -356,6 +332,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       terms: terms || undefined,
       proposal_template_id: proposalTemplateId || undefined,
       include_gifts: includeGifts,
+      card_discount_rate: cardDiscountRateCfg,
+      card_installments: cardInstallmentsCfg,
       items: items.map((it, idx) => ({
         id: it.id,
         position: idx,
@@ -394,18 +372,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({ value: s.id, label: s.name })),
     [serviceTypes]
   );
-  const materialOptions = useMemo(
-    () => (inventoryItems ?? []).map(m => ({
-      value: m.id, label: m.name, sublabel: m.sku ? `SKU: ${m.sku}` : undefined,
-    })),
-    [inventoryItems]
-  );
 
   const serviceItems = items.filter(i => i.item_type === 'servico');
-  const materialItemsList = items.filter(i => i.item_type === 'material');
   const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
-  const cardInstallments = Number(pricing?.card_installments ?? 10);
-  const cardDiscountRate = Number(pricing?.card_discount_rate ?? 6);
 
   // ── Form Content ───────────────────────────────────────────────────────────
   const content = (
@@ -476,6 +445,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           <FieldBox label="Custo / km (R$)">
             <Input type="number" min={0} step="0.01" value={kmCostCfg}
               onChange={e => setKmCostCfg(Number(e.target.value) || 0)} className="h-9" />
+          </FieldBox>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <FieldBox label="Desconto à vista (%)">
+            <Input type="number" min={0} max={100} step="0.1" value={cardDiscountRateCfg}
+              onChange={e => setCardDiscountRateCfg(Number(e.target.value) || 0)} className="h-9" />
+          </FieldBox>
+          <FieldBox label="Parcelas (cartão)">
+            <Input type="number" min={1} step="1" value={cardInstallmentsCfg}
+              onChange={e => setCardInstallmentsCfg(Math.max(1, Number(e.target.value) || 1))} className="h-9" />
           </FieldBox>
         </div>
       </section>
@@ -576,96 +555,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         )}
       </section>
 
-      <Separator />
-
-      {/* ══ 4. MATERIAIS ══ */}
-      <section className="space-y-3">
-        <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
-
-        {/* Add material row */}
-        <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
-          <div className="flex-1 min-w-0">
-            <SearchableSelect
-              options={materialOptions}
-              value={addMatId}
-              onValueChange={(id) => {
-                setAddMatId(id);
-                const inv = inventoryItems.find(m => m.id === id);
-                if (inv) setAddMatPrice(Number(inv.sale_price ?? inv.cost_price ?? 0));
-              }}
-              placeholder="Selecionar do estoque..."
-            />
-          </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <Label className="text-xs whitespace-nowrap">Qtd:</Label>
-            <Input type="number" min={1} value={addMatQty}
-              onChange={e => setAddMatQty(Math.max(1, Number(e.target.value) || 1))}
-              className="h-9 w-16 text-sm" />
-            <Label className="text-xs whitespace-nowrap">R$:</Label>
-            <Input type="number" min={0} step="0.01" value={addMatPrice || ''}
-              onChange={e => setAddMatPrice(parseFloat(e.target.value) || 0)}
-              className="h-9 w-24 text-sm" placeholder="0,00" />
-            <Button size="sm" onClick={handleAddMaterial}
-              disabled={!addMatId && addMatPrice <= 0} className="h-9 shrink-0">
-              <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
-            </Button>
-          </div>
-        </div>
-
-        {materialItemsList.length > 0 ? (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-2 font-medium text-muted-foreground">Material</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
-                  <th className="w-8 p-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {materialItemsList.map((item) => {
-                  const globalIdx = items.indexOf(item);
-                  return (
-                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-2 font-medium">{item.description}</td>
-                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
-                      <td className="p-2">
-                        <Input
-                          type="number" min={0} step="0.01"
-                          value={item.unit_price || ''}
-                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
-                          className="h-7 w-24 text-xs text-right ml-auto"
-                        />
-                      </td>
-                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
-                      <td className="p-2">
-                        <Button type="button" variant="ghost" size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeItem(globalIdx)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr className="bg-muted/30 border-t">
-                  <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
-                    Subtotal Materiais
-                  </td>
-                  <td className="p-2 text-right font-bold">
-                    {fmt(materialItemsList.reduce((s, i) => s + i.total_price, 0))}
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState>Nenhum material adicionado</EmptyState>
-        )}
-      </section>
 
       <Separator />
 
@@ -721,7 +610,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </AlertDescription>
               </Alert>
             )}
-            <BDISummaryCard data={{ ...bdi, cardInstallments }} />
+            <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
           </section>
         </>
       )}

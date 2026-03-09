@@ -54,6 +54,8 @@ export interface QuoteInput {
   price_override?: number;
   final_price?: number;
   include_gifts?: boolean;
+  card_discount_rate?: number;
+  card_installments?: number;
   items: QuoteItem[];
 }
 
@@ -93,6 +95,8 @@ export interface Quote {
   total_price?: number | null;
   price_override?: number | null;
   include_gifts?: boolean | null;
+  card_discount_rate?: number | null;
+  card_installments?: number | null;
   customers?: { name: string; email: string | null; phone: string | null };
   quote_items?: QuoteItem[];
   proposal_templates?: { slug: string; name: string } | null;
