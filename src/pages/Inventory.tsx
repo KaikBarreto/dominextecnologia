@@ -11,6 +11,8 @@ import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
