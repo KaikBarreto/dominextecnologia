@@ -32,7 +32,7 @@ export function BDISummaryCard({ data, className }: BDISummaryCardProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base text-white">
           <Calculator className="h-4 w-4 text-emerald-400" />
-          Resumo BDI
+          Resumo do Orçamento
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
