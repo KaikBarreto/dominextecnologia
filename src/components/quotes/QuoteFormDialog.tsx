@@ -487,69 +487,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </div>
 
         {serviceItems.length > 0 ? (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-2 font-medium text-muted-foreground">Serviço</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-24 hidden sm:table-cell">Custo unit.</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
-                  <th className="w-8 p-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {serviceItems.map((item) => {
-                  const globalIdx = items.indexOf(item);
-                  return (
-                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-2 font-medium">
-                        {item.description}
-                        {item.unit_total_cost === 0 && (
-                          <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300 bg-amber-50">
-                            Sem custos configurados
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
-                      <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">
-                        {item.unit_total_cost > 0 ? fmt(item.unit_total_cost) : '—'}
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          type="number" min={0} step="0.01"
-                          value={item.unit_price || ''}
-                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
-                          className="h-7 w-24 text-xs text-right ml-auto"
-                        />
-                      </td>
-                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
-                      <td className="p-2">
-                        <Button type="button" variant="ghost" size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeItem(globalIdx)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr className="bg-muted/30 border-t">
-                  <td colSpan={4} className="p-2 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
-                    Subtotal Serviços
-                  </td>
-                  <td colSpan={2} className="p-2 text-right text-xs font-medium text-muted-foreground sm:hidden">
-                    Subtotal
-                  </td>
-                  <td className="p-2 text-right font-bold">
-                    {fmt(serviceItems.reduce((s, i) => s + i.total_price, 0))}
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onRemove={removeItem} fmt={fmt} />
         ) : (
           <EmptyState>Nenhum serviço adicionado</EmptyState>
         )}
