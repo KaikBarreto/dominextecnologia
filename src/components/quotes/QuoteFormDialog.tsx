@@ -835,6 +835,31 @@ function FieldBox({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
+function BdiField({ label, value, onChange, suffix, prefix, step = 0.1, min = 0 }: {
+  label: string; value: number; onChange: (v: number) => void;
+  suffix?: string; prefix?: string; step?: number; min?: number;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <div className="relative">
+        {prefix && (
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground font-medium">{prefix}</span>
+        )}
+        <Input
+          type="number" min={min} max={suffix === '%' ? 100 : undefined} step={step}
+          value={value}
+          onChange={e => onChange(Number(e.target.value) || 0)}
+          className={`h-8 text-sm font-medium bg-background ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-8' : ''}`}
+        />
+        {suffix && (
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground font-medium">{suffix}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
     <div className="border border-dashed rounded-lg p-5 text-center text-sm text-muted-foreground">
