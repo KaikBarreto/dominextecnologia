@@ -180,6 +180,7 @@ export interface FinancialTransaction {
   is_paid: boolean;
   customer_id?: string;
   service_order_id?: string;
+  contract_id?: string;
   receipt_url?: string;
   notes?: string;
   created_by?: string;
