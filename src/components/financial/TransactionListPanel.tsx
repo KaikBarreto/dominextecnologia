@@ -52,7 +52,8 @@ export function TransactionListPanel({
       t.category?.toLowerCase().includes(search.toLowerCase())
     );
 
-  const pagination = useDataPagination(filtered);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
+  const pagination = useDataPagination(sortedItems);
 
   const handleDelete = async () => {
     if (deleteId) {
