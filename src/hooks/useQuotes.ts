@@ -165,7 +165,7 @@ export function useQuotes() {
 
   const createQuote = useMutation({
     mutationFn: async (input: QuoteInput) => {
-      const { items, ...quoteData } = input;
+      const { items, displacement_cost, ...quoteData } = input as any;
 
       const { data: quote, error } = await supabase
         .from('quotes')
@@ -195,7 +195,7 @@ export function useQuotes() {
   });
 
   const updateQuote = useMutation({
-    mutationFn: async ({ id, items, ...quoteData }: QuoteInput & { id: string }) => {
+    mutationFn: async ({ id, items, displacement_cost, ...quoteData }: QuoteInput & { id: string } & { displacement_cost?: any }) => {
       const { error } = await supabase
         .from('quotes')
         .update(quoteData as any)
