@@ -18,6 +18,8 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Customer } from '@/types/database';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
 
