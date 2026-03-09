@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
-  ExternalLink, DollarSign, Palette,
+  ExternalLink, DollarSign, Palette, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/useQuotes';
+import { useQuoteConversion } from '@/hooks/useQuoteConversion';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
 import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
@@ -35,6 +36,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 export default function Quotes() {
   const isMobile = useIsMobile();
   const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
+  const { convertToServiceOrder, isConverting } = useQuoteConversion();
   const { toast } = useToast();
   const [tab, setTab] = useState<'quotes' | 'pricing'>('quotes');
   const [search, setSearch] = useState('');
@@ -268,16 +270,28 @@ export default function Quotes() {
                                 </>
                               )}
 
-                              {q.status === 'aprovado' && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
-                                      onClick={() => createFinancialFromQuote.mutate(q)}>
-                                      <DollarSign className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Gerar Conta a Receber</TooltipContent>
-                                </Tooltip>
+                              {q.status === 'aprovado' && !q.converted_to_os_id && (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary"
+                                        onClick={() => convertToServiceOrder.mutate(q)}
+                                        disabled={isConverting}>
+                                        <ArrowRight className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Converter em OS</TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
+                                        onClick={() => createFinancialFromQuote.mutate(q)}>
+                                        <DollarSign className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Gerar Conta a Receber</TooltipContent>
+                                  </Tooltip>
+                                </>
                               )}
 
                               <Tooltip>

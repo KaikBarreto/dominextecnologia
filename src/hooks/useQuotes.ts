@@ -56,6 +56,8 @@ export interface Quote {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  converted_to_os_id: string | null;
+  final_price: number | null;
   customers?: { name: string; email: string | null; phone: string | null };
   quote_items?: QuoteItem[];
   proposal_templates?: { slug: string; name: string } | null;
@@ -67,6 +69,7 @@ const STATUS_LABELS: Record<string, string> = {
   aprovado: 'Aprovado',
   rejeitado: 'Rejeitado',
   expirado: 'Expirado',
+  convertido: 'Convertido',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -75,6 +78,7 @@ const STATUS_COLORS: Record<string, string> = {
   aprovado: 'bg-success text-success-foreground',
   rejeitado: 'bg-destructive text-destructive-foreground',
   expirado: 'bg-warning text-warning-foreground',
+  convertido: 'bg-primary text-primary-foreground',
 };
 
 export { STATUS_LABELS, STATUS_COLORS };

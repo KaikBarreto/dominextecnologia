@@ -1,10 +1,24 @@
 import { useState } from 'react';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
+import { Settings, DollarSign } from 'lucide-react';
+
+const tabs = [
+  {
+    value: 'types',
+    label: 'Tipos de Serviços',
+    icon: Settings,
+  },
+  {
+    value: 'costs',
+    label: 'Custos',
+    icon: DollarSign,
+  },
+];
 
 export default function ServicesPage() {
-  const [tab, setTab] = useState<'types' | 'costs'>('types');
+  const [activeTab, setActiveTab] = useState('types');
 
   return (
     <div className="space-y-6">
@@ -13,18 +27,14 @@ export default function ServicesPage() {
         <p className="text-muted-foreground">Configure os tipos de serviços e seus custos</p>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="types" className="flex-1 sm:flex-none">Tipos</TabsTrigger>
-          <TabsTrigger value="costs" className="flex-1 sm:flex-none">Custos</TabsTrigger>
-        </TabsList>
-        <TabsContent value="types" className="mt-4">
-          <ServiceTypesPanel />
-        </TabsContent>
-        <TabsContent value="costs" className="mt-4">
-          <ServiceCostsTab />
-        </TabsContent>
-      </Tabs>
+      <SettingsSidebarLayout
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
+        {activeTab === 'types' && <ServiceTypesPanel />}
+        {activeTab === 'costs' && <ServiceCostsTab />}
+      </SettingsSidebarLayout>
     </div>
   );
 }
