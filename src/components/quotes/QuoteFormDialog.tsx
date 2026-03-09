@@ -25,8 +25,8 @@ import { BDISummaryCard } from '@/components/quotes/BDISummaryCard';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  User, UserPlus, Palette, Wrench, Package, MapPin,
-  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift,
+  User, UserPlus, Palette, Wrench, MapPin,
+  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
