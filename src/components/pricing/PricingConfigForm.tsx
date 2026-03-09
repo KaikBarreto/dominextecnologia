@@ -116,6 +116,23 @@ export function PricingConfigForm() {
               </span>
             </div>
           </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => upsertSettings.mutate({
+                tax_rate: taxRate,
+                admin_indirect_rate: adminRate,
+                default_profit_rate: profitRate,
+                km_cost: kmCost,
+                card_discount_rate: cardDiscountRate,
+                card_installments: cardInstallments,
+              } as any)}
+              disabled={upsertSettings.isPending}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {upsertSettings.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

@@ -164,7 +164,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                       return (
                         <div
                           key={resource.id}
-                          className={`flex flex-col gap-2 p-2 rounded-md border ${isLinked ? 'border-primary/30 bg-primary/5' : 'border-border'}`}
+                          className={`flex flex-col gap-2 p-2 rounded-md border ${isLinked ? 'border-primary bg-background' : 'border-border bg-background'}`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                     return (
                       <div
                         key={resource.id}
-                        className={`flex items-center justify-between p-2 rounded-md border ${isLinked ? 'border-primary/30 bg-primary/5' : 'border-border'}`}
+                        className={`flex items-center justify-between p-2 rounded-md border ${isLinked ? 'border-primary bg-background' : 'border-border bg-background'}`}
                       >
                         <div className="flex items-center gap-2">
                           <Checkbox
