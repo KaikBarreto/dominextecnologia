@@ -174,11 +174,11 @@ export default function Customers() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50px] text-xs uppercase tracking-wider">Foto</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Empresa</TableHead>
-                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
+                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                    <SortableTableHead sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Empresa</SortableTableHead>
+                    <SortableTableHead sortKey="customer_type" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
                     <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
-                    <TableHead className="hidden xl:table-cell text-xs uppercase tracking-wider">Endereço</TableHead>
+                    <SortableTableHead sortKey="city" sortConfig={sortConfig} onSort={handleSort} className="hidden xl:table-cell">Endereço</SortableTableHead>
                     <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
