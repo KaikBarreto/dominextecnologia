@@ -80,17 +80,17 @@ export interface Quote {
   updated_at: string;
   converted_to_os_id: string | null;
   final_price: number | null;
-  // BDI fields
-  tax_rate: number | null;
-  admin_indirect_rate: number | null;
-  profit_rate: number | null;
-  km_cost: number | null;
-  distance_km: number | null;
-  displacement_cost: number | null;
-  bdi: number | null;
-  total_cost: number | null;
-  total_price: number | null;
-  price_override: number | null;
+  // BDI fields (optional for backward compatibility in older UI mocks)
+  tax_rate?: number | null;
+  admin_indirect_rate?: number | null;
+  profit_rate?: number | null;
+  km_cost?: number | null;
+  distance_km?: number | null;
+  displacement_cost?: number | null;
+  bdi?: number | null;
+  total_cost?: number | null;
+  total_price?: number | null;
+  price_override?: number | null;
   customers?: { name: string; email: string | null; phone: string | null };
   quote_items?: QuoteItem[];
   proposal_templates?: { slug: string; name: string } | null;
