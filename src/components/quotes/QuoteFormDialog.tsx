@@ -26,7 +26,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
 import {
   User, UserPlus, Palette, Wrench, MapPin,
-  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard,
+  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
@@ -58,6 +58,128 @@ interface QuoteFormDialogProps {
 
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// ─── Service Items List with expandable cost details ─────────────────────────
+function ServiceItemsList({
+  items: serviceItems,
+  allItems,
+  onUpdatePrice,
+  onRemove,
+  fmt,
+}: {
+  items: FormQuoteItem[];
+  allItems: FormQuoteItem[];
+  onUpdatePrice: (idx: number, price: number) => void;
+  onRemove: (idx: number) => void;
+  fmt: (v: number) => string;
+}) {
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b bg-muted/30">
+            <th className="text-left p-2 font-medium text-muted-foreground">Serviço</th>
+            <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
+            <th className="text-right p-2 font-medium text-muted-foreground w-24 hidden sm:table-cell">Custo unit.</th>
+            <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
+            <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+            <th className="w-8 p-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {serviceItems.map((item) => {
+            const globalIdx = allItems.indexOf(item);
+            const isExpanded = expandedIdx === globalIdx;
+            const hasCosts = item.unit_total_cost > 0;
+            return (
+              <>
+                <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
+                  <td className="p-2 font-medium">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-left w-full"
+                      onClick={() => setExpandedIdx(isExpanded ? null : globalIdx)}
+                    >
+                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                      <span>{item.description}</span>
+                    </button>
+                    {!hasCosts && (
+                      <Badge variant="outline" className="ml-5 mt-0.5 text-[10px] text-amber-600 border-amber-300 bg-amber-50">
+                        Sem custos configurados
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                  <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">
+                    {hasCosts ? fmt(item.unit_total_cost) : '—'}
+                  </td>
+                  <td className="p-2">
+                    <Input
+                      type="number" min={0} step="0.01"
+                      value={item.unit_price || ''}
+                      onChange={e => onUpdatePrice(globalIdx, parseFloat(e.target.value) || 0)}
+                      className="h-7 w-24 text-xs text-right ml-auto"
+                    />
+                  </td>
+                  <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
+                  <td className="p-2">
+                    <Button type="button" variant="ghost" size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => onRemove(globalIdx)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+                {isExpanded && (
+                  <tr key={`${globalIdx}-detail`} className="bg-muted/10">
+                    <td colSpan={6} className="px-4 py-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div className="space-y-0.5">
+                          <span className="text-muted-foreground">Mão de obra</span>
+                          <p className="font-medium">
+                            {item.unit_hourly_rate > 0
+                              ? `${fmt(item.unit_hourly_rate)}/h × ${item.unit_hours}h = ${fmt(item.unit_labor_cost)}`
+                              : '—'}
+                          </p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-muted-foreground">Materiais</span>
+                          <p className="font-medium">{item.unit_materials_cost > 0 ? fmt(item.unit_materials_cost) : '—'}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-muted-foreground">Custos extras</span>
+                          <p className="font-medium">{item.unit_extras_cost > 0 ? fmt(item.unit_extras_cost) : '—'}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-muted-foreground font-semibold">Custo total unit.</span>
+                          <p className="font-bold text-foreground">{hasCosts ? fmt(item.unit_total_cost) : '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            );
+          })}
+          <tr className="bg-muted/30 border-t">
+            <td colSpan={4} className="p-2 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
+              Subtotal Serviços
+            </td>
+            <td colSpan={2} className="p-2 text-right text-xs font-medium text-muted-foreground sm:hidden">
+              Subtotal
+            </td>
+            <td className="p-2 text-right font-bold">
+              {fmt(serviceItems.reduce((s, i) => s + i.total_price, 0))}
+            </td>
+            <td />
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogProps) {
@@ -487,69 +609,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </div>
 
         {serviceItems.length > 0 ? (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-2 font-medium text-muted-foreground">Serviço</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-24 hidden sm:table-cell">Custo unit.</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
-                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
-                  <th className="w-8 p-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {serviceItems.map((item) => {
-                  const globalIdx = items.indexOf(item);
-                  return (
-                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-2 font-medium">
-                        {item.description}
-                        {item.unit_total_cost === 0 && (
-                          <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300 bg-amber-50">
-                            Sem custos configurados
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
-                      <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">
-                        {item.unit_total_cost > 0 ? fmt(item.unit_total_cost) : '—'}
-                      </td>
-                      <td className="p-2">
-                        <Input
-                          type="number" min={0} step="0.01"
-                          value={item.unit_price || ''}
-                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
-                          className="h-7 w-24 text-xs text-right ml-auto"
-                        />
-                      </td>
-                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
-                      <td className="p-2">
-                        <Button type="button" variant="ghost" size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeItem(globalIdx)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr className="bg-muted/30 border-t">
-                  <td colSpan={4} className="p-2 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
-                    Subtotal Serviços
-                  </td>
-                  <td colSpan={2} className="p-2 text-right text-xs font-medium text-muted-foreground sm:hidden">
-                    Subtotal
-                  </td>
-                  <td className="p-2 text-right font-bold">
-                    {fmt(serviceItems.reduce((s, i) => s + i.total_price, 0))}
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <ServiceItemsList items={serviceItems} allItems={items} onUpdatePrice={updateItemPrice} onRemove={removeItem} fmt={fmt} />
         ) : (
           <EmptyState>Nenhum serviço adicionado</EmptyState>
         )}
