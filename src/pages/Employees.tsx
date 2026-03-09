@@ -18,7 +18,6 @@ import { useEmployees, Employee } from '@/hooks/useEmployees';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUsers } from '@/hooks/useUsers';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
