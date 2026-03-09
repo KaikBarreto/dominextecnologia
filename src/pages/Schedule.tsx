@@ -391,6 +391,7 @@ export default function Schedule() {
               onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'week' && (
@@ -400,6 +401,7 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'day' && (
@@ -409,6 +411,7 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
         </div>

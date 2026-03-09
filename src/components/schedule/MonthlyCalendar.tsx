@@ -47,6 +47,7 @@ export function MonthlyCalendar({
   onDateDoubleClick,
   onOrderSelect,
   onDrop,
+  holidayMap = {},
 }: MonthlyCalendarProps) {
   const isMobile = useIsMobile();
 
