@@ -172,7 +172,7 @@ export function GlobalCostsTab() {
               <Skeleton className="h-6 w-24 mt-1" />
             ) : (
               <p className="text-xl font-bold text-foreground mt-1">
-                R$ {formatBRL(kpis.giftMonthlyCost)}
+                R$ {formatBRL(kpis.giftCostPerUnit)}
               </p>
             )}
           </CardContent>
