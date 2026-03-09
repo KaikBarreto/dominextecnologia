@@ -560,16 +560,17 @@ export default function TechnicianOS() {
     try {
       const location = await getCurrentLocation();
       
+      // Record location FIRST so the tracking map can find it
+      if (id) {
+        await recordLocationEvent(id, location.lat, location.lng, 'en_route');
+      }
+
       const { error } = await supabase
         .from('service_orders')
         .update({ status: 'a_caminho' })
         .eq('id', id);
 
       if (error) throw error;
-
-      if (id) {
-        recordLocationEvent(id, location.lat, location.lng, 'en_route');
-      }
 
       setServiceOrder((prev) => prev ? { ...prev, status: 'a_caminho' as OsStatus } : null);
       toast({ title: 'Status atualizado: A Caminho!' });
