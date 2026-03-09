@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Calculator, Save } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { Calculator, Save, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,20 +33,29 @@ export function ServiceCostsTab() {
   const [hours, setHours] = useState(1);
   const [notes, setNotes] = useState('');
   const [extraCosts, setExtraCosts] = useState<ExtraCostLine[]>([]);
+  const [savedIndicator, setSavedIndicator] = useState(false);
+
+  // Track if data was loaded from DB (to avoid saving empty state)
+  const loadedRef = useRef(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    loadedRef.current = false;
     if (!cost) {
       setHourlyRate(0);
       setHours(1);
       setNotes('');
       setExtraCosts([]);
+      loadedRef.current = true;
       return;
     }
     setHourlyRate(Number(cost.hourly_rate ?? 0));
     setHours(Number(cost.hours ?? 1));
     setNotes(cost.notes ?? '');
     setExtraCosts(((cost.extra_costs as any) ?? []) as ExtraCostLine[]);
-  }, [cost, serviceId]);
+    // Small delay to avoid triggering auto-save on load
+    setTimeout(() => { loadedRef.current = true; }, 200);
+  }, [cost?.id, serviceId]);
 
   const extrasTotal = useMemo(() => computeExtraCostsTotal(extraCosts), [extraCosts]);
   const laborCost = useMemo(() => Math.max(0, hourlyRate * hours), [hourlyRate, hours]);
