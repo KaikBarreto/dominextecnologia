@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { OSRMRoute } from '@/utils/geolocation';
 import 'leaflet/dist/leaflet.css';
 
