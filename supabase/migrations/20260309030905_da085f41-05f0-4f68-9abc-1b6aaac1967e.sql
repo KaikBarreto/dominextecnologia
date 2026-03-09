@@ -1,0 +1,1 @@
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS include_gifts boolean NOT NULL DEFAULT true;
