@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_categories ADD COLUMN IF NOT EXISTS dre_group text DEFAULT 'opex';

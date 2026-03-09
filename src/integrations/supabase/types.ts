@@ -1181,6 +1181,7 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          dre_group: string | null
           icon: string | null
           id: string
           is_active: boolean
@@ -1191,6 +1192,7 @@ export type Database = {
         Insert: {
           color?: string
           created_at?: string
+          dre_group?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
@@ -1201,6 +1203,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          dre_group?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
