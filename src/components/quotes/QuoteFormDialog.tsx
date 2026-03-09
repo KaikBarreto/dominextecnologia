@@ -355,6 +355,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       notes: notes || undefined,
       terms: terms || undefined,
       proposal_template_id: proposalTemplateId || undefined,
+      include_gifts: includeGifts,
       items: items.map((it, idx) => ({
         id: it.id,
         position: idx,
