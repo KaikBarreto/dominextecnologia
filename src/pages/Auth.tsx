@@ -62,7 +62,21 @@ export default function Auth() {
   // BUT skip if login flow is in progress (session check / dialog)
   useEffect(() => {
     if (!loading && user && !loginInProgressRef.current) {
-      navigate('/dashboard', { replace: true });
+      // Check if super_admin → redirect to admin dashboard
+      const checkRole = async () => {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'super_admin')
+          .maybeSingle();
+        if (data) {
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      };
+      checkRole();
     }
   }, [user, loading, navigate]);
 
@@ -107,8 +121,16 @@ export default function Auth() {
     }
     await registerSession(userId);
     toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
-    // Navigate first, THEN release the ref (navigate is sync scheduling)
-    navigate('/dashboard');
+    
+    // Check if super_admin → redirect to admin dashboard
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'super_admin')
+      .maybeSingle();
+    
+    navigate(roleData ? '/admin/dashboard' : '/dashboard');
     loginInProgressRef.current = false;
   };
 
