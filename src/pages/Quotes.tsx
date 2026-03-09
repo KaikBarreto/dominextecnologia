@@ -32,6 +32,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 
 const SIDEBAR_TABS = [
   { value: 'quotes', label: 'Orçamentos', icon: FileText },
@@ -66,7 +68,8 @@ function QuotesList() {
     return list;
   }, [quotes, statusFilter, search]);
 
-  const pagination = useDataPagination(filtered);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
+  const pagination = useDataPagination(sortedItems);
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/proposta/${token}`;
@@ -216,13 +219,13 @@ function QuotesList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nº</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Data</TableHead>
-                  <TableHead className="hidden lg:table-cell">Custo</TableHead>
-                  <TableHead>Valor</TableHead>
+                  <SortableTableHead sortKey="quote_number" sortConfig={sortConfig} onSort={handleSort}>Nº</SortableTableHead>
+                  <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
+                  <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Data</SortableTableHead>
+                  <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Custo</SortableTableHead>
+                  <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
                   <TableHead className="hidden lg:table-cell">Margem</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>

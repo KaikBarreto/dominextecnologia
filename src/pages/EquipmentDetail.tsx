@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List, Image } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
@@ -46,6 +48,8 @@ const LABEL_SIZES = [
 export default function EquipmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = location.state as { from?: string; customerId?: string } | null;
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
@@ -93,17 +97,22 @@ export default function EquipmentDetail() {
     : '';
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !id) return;
     setUploadingFiles(true);
+    const total = files.length;
+    setUploadProgress({ current: 0, total });
     try {
-      for (const file of Array.from(files)) {
-        await uploadAttachment.mutateAsync({ equipmentId: id, file });
+      for (let i = 0; i < total; i++) {
+        await uploadAttachment.mutateAsync({ equipmentId: id, file: files[i] });
+        setUploadProgress({ current: i + 1, total });
       }
     } finally {
       setUploadingFiles(false);
+      setUploadProgress(null);
       e.target.value = '';
     }
   };
@@ -144,7 +153,7 @@ export default function EquipmentDetail() {
   if (!equipment) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/equipamentos')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
+        <Button variant="ghost" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
         <p className="text-muted-foreground">Equipamento não encontrado.</p>
       </div>
     );
@@ -160,7 +169,7 @@ export default function EquipmentDetail() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/equipamentos')}>
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="min-w-0 flex-1">
@@ -241,6 +250,18 @@ export default function EquipmentDetail() {
           </Card>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(() => {
+              const category = categories.find(c => c.id === equipment.category_id);
+              return category ? (
+                <Card><CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Categoria</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                    <p className="text-sm font-medium">{category.name}</p>
+                  </div>
+                </CardContent></Card>
+              ) : null;
+            })()}
             {(equipment as any).customer?.name && (
               <Card><CardContent className="p-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
@@ -318,7 +339,7 @@ export default function EquipmentDetail() {
           {equipment.notes && (
             <Card><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
-              <p className="text-sm mt-1">{equipment.notes}</p>
+              <p className="text-sm mt-1 whitespace-pre-wrap">{equipment.notes}</p>
             </CardContent></Card>
           )}
         </div>
@@ -352,6 +373,16 @@ export default function EquipmentDetail() {
             </div>
             <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
           </div>
+          {/* Upload progress bar */}
+          {uploadProgress && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Enviando {uploadProgress.current} de {uploadProgress.total}...</span>
+                <span>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+              </div>
+              <Progress value={(uploadProgress.current / uploadProgress.total) * 100} className="h-2" />
+            </div>
+          )}
           {attachLoading ? (
             <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : attachments.length === 0 ? (
@@ -361,10 +392,19 @@ export default function EquipmentDetail() {
             </div>
           ) : (() => {
             const imageAttachments = attachments.filter(att => /\.(webp|jpe?g|png|gif|heic|svg)$/i.test(att.file_name));
-            const fileAttachments = attachments.filter(att => !/\.(webp|jpe?g|png|gif|heic|svg)$/i.test(att.file_name));
+            const pdfAttachments = attachments.filter(att => /\.pdf$/i.test(att.file_name));
+            const otherFileAttachments = attachments.filter(att => !/\.(webp|jpe?g|png|gif|heic|svg|pdf)$/i.test(att.file_name));
+
+            const isPdf = (name: string) => /\.pdf$/i.test(name);
 
             const renderGalleryItem = (att: typeof attachments[0], isImage: boolean) => (
-              <div key={att.id} className="relative group rounded-lg border overflow-hidden bg-muted/30">
+              <motion.div
+                key={att.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="relative group rounded-lg border overflow-hidden bg-muted/30"
+              >
                 {isImage ? (
                   <img
                     src={att.file_url}
@@ -372,6 +412,15 @@ export default function EquipmentDetail() {
                     className="w-full aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => setPreviewImage(att.file_url)}
                   />
+                ) : isPdf(att.file_name) ? (
+                  <div className="w-full aspect-square relative bg-white overflow-hidden cursor-pointer" onClick={() => window.open(att.file_url, '_blank')}>
+                    <iframe
+                      src={`${att.file_url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                      className="w-full h-full pointer-events-none border-0"
+                      title={att.file_name}
+                    />
+                    <div className="absolute inset-0 bg-transparent" />
+                  </div>
                 ) : (
                   <div className="w-full aspect-square flex flex-col items-center justify-center gap-2 p-3">
                     <FileText className="h-8 w-8 text-muted-foreground" />
@@ -387,7 +436,7 @@ export default function EquipmentDetail() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground truncate px-2 py-1.5 bg-background/80 backdrop-blur-sm">{att.file_name}</p>
-              </div>
+              </motion.div>
             );
 
             const renderListItem = (att: typeof attachments[0], isImage: boolean) => (
@@ -432,19 +481,36 @@ export default function EquipmentDetail() {
                     )}
                   </div>
                 )}
-                {fileAttachments.length > 0 && (
+                {pdfAttachments.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
                       <FileText className="h-4 w-4" />
-                      <span>Documentos ({fileAttachments.length})</span>
+                      <span>PDFs ({pdfAttachments.length})</span>
                     </div>
                     {attachViewMode === 'gallery' ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {fileAttachments.map(att => renderGalleryItem(att, false))}
+                        {pdfAttachments.map(att => renderGalleryItem(att, false))}
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {fileAttachments.map(att => renderListItem(att, false))}
+                        {pdfAttachments.map(att => renderListItem(att, false))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {otherFileAttachments.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground/70">
+                      <FileText className="h-4 w-4" />
+                      <span>Outros Documentos ({otherFileAttachments.length})</span>
+                    </div>
+                    {attachViewMode === 'gallery' ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {otherFileAttachments.map(att => renderGalleryItem(att, false))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {otherFileAttachments.map(att => renderListItem(att, false))}
                       </div>
                     )}
                   </div>

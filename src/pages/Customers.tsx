@@ -18,6 +18,8 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Customer } from '@/types/database';
 import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
 
@@ -41,7 +43,8 @@ export default function Customers() {
       (customer as any).company_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pagination = useDataPagination(filteredCustomers);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);
+  const pagination = useDataPagination(sortedItems);
 
   const handleSubmit = async (data: any) => {
     if (editingCustomer) {
@@ -171,11 +174,11 @@ export default function Customers() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50px] text-xs uppercase tracking-wider">Foto</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Empresa</TableHead>
-                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
+                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                    <SortableTableHead sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Empresa</SortableTableHead>
+                    <SortableTableHead sortKey="customer_type" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
                     <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Contato</TableHead>
-                    <TableHead className="hidden xl:table-cell text-xs uppercase tracking-wider">Endereço</TableHead>
+                    <SortableTableHead sortKey="city" sortConfig={sortConfig} onSort={handleSort} className="hidden xl:table-cell">Endereço</SortableTableHead>
                     <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                   </TableRow>
                 </TableHeader>

@@ -16,6 +16,8 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'outline' | 'destructive' | 'secondary' }> = {
   active: { label: 'Ativo', variant: 'success' },
@@ -39,7 +41,8 @@ export default function Contracts() {
     return matchesSearch && matchesStatus;
   });
 
-  const pagination = useDataPagination(filtered);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
+  const pagination = useDataPagination(sortedItems);
 
   const getNextOccurrence = (c: typeof contracts[0]) => {
     const next = (c.contract_occurrences || [])
@@ -181,12 +184,12 @@ export default function Contracts() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Contrato</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Frequência</TableHead>
+                      <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Contrato</SortableTableHead>
+                      <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
+                      <SortableTableHead sortKey="frequency_type" sortConfig={sortConfig} onSort={handleSort}>Frequência</SortableTableHead>
                       <TableHead>Próxima OS</TableHead>
                       <TableHead className="text-center">Itens</TableHead>
-                      <TableHead>Status</TableHead>
+                      <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                       <TableHead className="w-[140px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>

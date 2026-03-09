@@ -11,6 +11,8 @@ import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 
 export default function Inventory() {
   const isMobile = useIsMobile();
@@ -25,7 +27,8 @@ export default function Inventory() {
     item.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const pagination = useDataPagination(filteredItems);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredItems);
+  const pagination = useDataPagination(sortedItems);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -212,12 +215,12 @@ export default function Inventory() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead className="text-right">Quantidade</TableHead>
-                    <TableHead className="text-right">Custo Unit.</TableHead>
-                    <TableHead className="text-right">Venda Unit.</TableHead>
+                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                    <SortableTableHead sortKey="sku" sortConfig={sortConfig} onSort={handleSort}>SKU</SortableTableHead>
+                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort}>Categoria</SortableTableHead>
+                    <SortableTableHead sortKey="quantity" sortConfig={sortConfig} onSort={handleSort} className="text-right">Quantidade</SortableTableHead>
+                    <SortableTableHead sortKey="cost_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">Custo Unit.</SortableTableHead>
+                    <SortableTableHead sortKey="sale_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">Venda Unit.</SortableTableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>

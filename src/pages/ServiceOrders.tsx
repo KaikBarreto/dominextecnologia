@@ -45,6 +45,8 @@ import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
 import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard';
@@ -91,7 +93,8 @@ export default function ServiceOrders() {
     });
   }, [serviceOrders, searchTerm, statusFilter, range, viewMode]);
 
-  const pagination = useDataPagination(filteredOrders);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredOrders);
+  const pagination = useDataPagination(sortedItems);
 
   const statusOptions = statuses.length
     ? statuses.map((s) => ({ key: s.key as OsStatus, label: s.label, color: s.color }))
@@ -315,11 +318,11 @@ export default function ServiceOrders() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
-                          <TableHead className="text-xs uppercase tracking-wider">Cliente</TableHead>
-                          <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
-                          <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                          <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                          <SortableTableHead sortKey="order_number" sortConfig={sortConfig} onSort={handleSort}>OS</SortableTableHead>
+                          <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
+                          <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
+                          <SortableTableHead sortKey="scheduled_date" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                          <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                           <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                         </TableRow>
                       </TableHeader>

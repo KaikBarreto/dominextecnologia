@@ -16,6 +16,9 @@ export interface EquipmentInput {
   notes?: string;
   category_id?: string;
   identifier?: string;
+  photo_url?: string;
+  custom_fields?: Record<string, any>;
+  status?: string;
 }
 
 export function useEquipment(customerId?: string) {
