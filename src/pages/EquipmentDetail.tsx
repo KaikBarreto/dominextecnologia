@@ -735,7 +735,11 @@ export default function EquipmentDetail() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={async () => {
                 await supabase.from('equipment').delete().eq('id', equipment.id);
-                navigate('/equipamentos');
+                if (navState?.from === 'customer' && navState?.customerId) {
+                  navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } });
+                } else {
+                  navigate('/equipamentos');
+                }
               }}
             >
               Excluir
