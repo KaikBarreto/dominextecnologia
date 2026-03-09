@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
+import type { Holiday } from '@/utils/holidays';
 
 interface DailyCalendarProps {
   currentDate: Date;
@@ -16,6 +17,7 @@ interface DailyCalendarProps {
   movingOrderId?: string | null;
   onTouchPickUp?: (orderId: string) => void;
   onTouchDrop?: (date: string, time: string) => void;
+  holidayMap?: Record<string, Holiday[]>;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
@@ -90,7 +92,7 @@ function layoutOverlapping(
   return items;
 }
 
-export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop }: DailyCalendarProps) {
+export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop, holidayMap = {} }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isMobile = useIsMobile();
 
@@ -141,12 +143,23 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
     }
   };
 
-  return (
+    const dayHolidays = holidayMap[dateKey] || [];
+
+    return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
         <h3 className="text-base font-semibold capitalize">
           {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
         </h3>
+        {dayHolidays.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-1">
+            {dayHolidays.map((h, i) => (
+              <span key={i} className="text-xs font-medium text-warning-foreground bg-warning/15 rounded px-2 py-0.5">
+                🏖️ {h.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1">

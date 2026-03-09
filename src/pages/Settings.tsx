@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,11 +62,13 @@ export default function Settings() {
       return saved ? JSON.parse(saved) : {
         autoSaveOS: true, confirmDelete: true, showOSValues: true,
         requireSignature: false, compactTables: false, showEquipmentPhotos: true,
+        showHolidays: true,
       };
     } catch {
       return {
         autoSaveOS: true, confirmDelete: true, showOSValues: true,
         requireSignature: false, compactTables: false, showEquipmentPhotos: true,
+        showHolidays: true,
       };
     }
   });
@@ -264,6 +266,14 @@ export default function Settings() {
       description: 'Confirmações e validações de segurança',
       items: [
         { key: 'confirmDelete', title: 'Confirmar Exclusões', description: 'Exibir diálogo de confirmação antes de excluir registros' },
+      ],
+    },
+    {
+      title: 'Agenda',
+      icon: Calendar,
+      description: 'Configurações da agenda e calendário',
+      items: [
+        { key: 'showHolidays', title: 'Exibir Feriados', description: 'Mostrar feriados nacionais e municipais na agenda' },
       ],
     },
   ];

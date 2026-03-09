@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
+import type { Holiday } from '@/utils/holidays';
 
 interface WeeklyCalendarProps {
   currentDate: Date;
@@ -16,6 +17,7 @@ interface WeeklyCalendarProps {
   movingOrderId?: string | null;
   onTouchPickUp?: (orderId: string) => void;
   onTouchDrop?: (date: string, time: string) => void;
+  holidayMap?: Record<string, Holiday[]>;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
@@ -57,7 +59,7 @@ function layoutCascade(
   return items;
 }
 
-export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop, holidayMap = {} }: WeeklyCalendarProps) {
   const isMobile = useIsMobile();
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -104,27 +106,36 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
       {/* Days header */}
       <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] border-b bg-muted/30 min-w-[820px]">
         <div className="py-3 text-center text-xs font-medium text-muted-foreground" />
-        {weekDays.map((day) => (
-          <div
-            key={day.toISOString()}
-            className={cn(
-              'py-3 text-center border-l',
-              isSameDay(day, new Date()) && 'bg-primary/5'
-            )}
-          >
-            <div className="text-xs text-muted-foreground uppercase">
-              {format(day, 'EEE', { locale: ptBR })}
-            </div>
+        {weekDays.map((day) => {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const dayHolidays = holidayMap[dateKey] || [];
+          return (
             <div
+              key={day.toISOString()}
               className={cn(
-                'text-sm font-semibold mt-0.5',
-                isSameDay(day, new Date()) && 'text-primary'
+                'py-3 text-center border-l',
+                isSameDay(day, new Date()) && 'bg-primary/5'
               )}
             >
-              {format(day, 'dd')}
+              <div className="text-xs text-muted-foreground uppercase">
+                {format(day, 'EEE', { locale: ptBR })}
+              </div>
+              <div
+                className={cn(
+                  'text-sm font-semibold mt-0.5',
+                  isSameDay(day, new Date()) && 'text-primary'
+                )}
+              >
+                {format(day, 'dd')}
+              </div>
+              {dayHolidays.length > 0 && (
+                <div className="text-[9px] leading-tight font-medium text-warning-foreground truncate px-0.5 mt-0.5">
+                  🏖️ {dayHolidays[0].name}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Time grid */}

@@ -14,6 +14,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { EventCard } from './EventCard';
+import type { Holiday } from '@/utils/holidays';
 
 interface MonthlyCalendarProps {
   currentDate: Date;
@@ -22,6 +23,7 @@ interface MonthlyCalendarProps {
   onDateDoubleClick?: (date: Date) => void;
   onOrderSelect?: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onDrop?: (orderId: string, newDate: string, newTime: string) => void;
+  holidayMap?: Record<string, Holiday[]>;
 }
 
 const osTypeColors: Record<OsType, string> = {
@@ -45,6 +47,7 @@ export function MonthlyCalendar({
   onDateDoubleClick,
   onOrderSelect,
   onDrop,
+  holidayMap = {},
 }: MonthlyCalendarProps) {
   const isMobile = useIsMobile();
 
@@ -115,6 +118,7 @@ export function MonthlyCalendar({
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isToday = isSameDay(day, new Date());
             const isSelected = isSameDay(day, currentDate);
+            const dayHolidays = holidayMap[dateKey] || [];
 
             return (
               <div
@@ -154,7 +158,12 @@ export function MonthlyCalendar({
                     )}
                   </div>
                 )}
-                {dayOrders.length === 0 && <div className="h-2 mt-1" />}
+                {dayHolidays.length > 0 && dayOrders.length === 0 && (
+                  <div className="flex gap-0.5 mt-1 h-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-warning" />
+                  </div>
+                )}
+                {dayOrders.length === 0 && dayHolidays.length === 0 && <div className="h-2 mt-1" />}
               </div>
             );
           })}
@@ -185,6 +194,7 @@ export function MonthlyCalendar({
           const dayOrders = ordersByDate[dateKey] || [];
           const isCurrentMonth = isSameMonth(day, currentDate);
           const isToday = isSameDay(day, new Date());
+          const dayHolidays = holidayMap[dateKey] || [];
 
           return (
             <div
@@ -218,8 +228,19 @@ export function MonthlyCalendar({
                 )}
               </div>
 
+              {/* Holiday labels */}
+              {dayHolidays.length > 0 && (
+                <div className="mb-1">
+                  {dayHolidays.map((h, i) => (
+                    <div key={i} className="text-[10px] leading-tight font-medium text-warning-foreground bg-warning/15 rounded px-1 py-0.5 truncate mb-0.5">
+                      🏖️ {h.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="space-y-1 overflow-hidden">
-                {dayOrders.slice(0, 3).map((order) => (
+                {dayOrders.slice(0, dayHolidays.length > 0 ? 2 : 3).map((order) => (
                   <EventCard
                     key={order.id}
                     order={order}

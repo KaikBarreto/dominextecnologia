@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
@@ -23,6 +23,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
@@ -32,6 +34,7 @@ export default function Schedule() {
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
   const { user } = useAuth();
+  const { settings: companySettings } = useCompanySettings();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -60,6 +63,30 @@ export default function Schedule() {
   }, [technicians, user?.id]);
 
   const { financialEvents } = useFinancialScheduleEvents();
+
+  // Holidays
+  const showHolidays = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('usability-settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.showHolidays !== false; // default true
+      }
+    } catch {}
+    return true;
+  }, []);
+
+  const holidayMap = useMemo(() => {
+    if (!showHolidays) return {};
+    const city = companySettings?.city || '';
+    const state = companySettings?.state || '';
+    const year = getYear(currentDate);
+    const holidays = getAllHolidays(city, state, year);
+    // Also get adjacent year if near boundary
+    const prevYearHolidays = getAllHolidays(city, state, year - 1);
+    const nextYearHolidays = getAllHolidays(city, state, year + 1);
+    return buildHolidayMap([...prevYearHolidays, ...holidays, ...nextYearHolidays]);
+  }, [showHolidays, companySettings?.city, companySettings?.state, currentDate]);
 
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
@@ -233,6 +260,7 @@ export default function Schedule() {
               onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'week' && (
@@ -245,6 +273,7 @@ export default function Schedule() {
               movingOrderId={touchDrag.movingOrderId}
               onTouchPickUp={touchDrag.pickUp}
               onTouchDrop={touchDrag.dropOn}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'day' && (
@@ -257,6 +286,7 @@ export default function Schedule() {
               movingOrderId={touchDrag.movingOrderId}
               onTouchPickUp={touchDrag.pickUp}
               onTouchDrop={touchDrag.dropOn}
+              holidayMap={holidayMap}
             />
           )}
         </div>
@@ -295,6 +325,7 @@ export default function Schedule() {
           currentDate={currentDate}
           orders={filteredOrders}
           onOrderSelect={handleOrderSelect}
+          holidayMap={holidayMap}
         />
 
         {summaryOrder && (
@@ -360,6 +391,7 @@ export default function Schedule() {
               onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'week' && (
@@ -369,6 +401,7 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'day' && (
@@ -378,6 +411,7 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
         </div>

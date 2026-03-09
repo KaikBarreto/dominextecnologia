@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { OSRMRoute } from '@/utils/geolocation';
 import 'leaflet/dist/leaflet.css';
 
@@ -56,22 +57,40 @@ function buildTooltipHtml(tech: TechMarker, routeInfo?: RouteInfo) {
   const ev = eventLabels[tech.event_type] || eventLabels.tracking;
   const color = eventColors[tech.event_type] || '#3b82f6';
 
+  return `
+    <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
+      <div style="font-weight:700;font-size:12px;margin-bottom:2px">${tech.full_name}</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block"></span>
+        <span style="font-size:11px;color:#555">${ev.emoji} ${ev.label}</span>
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:1px">Há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
+    </div>
+  `;
+}
+
+function buildPopupHtml(tech: TechMarker, routeInfo?: RouteInfo) {
+  const lastUpdate = new Date(tech.updated_at);
+  const timeAgo = Math.round((Date.now() - lastUpdate.getTime()) / 60000);
+  const ev = eventLabels[tech.event_type] || eventLabels.tracking;
+  const color = eventColors[tech.event_type] || '#3b82f6';
+
   const etaHtml = routeInfo
-    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding-top:4px;border-top:1px solid #e5e7eb">
-        <span style="font-size:12px;font-weight:600;color:#6366f1">🕐 Chegada em ~${routeInfo.route.durationMinutes} min</span>
-        <span style="font-size:11px;color:#888">(${routeInfo.route.distanceKm} km)</span>
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb">
+        <span style="font-size:13px;font-weight:600;color:#6366f1">🕐 Chegada em ~${routeInfo.route.durationMinutes} min</span>
+        <span style="font-size:12px;color:#888">(${routeInfo.route.distanceKm} km)</span>
       </div>`
     : '';
 
   return `
-    <div style="min-width:180px;font-family:system-ui,sans-serif;line-height:1.4">
-      <div style="font-weight:700;font-size:13px;margin-bottom:4px">${tech.full_name}</div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-        <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>
-        <span style="font-size:12px;color:#555">${ev.emoji} ${ev.label}</span>
+    <div style="min-width:260px;font-family:system-ui,sans-serif;line-height:1.5;padding:4px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">${tech.full_name}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block"></span>
+        <span style="font-size:14px;color:#555">${ev.emoji} ${ev.label}</span>
       </div>
-      ${tech.service_order_id ? `<div style="font-size:11px;color:#888">OS vinculada</div>` : ''}
-      <div style="font-size:11px;color:#aaa;margin-top:2px">Há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
+      ${tech.service_order_id ? `<div style="font-size:12px;color:#888">OS vinculada</div>` : ''}
+      <div style="font-size:12px;color:#aaa;margin-top:4px">Última atualização: há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
       ${etaHtml}
     </div>
   `;
@@ -84,6 +103,7 @@ export default function LiveMap() {
   const polylinesRef = useRef<Map<string, any>>(new Map());
   const routeLinesRef = useRef<Map<string, any>>(new Map());
   const destMarkersRef = useRef<Map<string, any>>(new Map());
+  const baseMarkerRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
   const labelsLayerRef = useRef<any>(null);
   const [technicians, setTechnicians] = useState<TechMarker[]>([]);
@@ -91,6 +111,8 @@ export default function LiveMap() {
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const { settings: companySettings } = useCompanySettings();
+  const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const fetchRoutesForTechs = useCallback(async (techs: TechMarker[]) => {
     const enRouteTechs = techs.filter(
@@ -227,6 +249,21 @@ export default function LiveMap() {
     }).addTo(map);
   }, [darkMode]);
 
+  // Geocode company address for base marker
+  useEffect(() => {
+    if (!companySettings) return;
+    const addr = buildCustomerAddress({
+      address: companySettings.address,
+      city: companySettings.city,
+      state: companySettings.state,
+      zip_code: companySettings.zip_code,
+    });
+    if (!addr) return;
+    geocodeAddress(addr).then((coords) => {
+      if (coords) setCompanyCoords(coords);
+    });
+  }, [companySettings]);
+
   // Initialize map
   useEffect(() => {
     const initMap = async () => {
@@ -276,10 +313,41 @@ export default function LiveMap() {
       routeLinesRef.current.clear();
       destMarkersRef.current.forEach((m) => map.removeLayer(m));
       destMarkersRef.current.clear();
-
-      if (technicians.length === 0) return;
+      if (baseMarkerRef.current) { map.removeLayer(baseMarkerRef.current); baseMarkerRef.current = null; }
 
       const bounds: [number, number][] = [];
+
+      // Company base marker
+      if (companyCoords) {
+        const baseIcon = L.divIcon({
+          className: '',
+          html: `<div style="width:24px;height:24px;border-radius:50%;background:#0d9488;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+        const baseName = companySettings?.name || 'Empresa';
+        baseMarkerRef.current = L.marker([companyCoords.lat, companyCoords.lng], { icon: baseIcon }).addTo(map);
+        baseMarkerRef.current.bindTooltip(`<div style="font-family:system-ui;font-size:12px;font-weight:600">🏢 Base: ${baseName}</div>`, {
+          direction: 'top', offset: [0, -16], className: 'leaflet-tooltip-custom',
+        });
+        baseMarkerRef.current.bindPopup(`
+          <div style="min-width:200px;font-family:system-ui,sans-serif;padding:4px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px">🏢 ${baseName}</div>
+            <div style="font-size:12px;color:#666">Base da empresa</div>
+            ${companySettings?.address ? `<div style="font-size:11px;color:#888;margin-top:4px">${companySettings.address}${companySettings.address_number ? ', ' + companySettings.address_number : ''}</div>` : ''}
+            ${companySettings?.city ? `<div style="font-size:11px;color:#888">${companySettings.city} - ${companySettings.state}</div>` : ''}
+          </div>
+        `, { minWidth: 220, maxWidth: 320, className: 'leaflet-popup-custom' });
+        bounds.push([companyCoords.lat, companyCoords.lng]);
+      }
+
+      if (technicians.length === 0 && bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+        return;
+      }
+      if (technicians.length === 0) return;
 
       technicians.forEach((tech) => {
         const color = eventColors[tech.event_type] || '#3b82f6';
@@ -293,11 +361,18 @@ export default function LiveMap() {
         });
 
         const marker = L.marker([tech.lat, tech.lng], { icon }).addTo(map);
+        // Tooltip for hover (small preview)
         marker.bindTooltip(buildTooltipHtml(tech, routeInfo), {
           direction: 'top',
           offset: [0, -12],
           opacity: 1,
           className: 'leaflet-tooltip-custom',
+        });
+        // Popup for click (larger, stays open until X)
+        marker.bindPopup(buildPopupHtml(tech, routeInfo), {
+          minWidth: 280,
+          maxWidth: 360,
+          className: 'leaflet-popup-custom',
         });
 
         markersRef.current.set(tech.user_id, marker);
@@ -347,7 +422,7 @@ export default function LiveMap() {
     };
 
     updateMarkers();
-  }, [technicians, trails, routes]);
+  }, [technicians, trails, routes, companyCoords, companySettings]);
 
   // Realtime subscription
   useEffect(() => {
@@ -378,6 +453,18 @@ export default function LiveMap() {
         .leaflet-tooltip-custom::before {
           border-top-color: #e2e8f0 !important;
         }
+        .leaflet-popup-custom .leaflet-popup-content-wrapper {
+          border-radius: 12px;
+          padding: 6px;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        }
+        .leaflet-popup-custom .leaflet-popup-content {
+          margin: 8px 12px;
+          font-size: 14px;
+        }
+        .leaflet-popup-custom .leaflet-popup-tip {
+          box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
       `}</style>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -402,10 +489,11 @@ export default function LiveMap() {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500"></span> Executando OS</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500"></span> A Caminho</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500"></span> Check-out</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }}></span> Executando OS</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#6366f1' }}></span> A Caminho</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }}></span> Check-out</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', border: '2px solid white', boxShadow: '0 0 0 1px #ef4444' }}></span> Destino cliente</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#0d9488' }}></span> Base da empresa</div>
       </div>
 
       <Card className="overflow-hidden">
