@@ -284,35 +284,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setIsFetchingSvc(false);
   }, [addSvcId, addSvcQty, serviceTypes, profile, bdiFactor, profitRate]);
 
-  // ── Add material handler ──
-  const handleAddMaterial = useCallback(() => {
-    if (!addMatId && addMatPrice <= 0) return;
-    const inv = inventoryItems.find(m => m.id === addMatId);
-    const name = inv?.name ?? 'Material';
-    const costPrice = Number(inv?.cost_price ?? 0);
-    const unitPrice = addMatPrice > 0 ? addMatPrice : Number(inv?.sale_price ?? costPrice);
-
-    setItems(prev => [...prev, {
-      item_type: 'material',
-      description: name,
-      quantity: addMatQty,
-      unit_total_cost: costPrice,
-      unit_price: unitPrice,
-      total_price: Math.round(unitPrice * addMatQty * 100) / 100,
-      service_type_id: null,
-      inventory_id: addMatId || null,
-      unit_hourly_rate: 0,
-      unit_hours: 0,
-      unit_labor_cost: 0,
-      unit_materials_cost: costPrice,
-      unit_extras_cost: 0,
-      profit_rate: profitRate,
-      bdi: bdiFactor,
-    }]);
-    setAddMatId('');
-    setAddMatQty(1);
-    setAddMatPrice(0);
-  }, [addMatId, addMatQty, addMatPrice, inventoryItems, profitRate, bdiFactor]);
+  // (material handler removed — materials are sub-items of services)
 
   // ── Item price update ──
   const updateItemPrice = (idx: number, newPrice: number) => {
@@ -399,18 +371,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({ value: s.id, label: s.name })),
     [serviceTypes]
   );
-  const materialOptions = useMemo(
-    () => (inventoryItems ?? []).map(m => ({
-      value: m.id, label: m.name, sublabel: m.sku ? `SKU: ${m.sku}` : undefined,
-    })),
-    [inventoryItems]
-  );
 
   const serviceItems = items.filter(i => i.item_type === 'servico');
-  const materialItemsList = items.filter(i => i.item_type === 'material');
   const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
-  const cardInstallments = Number(pricing?.card_installments ?? 10);
-  const cardDiscountRate = Number(pricing?.card_discount_rate ?? 6);
 
   // ── Form Content ───────────────────────────────────────────────────────────
   const content = (
