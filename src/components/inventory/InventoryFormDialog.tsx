@@ -177,13 +177,29 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sku">Código/SKU</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="sku">Código/SKU</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={applyAutoSku}
+                  disabled={isEditing || isSkuGenerating}
+                >
+                  <Wand2 className="h-4 w-4 mr-1" />
+                  {isSkuGenerating ? 'Gerando...' : 'Auto'}
+                </Button>
+              </div>
               <Input
                 id="sku"
                 value={formData.sku || ''}
                 onChange={(e) => handleChange('sku', e.target.value)}
                 placeholder="Ex: FLT-001"
               />
+              <p className="text-xs text-muted-foreground">
+                Código sequencial sugerido automaticamente (você pode personalizar).
+              </p>
             </div>
           </div>
 
