@@ -37,6 +37,16 @@ export function MobileAgendaView({ currentDate, orders, onOrderSelect, holidayMa
   // Simple list - no cascade here
   return (
     <div className="space-y-3">
+      {dayHolidays.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {dayHolidays.map((h, i) => (
+            <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-warning/10 border border-warning/20">
+              <span className="text-xs">🏖️</span>
+              <span className="text-xs font-medium text-warning-foreground">{h.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {dayOrders.map((order) => (
         <EventCard
           key={order.id}

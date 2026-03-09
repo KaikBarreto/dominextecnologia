@@ -158,7 +158,12 @@ export function MonthlyCalendar({
                     )}
                   </div>
                 )}
-                {dayOrders.length === 0 && <div className="h-2 mt-1" />}
+                {dayHolidays.length > 0 && dayOrders.length === 0 && (
+                  <div className="flex gap-0.5 mt-1 h-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-warning" />
+                  </div>
+                )}
+                {dayOrders.length === 0 && dayHolidays.length === 0 && <div className="h-2 mt-1" />}
               </div>
             );
           })}
