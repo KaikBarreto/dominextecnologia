@@ -227,7 +227,34 @@ export function useTimeRecord(userId: string | undefined) {
         .select('company_id')
         .eq('user_id', userId)
         .single();
-      if (!profile?.company_id) throw new Error('Empresa não encontrada');
+      
+      let companyId = profile?.company_id;
+
+      // Fallback: look up company_id via linked employee's creator profile
+      if (!companyId) {
+        const { data: emp } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (emp) {
+          // Try to get company_id from any other profile in the same company
+          const { data: anyProfile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .not('company_id', 'is', null)
+            .limit(1)
+            .single();
+          companyId = anyProfile?.company_id;
+
+          // Also fix the profile for future calls
+          if (companyId) {
+            await supabase.from('profiles').update({ company_id: companyId }).eq('user_id', userId);
+          }
+        }
+      }
+
+      if (!companyId) throw new Error('Empresa não encontrada. Contate o administrador para vincular sua conta.');
 
       let photoUrl: string | null = null;
       if (photo) {
