@@ -453,6 +453,18 @@ export default function LiveMap() {
         .leaflet-tooltip-custom::before {
           border-top-color: #e2e8f0 !important;
         }
+        .leaflet-popup-custom .leaflet-popup-content-wrapper {
+          border-radius: 12px;
+          padding: 6px;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        }
+        .leaflet-popup-custom .leaflet-popup-content {
+          margin: 8px 12px;
+          font-size: 14px;
+        }
+        .leaflet-popup-custom .leaflet-popup-tip {
+          box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
       `}</style>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
