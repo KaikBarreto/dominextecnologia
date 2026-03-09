@@ -271,7 +271,7 @@ export function useTimeRecord(userId: string | undefined) {
       const now = new Date().toISOString();
 
       const { error: recErr } = await supabase.from('time_records').insert({
-        company_id: profile.company_id,
+        company_id: companyId,
         user_id: userId,
         date: today,
         type,
