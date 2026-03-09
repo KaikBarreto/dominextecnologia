@@ -10,10 +10,6 @@ import { CostResourceFormSheet } from './CostResourceFormSheet';
 import { formatBRL } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { CostResourceCard } from './CostResourceCard';
-import { CostResourceFormSheet } from './CostResourceFormSheet';
-import { formatBRL } from '@/utils/currency';
-import { Skeleton } from '@/components/ui/skeleton';
 
 const CATEGORY_CONFIG: Array<{
   value: CostResourceCategory;
