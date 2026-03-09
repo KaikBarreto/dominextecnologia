@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Download, Eye } from 'lucide-react';
 import { useTimeHistory, formatMinutes, type TimeSheet } from '@/hooks/useTimeRecords';
@@ -10,7 +9,8 @@ import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { exportToCSV } from '@/utils/exportTimesheets';
 import { TimeDayDetailModal } from './TimeDayDetailModal';
-import { format, subDays } from 'date-fns';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -26,10 +26,12 @@ export function TimeHistory() {
   const { employees } = useAdminTimeSheet();
   const isMobile = useIsMobile();
   const [employeeId, setEmployeeId] = useState('all');
-  const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [statusFilter, setStatusFilter] = useState('all');
   const [detailSheet, setDetailSheet] = useState<{ employeeId: string; employeeName: string; date: string } | null>(null);
+  const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
+
+  const startDate = range.from ? format(range.from, 'yyyy-MM-dd') : undefined;
+  const endDate = range.to ? format(range.to, 'yyyy-MM-dd') : undefined;
 
   const { data: sheets = [], isLoading } = useTimeHistory({
     employeeId: employeeId !== 'all' ? employeeId : undefined,
