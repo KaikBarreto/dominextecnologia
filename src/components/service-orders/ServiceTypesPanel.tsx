@@ -171,13 +171,13 @@ export function ServiceTypesPanel() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cor</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
-                   <TableHead>Prefixo OS</TableHead>
-                   <TableHead>Equipamento</TableHead>
-                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[100px]">Ações</TableHead>
+                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}}>Cor</SortableTableHead>
+                  <SortableTableHead sortKey="name" sortConfig={stSortConfig} onSort={handleStSort}>Nome</SortableTableHead>
+                  <SortableTableHead sortKey="description" sortConfig={stSortConfig} onSort={handleStSort}>Descrição</SortableTableHead>
+                  <SortableTableHead sortKey="number_prefix" sortConfig={stSortConfig} onSort={handleStSort}>Prefixo OS</SortableTableHead>
+                  <SortableTableHead sortKey="requires_equipment" sortConfig={stSortConfig} onSort={handleStSort}>Equipamento</SortableTableHead>
+                  <SortableTableHead sortKey="is_active" sortConfig={stSortConfig} onSort={handleStSort}>Status</SortableTableHead>
+                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

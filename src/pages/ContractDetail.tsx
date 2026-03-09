@@ -360,12 +360,12 @@ export default function ContractDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Dia</TableHead>
-                      <TableHead>OS</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
+                      <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">#</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>Data</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Dia</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>OS</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

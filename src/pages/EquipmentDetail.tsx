@@ -552,10 +552,10 @@ export default function EquipmentDetail() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                        <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                        <SortableTableHead sortKey="order_number" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>OS</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>Status</SortableTableHead>
+                        <SortableTableHead sortKey="scheduled_date" sortConfig={eqOsSortConfig} onSort={handleEqOsSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={eqOsSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
