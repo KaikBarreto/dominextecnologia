@@ -62,11 +62,13 @@ export default function Settings() {
       return saved ? JSON.parse(saved) : {
         autoSaveOS: true, confirmDelete: true, showOSValues: true,
         requireSignature: false, compactTables: false, showEquipmentPhotos: true,
+        showHolidays: true,
       };
     } catch {
       return {
         autoSaveOS: true, confirmDelete: true, showOSValues: true,
         requireSignature: false, compactTables: false, showEquipmentPhotos: true,
+        showHolidays: true,
       };
     }
   });
