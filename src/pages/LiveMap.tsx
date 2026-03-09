@@ -313,10 +313,41 @@ export default function LiveMap() {
       routeLinesRef.current.clear();
       destMarkersRef.current.forEach((m) => map.removeLayer(m));
       destMarkersRef.current.clear();
-
-      if (technicians.length === 0) return;
+      if (baseMarkerRef.current) { map.removeLayer(baseMarkerRef.current); baseMarkerRef.current = null; }
 
       const bounds: [number, number][] = [];
+
+      // Company base marker
+      if (companyCoords) {
+        const baseIcon = L.divIcon({
+          className: '',
+          html: `<div style="width:24px;height:24px;border-radius:50%;background:#0d9488;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+        const baseName = companySettings?.name || 'Empresa';
+        baseMarkerRef.current = L.marker([companyCoords.lat, companyCoords.lng], { icon: baseIcon }).addTo(map);
+        baseMarkerRef.current.bindTooltip(`<div style="font-family:system-ui;font-size:12px;font-weight:600">🏢 Base: ${baseName}</div>`, {
+          direction: 'top', offset: [0, -16], className: 'leaflet-tooltip-custom',
+        });
+        baseMarkerRef.current.bindPopup(`
+          <div style="min-width:200px;font-family:system-ui,sans-serif;padding:4px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px">🏢 ${baseName}</div>
+            <div style="font-size:12px;color:#666">Base da empresa</div>
+            ${companySettings?.address ? `<div style="font-size:11px;color:#888;margin-top:4px">${companySettings.address}${companySettings.address_number ? ', ' + companySettings.address_number : ''}</div>` : ''}
+            ${companySettings?.city ? `<div style="font-size:11px;color:#888">${companySettings.city} - ${companySettings.state}</div>` : ''}
+          </div>
+        `, { minWidth: 220, maxWidth: 320, className: 'leaflet-popup-custom' });
+        bounds.push([companyCoords.lat, companyCoords.lng]);
+      }
+
+      if (technicians.length === 0 && bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+        return;
+      }
+      if (technicians.length === 0) return;
 
       technicians.forEach((tech) => {
         const color = eventColors[tech.event_type] || '#3b82f6';
@@ -330,11 +361,18 @@ export default function LiveMap() {
         });
 
         const marker = L.marker([tech.lat, tech.lng], { icon }).addTo(map);
+        // Tooltip for hover (small preview)
         marker.bindTooltip(buildTooltipHtml(tech, routeInfo), {
           direction: 'top',
           offset: [0, -12],
           opacity: 1,
           className: 'leaflet-tooltip-custom',
+        });
+        // Popup for click (larger, stays open until X)
+        marker.bindPopup(buildPopupHtml(tech, routeInfo), {
+          minWidth: 280,
+          maxWidth: 360,
+          className: 'leaflet-popup-custom',
         });
 
         markersRef.current.set(tech.user_id, marker);
@@ -384,7 +422,7 @@ export default function LiveMap() {
     };
 
     updateMarkers();
-  }, [technicians, trails, routes]);
+  }, [technicians, trails, routes, companyCoords, companySettings]);
 
   // Realtime subscription
   useEffect(() => {
