@@ -25,7 +25,7 @@ import type { ServiceOrder } from '@/types/database';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 
 export default function Schedule() {
-  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder } = useServiceOrders();
+  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { data: technicians = [] } = useTechnicians();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
