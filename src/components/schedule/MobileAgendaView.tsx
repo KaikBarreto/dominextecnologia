@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import { Clock } from 'lucide-react';
+import { Clock, Star } from 'lucide-react';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
 import type { Holiday } from '@/utils/holidays';
