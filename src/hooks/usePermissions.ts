@@ -41,6 +41,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:crm', label: 'CRM', group: 'Comercial', category: 'comercial' },
   { key: 'screen:inventory', label: 'Estoque', group: 'Operacional', category: 'operacional' },
   { key: 'screen:finance', label: 'Financeiro', group: 'Financeiro', category: 'financeiro' },
+  { key: 'screen:employees', label: 'Funcionários', group: 'Administração', category: 'administracao' },
   { key: 'screen:users', label: 'Usuários', group: 'Administração', category: 'administracao' },
   { key: 'screen:settings', label: 'Configurações', group: 'Administração', category: 'administracao' },
 ] as const;
