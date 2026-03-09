@@ -409,7 +409,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Form Content ───────────────────────────────────────────────────────────
   const content = (
-    <div className="space-y-5 overflow-y-auto max-h-[78vh] pr-1">
+    <div className="space-y-5 overflow-y-auto max-h-[70vh] pr-1 pb-4">
 
       {/* ══ 1. DESTINATÁRIO ══ */}
       <section className="space-y-3">
