@@ -88,8 +88,8 @@ export default function PricingSection() {
               key={plan.name}
               className={`relative rounded-2xl border p-8 flex flex-col transition-all ${
                 plan.popular
-                  ? 'border-primary bg-[hsl(0,0%,7%)] shadow-brand-glow scale-[1.02]'
-                  : 'border-white/10 bg-[hsl(0,0%,6%)]'
+                  ? 'border-primary bg-white/5 shadow-brand-glow scale-[1.02]'
+                  : 'border-white/10 bg-white/[0.03]'
               }`}
             >
               {plan.popular && (

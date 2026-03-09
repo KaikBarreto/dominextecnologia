@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, AlertTriangle, ChevronDown } from 'lucide-react';
-import { format, parseISO, differenceInDays, addMonths } from 'date-fns';
+import { Search, Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AdminRenewalModal } from '@/components/admin/AdminRenewalModal';
 import { Calendar } from '@/components/ui/calendar';
@@ -23,12 +23,15 @@ export default function AdminSubscriptions() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [expirationFilter, setExpirationFilter] = useState('all');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [renewalModalOpen, setRenewalModalOpen] = useState(false);
-  const [updatingField, setUpdatingField] = useState<{ id: string } | null>(null);
+  const [updatingField, setUpdatingField] = useState<{ id: string; field: string } | null>(null);
   const [alertsOpen, setAlertsOpen] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const { data: companies, isLoading, refetch } = useQuery({
     queryKey: ['admin-subscriptions'],
@@ -67,7 +70,7 @@ export default function AdminSubscriptions() {
       inactive: { label: 'Desativado', className: 'bg-red-500 hover:bg-red-600 text-white' },
     };
     const v = variants[status] || { label: status, className: 'bg-gray-500 text-white' };
-    return <Badge className={v.className}>{v.label}</Badge>;
+    return v;
   };
 
   const filtered = useMemo(() => {
@@ -75,9 +78,23 @@ export default function AdminSubscriptions() {
     return companies.filter((c: any) => {
       const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
-      return matchSearch && matchStatus;
+      
+      let matchExpiration = true;
+      if (expirationFilter !== 'all' && c.subscription_expires_at) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const exp = new Date(c.subscription_expires_at); exp.setHours(0, 0, 0, 0);
+        const d = differenceInDays(exp, today);
+        switch (expirationFilter) {
+          case 'today': matchExpiration = d === 0; break;
+          case '7days': matchExpiration = d > 0 && d <= 7; break;
+          case '15days': matchExpiration = d > 0 && d <= 15; break;
+          case '30days': matchExpiration = d > 0 && d <= 30; break;
+          case 'overdue': matchExpiration = d < 0; break;
+        }
+      }
+      return matchSearch && matchStatus && matchExpiration;
     });
-  }, [companies, searchTerm, statusFilter]);
+  }, [companies, searchTerm, statusFilter, expirationFilter]);
 
   const sorted = useMemo(() => {
     if (!sortColumn) return filtered;
@@ -91,6 +108,9 @@ export default function AdminSubscriptions() {
     });
   }, [filtered, sortColumn, sortDirection]);
 
+  const totalPages = Math.ceil(sorted.length / itemsPerPage);
+  const paginatedData = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const summaryCards = useMemo(() => {
     if (!companies) return { today: 0, next7: 0, overdue: 0 };
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -102,11 +122,41 @@ export default function AdminSubscriptions() {
   }, [companies]);
 
   const updateExpiration = async (companyId: string, newDate: Date) => {
-    setUpdatingField({ id: companyId });
+    setUpdatingField({ id: companyId, field: 'subscription_expires_at' });
     try {
       const { error } = await supabase.from('companies').update({ subscription_expires_at: newDate.toISOString() }).eq('id', companyId);
       if (error) throw error;
       toast({ title: 'Data atualizada!' });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const updateStatus = async (companyId: string, newStatus: string) => {
+    setUpdatingField({ id: companyId, field: 'subscription_status' });
+    try {
+      const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', companyId);
+      if (error) throw error;
+      toast({ title: 'Status atualizado!' });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const updatePlan = async (companyId: string, newPlan: string) => {
+    setUpdatingField({ id: companyId, field: 'subscription_plan' });
+    try {
+      const { error } = await supabase.from('companies').update({ subscription_plan: newPlan }).eq('id', companyId);
+      if (error) throw error;
+      toast({ title: 'Plano atualizado!' });
       refetch();
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -195,20 +245,33 @@ export default function AdminSubscriptions() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar empresa..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+          <Input placeholder="Buscar empresa..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-10" />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="active">Ativo</SelectItem>
-            <SelectItem value="testing">Testando</SelectItem>
-            <SelectItem value="inactive">Desativado</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row">
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Status</SelectItem>
+              <SelectItem value="active">Ativo</SelectItem>
+              <SelectItem value="testing">Testando</SelectItem>
+              <SelectItem value="inactive">Desativado</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={expirationFilter} onValueChange={(v) => { setExpirationFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Vencimento" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Vencimentos</SelectItem>
+              <SelectItem value="today">Vence Hoje</SelectItem>
+              <SelectItem value="7days">Próximos 7 Dias</SelectItem>
+              <SelectItem value="15days">Próximos 15 Dias</SelectItem>
+              <SelectItem value="30days">Próximos 30 Dias</SelectItem>
+              <SelectItem value="overdue">Vencidas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
@@ -218,55 +281,114 @@ export default function AdminSubscriptions() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('name')}>Empresa <SortIcon column="name" /></TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('name')}>
+                    <div className="flex items-center">Empresa <SortIcon column="name" /></div>
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead>Valor</TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('subscription_expires_at')}>Vencimento <SortIcon column="subscription_expires_at" /></TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('subscription_expires_at')}>
+                    <div className="flex items-center">Vencimento <SortIcon column="subscription_expires_at" /></div>
+                  </TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sorted.map((company: any) => (
-                  <TableRow key={company.id}>
-                    <TableCell className="font-medium">{company.name}</TableCell>
-                    <TableCell>{getStatusBadge(company.subscription_status)}</TableCell>
-                    <TableCell>{company.subscription_plan || '-'}</TableCell>
-                    <TableCell>{(company.subscription_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                    <TableCell>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="sm" className={cn('text-xs px-2 py-1 rounded', getExpirationColor(company.subscription_expires_at))}>
-                            {company.subscription_expires_at ? format(parseISO(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={company.subscription_expires_at ? parseISO(company.subscription_expires_at) : undefined}
-                            onSelect={(date) => date && updateExpiration(company.id, date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => { setSelectedCompany(company); setRenewalModalOpen(true); }}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />Renovar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {paginatedData.map((company: any) => {
+                  const st = getStatusBadge(company.subscription_status);
+                  return (
+                    <TableRow key={company.id}>
+                      <TableCell className="font-medium">
+                        <div>
+                          <p>{company.name}</p>
+                          {company.email && <p className="text-xs text-muted-foreground">{company.email}</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={company.subscription_status}
+                          onValueChange={(v) => updateStatus(company.id, v)}
+                          disabled={updatingField?.id === company.id && updatingField?.field === 'subscription_status'}
+                        >
+                          <SelectTrigger className="w-[120px] h-8 text-xs border-0 p-0">
+                            <Badge className={st.className}>{st.label}</Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Ativo</SelectItem>
+                            <SelectItem value="testing">Testando</SelectItem>
+                            <SelectItem value="inactive">Desativado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={company.subscription_plan || 'starter'}
+                          onValueChange={(v) => updatePlan(company.id, v)}
+                          disabled={updatingField?.id === company.id && updatingField?.field === 'subscription_plan'}
+                        >
+                          <SelectTrigger className="w-[110px] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="starter">Starter</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="enterprise">Enterprise</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-sm">{(company.subscription_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className={cn('text-xs px-2 py-1 rounded', getExpirationColor(company.subscription_expires_at))}>
+                              {company.subscription_expires_at ? format(parseISO(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={company.subscription_expires_at ? parseISO(company.subscription_expires_at) : undefined}
+                              onSelect={(date) => date && updateExpiration(company.id, date)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setSelectedCompany(company); setRenewalModalOpen(true); }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />Renovar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {sorted.length === 0 && (
                   <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma empresa encontrada</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <p className="text-sm text-muted-foreground">
+                {sorted.length} empresa{sorted.length !== 1 ? 's' : ''} • Página {currentPage} de {totalPages}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
