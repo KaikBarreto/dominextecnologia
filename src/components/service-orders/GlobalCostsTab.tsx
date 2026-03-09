@@ -110,7 +110,7 @@ export function GlobalCostsTab() {
       </Card>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -178,7 +178,7 @@ export function GlobalCostsTab() {
 
       {/* Category tabs */}
       <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as CostResourceCategory)}>
-        <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1">
+        <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
           {CATEGORY_CONFIG.map(cat => {
             const Icon = cat.icon;
             const count = byCategory[cat.value].length;
@@ -223,7 +223,7 @@ export function GlobalCostsTab() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentResources.map(resource => (
                   <CostResourceCard
                     key={resource.id}

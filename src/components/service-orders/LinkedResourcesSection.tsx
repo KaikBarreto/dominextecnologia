@@ -183,7 +183,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                           </div>
 
                           {isLinked && (
-                            <div className="ml-6 flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+                            <div className="ml-0 sm:ml-6 flex flex-col gap-2 text-sm">
                               <span className="text-muted-foreground">
                                 {serviceHours}h × R$ {formatBRL(hourlyRate)} = 
                                 <span className={`font-medium ml-1 ${hasOverride ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
