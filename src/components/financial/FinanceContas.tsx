@@ -6,12 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Check, AlertTriangle, Clock, DollarSign } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ContaFormDialog } from './ContaFormDialog';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -29,6 +30,7 @@ interface FinanceContasProps {
 export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: FinanceContasProps) {
   const [subTab, setSubTab] = useState<SubTab>('pagar');
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
+  const [contaFormOpen, setContaFormOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const today = startOfDay(new Date());
@@ -71,9 +73,14 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold">Contas</h2>
-        <p className="text-sm text-muted-foreground">Programação financeira — contas a pagar e a receber</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h2 className="text-xl font-bold">Contas</h2>
+          <p className="text-sm text-muted-foreground">Programação financeira — contas a pagar e a receber</p>
+        </div>
+        <Button onClick={() => setContaFormOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Nova Conta
+        </Button>
       </div>
 
       {/* Sub-tab toggle */}
@@ -259,6 +266,8 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           </CardContent>
         </Card>
       )}
+
+      <ContaFormDialog open={contaFormOpen} onOpenChange={setContaFormOpen} />
     </div>
   );
 }
