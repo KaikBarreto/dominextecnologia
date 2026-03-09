@@ -199,7 +199,7 @@ function QuotesList() {
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}</span>
                       <span className="font-semibold text-foreground">
-                        {(q.total_value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {(q.final_price ?? q.total_value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </div>
                     <div className="flex flex-wrap justify-end gap-1 pt-1 border-t">
@@ -219,14 +219,19 @@ function QuotesList() {
                   <TableHead>Nº</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Data</TableHead>
-                  <TableHead className="hidden sm:table-cell">Validade</TableHead>
+                  <TableHead className="hidden lg:table-cell">Custo</TableHead>
                   <TableHead>Valor</TableHead>
+                  <TableHead className="hidden lg:table-cell">Margem</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pagination.paginatedItems.map((q) => (
+                {pagination.paginatedItems.map((q) => {
+                  const cost = Number(q.total_cost ?? 0);
+                  const price = Number(q.final_price ?? q.total_value ?? 0);
+                  const margin = price > 0 && cost > 0 ? Math.round(((price - cost) / price) * 100) : null;
+                  return (
                   <TableRow key={q.id}>
                     <TableCell className="font-medium">#{q.quote_number}</TableCell>
                     <TableCell>
@@ -238,11 +243,18 @@ function QuotesList() {
                     <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
                       {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
-                      {q.valid_until ? format(new Date(q.valid_until), 'dd/MM/yy', { locale: ptBR }) : '—'}
+                    <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+                      {cost > 0 ? cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
                     </TableCell>
                     <TableCell className="font-semibold">
-                      {(q.total_value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {margin !== null ? (
+                        <Badge variant={margin >= 20 ? 'success' : margin >= 0 ? 'warning' : 'destructive'} className="text-[10px]">
+                          {margin}%
+                        </Badge>
+                      ) : '—'}
                     </TableCell>
                     <TableCell>
                       <Badge className={STATUS_COLORS[q.status] ?? ''}>
