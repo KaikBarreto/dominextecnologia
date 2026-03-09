@@ -12,6 +12,14 @@ interface SortableTableHeadProps {
 }
 
 export function SortableTableHead({ children, sortKey, sortConfig, onSort, className }: SortableTableHeadProps) {
+  if (!sortKey) {
+    return (
+      <TableHead className={cn('text-xs uppercase tracking-wider', className)}>
+        {children}
+      </TableHead>
+    );
+  }
+
   const isActive = sortConfig.key === sortKey;
   const direction = isActive ? sortConfig.direction : null;
 
