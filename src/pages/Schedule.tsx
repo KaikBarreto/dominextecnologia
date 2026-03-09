@@ -260,6 +260,7 @@ export default function Schedule() {
               onDateDoubleClick={handleDateDoubleClick}
               onOrderSelect={handleOrderSelect}
               onDrop={handleDrop}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'week' && (
