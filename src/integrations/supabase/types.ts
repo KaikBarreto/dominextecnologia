@@ -2284,6 +2284,8 @@ export type Database = {
           admin_indirect_rate: number
           assigned_to: string | null
           bdi: number
+          card_discount_rate: number
+          card_installments: number
           converted_to_os_id: string | null
           created_at: string
           created_by: string | null
@@ -2320,6 +2322,8 @@ export type Database = {
           admin_indirect_rate?: number
           assigned_to?: string | null
           bdi?: number
+          card_discount_rate?: number
+          card_installments?: number
           converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -2356,6 +2360,8 @@ export type Database = {
           admin_indirect_rate?: number
           assigned_to?: string | null
           bdi?: number
+          card_discount_rate?: number
+          card_installments?: number
           converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
