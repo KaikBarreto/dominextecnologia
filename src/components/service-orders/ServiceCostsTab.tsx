@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useServiceCosts, type ExtraCostLine, computeExtraCostsTotal } from '@/hooks/useServiceCosts';
+import { useServiceMaterials } from '@/hooks/useServiceMaterials';
 import { ServiceMaterialsList } from '@/components/service-orders/ServiceMaterialsList';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
@@ -17,11 +18,8 @@ import { formatBRL } from '@/utils/currency';
 export function ServiceCostsTab() {
   const { serviceTypes } = useServiceTypes();
   const [serviceId, setServiceId] = useState<string>('');
-  const { cost, isLoading, saveCost } = useServiceCosts(serviceId || null);
-  const { totalCost: materialsCost } = (serviceId ? require('@/hooks/useServiceMaterials') : { totalCost: 0 });
-
-  // Evita import dinâmico estranho: vamos calcular materiais via componente (state) em vez de hook aqui
-  // (o resumo usará o total salvo em service_materials via query abaixo)
+  const { cost, saveCost } = useServiceCosts(serviceId || null);
+  const { totalCost: materialsTotal } = useServiceMaterials(serviceId || null);
 
   const serviceOptions = useMemo(
     () => serviceTypes.map((st) => ({ value: st.id, label: st.name })),
@@ -32,31 +30,6 @@ export function ServiceCostsTab() {
   const [hours, setHours] = useState(1);
   const [notes, setNotes] = useState('');
   const [extraCosts, setExtraCosts] = useState<ExtraCostLine[]>([]);
-
-  useEffect(() => {
-    if (!cost) {
-      setHourlyRate(0);
-      setHours(1);
-      setNotes('');
-      setExtraCosts([]);
-      return;
-    }
-    setHourlyRate(Number(cost.hourly_rate ?? 0));
-    setHours(Number(cost.hours ?? 1));
-    setNotes(cost.notes ?? '');
-    setExtraCosts(((cost.extra_costs as any) ?? []) as ExtraCostLine[]);
-  }, [cost, serviceId]);
-
-  const extrasTotal = useMemo(() => computeExtraCostsTotal(extraCosts), [extraCosts]);
-  const laborCost = useMemo(() => Math.max(0, hourlyRate * hours), [hourlyRate, hours]);
-
-  // Materiais: buscamos pelo próprio hook (sem depender do componente)
-  const { totalCost: materialsTotal } = require('@/hooks/useServiceMaterials').useServiceMaterials(serviceId || null);
-
-  const totalServiceCost = useMemo(
-    () => laborCost + extrasTotal + (materialsTotal || 0),
-    [laborCost, extrasTotal, materialsTotal]
-  );
 
   const { settings } = usePricingSettings();
   const taxRate = Number(settings?.tax_rate ?? 10);
