@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.1";
+export const APP_VERSION = "1.5.2";
 
-export const VERSION_NOTES = "Ordenação por colunas em todas as tabelas, correções em equipamentos (foto, notas, categoria, navegação), melhorias nos anexos e modal de OS";
+export const VERSION_NOTES = "Feriados nacionais e municipais na agenda, base da empresa no mapa ao vivo, tooltips persistentes no mapa";
