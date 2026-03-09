@@ -181,5 +181,4 @@ export function useCrmStages() {
     getStageColorClass,
     getStageHex,
   };
-  };
 }
