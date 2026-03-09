@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useAuth } from '@/contexts/AuthContext';
 import logoDark from '@/assets/logo-dark.png';
 import logoWhite from '@/assets/logo-white.png';
 
@@ -25,24 +26,25 @@ function hexToHsl(hex: string): string | null {
 
 export function useWhiteLabel() {
   const { settings, isLoading } = useCompanySettings();
+  const { hasRole } = useAuth();
 
-  const enabled = !!(settings as any)?.white_label_enabled;
+  // Super admin never gets white label
+  const isSuperAdmin = hasRole('super_admin');
+
+  const enabled = !isSuperAdmin && !!(settings as any)?.white_label_enabled;
   const primaryColor = (settings as any)?.white_label_primary_color || null;
   const customLogoUrl = (settings as any)?.white_label_logo_url || null;
   const customIconUrl = (settings as any)?.white_label_icon_url || null;
 
-  // When WL is enabled: use custom WL logo, or fall back to company logo
   const logoUrl = enabled
     ? (customLogoUrl || settings?.logo_url || null)
-    : null; // null means use default static logos
+    : null;
 
-  // Icon for collapsed sidebar - only when WL enabled
   const iconUrl = enabled ? customIconUrl : null;
 
   const defaultLogoDark = logoDark;
   const defaultLogoWhite = logoWhite;
 
-  // Apply CSS custom property overrides when white label color is active
   useEffect(() => {
     if (enabled && primaryColor) {
       const hsl = hexToHsl(primaryColor);
@@ -65,9 +67,7 @@ export function useWhiteLabel() {
     primaryColor,
     customLogoUrl,
     customIconUrl,
-    /** The resolved logo URL, or null if default Dominex logos should be used */
     logoUrl,
-    /** The resolved icon URL for collapsed sidebar, or null */
     iconUrl,
     defaultLogoDark,
     defaultLogoWhite,

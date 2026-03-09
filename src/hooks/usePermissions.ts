@@ -61,6 +61,7 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao' },
   { key: 'fn:manage_crm', label: 'Gerenciar CRM', description: 'Gerenciar leads e pipeline comercial', group: 'Comercial', category: 'comercial' },
   { key: 'fn:manage_contracts', label: 'Gerenciar Contratos', description: 'Gerenciar contratos recorrentes e manutenções', group: 'Serviços', category: 'servicos' },
+  { key: 'fn:view_financial_schedule', label: 'Ver Contas na Agenda', description: 'Visualizar contas a pagar e receber na agenda como avisos', group: 'Financeiro', category: 'financeiro' },
 ] as const;
 
 export const ALL_PERMISSIONS = [...SCREEN_PERMISSIONS, ...FUNCTION_PERMISSIONS];

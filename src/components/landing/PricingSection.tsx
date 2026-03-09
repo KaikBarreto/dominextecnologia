@@ -7,46 +7,46 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 const plans = [
   {
     name: 'Starter',
-    desc: 'Para até 5 técnicos',
+    desc: 'Para pequenas equipes focadas em eficiência',
     monthly: 197,
     annual: 157,
     popular: false,
-    features: ['OS ilimitadas', 'App para técnicos', 'Painel do gestor', 'Relatórios básicos', 'Suporte por email'],
-    cta: 'Começar grátis',
+    features: ['OS ilimitadas', '2 usuários inclusos', 'App para técnicos', 'Painel do gestor', 'Relatórios básicos', 'Suporte por email'],
+    cta: 'Testar por 7 Dias Grátis',
     ctaLink: '/cadastro?origem=Site',
   },
   {
     name: 'Pro',
-    desc: 'Até 20 técnicos',
+    desc: 'Gestão completa + Integrações avançadas',
     monthly: 497,
     annual: 397,
     popular: true,
     features: [
       'Tudo do Starter +',
+      '5 usuários inclusos',
       'Rastreamento em tempo real',
       'Manutenções recorrentes',
       'Avaliações de cliente',
-      'API de integração',
       'Suporte prioritário',
     ],
-    cta: 'Começar grátis',
+    cta: 'Testar por 7 Dias Grátis',
     ctaLink: '/cadastro?origem=Site',
   },
   {
     name: 'Enterprise',
-    desc: 'Técnicos ilimitados',
+    desc: 'Plano completo para operações de grande porte',
     monthly: null,
     annual: null,
     popular: false,
     features: [
       'Tudo do Pro +',
+      'Usuários ilimitados',
       'Múltiplas filiais',
       'Gestão de frotas',
       'SLA com alertas',
-      'Onboarding dedicado',
       'Gestor de conta',
     ],
-    cta: 'Falar com especialista',
+    cta: 'Testar por 7 Dias Grátis',
     ctaLink: '/cadastro?origem=Site',
   },
 ];
@@ -82,13 +82,13 @@ export default function PricingSection() {
           </span>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 items-start">
+        <div className="grid md:grid-cols-3 gap-6 items-stretch">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative rounded-2xl border p-8 transition-all ${
+              className={`relative rounded-2xl border p-8 flex flex-col transition-all ${
                 plan.popular
-                  ? 'border-primary/50 bg-[hsl(0,0%,7%)] shadow-brand-glow scale-[1.02]'
+                  ? 'border-primary bg-[hsl(0,0%,7%)] shadow-brand-glow scale-[1.02]'
                   : 'border-white/10 bg-[hsl(0,0%,6%)]'
               }`}
             >
@@ -114,7 +114,7 @@ export default function PricingSection() {
                 </div>
               )}
 
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-white/60">
                     <Check className="h-4 w-4 text-primary shrink-0" />
@@ -127,8 +127,9 @@ export default function PricingSection() {
                 className={`w-full ${
                   plan.popular
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-white/10 text-white hover:bg-white/20'
+                    : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
                 }`}
+                size="lg"
                 asChild
               >
                 <Link to={plan.ctaLink}>{plan.cta}</Link>

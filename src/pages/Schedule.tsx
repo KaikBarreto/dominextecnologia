@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
+import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder } = useServiceOrders();
@@ -58,9 +59,10 @@ export default function Schedule() {
     return technicians.some(t => t.user_id === user?.id);
   }, [technicians, user?.id]);
 
+  const { financialEvents } = useFinancialScheduleEvents();
+
   const filteredOrders = useMemo(() => {
-    return serviceOrders.filter((order) => {
-      // If user is a technician, only show their own OS or OS assigned to their teams
+    const osFiltered = serviceOrders.filter((order) => {
       if (isTechnician && user?.id) {
         const isAssignedToMe = order.technician_id === user.id;
         const isAssignedToMyTeam = order.team_id && myTeamIds.includes(order.team_id);
@@ -72,7 +74,8 @@ export default function Schedule() {
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
       return true;
     });
-  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds]);
+    return [...osFiltered, ...financialEvents];
+  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents]);
 
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
