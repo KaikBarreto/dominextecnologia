@@ -293,7 +293,7 @@ export function useTimeRecord(userId: string | undefined) {
       const clockOut = type === 'clock_out' ? { recorded_at: now } : allRecords.find(r => r.type === 'clock_out');
 
       const sheetData: any = {
-        company_id: profile.company_id,
+        company_id: companyId,
         user_id: userId,
         date: today,
         first_clock_in: clockIn?.recorded_at || now,
