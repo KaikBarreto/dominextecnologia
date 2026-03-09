@@ -8,8 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -40,6 +42,7 @@ const defaultForm: ServiceTypeForm = {
 export function ServiceTypesPanel() {
   const { serviceTypes, isLoading, createServiceType, updateServiceType, deleteServiceType } = useServiceTypes();
   const isMobile = useIsMobile();
+  const { sortedItems: sortedTypes, sortConfig: stSortConfig, handleSort: handleStSort } = useTableSort(serviceTypes);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ServiceTypeForm>(defaultForm);
@@ -168,17 +171,17 @@ export function ServiceTypesPanel() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cor</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
-                   <TableHead>Prefixo OS</TableHead>
-                   <TableHead>Equipamento</TableHead>
-                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[100px]">Ações</TableHead>
+                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}}>Cor</SortableTableHead>
+                  <SortableTableHead sortKey="name" sortConfig={stSortConfig} onSort={handleStSort}>Nome</SortableTableHead>
+                  <SortableTableHead sortKey="description" sortConfig={stSortConfig} onSort={handleStSort}>Descrição</SortableTableHead>
+                  <SortableTableHead sortKey="number_prefix" sortConfig={stSortConfig} onSort={handleStSort}>Prefixo OS</SortableTableHead>
+                  <SortableTableHead sortKey="requires_equipment" sortConfig={stSortConfig} onSort={handleStSort}>Equipamento</SortableTableHead>
+                  <SortableTableHead sortKey="is_active" sortConfig={stSortConfig} onSort={handleStSort}>Status</SortableTableHead>
+                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {serviceTypes.map((st) => (
+                {sortedTypes.map((st) => (
                   <TableRow key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
                     <TableCell>
                       <div

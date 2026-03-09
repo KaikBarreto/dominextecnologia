@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCustomers } from '@/hooks/useCustomers';
 import { supabase } from '@/integrations/supabase/client';
@@ -75,10 +77,14 @@ export default function CustomerDetail() {
   // Portal tickets (origin = 'portal')
   const portalTickets = customerOrders.filter(os => (os as any).origin === 'portal');
 
-  const ordersPagination = useDataPagination(customerOrders);
-  const transactionsPagination = useDataPagination(customerTransactions);
-  const ticketsPagination = useDataPagination(portalTickets);
-  const contractsPagination = useDataPagination(customerContracts);
+  const { sortedItems: sortedOrders, sortConfig: osSortConfig, handleSort: handleOsSort } = useTableSort(customerOrders);
+  const ordersPagination = useDataPagination(sortedOrders);
+  const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(customerTransactions);
+  const transactionsPagination = useDataPagination(sortedTransactions);
+  const { sortedItems: sortedTickets, sortConfig: ticketSortConfig, handleSort: handleTicketSort } = useTableSort(portalTickets);
+  const ticketsPagination = useDataPagination(sortedTickets);
+  const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(customerContracts);
+  const contractsPagination = useDataPagination(sortedContracts);
 
   // Load existing portal link
   useEffect(() => {
@@ -472,11 +478,11 @@ export default function CustomerDetail() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                     <TableRow>
+                      <SortableTableHead sortKey="order_number" sortConfig={osSortConfig} onSort={handleOsSort}>OS</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={osSortConfig} onSort={handleOsSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_date" sortConfig={osSortConfig} onSort={handleOsSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={osSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -521,12 +527,12 @@ export default function CustomerDetail() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                     <TableRow>
+                      <SortableTableHead sortKey="order_number" sortConfig={ticketSortConfig} onSort={handleTicketSort}>OS</SortableTableHead>
+                      <SortableTableHead sortKey="description" sortConfig={ticketSortConfig} onSort={handleTicketSort}>Descrição</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={ticketSortConfig} onSort={handleTicketSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="created_at" sortConfig={ticketSortConfig} onSort={handleTicketSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={ticketSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -573,12 +579,12 @@ export default function CustomerDetail() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Frequência</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Início</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                     <TableRow>
+                      <SortableTableHead sortKey="name" sortConfig={contractSortConfig} onSort={handleContractSort}>Nome</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={contractSortConfig} onSort={handleContractSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="frequency_type" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">Frequência</SortableTableHead>
+                      <SortableTableHead sortKey="start_date" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">Início</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={contractSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -625,11 +631,11 @@ export default function CustomerDetail() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Valor</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                     <TableRow>
+                      <SortableTableHead sortKey="description" sortConfig={finSortConfig} onSort={handleFinSort}>Descrição</SortableTableHead>
+                      <SortableTableHead sortKey="amount" sortConfig={finSortConfig} onSort={handleFinSort}>Valor</SortableTableHead>
+                      <SortableTableHead sortKey="transaction_date" sortConfig={finSortConfig} onSort={handleFinSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                      <SortableTableHead sortKey="is_paid" sortConfig={finSortConfig} onSort={handleFinSort}>Status</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

@@ -12,7 +12,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List, Image } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -75,7 +77,8 @@ export default function EquipmentDetail() {
 
   const equipment = allEquipment.find(eq => eq.id === id);
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
-  const ordersPagination = useDataPagination(equipmentOrders);
+  const { sortedItems: sortedEqOrders, sortConfig: eqOsSortConfig, handleSort: handleEqOsSort } = useTableSort(equipmentOrders);
+  const ordersPagination = useDataPagination(sortedEqOrders);
   // Fetch portal token for this customer to generate proper QR URL
   const { data: portalToken } = useQuery({
     queryKey: ['portalToken', equipment?.customer_id],
@@ -549,10 +552,10 @@ export default function EquipmentDetail() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                        <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                        <SortableTableHead sortKey="order_number" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>OS</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortConfig={eqOsSortConfig} onSort={handleEqOsSort}>Status</SortableTableHead>
+                        <SortableTableHead sortKey="scheduled_date" sortConfig={eqOsSortConfig} onSort={handleEqOsSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={eqOsSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

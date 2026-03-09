@@ -2,10 +2,12 @@ import { Trash2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useDataPagination } from '@/hooks/useDataPagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { BalanceSummary, formatMovementType, getMovementBadgeVariant, EmployeeMovement } from '@/utils/employeeCalculations';
 import { format } from 'date-fns';
 
@@ -20,7 +22,8 @@ interface EmployeeExtractProps {
 
 export function EmployeeExtract({ open, onOpenChange, employeeName, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const pagination = useDataPagination(movements, 25);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(movements);
+  const pagination = useDataPagination(sortedItems, 25);
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`} className="sm:max-w-[900px]">
@@ -52,12 +55,12 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, movements, b
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap">Data</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-right whitespace-nowrap">Valor</TableHead>
-                <TableHead className="text-right whitespace-nowrap">Saldo</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="whitespace-nowrap">Data</SortableTableHead>
+                <SortableTableHead sortKey="type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>
+                <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
+                <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="text-right whitespace-nowrap">Valor</SortableTableHead>
+                <SortableTableHead sortKey="balance_after" sortConfig={sortConfig} onSort={handleSort} className="text-right whitespace-nowrap">Saldo</SortableTableHead>
+                <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-10"> </SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

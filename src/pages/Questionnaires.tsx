@@ -10,8 +10,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -29,6 +31,7 @@ export default function QuestionnairesPage() {
 
   const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+  const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(templates);
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -97,15 +100,15 @@ export default function QuestionnairesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider hidden sm:table-cell">Perguntas</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider hidden md:table-cell">Serviços</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider w-[80px]">Ações</TableHead>
+                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden sm:table-cell">Perguntas</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden md:table-cell">Serviços</SortableTableHead>
+                    <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Ações</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {templates.map((template) => {
+                  {sortedTemplates.map((template) => {
                     const serviceIds = (template as any).service_type_ids as string[] | undefined;
                     const appliesToAll = !serviceIds || serviceIds.length === 0;
                     const linkedServices = appliesToAll
