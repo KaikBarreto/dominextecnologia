@@ -46,6 +46,8 @@ const LABEL_SIZES = [
 export default function EquipmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = location.state as { from?: string; customerId?: string } | null;
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
