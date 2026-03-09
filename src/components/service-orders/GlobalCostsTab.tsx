@@ -33,6 +33,7 @@ export function GlobalCostsTab() {
     deleteResource,
   } = useCostResources();
 
+  const isMobile = useIsMobile();
   const [activeCategory, setActiveCategory] = useState<CostResourceCategory>('vehicle');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<CostResource | null>(null);
