@@ -325,6 +325,7 @@ export default function Schedule() {
           currentDate={currentDate}
           orders={filteredOrders}
           onOrderSelect={handleOrderSelect}
+          holidayMap={holidayMap}
         />
 
         {summaryOrder && (
