@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users, BarChart3, Plus, Search, Clock } from 'lucide-react';
+import { Users, BarChart3, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

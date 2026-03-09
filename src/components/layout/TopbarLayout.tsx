@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ClipboardList, Calendar, Users, UsersRound, Package,
   DollarSign, FileText, Settings, UserCircle, TrendingUp, Wrench,
   ChevronDown, GraduationCap, LogOut, Menu, Briefcase, CreditCard, Building2,
-  MapPin, Map, FolderOpen, Boxes, ScrollText,
+  MapPin, Map, FolderOpen, Boxes, ScrollText, Clock,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
