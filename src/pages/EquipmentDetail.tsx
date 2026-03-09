@@ -318,7 +318,7 @@ export default function EquipmentDetail() {
           {equipment.notes && (
             <Card><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
-              <p className="text-sm mt-1">{equipment.notes}</p>
+              <p className="text-sm mt-1 whitespace-pre-wrap">{equipment.notes}</p>
             </CardContent></Card>
           )}
         </div>
