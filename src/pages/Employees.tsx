@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users, BarChart3, Plus, Search } from 'lucide-react';
+import { Users, BarChart3, Plus, Search, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,17 +12,13 @@ import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementMo
 import { EmployeePaymentModal } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
+import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
-const tabs: SettingsTab[] = [
-  { value: 'list', label: 'Funcionários', icon: Users },
-  { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-];
 
 export default function Employees() {
   const [activeTab, setActiveTab] = useState('list');
@@ -37,8 +33,21 @@ export default function Employees() {
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
+
+  const canManageTime = isAdminOrGestor() || hasPermission('fn:manage_timeclock') || hasPermission('fn:manage_employees');
+
+  const tabs: SettingsTab[] = useMemo(() => {
+    const base: SettingsTab[] = [
+      { value: 'list', label: 'Funcionários', icon: Users },
+      { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    ];
+    if (canManageTime) {
+      base.push({ value: 'timeclock', label: 'Controle de Ponto', icon: Clock });
+    }
+    return base;
+  }, [canManageTime]);
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
@@ -348,6 +357,8 @@ export default function Employees() {
               </div>
             )}
           </div>
+        ) : activeTab === 'timeclock' ? (
+          <AdminTimePanel />
         ) : (
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}
