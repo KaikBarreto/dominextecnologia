@@ -36,14 +36,23 @@ export function useUsers() {
   const { user } = useAuth();
 
   const { data: users = [], isLoading, error } = useQuery({
-    queryKey: ['users'],
+    queryKey: ['users', user?.id],
     queryFn: async () => {
-      // Get all profiles
-      const { data: profiles, error: profilesError } = await supabase
+      if (!user?.id) return [];
+
+      // Get current user's company_id
+      const { data: myProfile } = await supabase
         .from('profiles')
-        .select('*')
-        .order('full_name');
-      
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      // Get profiles filtered by company
+      let query = supabase.from('profiles').select('*').order('full_name');
+      if (myProfile?.company_id) {
+        query = query.eq('company_id', myProfile.company_id);
+      }
+      const { data: profiles, error: profilesError } = await query;
       if (profilesError) throw profilesError;
 
       // Get all roles (may fail if user doesn't have permission)
@@ -62,6 +71,7 @@ export function useUsers() {
 
       return usersWithRoles;
     },
+    enabled: !!user?.id,
   });
 
   // Check if current user has admin/gestor role

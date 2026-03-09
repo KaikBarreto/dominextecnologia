@@ -18,7 +18,6 @@ import { useEmployees, Employee } from '@/hooks/useEmployees';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUsers } from '@/hooks/useUsers';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -41,10 +40,12 @@ export default function Employees() {
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { currentUserRole } = useUsers();
+  const { user, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
-  const isTecnico = currentUserRole === 'tecnico';
+
+  // Check if current user is linked to an employee
+  const linkedEmployee = useMemo(() => employees.find(e => e.user_id === user?.id), [employees, user?.id]);
+  const canManageTime = isAdminOrGestor() || hasPermission('fn:manage_timeclock') || hasPermission('fn:manage_employees');
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
@@ -123,6 +124,7 @@ export default function Employees() {
                   phone: employeeData.phone || editingEmployee.phone || undefined,
                   avatar_url: employeeData.photo_url || editingEmployee.photo_url || undefined,
                   role: 'tecnico',
+                  employee_id: editingEmployee.id,
                 },
               });
               
@@ -168,6 +170,7 @@ export default function Employees() {
                   phone: employeeData.phone || undefined,
                   avatar_url: employeeData.photo_url || undefined,
                   role: 'tecnico',
+                  employee_id: newEmployee?.id || undefined,
                 },
               });
               
@@ -353,7 +356,15 @@ export default function Employees() {
             )}
           </div>
         ) : activeTab === 'timeclock' ? (
-          isTecnico ? <TechnicianTimeClock /> : <AdminTimePanel />
+          <div className="space-y-6">
+            {linkedEmployee && <TechnicianTimeClock />}
+            {canManageTime && <AdminTimePanel />}
+            {!linkedEmployee && !canManageTime && (
+              <div className="text-center py-12 text-muted-foreground">
+                Você não tem permissão para acessar o controle de ponto.
+              </div>
+            )}
+          </div>
         ) : (
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}

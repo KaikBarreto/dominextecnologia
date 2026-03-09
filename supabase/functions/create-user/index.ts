@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const callerCompanyId = callerProfile?.company_id || null;
 
-    const { email, password, full_name, phone, permissions, preset_id, role, avatar_url } = await req.json();
+    const { email, password, full_name, phone, permissions, preset_id, role, avatar_url, employee_id } = await req.json();
 
     if (!email || !password || !full_name) {
       return new Response(JSON.stringify({ error: 'Missing required fields: email, password, full_name' }), {
@@ -81,20 +81,31 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // Wait briefly for the trigger to create the profile, then update it
-    // The handle_new_user trigger creates the profile but without company_id or phone
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for the handle_new_user trigger to create the profile, then update it
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    const profileUpdate: Record<string, unknown> = {};
-    if (callerCompanyId) profileUpdate.company_id = callerCompanyId;
-    if (phone) profileUpdate.phone = phone;
-    if (avatar_url) profileUpdate.avatar_url = avatar_url;
+    // Use upsert to handle race conditions with the trigger
+    const profileData: Record<string, unknown> = {
+      user_id: userId,
+      full_name,
+    };
+    if (callerCompanyId) profileData.company_id = callerCompanyId;
+    if (phone) profileData.phone = phone;
+    if (avatar_url) profileData.avatar_url = avatar_url;
 
-    if (Object.keys(profileUpdate).length > 0) {
+    // Try update first (trigger should have created the profile)
+    const { data: updatedProfile, error: updateErr } = await supabaseAdmin
+      .from('profiles')
+      .update(profileData)
+      .eq('user_id', userId)
+      .select('id')
+      .maybeSingle();
+
+    // If update didn't find the row, insert it
+    if (!updatedProfile && !updateErr) {
       await supabaseAdmin
         .from('profiles')
-        .update(profileUpdate)
-        .eq('user_id', userId);
+        .insert(profileData);
     }
 
     // Create user_permissions record
@@ -114,6 +125,14 @@ Deno.serve(async (req) => {
       await supabaseAdmin
         .from('user_roles')
         .insert({ user_id: userId, role });
+    }
+
+    // Link employee record if employee_id is provided
+    if (employee_id) {
+      await supabaseAdmin
+        .from('employees')
+        .update({ user_id: userId })
+        .eq('id', employee_id);
     }
 
     return new Response(JSON.stringify({ user: { id: userId, email } }), {
