@@ -2295,6 +2295,7 @@ export type Database = {
           distance_km: number | null
           final_price: number | null
           id: string
+          include_gifts: boolean
           km_cost: number
           notes: string | null
           price_override: number | null
@@ -2330,6 +2331,7 @@ export type Database = {
           distance_km?: number | null
           final_price?: number | null
           id?: string
+          include_gifts?: boolean
           km_cost?: number
           notes?: string | null
           price_override?: number | null
@@ -2365,6 +2367,7 @@ export type Database = {
           distance_km?: number | null
           final_price?: number | null
           id?: string
+          include_gifts?: boolean
           km_cost?: number
           notes?: string | null
           price_override?: number | null
