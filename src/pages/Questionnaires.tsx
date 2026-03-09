@@ -31,6 +31,7 @@ export default function QuestionnairesPage() {
 
   const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+  const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(templates);
 
   const handleCreate = () => {
     if (!newName.trim()) return;
