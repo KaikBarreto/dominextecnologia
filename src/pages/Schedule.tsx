@@ -307,6 +307,7 @@ export default function Schedule() {
               onClearSelection={handleClearSummary}
               onEdit={handleEditFromSummary}
               onDelete={handleDeleteFromSummary}
+            />
           </div>
         )}
 
@@ -390,6 +391,7 @@ export default function Schedule() {
             onClearSelection={handleClearSummary}
             onEdit={handleEditFromSummary}
             onDelete={handleDeleteFromSummary}
+          />
         </div>
       </div>
 
