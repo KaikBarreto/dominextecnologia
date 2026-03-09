@@ -395,8 +395,16 @@ export default function EquipmentDetail() {
             const pdfAttachments = attachments.filter(att => /\.pdf$/i.test(att.file_name));
             const otherFileAttachments = attachments.filter(att => !/\.(webp|jpe?g|png|gif|heic|svg|pdf)$/i.test(att.file_name));
 
+            const isPdf = (name: string) => /\.pdf$/i.test(name);
+
             const renderGalleryItem = (att: typeof attachments[0], isImage: boolean) => (
-              <div key={att.id} className="relative group rounded-lg border overflow-hidden bg-muted/30">
+              <motion.div
+                key={att.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="relative group rounded-lg border overflow-hidden bg-muted/30"
+              >
                 {isImage ? (
                   <img
                     src={att.file_url}
@@ -404,6 +412,15 @@ export default function EquipmentDetail() {
                     className="w-full aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => setPreviewImage(att.file_url)}
                   />
+                ) : isPdf(att.file_name) ? (
+                  <div className="w-full aspect-square relative bg-white overflow-hidden cursor-pointer" onClick={() => window.open(att.file_url, '_blank')}>
+                    <iframe
+                      src={`${att.file_url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                      className="w-full h-full pointer-events-none border-0"
+                      title={att.file_name}
+                    />
+                    <div className="absolute inset-0 bg-transparent" />
+                  </div>
                 ) : (
                   <div className="w-full aspect-square flex flex-col items-center justify-center gap-2 p-3">
                     <FileText className="h-8 w-8 text-muted-foreground" />
@@ -419,7 +436,7 @@ export default function EquipmentDetail() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground truncate px-2 py-1.5 bg-background/80 backdrop-blur-sm">{att.file_name}</p>
-              </div>
+              </motion.div>
             );
 
             const renderListItem = (att: typeof attachments[0], isImage: boolean) => (
