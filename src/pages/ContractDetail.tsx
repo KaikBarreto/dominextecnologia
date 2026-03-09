@@ -84,7 +84,8 @@ export default function ContractDetail() {
     (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
     [contract]
   );
-  const occPagination = useDataPagination(sortedOccurrences);
+  const { sortedItems: sortedOcc, sortConfig: occSortConfig, handleSort: handleOccSort } = useTableSort(sortedOccurrences);
+  const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
 
   const handleCreateReceivable = async () => {
