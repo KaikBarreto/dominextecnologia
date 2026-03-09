@@ -166,13 +166,13 @@ export function GlobalCostsTab() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <Gift className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Custo Mensal Brindes</p>
+              <p className="text-xs text-muted-foreground">Custo/Brinde</p>
             </div>
             {isLoading ? (
               <Skeleton className="h-6 w-24 mt-1" />
             ) : (
               <p className="text-xl font-bold text-foreground mt-1">
-                R$ {formatBRL(kpis.giftMonthlyCost)}
+                R$ {formatBRL(kpis.giftCostPerUnit)}
               </p>
             )}
           </CardContent>
