@@ -392,7 +392,8 @@ export default function EquipmentDetail() {
             </div>
           ) : (() => {
             const imageAttachments = attachments.filter(att => /\.(webp|jpe?g|png|gif|heic|svg)$/i.test(att.file_name));
-            const fileAttachments = attachments.filter(att => !/\.(webp|jpe?g|png|gif|heic|svg)$/i.test(att.file_name));
+            const pdfAttachments = attachments.filter(att => /\.pdf$/i.test(att.file_name));
+            const otherFileAttachments = attachments.filter(att => !/\.(webp|jpe?g|png|gif|heic|svg|pdf)$/i.test(att.file_name));
 
             const renderGalleryItem = (att: typeof attachments[0], isImage: boolean) => (
               <div key={att.id} className="relative group rounded-lg border overflow-hidden bg-muted/30">
