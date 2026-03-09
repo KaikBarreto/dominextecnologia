@@ -56,16 +56,15 @@ export function TimeHistory() {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center flex-wrap">
         <Select value={employeeId} onValueChange={setEmployeeId}>
-          <SelectTrigger className="col-span-2 sm:w-[200px]"><SelectValue placeholder="Funcionário" /></SelectTrigger>
+          <SelectTrigger className="sm:w-[200px]"><SelectValue placeholder="Funcionário" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="sm:w-[160px]" />
-        <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="sm:w-[160px]" />
+        <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="sm:w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>
