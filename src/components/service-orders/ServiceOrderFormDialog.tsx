@@ -618,11 +618,22 @@ export function ServiceOrderFormDialog({
                       checked={selectedEquipmentIds.includes(eq.id)}
                       onCheckedChange={() => toggleEquipment(eq.id)}
                     />
+                    {(eq as any).photo_url && (
+                      <img
+                        src={(eq as any).photo_url}
+                        alt={eq.name}
+                        className="h-12 w-12 rounded-lg object-cover shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{eq.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {[eq.brand, eq.model].filter(Boolean).join(' - ') || 'Sem detalhes'}
                       </p>
+                      {(eq as any).location && (
+                        <p className="text-xs text-muted-foreground mt-0.5">📍 {(eq as any).location}</p>
+                      )}
                     </div>
                     {eq.identifier && (
                       <span className="text-xs font-mono text-muted-foreground shrink-0">{eq.identifier}</span>
