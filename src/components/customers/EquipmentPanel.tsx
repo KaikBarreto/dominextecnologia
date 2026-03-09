@@ -24,6 +24,8 @@ import { EquipmentFormDialog } from './EquipmentFormDialog';
 import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Equipment } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
