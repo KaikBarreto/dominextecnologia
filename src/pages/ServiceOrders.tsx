@@ -45,6 +45,8 @@ import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
 import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard';
