@@ -47,7 +47,7 @@ const menuItems: MenuItem[] = [
       { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
-      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios' },
+      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
     ],
   },

@@ -170,6 +170,7 @@ export default function Employees() {
                   phone: employeeData.phone || undefined,
                   avatar_url: employeeData.photo_url || undefined,
                   role: 'tecnico',
+                  employee_id: newEmployee?.id || undefined,
                 },
               });
               
