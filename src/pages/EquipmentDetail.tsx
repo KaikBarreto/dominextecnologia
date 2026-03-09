@@ -51,6 +51,7 @@ export default function EquipmentDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const navState = location.state as { from?: string; customerId?: string } | null;
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
