@@ -547,37 +547,50 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title="Configurações BDI" />
-          <Badge variant="outline" className="text-xs font-mono ml-auto">
-            Fator {(bdiFactor * 100).toFixed(1)}%
+          <Badge
+            variant="outline"
+            className={`text-xs font-mono ml-auto px-2.5 py-0.5 ${
+              bdiDanger
+                ? 'border-destructive/50 bg-destructive/10 text-destructive'
+                : bdiWarning
+                  ? 'border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+                  : 'border-primary/30 bg-primary/5 text-primary'
+            }`}
+          >
+            BDI {(bdiFactor * 100).toFixed(1)}%
           </Badge>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <FieldBox label="Imposto (%)">
-            <Input type="number" min={0} max={100} step="0.1" value={taxRate}
-              onChange={e => setTaxRate(Number(e.target.value) || 0)} className="h-9" />
-          </FieldBox>
-          <FieldBox label="Adm. Indireta (%)">
-            <Input type="number" min={0} max={100} step="0.1" value={adminRate}
-              onChange={e => setAdminRate(Number(e.target.value) || 0)} className="h-9" />
-          </FieldBox>
-          <FieldBox label="Lucro (%)">
-            <Input type="number" min={0} max={100} step="0.1" value={profitRate}
-              onChange={e => setProfitRate(Number(e.target.value) || 0)} className="h-9" />
-          </FieldBox>
-          <FieldBox label="Custo / km (R$)">
-            <Input type="number" min={0} step="0.01" value={kmCostCfg}
-              onChange={e => setKmCostCfg(Number(e.target.value) || 0)} className="h-9" />
-          </FieldBox>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <FieldBox label="Desconto à vista (%)">
-            <Input type="number" min={0} max={100} step="0.1" value={cardDiscountRateCfg}
-              onChange={e => setCardDiscountRateCfg(Number(e.target.value) || 0)} className="h-9" />
-          </FieldBox>
-          <FieldBox label="Parcelas (cartão)">
-            <Input type="number" min={1} step="1" value={cardInstallmentsCfg}
-              onChange={e => setCardInstallmentsCfg(Math.max(1, Number(e.target.value) || 1))} className="h-9" />
-          </FieldBox>
+
+        <div className="rounded-xl border bg-muted/20 p-4 space-y-4">
+          {/* Row 1: Taxas */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Taxas e Margens</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <BdiField label="Imposto" suffix="%" value={taxRate}
+                onChange={v => setTaxRate(v)} />
+              <BdiField label="Adm. Indireta" suffix="%" value={adminRate}
+                onChange={v => setAdminRate(v)} />
+              <BdiField label="Lucro" suffix="%" value={profitRate}
+                onChange={v => setProfitRate(v)} />
+              <BdiField label="Custo / km" prefix="R$" value={kmCostCfg}
+                onChange={v => setKmCostCfg(v)} step={0.01} />
+            </div>
+          </div>
+
+          <Separator className="opacity-50" />
+
+          {/* Row 2: Pagamento */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+              <CreditCard className="h-3 w-3" /> Condições de Pagamento
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <BdiField label="Desconto à vista" suffix="%" value={cardDiscountRateCfg}
+                onChange={v => setCardDiscountRateCfg(v)} />
+              <BdiField label="Parcelas (cartão)" value={cardInstallmentsCfg}
+                onChange={v => setCardInstallmentsCfg(Math.max(1, v))} step={1} min={1} />
+            </div>
+          </div>
         </div>
       </section>
 
