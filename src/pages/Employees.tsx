@@ -40,10 +40,12 @@ export default function Employees() {
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { currentUserRole } = useUsers();
+  const { user, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
-  const isTecnico = currentUserRole === 'tecnico';
+
+  // Check if current user is linked to an employee
+  const linkedEmployee = useMemo(() => employees.find(e => e.user_id === user?.id), [employees, user?.id]);
+  const canManageTime = isAdminOrGestor() || hasPermission('fn:manage_timeclock') || hasPermission('fn:manage_employees');
 
   // Load movements for selected employee
   const activeEmployeeId = movementEmployee?.id || paymentEmployee?.id || extractEmployee?.id;
