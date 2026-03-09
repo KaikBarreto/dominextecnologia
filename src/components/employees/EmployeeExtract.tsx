@@ -55,12 +55,12 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, movements, b
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap">Data</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-right whitespace-nowrap">Valor</TableHead>
-                <TableHead className="text-right whitespace-nowrap">Saldo</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="whitespace-nowrap">Data</SortableTableHead>
+                <SortableTableHead sortKey="type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>
+                <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
+                <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="text-right whitespace-nowrap">Valor</SortableTableHead>
+                <SortableTableHead sortKey="balance_after" sortConfig={sortConfig} onSort={handleSort} className="text-right whitespace-nowrap">Saldo</SortableTableHead>
+                <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-10"> </SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
