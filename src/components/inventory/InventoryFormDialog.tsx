@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Wand2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
 
 interface InventoryFormDialogProps {
@@ -42,41 +44,98 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
     category: '',
     description: '',
     quantity: 0,
-    min_quantity: 0,
     unit: 'un',
     cost_price: 0,
     sale_price: 0,
     supplier: '',
   });
 
+  const [isSkuGenerating, setIsSkuGenerating] = useState(false);
+
+  const getNextSequentialSku = async (): Promise<string> => {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('sku, created_at')
+      .ilike('sku', 'EST-%')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    let max = 0;
+    for (const row of data ?? []) {
+      const sku = row.sku ?? '';
+      const match = sku.match(/^EST-(\d+)$/);
+      if (match) {
+        const n = Number(match[1]);
+        if (Number.isFinite(n)) max = Math.max(max, n);
+      }
+    }
+
+    const next = max + 1;
+    return `EST-${String(next).padStart(3, '0')}`;
+  };
+
+  const applyAutoSku = async () => {
+    setIsSkuGenerating(true);
+    try {
+      const sku = await getNextSequentialSku();
+      setFormData((prev) => ({ ...prev, sku }));
+    } catch (e) {
+      console.error('Erro ao gerar SKU automático', e);
+    } finally {
+      setIsSkuGenerating(false);
+    }
+  };
+
   useEffect(() => {
-    if (item) {
-      setFormData({
-        name: item.name,
-        sku: item.sku || '',
-        category: item.category || '',
-        description: item.description || '',
-        quantity: item.quantity || 0,
-        min_quantity: item.min_quantity || 0,
-        unit: item.unit || 'un',
-        cost_price: item.cost_price || 0,
-        sale_price: item.sale_price || 0,
-        supplier: item.supplier || '',
-      });
-    } else {
+    let cancelled = false;
+
+    const run = async () => {
+      if (item) {
+        setFormData({
+          name: item.name,
+          sku: item.sku || '',
+          category: item.category || '',
+          description: item.description || '',
+          quantity: item.quantity || 0,
+          unit: item.unit || 'un',
+          cost_price: item.cost_price || 0,
+          sale_price: item.sale_price || 0,
+          supplier: item.supplier || '',
+        });
+        return;
+      }
+
       setFormData({
         name: '',
         sku: '',
         category: '',
         description: '',
         quantity: 0,
-        min_quantity: 0,
         unit: 'un',
         cost_price: 0,
         sale_price: 0,
         supplier: '',
       });
-    }
+
+      if (!open) return;
+
+      try {
+        setIsSkuGenerating(true);
+        const sku = await getNextSequentialSku();
+        if (!cancelled) setFormData((prev) => ({ ...prev, sku }));
+      } catch (e) {
+        console.error('Erro ao gerar SKU automático', e);
+      } finally {
+        if (!cancelled) setIsSkuGenerating(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [item, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,13 +177,29 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sku">Código/SKU</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="sku">Código/SKU</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={applyAutoSku}
+                  disabled={isEditing || isSkuGenerating}
+                >
+                  <Wand2 className="h-4 w-4 mr-1" />
+                  {isSkuGenerating ? 'Gerando...' : 'Auto'}
+                </Button>
+              </div>
               <Input
                 id="sku"
                 value={formData.sku || ''}
                 onChange={(e) => handleChange('sku', e.target.value)}
                 placeholder="Ex: FLT-001"
               />
+              <p className="text-xs text-muted-foreground">
+                Código sequencial sugerido automaticamente (você pode personalizar).
+              </p>
             </div>
           </div>
 
@@ -168,7 +243,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="quantity">Quantidade</Label>
               <Input
@@ -182,29 +257,16 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="min_quantity">Qtd. Mínima</Label>
-              <Input
-                id="min_quantity"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.min_quantity || 0}
-                onChange={(e) => handleChange('min_quantity', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="unit">Unidade</Label>
-              <Select
-                value={formData.unit || 'un'}
-                onValueChange={(value) => handleChange('unit', value)}
-              >
+              <Select value={formData.unit || 'un'} onValueChange={(value) => handleChange('unit', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {UNITS.map(unit => (
-                    <SelectItem key={unit.value} value={unit.value}>{unit.label}</SelectItem>
+                  {UNITS.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -222,6 +284,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
                 value={formData.cost_price || 0}
                 onChange={(e) => handleChange('cost_price', parseFloat(e.target.value) || 0)}
               />
+              <p className="text-xs text-muted-foreground">Valor por unidade.</p>
             </div>
 
             <div className="space-y-2">
@@ -234,6 +297,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
                 value={formData.sale_price || 0}
                 onChange={(e) => handleChange('sale_price', parseFloat(e.target.value) || 0)}
               />
+              <p className="text-xs text-muted-foreground">Valor por unidade.</p>
             </div>
           </div>
 
