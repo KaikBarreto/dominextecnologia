@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Wallet, Clock, Plus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Plus } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
@@ -47,19 +47,19 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        <Card>
+      {/* Summary Cards - 3 columns */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+        <Card className={`border-0 ${summary.saldo >= 0 ? 'bg-info' : 'bg-destructive'}`}>
           <CardContent className="p-3 sm:p-5">
             <div className="flex items-center justify-between">
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">Saldo</p>
-                <p className={`text-lg sm:text-2xl font-bold mt-1 truncate ${summary.saldo >= 0 ? 'text-success' : 'text-destructive'}`}>
+                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo</p>
+                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">
                   {formatCurrency(summary.saldo)}
                 </p>
               </div>
-              <div className="rounded-full bg-primary p-3">
-                <Wallet className="h-5 w-5 text-white" />
+              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
             </div>
           </CardContent>
@@ -86,19 +86,6 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               </div>
               <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
                 <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
-                <p className="text-lg sm:text-2xl font-bold mt-1 text-warning truncate">{formatCurrency(summary.aReceber)}</p>
-              </div>
-              <div className="rounded-full bg-warning p-2 sm:p-3 shrink-0">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
             </div>
           </CardContent>

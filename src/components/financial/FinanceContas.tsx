@@ -13,6 +13,7 @@ import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ContaFormDialog } from './ContaFormDialog';
+import type { TransactionType } from '@/types/database';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -35,6 +36,9 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
   const today = startOfDay(new Date());
   const next7Days = addDays(today, 7);
+
+  // Map subTab to transaction defaultType
+  const contaDefaultType: TransactionType = subTab === 'pagar' ? 'saida' : 'entrada';
 
   const baseFiltered = useMemo(() => {
     return transactions.filter((t) =>
@@ -267,7 +271,11 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         </Card>
       )}
 
-      <ContaFormDialog open={contaFormOpen} onOpenChange={setContaFormOpen} />
+      <ContaFormDialog
+        open={contaFormOpen}
+        onOpenChange={setContaFormOpen}
+        defaultType={contaDefaultType}
+      />
     </div>
   );
 }
