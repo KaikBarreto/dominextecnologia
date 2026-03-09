@@ -41,13 +41,12 @@ export function useServiceMaterials(serviceId?: string | null) {
     mutationFn: async (input: Omit<ServiceMaterialInsert, 'id' | 'company_id' | 'service_id' | 'created_at'>) => {
       if (!companyId || !serviceId) throw new Error('Serviço não selecionado.');
 
-      const subtotal = computeSubtotal(Number(input.quantity ?? 1), Number(input.purchase_price ?? 0));
+      const { subtotal, ...rest } = input as any;
 
       const payload: ServiceMaterialInsert = {
-        ...(input as any),
+        ...rest,
         company_id: companyId,
         service_id: serviceId,
-        subtotal,
       };
 
       const { data, error } = await supabase
@@ -70,11 +69,11 @@ export function useServiceMaterials(serviceId?: string | null) {
 
   const updateMaterial = useMutation({
     mutationFn: async ({ id, ...updates }: ServiceMaterialUpdate & { id: string }) => {
-      const subtotal = computeSubtotal(Number(updates.quantity ?? 1), Number(updates.purchase_price ?? 0));
+      const { subtotal, ...rest } = updates as any;
 
       const { data, error } = await supabase
         .from('service_materials')
-        .update({ ...(updates as any), subtotal })
+        .update(rest)
         .eq('id', id)
         .select('*')
         .single();

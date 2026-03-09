@@ -56,14 +56,11 @@ export function useServiceCosts(serviceId?: string | null) {
     }) => {
       if (!companyId || !serviceId) throw new Error('Serviço não selecionado.');
 
-      const labor_cost = computeLaborCost(input.hourly_rate, input.hours);
-
       const payloadBase: Partial<ServiceCostInsert> = {
         company_id: companyId,
         service_id: serviceId,
         hourly_rate: input.hourly_rate,
         hours: input.hours,
-        labor_cost,
         extra_costs: (input.extra_costs ?? []) as any,
         notes: input.notes ?? null,
       };

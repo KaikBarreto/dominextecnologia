@@ -14,6 +14,8 @@ import { ServiceMaterialsList } from '@/components/service-orders/ServiceMateria
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { formatBRL } from '@/utils/currency';
+import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
+import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
 
 export function ServiceCostsTab() {
   const { serviceTypes } = useServiceTypes();
@@ -71,8 +73,11 @@ export function ServiceCostsTab() {
     cardInstallments,
   });
 
-  const addExtraLine = () => {
-    setExtraCosts((prev) => [...prev, { label: 'Custo extra', amount: 0 }]);
+  const [laborCalcOpen, setLaborCalcOpen] = useState(false);
+  const [extraCostModalOpen, setExtraCostModalOpen] = useState(false);
+
+  const addExtraLine = (label: string, amount: number) => {
+    setExtraCosts((prev) => [...prev, { label, amount }]);
   };
 
   const updateExtraLine = (idx: number, next: Partial<ExtraCostLine>) => {
