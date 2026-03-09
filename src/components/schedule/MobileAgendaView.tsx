@@ -3,11 +3,13 @@ import { format } from 'date-fns';
 import { Clock } from 'lucide-react';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
+import type { Holiday } from '@/utils/holidays';
 
 interface MobileAgendaViewProps {
   currentDate: Date;
   orders: (ServiceOrder & { customer: any; equipment: any })[];
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
+  holidayMap?: Record<string, Holiday[]>;
 }
 
 export function MobileAgendaView({ currentDate, orders, onOrderSelect }: MobileAgendaViewProps) {
