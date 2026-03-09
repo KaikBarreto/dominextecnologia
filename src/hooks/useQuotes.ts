@@ -357,6 +357,19 @@ export function useQuotes() {
     ? quotes.filter(q => q.status === 'aprovado').reduce((s, q) => s + (q.total_value ?? 0), 0) / totalApproved
     : 0;
 
+  // BDI KPIs
+  const quotesWithCost = quotes.filter(q => (q.total_cost ?? 0) > 0);
+  const avgMarginPct = (() => {
+    if (quotesWithCost.length === 0) return 0;
+    const margins = quotesWithCost.map(q => {
+      const cost = Number(q.total_cost ?? 0);
+      const price = Number(q.final_price ?? q.total_value ?? 0);
+      return cost > 0 ? ((price - cost) / price) * 100 : 0;
+    });
+    return Math.round(margins.reduce((a, b) => a + b, 0) / margins.length);
+  })();
+  const totalCostSum = quotes.reduce((s, q) => s + Number(q.total_cost ?? 0), 0);
+
   return {
     quotes,
     isLoading: quotesQuery.isLoading,
@@ -368,6 +381,6 @@ export function useQuotes() {
     createFinancialFromQuote,
     fetchQuoteByToken,
     respondByToken,
-    kpis: { totalOpen, conversionRate, avgTicket, total: quotes.length },
+    kpis: { totalOpen, conversionRate, avgTicket, total: quotes.length, avgMarginPct, totalCostSum },
   };
 }

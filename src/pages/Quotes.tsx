@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
-  ExternalLink, DollarSign, ArrowRight, Settings2,
+  ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp, Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,7 +99,7 @@ function QuotesList() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card>
           <CardContent className="p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total em Aberto</p>
@@ -119,6 +119,24 @@ function QuotesList() {
             <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Ticket Médio</p>
             <p className="text-sm sm:text-lg font-bold text-foreground truncate">
               {kpis.avgTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+              <TrendingUp className="h-3 w-3" />Margem Média
+            </p>
+            <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.avgMarginPct}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+              <Calculator className="h-3 w-3" />Custo Total
+            </p>
+            <p className="text-sm sm:text-lg font-bold text-foreground truncate">
+              {kpis.totalCostSum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </CardContent>
         </Card>
