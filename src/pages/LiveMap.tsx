@@ -249,6 +249,21 @@ export default function LiveMap() {
     }).addTo(map);
   }, [darkMode]);
 
+  // Geocode company address for base marker
+  useEffect(() => {
+    if (!companySettings) return;
+    const addr = buildCustomerAddress({
+      address: companySettings.address,
+      city: companySettings.city,
+      state: companySettings.state,
+      zip_code: companySettings.zip_code,
+    });
+    if (!addr) return;
+    geocodeAddress(addr).then((coords) => {
+      if (coords) setCompanyCoords(coords);
+    });
+  }, [companySettings]);
+
   // Initialize map
   useEffect(() => {
     const initMap = async () => {
