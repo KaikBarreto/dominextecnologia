@@ -282,7 +282,10 @@ export function ServiceCostsTab() {
       <LaborCalculatorModal
         open={laborCalcOpen}
         onOpenChange={setLaborCalcOpen}
-        onApply={(rate) => setHourlyRate(rate)}
+        onApply={(rate, h) => {
+          setHourlyRate(rate);
+          setHours(h);
+        }}
       />
       <ExtraCostModal
         open={extraCostModalOpen}
