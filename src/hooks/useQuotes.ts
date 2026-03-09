@@ -13,6 +13,16 @@ export interface QuoteItem {
   total_price: number;
   inventory_id?: string | null;
   service_type_id?: string | null;
+  // BDI cost fields
+  unit_hourly_rate?: number;
+  unit_hours?: number;
+  unit_labor_cost?: number;
+  unit_materials_cost?: number;
+  unit_extras_cost?: number;
+  unit_total_cost?: number;
+  profit_rate?: number;
+  bdi?: number;
+  price_override?: number | null;
 }
 
 export interface QuoteInput {
@@ -31,6 +41,18 @@ export interface QuoteInput {
   terms?: string;
   assigned_to?: string;
   proposal_template_id?: string;
+  // BDI fields
+  tax_rate?: number;
+  admin_indirect_rate?: number;
+  profit_rate?: number;
+  km_cost?: number;
+  distance_km?: number;
+  displacement_cost?: number;
+  bdi?: number;
+  total_cost?: number;
+  total_price?: number;
+  price_override?: number;
+  final_price?: number;
   items: QuoteItem[];
 }
 
@@ -58,6 +80,17 @@ export interface Quote {
   updated_at: string;
   converted_to_os_id: string | null;
   final_price: number | null;
+  // BDI fields (optional for backward compatibility in older UI mocks)
+  tax_rate?: number | null;
+  admin_indirect_rate?: number | null;
+  profit_rate?: number | null;
+  km_cost?: number | null;
+  distance_km?: number | null;
+  displacement_cost?: number | null;
+  bdi?: number | null;
+  total_cost?: number | null;
+  total_price?: number | null;
+  price_override?: number | null;
   customers?: { name: string; email: string | null; phone: string | null };
   quote_items?: QuoteItem[];
   proposal_templates?: { slug: string; name: string } | null;
@@ -82,6 +115,29 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export { STATUS_LABELS, STATUS_COLORS };
+
+function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
+  return {
+    quote_id: quoteId,
+    position: idx,
+    item_type: item.item_type,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    total_price: item.quantity * item.unit_price,
+    inventory_id: item.inventory_id || null,
+    service_type_id: item.service_type_id || null,
+    unit_hourly_rate: item.unit_hourly_rate ?? 0,
+    unit_hours: item.unit_hours ?? 0,
+    unit_labor_cost: item.unit_labor_cost ?? 0,
+    unit_materials_cost: item.unit_materials_cost ?? 0,
+    unit_extras_cost: item.unit_extras_cost ?? 0,
+    unit_total_cost: item.unit_total_cost ?? 0,
+    profit_rate: item.profit_rate ?? 10,
+    bdi: item.bdi ?? 0.68,
+    price_override: item.price_override ?? null,
+  };
+}
 
 export function useQuotes() {
   const { toast } = useToast();
@@ -116,17 +172,7 @@ export function useQuotes() {
       if (items.length > 0) {
         const { error: itemsError } = await supabase
           .from('quote_items')
-          .insert(items.map((item, idx) => ({
-            quote_id: quote.id,
-            position: idx,
-            item_type: item.item_type,
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.quantity * item.unit_price,
-            inventory_id: item.inventory_id || null,
-            service_type_id: item.service_type_id || null,
-          })));
+          .insert(items.map((item, idx) => buildItemPayload(item, quote.id, idx)));
 
         if (itemsError) throw itemsError;
       }
@@ -157,17 +203,7 @@ export function useQuotes() {
       if (items && items.length > 0) {
         const { error: itemsError } = await supabase
           .from('quote_items')
-          .insert(items.map((item, idx) => ({
-            quote_id: id,
-            position: idx,
-            item_type: item.item_type,
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.quantity * item.unit_price,
-            inventory_id: item.inventory_id || null,
-            service_type_id: item.service_type_id || null,
-          })));
+          .insert(items.map((item, idx) => buildItemPayload(item, id, idx)));
 
         if (itemsError) throw itemsError;
       }
@@ -232,6 +268,12 @@ export function useQuotes() {
           assigned_to: source.assigned_to,
           created_by: user?.id,
           status: 'rascunho',
+          tax_rate: source.tax_rate,
+          admin_indirect_rate: source.admin_indirect_rate,
+          profit_rate: source.profit_rate,
+          km_cost: source.km_cost,
+          distance_km: source.distance_km,
+          bdi: source.bdi,
         } as any)
         .select()
         .single();
@@ -241,17 +283,7 @@ export function useQuotes() {
       if (sourceItems.length > 0) {
         const { error: itemsError } = await supabase
           .from('quote_items')
-          .insert(sourceItems.map((item, idx) => ({
-            quote_id: newQuote.id,
-            position: idx,
-            item_type: item.item_type,
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price,
-            inventory_id: item.inventory_id || null,
-            service_type_id: item.service_type_id || null,
-          })));
+          .insert(sourceItems.map((item, idx) => buildItemPayload(item, newQuote.id, idx)));
         if (itemsError) throw itemsError;
       }
       return newQuote;
@@ -310,7 +342,6 @@ export function useQuotes() {
     if (q.status === 'enviado' && q.valid_until) {
       const today = new Date().toISOString().split('T')[0];
       if (q.valid_until < today) {
-        // Fire and forget status update
         supabase.from('quotes').update({ status: 'expirado' }).eq('id', q.id);
         return { ...q, status: 'expirado' };
       }
