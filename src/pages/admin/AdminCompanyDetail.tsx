@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { useState } from 'react';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
 import { cn } from '@/lib/utils';
+import { cpfCnpjMask } from '@/utils/masks';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -33,6 +34,23 @@ export default function AdminCompanyDetail() {
     queryFn: async () => {
       const { data, error } = await supabase.from('companies').select('*').eq('id', id!).single();
       if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Master user (first user with admin role or first created)
+  const { data: masterUser } = useQuery({
+    queryKey: ['admin-company-master-user', id],
+    queryFn: async () => {
+      // Try admin role first
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, user_id')
+        .eq('company_id', id!)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
       return data;
     },
     enabled: !!id,
@@ -103,10 +121,10 @@ export default function AdminCompanyDetail() {
               WhatsApp
             </Button>
           )}
-          <Button variant="edit-ghost" className="gap-2" onClick={() => setShowEdit(true)}>
+          <Button variant="outline" className="gap-2" onClick={() => setShowEdit(true)}>
             <Edit className="h-4 w-4" /> Editar
           </Button>
-          <Button variant="destructive-ghost" className="gap-2" onClick={() => setShowDeleteDialog(true)}>
+          <Button variant="destructive" className="gap-2" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="h-4 w-4" /> Excluir
           </Button>
         </div>
@@ -118,7 +136,7 @@ export default function AdminCompanyDetail() {
         <p className="text-muted-foreground break-all">{company.email}</p>
       </div>
 
-      {/* Info cards - 2 columns */}
+      {/* Info cards */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Informações Gerais</CardTitle></CardHeader>
@@ -126,7 +144,7 @@ export default function AdminCompanyDetail() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">CNPJ/CPF</span>
-                <p className="font-medium">{company.cnpj || 'N/A'}</p>
+                <p className="font-medium">{company.cnpj ? cpfCnpjMask(company.cnpj) : 'N/A'}</p>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</span>
@@ -140,7 +158,7 @@ export default function AdminCompanyDetail() {
               </div>
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Responsável</span>
-                <p className="font-medium">{company.contact_name || 'N/A'}</p>
+                <p className="font-medium">{company.contact_name || masterUser?.full_name || 'N/A'}</p>
               </div>
             </div>
             <div>
@@ -169,23 +187,15 @@ export default function AdminCompanyDetail() {
                 </div>
               </div>
             </div>
-            {/* Inline editable notes */}
+            {/* Notes */}
             <div>
               <span className="text-xs text-muted-foreground uppercase tracking-wider">Observações</span>
               {isEditingNotes ? (
                 <div className="space-y-2 mt-1">
-                  <Textarea
-                    value={notesValue}
-                    onChange={(e) => setNotesValue(e.target.value)}
-                    placeholder="Adicione observações..."
-                    className="resize-none text-sm"
-                    rows={3}
-                    autoFocus
-                  />
+                  <Textarea value={notesValue} onChange={(e) => setNotesValue(e.target.value)} placeholder="Adicione observações..." className="resize-none text-sm" rows={3} autoFocus />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="h-7 px-2 gap-1">
-                      {isSavingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                      Salvar
+                      {isSavingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Salvar
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setIsEditingNotes(false)} className="h-7 px-2 gap-1">
                       <X className="h-3 w-3" /> Cancelar
@@ -195,11 +205,7 @@ export default function AdminCompanyDetail() {
               ) : (
                 <div className="flex items-start gap-1">
                   <p className="font-medium text-sm">{company.notes || 'Nenhuma'}</p>
-                  <button
-                    onClick={() => { setNotesValue(company.notes || ''); setIsEditingNotes(true); }}
-                    className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                    title="Editar observações"
-                  >
+                  <button onClick={() => { setNotesValue(company.notes || ''); setIsEditingNotes(true); }} className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Editar">
                     <Pencil className="h-3 w-3" />
                   </button>
                 </div>
@@ -215,12 +221,9 @@ export default function AdminCompanyDetail() {
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Status</span>
                 <div className="mt-0.5">
-                  <Badge className={cn(
-                    'text-xs text-white border-0',
-                    company.subscription_status === 'active'
-                      ? 'bg-emerald-500 hover:bg-emerald-500'
-                      : company.subscription_status === 'testing'
-                      ? 'bg-amber-500 hover:bg-amber-500'
+                  <Badge className={cn('text-xs text-white border-0',
+                    company.subscription_status === 'active' ? 'bg-emerald-500 hover:bg-emerald-500'
+                      : company.subscription_status === 'testing' ? 'bg-amber-500 hover:bg-amber-500'
                       : 'bg-rose-500 hover:bg-rose-500'
                   )}>
                     {company.subscription_status === 'active' ? 'Ativo' : company.subscription_status === 'testing' ? 'Testando' : 'Desativado'}
@@ -270,29 +273,13 @@ export default function AdminCompanyDetail() {
               <AlertTriangle className="h-5 w-5 text-destructive" /> Confirmar Exclusão
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-4 text-left">
-              <p className="text-sm">
-                Você está prestes a excluir a empresa <strong className="text-foreground">{company.name}</strong>.
-              </p>
-              <p className="text-sm text-destructive font-medium">Esta ação é irreversível e excluirá permanentemente:</p>
-              <ul className="text-sm space-y-1 list-disc list-inside ml-2">
-                <li>Todos os usuários da empresa</li>
-                <li>Todos os dados cadastrais</li>
-                <li>Todo o histórico financeiro</li>
-              </ul>
+              <p className="text-sm">Excluir <strong className="text-foreground">{company.name}</strong>. Esta ação é irreversível.</p>
               <div className="space-y-2 pt-2">
-                <Label className="text-sm font-medium">Para confirmar, digite o nome da empresa:</Label>
+                <Label>Digite o nome da empresa:</Label>
                 <div className="rounded-md bg-muted p-3 mb-2">
                   <p className="text-sm font-semibold text-foreground">{company.name}</p>
                 </div>
-                <Input
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder="Digite o nome da empresa"
-                  className="font-mono"
-                />
-                {deleteConfirmText && deleteConfirmText.trim() !== company.name?.trim() && (
-                  <p className="text-sm text-destructive">O nome digitado não corresponde</p>
-                )}
+                <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Digite o nome" className="font-mono" />
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -303,9 +290,7 @@ export default function AdminCompanyDetail() {
               disabled={deleteConfirmText.trim() !== company.name?.trim() || deleteMutation.isPending}
               className="bg-destructive hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</>
-              ) : 'Excluir Empresa'}
+              {deleteMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</> : 'Excluir Empresa'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
