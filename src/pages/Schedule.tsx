@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
@@ -23,6 +23,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
@@ -32,6 +34,7 @@ export default function Schedule() {
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
   const { user } = useAuth();
+  const { settings: companySettings } = useCompanySettings();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
