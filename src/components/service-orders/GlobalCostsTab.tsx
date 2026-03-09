@@ -179,23 +179,48 @@ export function GlobalCostsTab() {
         </Card>
       </div>
 
-      {/* Category tabs */}
+      {/* Category navigation */}
       <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as CostResourceCategory)}>
-        <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
-          {CATEGORY_CONFIG.map(cat => {
-            const Icon = cat.icon;
-            const count = byCategory[cat.value].length;
-            return (
-              <TabsTrigger key={cat.value} value={cat.value} className="flex items-center gap-1.5">
-                <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{cat.label}</span>
-                {count > 0 && (
-                  <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{count}</span>
-                )}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+        {isMobile ? (
+          <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as CostResourceCategory)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORY_CONFIG.map(cat => {
+                const Icon = cat.icon;
+                const count = byCategory[cat.value].length;
+                return (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    <span className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      {cat.label}
+                      {count > 0 && (
+                        <span className="text-xs text-muted-foreground">({count})</span>
+                      )}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        ) : (
+          <TabsList className="w-auto flex-wrap h-auto gap-1 p-1">
+            {CATEGORY_CONFIG.map(cat => {
+              const Icon = cat.icon;
+              const count = byCategory[cat.value].length;
+              return (
+                <TabsTrigger key={cat.value} value={cat.value} className="flex items-center gap-1.5">
+                  <Icon className="h-4 w-4" />
+                  {cat.label}
+                  {count > 0 && (
+                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{count}</span>
+                  )}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        )}
 
         {CATEGORY_CONFIG.map(cat => (
           <TabsContent key={cat.value} value={cat.value} className="mt-4">
