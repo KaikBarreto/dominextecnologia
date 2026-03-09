@@ -687,7 +687,20 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </div>
       </section>
 
-      {/* ══ 6. RESUMO BDI ══ */}
+      {/* ══ 5b. BRINDES ══ */}
+      <div className="flex items-center gap-2 px-1">
+        <Checkbox
+          id="include-gifts"
+          checked={includeGifts}
+          onCheckedChange={(checked) => setIncludeGifts(!!checked)}
+        />
+        <Label htmlFor="include-gifts" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1.5">
+          <Gift className="h-3.5 w-3.5" />
+          Incluir brindes neste orçamento
+        </Label>
+      </div>
+
+
       {items.length > 0 && (
         <>
           <Separator />
