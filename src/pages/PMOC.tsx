@@ -316,17 +316,17 @@ export default function PMOC() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Nº Contrato</TableHead>
-                            <TableHead>Período</TableHead>
-                            <TableHead>Frequência</TableHead>
-                            <TableHead className="text-right">Valor Mensal</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[100px]">Ações</TableHead>
+                            <SortableTableHead sortKey="customers.name" sortConfig={contractSortConfig} onSort={handleContractSort}>Cliente</SortableTableHead>
+                            <SortableTableHead sortKey="contract_number" sortConfig={contractSortConfig} onSort={handleContractSort}>Nº Contrato</SortableTableHead>
+                            <SortableTableHead sortKey="start_date" sortConfig={contractSortConfig} onSort={handleContractSort}>Período</SortableTableHead>
+                            <SortableTableHead sortKey="maintenance_frequency" sortConfig={contractSortConfig} onSort={handleContractSort}>Frequência</SortableTableHead>
+                            <SortableTableHead sortKey="monthly_value" sortConfig={contractSortConfig} onSort={handleContractSort} className="text-right">Valor Mensal</SortableTableHead>
+                            <SortableTableHead sortKey="is_active" sortConfig={contractSortConfig} onSort={handleContractSort}>Status</SortableTableHead>
+                            <SortableTableHead sortKey="" sortConfig={contractSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredContracts.map(contract => (
+                          {sortedContracts.map(contract => (
                             <TableRow key={contract.id}>
                               <TableCell className="font-medium">{contract.customers?.name || '-'}</TableCell>
                               <TableCell className="text-muted-foreground">{contract.contract_number || '-'}</TableCell>
