@@ -90,6 +90,23 @@ export function ServiceCostsTab() {
   const [laborCalcOpen, setLaborCalcOpen] = useState(false);
   const [extraCostModalOpen, setExtraCostModalOpen] = useState(false);
 
+  // Auto-save with debounce
+  const triggerAutoSave = useCallback(() => {
+    if (!serviceId || !loadedRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      await saveCost.mutateAsync({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), 2000);
+    }, 1000);
+  }, [serviceId, hourlyRate, hours, extraCosts, notes, saveCost]);
+
+  // Trigger auto-save when data changes
+  useEffect(() => {
+    triggerAutoSave();
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [hourlyRate, hours, extraCosts, notes]);
+
   const addExtraLine = (label: string, amount: number) => {
     setExtraCosts((prev) => [...prev, { label, amount }]);
   };
@@ -103,12 +120,9 @@ export function ServiceCostsTab() {
   };
 
   const handleSave = async () => {
-    await saveCost.mutateAsync({
-      hourly_rate: hourlyRate,
-      hours,
-      extra_costs: extraCosts,
-      notes,
-    });
+    await saveCost.mutateAsync({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
+    setSavedIndicator(true);
+    setTimeout(() => setSavedIndicator(false), 2000);
   };
 
   return (
@@ -217,10 +231,15 @@ export function ServiceCostsTab() {
                     <CardContent className="p-4 space-y-2">
                       <Label className="text-xs">Observações</Label>
                       <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Observações internas do custo" />
-                      <div className="flex justify-end">
-                        <Button onClick={handleSave} disabled={saveCost.isPending}>
-                          <Save className="h-4 w-4 mr-2" />
-                          {saveCost.isPending ? 'Salvando...' : 'Salvar'}
+                      <div className="flex items-center justify-end gap-2">
+                        {savedIndicator && (
+                          <span className="text-xs text-success flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Salvo automaticamente
+                          </span>
+                        )}
+                        <Button onClick={handleSave} disabled={saveCost.isPending} variant="outline">
+                          {saveCost.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                          Salvar
                         </Button>
                       </div>
                     </CardContent>
