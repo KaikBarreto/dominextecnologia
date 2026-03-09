@@ -28,11 +28,10 @@ export function useFinancialScheduleEvents() {
           id: `fin-${t.id}`,
           order_number: 0,
           customer_id: t.customer_id || '',
-          os_type: 'visita_tecnica' as const,
-          status: 'pendente' as const,
+          os_type: 'visita_tecnica',
+          status: 'pendente',
           scheduled_date: t.due_date!,
           scheduled_time: '08:00',
-          // Encode as 10 min duration via a marker
           description: `${isReceivable ? '💰 A Receber' : '📋 A Pagar'}: ${t.description} — ${amount}`,
           created_at: t.created_at,
           updated_at: t.created_at,
@@ -41,18 +40,14 @@ export function useFinancialScheduleEvents() {
             name: `${isReceivable ? '💰 A Receber' : '📋 A Pagar'}`,
           },
           equipment: null,
-          // Custom markers
           _isFinancialEvent: true,
           _financialType: t.transaction_type,
-          _financialAmount: t.amount,
-          _financialCategory: t.category,
-          // Use a special service_type for coloring
           service_type: {
             id: `fin-${t.transaction_type}`,
             name: isReceivable ? 'A Receber' : 'A Pagar',
             color: isReceivable ? '#22c55e' : '#ef4444',
           },
-        } as ServiceOrder & { customer: any; equipment: any; _isFinancialEvent: boolean };
+        } as any;
       });
   }, [canView, transactions]);
 
