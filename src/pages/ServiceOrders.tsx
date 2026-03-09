@@ -318,11 +318,11 @@ export default function ServiceOrders() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs uppercase tracking-wider">OS</TableHead>
-                          <TableHead className="text-xs uppercase tracking-wider">Cliente</TableHead>
-                          <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Tipo</TableHead>
-                          <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Data</TableHead>
-                          <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                          <SortableTableHead sortKey="order_number" sortConfig={sortConfig} onSort={handleSort}>OS</SortableTableHead>
+                          <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
+                          <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
+                          <SortableTableHead sortKey="scheduled_date" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                          <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                           <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
