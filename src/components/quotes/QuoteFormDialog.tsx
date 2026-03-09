@@ -17,7 +17,7 @@ import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
 import { useProposalTemplates } from '@/hooks/useProposalTemplates';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-import { useInventory } from '@/hooks/useInventory';
+// inventory import kept for potential future use
 import { useAuth } from '@/contexts/AuthContext';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
@@ -67,7 +67,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { templates } = useProposalTemplates();
   const { settings: pricing } = usePricingSettings();
   const { serviceTypes } = useServiceTypes();
-  const { items: inventoryItems } = useInventory();
   const { profile } = useAuth();
 
   // ── Customer ──
@@ -333,6 +332,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       terms: terms || undefined,
       proposal_template_id: proposalTemplateId || undefined,
       include_gifts: includeGifts,
+      card_discount_rate: cardDiscountRateCfg,
+      card_installments: cardInstallmentsCfg,
       items: items.map((it, idx) => ({
         id: it.id,
         position: idx,
