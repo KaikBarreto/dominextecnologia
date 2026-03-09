@@ -357,6 +357,8 @@ export default function Employees() {
               </div>
             )}
           </div>
+        ) : activeTab === 'timeclock' ? (
+          <AdminTimePanel />
         ) : (
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}
