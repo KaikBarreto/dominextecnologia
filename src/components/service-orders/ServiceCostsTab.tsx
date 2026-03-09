@@ -260,6 +260,17 @@ export function ServiceCostsTab() {
           )}
         </CardContent>
       </Card>
+
+      <LaborCalculatorModal
+        open={laborCalcOpen}
+        onOpenChange={setLaborCalcOpen}
+        onApply={(rate) => setHourlyRate(rate)}
+      />
+      <ExtraCostModal
+        open={extraCostModalOpen}
+        onOpenChange={setExtraCostModalOpen}
+        onAdd={addExtraLine}
+      />
     </div>
   );
 }
