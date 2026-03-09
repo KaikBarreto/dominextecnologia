@@ -501,7 +501,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   const globalIdx = items.indexOf(item);
                   return (
                     <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="p-2 font-medium">{item.description}</td>
+                      <td className="p-2 font-medium">
+                        {item.description}
+                        {item.unit_total_cost === 0 && (
+                          <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300 bg-amber-50">
+                            Sem custos configurados
+                          </Badge>
+                        )}
+                      </td>
                       <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
                       <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">
                         {item.unit_total_cost > 0 ? fmt(item.unit_total_cost) : '—'}
