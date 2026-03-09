@@ -50,9 +50,13 @@ export function ServiceCostsTab() {
 
   const extrasTotal = useMemo(() => computeExtraCostsTotal(extraCosts), [extraCosts]);
   const laborCost = useMemo(() => Math.max(0, hourlyRate * hours), [hourlyRate, hours]);
+  
+  // Track linked resources total
+  const [linkedResourcesTotal, setLinkedResourcesTotal] = useState(0);
+  
   const totalServiceCost = useMemo(
-    () => laborCost + extrasTotal + (materialsTotal || 0),
-    [laborCost, extrasTotal, materialsTotal]
+    () => laborCost + extrasTotal + (materialsTotal || 0) + linkedResourcesTotal,
+    [laborCost, extrasTotal, materialsTotal, linkedResourcesTotal]
   );
 
   const { settings } = usePricingSettings();
@@ -124,8 +128,9 @@ export function ServiceCostsTab() {
             </div>
           ) : (
             <Tabs defaultValue="mao_de_obra" className="w-full">
-              <TabsList className="w-full sm:w-auto">
+              <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1">
                 <TabsTrigger value="mao_de_obra">Mão de obra</TabsTrigger>
+                <TabsTrigger value="recursos">Recursos</TabsTrigger>
                 <TabsTrigger value="materiais">Materiais</TabsTrigger>
                 <TabsTrigger value="resumo">Resumo</TabsTrigger>
               </TabsList>
@@ -214,6 +219,14 @@ export function ServiceCostsTab() {
                 </div>
               </TabsContent>
 
+              <TabsContent value="recursos" className="mt-4">
+                <LinkedResourcesSection
+                  serviceId={serviceId}
+                  serviceHours={hours}
+                  onTotalChange={setLinkedResourcesTotal}
+                />
+              </TabsContent>
+
               <TabsContent value="materiais" className="mt-4">
                 <ServiceMaterialsList serviceId={serviceId} />
               </TabsContent>
@@ -226,7 +239,7 @@ export function ServiceCostsTab() {
                       <p className="text-sm font-semibold text-foreground">Resumo e preço sugerido (BDI)</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="rounded-lg border border-border p-3">
                         <p className="text-xs text-muted-foreground">Mão de obra</p>
                         <p className="text-sm font-semibold text-foreground">R$ {formatBRL(laborCost)}</p>
@@ -236,7 +249,11 @@ export function ServiceCostsTab() {
                         <p className="text-sm font-semibold text-foreground">R$ {formatBRL(materialsTotal || 0)}</p>
                       </div>
                       <div className="rounded-lg border border-border p-3">
-                        <p className="text-xs text-muted-foreground">Extras</p>
+                        <p className="text-xs text-muted-foreground">Recursos</p>
+                        <p className="text-sm font-semibold text-foreground">R$ {formatBRL(linkedResourcesTotal)}</p>
+                      </div>
+                      <div className="rounded-lg border border-border p-3">
+                        <p className="text-xs text-muted-foreground">Extras manuais</p>
                         <p className="text-sm font-semibold text-foreground">R$ {formatBRL(extrasTotal)}</p>
                       </div>
                     </div>
