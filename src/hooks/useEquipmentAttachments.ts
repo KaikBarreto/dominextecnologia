@@ -24,7 +24,7 @@ export function useEquipmentAttachments(equipmentId?: string) {
         .from('equipment_attachments')
         .select('*')
         .eq('equipment_id', equipmentId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
       if (error) throw error;
       return data as EquipmentAttachment[];
     },
