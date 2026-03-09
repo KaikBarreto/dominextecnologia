@@ -243,6 +243,18 @@ export default function EquipmentDetail() {
           </Card>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(() => {
+              const category = categories.find(c => c.id === equipment.category_id);
+              return category ? (
+                <Card><CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Categoria</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                    <p className="text-sm font-medium">{category.name}</p>
+                  </div>
+                </CardContent></Card>
+              ) : null;
+            })()}
             {(equipment as any).customer?.name && (
               <Card><CardContent className="p-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>

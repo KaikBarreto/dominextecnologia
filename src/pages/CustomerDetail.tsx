@@ -412,7 +412,7 @@ export default function CustomerDetail() {
                 <Card
                   key={eq.id}
                   className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
-                  onClick={() => navigate(`/equipamentos/${eq.id}`)}
+                  onClick={() => navigate(`/equipamentos/${eq.id}`, { state: { from: 'customer', customerId: customerId } })}
                 >
                   {eq.photo_url && (
                     <div className="h-32 w-full bg-muted">
