@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
@@ -160,7 +161,7 @@ export function MonthlyCalendar({
                 )}
                 {dayHolidays.length > 0 && dayOrders.length === 0 && (
                   <div className="flex gap-0.5 mt-1 h-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-warning" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-foreground" />
                   </div>
                 )}
                 {dayOrders.length === 0 && dayHolidays.length === 0 && <div className="h-2 mt-1" />}
@@ -232,8 +233,8 @@ export function MonthlyCalendar({
               {dayHolidays.length > 0 && (
                 <div className="mb-1">
                   {dayHolidays.map((h, i) => (
-                    <div key={i} className="text-[10px] leading-tight font-medium text-warning-foreground bg-warning/15 rounded px-1 py-0.5 truncate mb-0.5">
-                      🏖️ {h.name}
+                    <div key={i} className="text-[10px] leading-tight font-medium text-white bg-foreground rounded px-1 py-0.5 truncate mb-0.5 flex items-center gap-0.5">
+                      <Star className="h-2.5 w-2.5 shrink-0" /> {h.name}
                     </div>
                   ))}
                 </div>

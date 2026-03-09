@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -154,8 +155,8 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
         {dayHolidays.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
             {dayHolidays.map((h, i) => (
-              <span key={i} className="text-xs font-medium text-warning-foreground bg-warning/15 rounded px-2 py-0.5">
-                🏖️ {h.name}
+              <span key={i} className="text-xs font-medium text-white bg-foreground rounded px-2 py-0.5 inline-flex items-center gap-1">
+                <Star className="h-3 w-3" /> {h.name}
               </span>
             ))}
           </div>

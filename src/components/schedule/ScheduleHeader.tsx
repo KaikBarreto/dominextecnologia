@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Filter, Star } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -150,6 +150,12 @@ export function ScheduleHeader({
               <span className="text-xs text-muted-foreground">{st.name}</span>
             </div>
           ))}
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded-full bg-foreground flex items-center justify-center">
+              <Star className="h-2 w-2 text-white" />
+            </div>
+            <span className="text-xs text-muted-foreground">Feriado</span>
+          </div>
         </div>
       )}
     </div>
