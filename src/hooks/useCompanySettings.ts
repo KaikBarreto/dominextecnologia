@@ -56,6 +56,33 @@ export function useCompanySettings() {
         .select()
         .single();
       if (error) throw error;
+
+      // Sync relevant fields to the companies table
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
+          .single();
+        if (profile?.company_id) {
+          const companyUpdate: Record<string, any> = {};
+          if (input.name !== undefined) companyUpdate.name = input.name;
+          if (input.phone !== undefined) companyUpdate.phone = input.phone;
+          if (input.email !== undefined) companyUpdate.email = input.email;
+          if (input.logo_url !== undefined) companyUpdate.logo_url = input.logo_url;
+          if (input.document !== undefined) companyUpdate.cnpj = input.document;
+          if (input.address !== undefined || input.city !== undefined || input.state !== undefined) {
+            const addr = [input.address || data.address, input.city || data.city, input.state || data.state].filter(Boolean).join(', ');
+            companyUpdate.address = addr;
+          }
+          if (Object.keys(companyUpdate).length > 0) {
+            await supabase.from('companies').update(companyUpdate).eq('id', profile.company_id);
+          }
+        }
+      } catch (syncErr) {
+        console.error('Error syncing to companies table:', syncErr);
+      }
+
       return data;
     },
     onSuccess: () => {
