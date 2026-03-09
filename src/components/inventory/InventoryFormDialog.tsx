@@ -284,6 +284,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
                 value={formData.cost_price || 0}
                 onChange={(e) => handleChange('cost_price', parseFloat(e.target.value) || 0)}
               />
+              <p className="text-xs text-muted-foreground">Valor por unidade.</p>
             </div>
 
             <div className="space-y-2">
@@ -296,6 +297,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
                 value={formData.sale_price || 0}
                 onChange={(e) => handleChange('sale_price', parseFloat(e.target.value) || 0)}
               />
+              <p className="text-xs text-muted-foreground">Valor por unidade.</p>
             </div>
           </div>
 
