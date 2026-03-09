@@ -22,7 +22,6 @@ import { supabase } from '@/integrations/supabase/client';
 const tabs: SettingsTab[] = [
   { value: 'list', label: 'Funcionários', icon: Users },
   { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-  { value: 'timeclock', label: 'Controle de Ponto', icon: Clock },
 ];
 
 export default function Employees() {
