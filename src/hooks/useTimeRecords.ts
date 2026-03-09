@@ -204,11 +204,11 @@ export function useTimeRecord(userId: string | undefined) {
 
   const nextAction = useMemo((): PunchType | null => {
     const types = todayRecords.map(r => r.type);
+    if (types.includes('clock_out')) return null;
     if (!types.includes('clock_in')) return 'clock_in';
     if (!types.includes('break_start')) return 'break_start';
     if (!types.includes('break_end')) return 'break_end';
-    if (!types.includes('clock_out')) return 'clock_out';
-    return null;
+    return 'clock_out';
   }, [todayRecords]);
 
   const registerPunch = useMutation({
