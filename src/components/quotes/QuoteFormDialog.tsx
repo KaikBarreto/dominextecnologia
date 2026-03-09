@@ -82,6 +82,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [adminRate, setAdminRate] = useState(12);
   const [profitRate, setProfitRate] = useState(10);
   const [kmCostCfg, setKmCostCfg] = useState(1);
+  const [cardDiscountRateCfg, setCardDiscountRateCfg] = useState(6);
+  const [cardInstallmentsCfg, setCardInstallmentsCfg] = useState(10);
 
   // ── Items ──
   const [items, setItems] = useState<FormQuoteItem[]>([]);
@@ -107,10 +109,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [addSvcQty, setAddSvcQty] = useState(1);
   const [isFetchingSvc, setIsFetchingSvc] = useState(false);
 
-  // ── Add-material row state ──
-  const [addMatId, setAddMatId] = useState('');
-  const [addMatQty, setAddMatQty] = useState(1);
-  const [addMatPrice, setAddMatPrice] = useState(0);
+  // (material state removed — materials are now part of services)
 
   // ── Initialize BDI config from pricing settings (new quote) ──
   useEffect(() => {
@@ -119,6 +118,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
       setProfitRate(Number(pricing.default_profit_rate ?? 10));
       setKmCostCfg(Number(pricing.km_cost ?? 1));
+      setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
+      setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
     }
   }, [pricing, quote]);
 
@@ -136,6 +137,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setAdminRate(Number(quote.admin_indirect_rate ?? 12));
       setProfitRate(Number(quote.profit_rate ?? 10));
       setKmCostCfg(Number(quote.km_cost ?? 1));
+      setCardDiscountRateCfg(Number(quote.card_discount_rate ?? 6));
+      setCardInstallmentsCfg(Number(quote.card_installments ?? 10));
       setDistanceKm(Number(quote.distance_km ?? 0));
       setDiscountType((quote.discount_type as 'valor' | 'percentual') ?? 'valor');
       setDiscountValue(Number(quote.discount_value ?? 0));
@@ -185,6 +188,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
         setProfitRate(Number(pricing.default_profit_rate ?? 10));
         setKmCostCfg(Number(pricing.km_cost ?? 1));
+        setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
+        setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
       }
     }
   }, [quote, open]);
@@ -205,8 +210,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     items: bdiItems,
     distanceKm,
     kmCost: kmCostCfg,
-    cardDiscountRate: Number(pricing?.card_discount_rate ?? 6),
-    cardInstallments: Number(pricing?.card_installments ?? 10),
+    cardDiscountRate: cardDiscountRateCfg,
+    cardInstallments: cardInstallmentsCfg,
   });
 
   const bdiFactor = bdi.bdiFactor;
