@@ -134,12 +134,15 @@ export function useCostResources() {
         const { error: itemsError } = await supabase
           .from('cost_resource_items')
           .insert(
-            input.items.map((item, idx) => ({
+            input.items.map((item: any, idx: number) => ({
               resource_id: resource.id,
               name: item.name,
               value: item.value,
               is_monthly: item.is_monthly,
               annual_value: item.annual_value ?? null,
+              total_cost: item.total_cost ?? null,
+              total_units: item.total_units ?? null,
+              qty_per_gift: item.qty_per_gift ?? null,
               sort_order: idx,
             }))
           );
@@ -191,12 +194,15 @@ export function useCostResources() {
           const { error: itemsError } = await supabase
             .from('cost_resource_items')
             .insert(
-              items.map((item, idx) => ({
+              items.map((item: any, idx: number) => ({
                 resource_id: id,
                 name: item.name,
                 value: item.value,
                 is_monthly: item.is_monthly,
                 annual_value: item.annual_value ?? null,
+                total_cost: item.total_cost ?? null,
+                total_units: item.total_units ?? null,
+                qty_per_gift: item.qty_per_gift ?? null,
                 sort_order: idx,
               }))
             );
