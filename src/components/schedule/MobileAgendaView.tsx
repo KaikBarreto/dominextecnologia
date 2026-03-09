@@ -12,8 +12,9 @@ interface MobileAgendaViewProps {
   holidayMap?: Record<string, Holiday[]>;
 }
 
-export function MobileAgendaView({ currentDate, orders, onOrderSelect }: MobileAgendaViewProps) {
+export function MobileAgendaView({ currentDate, orders, onOrderSelect, holidayMap = {} }: MobileAgendaViewProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
+  const dayHolidays = holidayMap[dateKey] || [];
 
   const dayOrders = useMemo(() => {
     return orders

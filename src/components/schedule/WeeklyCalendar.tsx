@@ -59,7 +59,7 @@ function layoutCascade(
   return items;
 }
 
-export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop, holidayMap = {} }: WeeklyCalendarProps) {
   const isMobile = useIsMobile();
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
