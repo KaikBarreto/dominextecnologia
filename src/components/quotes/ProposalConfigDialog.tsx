@@ -39,6 +39,8 @@ const SAMPLE_QUOTE: Quote = {
   created_by: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  converted_to_os_id: null,
+  final_price: 1300,
   customers: { name: 'Maria Silva', email: 'maria@exemplo.com', phone: '(11) 99999-0000' },
   quote_items: [
     { position: 0, item_type: 'servico', description: 'Manutenção preventiva', quantity: 1, unit_price: 800, total_price: 800 },
