@@ -48,6 +48,7 @@ function OrderDetail({
   const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleCopyTrackingLink = async () => {
     const link = `${window.location.origin}/os-tecnico/${order.id}`;
