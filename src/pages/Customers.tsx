@@ -43,7 +43,8 @@ export default function Customers() {
       (customer as any).company_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pagination = useDataPagination(filteredCustomers);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);
+  const pagination = useDataPagination(sortedItems);
 
   const handleSubmit = async (data: any) => {
     if (editingCustomer) {
