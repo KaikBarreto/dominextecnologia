@@ -225,6 +225,7 @@ export type Database = {
           address: string | null
           address_number: string | null
           city: string | null
+          company_id: string | null
           complement: string | null
           created_at: string
           document: string | null
@@ -247,6 +248,7 @@ export type Database = {
           address?: string | null
           address_number?: string | null
           city?: string | null
+          company_id?: string | null
           complement?: string | null
           created_at?: string
           document?: string | null
@@ -269,6 +271,7 @@ export type Database = {
           address?: string | null
           address_number?: string | null
           city?: string | null
+          company_id?: string | null
           complement?: string | null
           created_at?: string
           document?: string | null
@@ -287,7 +290,15 @@ export type Database = {
           white_label_primary_color?: string | null
           zip_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "company_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contract_items: {
         Row: {
