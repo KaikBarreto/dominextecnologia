@@ -36,7 +36,7 @@ interface Filters {
 export default function CRM() {
   const { leads, isLoading, updateLead, stats } = useLeads();
   const { users } = useUsers();
-  const { stages, isLoading: stagesLoading, getStageColorClass } = useCrmStages();
+  const { stages, isLoading: stagesLoading, getStageColorClass, getStageHex } = useCrmStages();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
