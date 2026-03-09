@@ -41,7 +41,8 @@ export default function Contracts() {
     return matchesSearch && matchesStatus;
   });
 
-  const pagination = useDataPagination(filtered);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
+  const pagination = useDataPagination(sortedItems);
 
   const getNextOccurrence = (c: typeof contracts[0]) => {
     const next = (c.contract_occurrences || [])
