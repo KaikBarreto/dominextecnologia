@@ -45,18 +45,18 @@ export function PricingConfigForm() {
 
   return (
     <div className="space-y-4">
-      {/* Card educativo */}
-      <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
+      {/* Card educativo - fundo saturado */}
+      <div className="rounded-xl bg-primary p-5">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Calculator size={20} className="text-primary" />
+          <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+            <Calculator size={20} className="text-primary-foreground" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Método BDI</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            <p className="text-sm font-semibold text-primary-foreground">Método BDI</p>
+            <p className="text-xs text-primary-foreground/80 mt-1 leading-relaxed">
               O preço final é calculado dividindo o custo real pelo BDI, garantindo que impostos e overhead nunca sejam subprecificados.
             </p>
-            <div className="mt-3 font-mono text-sm bg-card rounded-md px-3 py-2 text-primary border border-primary/20 inline-block">
+            <div className="mt-3 font-mono text-sm bg-white/15 rounded-md px-3 py-2 text-primary-foreground border border-white/20 inline-block">
               Preço = Custo Total ÷ BDI
             </div>
           </div>

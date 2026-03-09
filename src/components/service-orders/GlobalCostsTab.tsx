@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Car, Wrench, Gift, HardHat, Package, DollarSign } from 'lucide-react';
 import { useCostResources, type CostResource, type CostResourceCategory } from '@/hooks/useCostResources';
 import { CostResourceCard } from './CostResourceCard';
 import { CostResourceFormSheet } from './CostResourceFormSheet';
 import { formatBRL } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const CATEGORY_CONFIG: Array<{
   value: CostResourceCategory;
@@ -31,6 +33,7 @@ export function GlobalCostsTab() {
     deleteResource,
   } = useCostResources();
 
+  const isMobile = useIsMobile();
   const [activeCategory, setActiveCategory] = useState<CostResourceCategory>('vehicle');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<CostResource | null>(null);
@@ -176,23 +179,48 @@ export function GlobalCostsTab() {
         </Card>
       </div>
 
-      {/* Category tabs */}
+      {/* Category navigation */}
       <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as CostResourceCategory)}>
-        <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
-          {CATEGORY_CONFIG.map(cat => {
-            const Icon = cat.icon;
-            const count = byCategory[cat.value].length;
-            return (
-              <TabsTrigger key={cat.value} value={cat.value} className="flex items-center gap-1.5">
-                <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{cat.label}</span>
-                {count > 0 && (
-                  <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{count}</span>
-                )}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+        {isMobile ? (
+          <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as CostResourceCategory)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORY_CONFIG.map(cat => {
+                const Icon = cat.icon;
+                const count = byCategory[cat.value].length;
+                return (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    <span className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      {cat.label}
+                      {count > 0 && (
+                        <span className="text-xs text-muted-foreground">({count})</span>
+                      )}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        ) : (
+          <TabsList className="w-auto flex-wrap h-auto gap-1 p-1">
+            {CATEGORY_CONFIG.map(cat => {
+              const Icon = cat.icon;
+              const count = byCategory[cat.value].length;
+              return (
+                <TabsTrigger key={cat.value} value={cat.value} className="flex items-center gap-1.5">
+                  <Icon className="h-4 w-4" />
+                  {cat.label}
+                  {count > 0 && (
+                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{count}</span>
+                  )}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        )}
 
         {CATEGORY_CONFIG.map(cat => (
           <TabsContent key={cat.value} value={cat.value} className="mt-4">
