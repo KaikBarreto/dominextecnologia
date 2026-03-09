@@ -14,6 +14,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { EventCard } from './EventCard';
+import type { Holiday } from '@/utils/holidays';
 
 interface MonthlyCalendarProps {
   currentDate: Date;
