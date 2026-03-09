@@ -491,8 +491,11 @@ export type Database = {
           id: string
           is_monthly: boolean | null
           name: string
+          qty_per_gift: number | null
           resource_id: string
           sort_order: number | null
+          total_cost: number | null
+          total_units: number | null
           value: number
         }
         Insert: {
@@ -500,8 +503,11 @@ export type Database = {
           id?: string
           is_monthly?: boolean | null
           name: string
+          qty_per_gift?: number | null
           resource_id: string
           sort_order?: number | null
+          total_cost?: number | null
+          total_units?: number | null
           value?: number
         }
         Update: {
@@ -509,8 +515,11 @@ export type Database = {
           id?: string
           is_monthly?: boolean | null
           name?: string
+          qty_per_gift?: number | null
           resource_id?: string
           sort_order?: number | null
+          total_cost?: number | null
+          total_units?: number | null
           value?: number
         }
         Relationships: [
