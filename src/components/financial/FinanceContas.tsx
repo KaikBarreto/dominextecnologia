@@ -6,7 +6,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Check, AlertTriangle, Clock, DollarSign, Plus } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction } from '@/types/database';
@@ -14,6 +21,7 @@ import { format, isBefore, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ContaFormDialog } from './ContaFormDialog';
 import type { TransactionType } from '@/types/database';
+import { useFinancial } from '@/hooks/useFinancial';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -32,12 +40,14 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
   const [subTab, setSubTab] = useState<SubTab>('pagar');
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
   const [contaFormOpen, setContaFormOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const { deleteTransaction, updateTransaction } = useFinancial();
 
   const today = startOfDay(new Date());
   const next7Days = addDays(today, 7);
 
-  // Map subTab to transaction defaultType
   const contaDefaultType: TransactionType = subTab === 'pagar' ? 'saida' : 'entrada';
 
   const baseFiltered = useMemo(() => {
@@ -75,6 +85,22 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
     { key: 'todas', label: 'Todas' },
   ];
 
+  const handleEdit = (t: FinancialTransaction) => {
+    setEditingTransaction(t);
+    setContaFormOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    await deleteTransaction.mutateAsync(deletingId);
+    setDeletingId(null);
+  };
+
+  const handleCloseForm = () => {
+    setContaFormOpen(false);
+    setEditingTransaction(null);
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -82,7 +108,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           <h2 className="text-xl font-bold">Contas</h2>
           <p className="text-sm text-muted-foreground">Programação financeira — contas a pagar e a receber</p>
         </div>
-        <Button onClick={() => setContaFormOpen(true)} className="gap-2">
+        <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} className="gap-2">
           <Plus className="h-4 w-4" /> Nova Conta
         </Button>
       </div>
@@ -177,13 +203,30 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                     <p className="font-medium text-sm truncate">{t.description}</p>
                     {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
                   </div>
-                  {t.is_paid ? (
-                    <Badge className="bg-success text-white shrink-0 text-[10px]">Pago</Badge>
-                  ) : isOverdue(t) ? (
-                    <Badge className="bg-destructive text-white shrink-0 text-[10px]">Vencida</Badge>
-                  ) : (
-                    <Badge variant="secondary" className="shrink-0 text-[10px]">Pendente</Badge>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {t.is_paid ? (
+                      <Badge className="bg-success text-white shrink-0 text-[10px]">Pago</Badge>
+                    ) : isOverdue(t) ? (
+                      <Badge className="bg-destructive text-white shrink-0 text-[10px]">Vencida</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">Pendente</Badge>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(t)}>
+                          <Pencil className="h-4 w-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDeletingId(t.id)} className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
@@ -216,7 +259,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                     <TableHead className="text-xs uppercase tracking-wider">Vencimento</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">Valor</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                    <TableHead className="w-[80px] text-xs uppercase tracking-wider">Ação</TableHead>
+                    <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -256,11 +299,28 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                         )}
                       </TableCell>
                       <TableCell>
-                        {!t.is_paid && (
-                          <Button variant="ghost" size="icon" className="text-success" onClick={() => onMarkAsPaid(t.id)} title="Marcar como pago">
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {!t.is_paid && (
+                            <Button variant="ghost" size="icon" className="text-success h-8 w-8" onClick={() => onMarkAsPaid(t.id)} title="Marcar como pago">
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(t)}>
+                                <Pencil className="h-4 w-4 mr-2" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeletingId(t.id)} className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -273,9 +333,27 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
       <ContaFormDialog
         open={contaFormOpen}
-        onOpenChange={setContaFormOpen}
+        onOpenChange={handleCloseForm}
         defaultType={contaDefaultType}
+        editingTransaction={editingTransaction}
       />
+
+      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
