@@ -40,9 +40,9 @@ export function MobileAgendaView({ currentDate, orders, onOrderSelect, holidayMa
       {dayHolidays.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {dayHolidays.map((h, i) => (
-            <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-warning/10 border border-warning/20">
-              <span className="text-xs">🏖️</span>
-              <span className="text-xs font-medium text-warning-foreground">{h.name}</span>
+            <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-foreground">
+              <Star className="h-3 w-3 text-white" />
+              <span className="text-xs font-medium text-white">{h.name}</span>
             </div>
           ))}
         </div>

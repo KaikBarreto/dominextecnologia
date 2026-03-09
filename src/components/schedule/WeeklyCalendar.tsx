@@ -129,8 +129,8 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                 {format(day, 'dd')}
               </div>
               {dayHolidays.length > 0 && (
-                <div className="text-[9px] leading-tight font-medium text-warning-foreground truncate px-0.5 mt-0.5">
-                  🏖️ {dayHolidays[0].name}
+                <div className="text-[9px] leading-tight font-medium text-white bg-foreground rounded px-1 py-0.5 truncate mx-0.5 mt-0.5 flex items-center gap-0.5 justify-center">
+                  <Star className="h-2 w-2 shrink-0" /> {dayHolidays[0].name}
                 </div>
               )}
             </div>
