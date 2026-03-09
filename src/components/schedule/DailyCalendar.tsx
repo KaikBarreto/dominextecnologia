@@ -143,12 +143,23 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
     }
   };
 
-  return (
+    const dayHolidays = holidayMap[dateKey] || [];
+
+    return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
         <h3 className="text-base font-semibold capitalize">
           {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
         </h3>
+        {dayHolidays.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-1">
+            {dayHolidays.map((h, i) => (
+              <span key={i} className="text-xs font-medium text-warning-foreground bg-warning/15 rounded px-2 py-0.5">
+                🏖️ {h.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1">

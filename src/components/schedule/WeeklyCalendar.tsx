@@ -106,27 +106,36 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
       {/* Days header */}
       <div className="grid grid-cols-[60px_repeat(7,minmax(100px,1fr))] border-b bg-muted/30 min-w-[820px]">
         <div className="py-3 text-center text-xs font-medium text-muted-foreground" />
-        {weekDays.map((day) => (
-          <div
-            key={day.toISOString()}
-            className={cn(
-              'py-3 text-center border-l',
-              isSameDay(day, new Date()) && 'bg-primary/5'
-            )}
-          >
-            <div className="text-xs text-muted-foreground uppercase">
-              {format(day, 'EEE', { locale: ptBR })}
-            </div>
+        {weekDays.map((day) => {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const dayHolidays = holidayMap[dateKey] || [];
+          return (
             <div
+              key={day.toISOString()}
               className={cn(
-                'text-sm font-semibold mt-0.5',
-                isSameDay(day, new Date()) && 'text-primary'
+                'py-3 text-center border-l',
+                isSameDay(day, new Date()) && 'bg-primary/5'
               )}
             >
-              {format(day, 'dd')}
+              <div className="text-xs text-muted-foreground uppercase">
+                {format(day, 'EEE', { locale: ptBR })}
+              </div>
+              <div
+                className={cn(
+                  'text-sm font-semibold mt-0.5',
+                  isSameDay(day, new Date()) && 'text-primary'
+                )}
+              >
+                {format(day, 'dd')}
+              </div>
+              {dayHolidays.length > 0 && (
+                <div className="text-[9px] leading-tight font-medium text-warning-foreground truncate px-0.5 mt-0.5">
+                  🏖️ {dayHolidays[0].name}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Time grid */}

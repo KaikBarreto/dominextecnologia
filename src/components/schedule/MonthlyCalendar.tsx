@@ -228,8 +228,19 @@ export function MonthlyCalendar({
                 )}
               </div>
 
+              {/* Holiday labels */}
+              {dayHolidays.length > 0 && (
+                <div className="mb-1">
+                  {dayHolidays.map((h, i) => (
+                    <div key={i} className="text-[10px] leading-tight font-medium text-warning-foreground bg-warning/15 rounded px-1 py-0.5 truncate mb-0.5">
+                      🏖️ {h.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="space-y-1 overflow-hidden">
-                {dayOrders.slice(0, 3).map((order) => (
+                {dayOrders.slice(0, dayHolidays.length > 0 ? 2 : 3).map((order) => (
                   <EventCard
                     key={order.id}
                     order={order}
