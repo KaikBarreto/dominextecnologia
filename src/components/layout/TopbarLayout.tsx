@@ -84,7 +84,7 @@ export function TopbarLayout() {
     children?.some(c => location.pathname === c.path) ?? false;
 
   return (
-    <header className="hidden lg:flex h-14 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+    <header className="hidden lg:flex h-14 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-6 min-w-0 flex-1">
         {logoLoading ? (
           <div className="h-7 w-28 rounded bg-muted animate-pulse shrink-0" />

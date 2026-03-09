@@ -18,7 +18,7 @@ function HeaderContent() {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
       {/* Left: sidebar toggle */}
       <div className="flex items-center gap-2 w-10">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
@@ -96,7 +96,7 @@ function TopbarAppLayout() {
   return (
     <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
       <TopbarLayout />
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4 lg:hidden">
         {logoLoading ? (
           <div className="h-6 w-24 rounded bg-muted animate-pulse" />
         ) : (
