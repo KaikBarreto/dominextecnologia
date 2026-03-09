@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
+import type { Holiday } from '@/utils/holidays';
 
 interface DailyCalendarProps {
   currentDate: Date;
@@ -16,6 +17,7 @@ interface DailyCalendarProps {
   movingOrderId?: string | null;
   onTouchPickUp?: (orderId: string) => void;
   onTouchDrop?: (date: string, time: string) => void;
+  holidayMap?: Record<string, Holiday[]>;
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
