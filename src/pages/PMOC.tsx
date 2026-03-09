@@ -3,7 +3,9 @@ import { FileText, Plus, Search, Calendar, DollarSign, CheckCircle, XCircle, Edi
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -51,11 +53,13 @@ export default function PMOC() {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const { sortedItems: sortedPlans, sortConfig: planSortConfig, handleSort: handlePlanSort } = useTableSort(filteredPlans);
 
   const filteredContracts = contracts.filter(c =>
     c.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.contract_number?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(filteredContracts);
 
   // Timeline from active plans
   const timeline = plans
@@ -230,17 +234,17 @@ export default function PMOC() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Frequência</TableHead>
-                            <TableHead>Próxima Geração</TableHead>
-                            <TableHead className="text-center">Equipamentos</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[140px]">Ações</TableHead>
+                            <SortableTableHead sortKey="name" sortConfig={planSortConfig} onSort={handlePlanSort}>Nome</SortableTableHead>
+                            <SortableTableHead sortKey="customers.name" sortConfig={planSortConfig} onSort={handlePlanSort}>Cliente</SortableTableHead>
+                            <SortableTableHead sortKey="frequency_months" sortConfig={planSortConfig} onSort={handlePlanSort}>Frequência</SortableTableHead>
+                            <SortableTableHead sortKey="next_generation_date" sortConfig={planSortConfig} onSort={handlePlanSort}>Próxima Geração</SortableTableHead>
+                            <SortableTableHead sortKey="" sortConfig={planSortConfig} onSort={() => {}} className="text-center">Equipamentos</SortableTableHead>
+                            <SortableTableHead sortKey="status" sortConfig={planSortConfig} onSort={handlePlanSort}>Status</SortableTableHead>
+                            <SortableTableHead sortKey="" sortConfig={planSortConfig} onSort={() => {}} className="w-[140px]">Ações</SortableTableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredPlans.map(plan => {
+                          {sortedPlans.map(plan => {
                             const isOverdue = isBefore(new Date(plan.next_generation_date), new Date()) && plan.status === 'ativo';
                             const futureCount = futureOsCount(plan);
                             return (
@@ -312,17 +316,17 @@ export default function PMOC() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Nº Contrato</TableHead>
-                            <TableHead>Período</TableHead>
-                            <TableHead>Frequência</TableHead>
-                            <TableHead className="text-right">Valor Mensal</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[100px]">Ações</TableHead>
+                            <SortableTableHead sortKey="customers.name" sortConfig={contractSortConfig} onSort={handleContractSort}>Cliente</SortableTableHead>
+                            <SortableTableHead sortKey="contract_number" sortConfig={contractSortConfig} onSort={handleContractSort}>Nº Contrato</SortableTableHead>
+                            <SortableTableHead sortKey="start_date" sortConfig={contractSortConfig} onSort={handleContractSort}>Período</SortableTableHead>
+                            <SortableTableHead sortKey="maintenance_frequency" sortConfig={contractSortConfig} onSort={handleContractSort}>Frequência</SortableTableHead>
+                            <SortableTableHead sortKey="monthly_value" sortConfig={contractSortConfig} onSort={handleContractSort} className="text-right">Valor Mensal</SortableTableHead>
+                            <SortableTableHead sortKey="is_active" sortConfig={contractSortConfig} onSort={handleContractSort}>Status</SortableTableHead>
+                            <SortableTableHead sortKey="" sortConfig={contractSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredContracts.map(contract => (
+                          {sortedContracts.map(contract => (
                             <TableRow key={contract.id}>
                               <TableCell className="font-medium">{contract.customers?.name || '-'}</TableCell>
                               <TableCell className="text-muted-foreground">{contract.contract_number || '-'}</TableCell>

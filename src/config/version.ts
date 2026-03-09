@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.0";
+export const APP_VERSION = "1.5.1";
 
-export const VERSION_NOTES = "Tela dedicada de Ponto Eletrônico, vinculação automática de funcionários nos registros, filtro de data padrão no histórico";
+export const VERSION_NOTES = "Ordenação por colunas em todas as tabelas, correções em equipamentos (foto, notas, categoria, navegação), melhorias nos anexos e modal de OS";

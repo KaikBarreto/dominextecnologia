@@ -36,6 +36,7 @@ import { osStatusLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
@@ -50,6 +51,7 @@ export default function EquipmentDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const navState = location.state as { from?: string; customerId?: string } | null;
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabKey>('geral');
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
@@ -106,9 +108,16 @@ export default function EquipmentDetail() {
     const total = files.length;
     setUploadProgress({ current: 0, total });
     try {
+      let successCount = 0;
       for (let i = 0; i < total; i++) {
-        await uploadAttachment.mutateAsync({ equipmentId: id, file: files[i] });
+        try {
+          await uploadAttachment.mutateAsync({ equipmentId: id, file: files[i] });
+          successCount++;
+        } catch {}
         setUploadProgress({ current: i + 1, total });
+      }
+      if (successCount > 0) {
+        toast({ title: `${successCount} anexo${successCount > 1 ? 's' : ''} enviado${successCount > 1 ? 's' : ''}!` });
       }
     } finally {
       setUploadingFiles(false);
