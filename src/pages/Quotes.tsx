@@ -219,13 +219,13 @@ function QuotesList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nº</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Data</TableHead>
-                  <TableHead className="hidden lg:table-cell">Custo</TableHead>
-                  <TableHead>Valor</TableHead>
+                  <SortableTableHead sortKey="quote_number" sortConfig={sortConfig} onSort={handleSort}>Nº</SortableTableHead>
+                  <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
+                  <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Data</SortableTableHead>
+                  <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Custo</SortableTableHead>
+                  <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
                   <TableHead className="hidden lg:table-cell">Margem</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>

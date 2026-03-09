@@ -184,12 +184,12 @@ export default function Contracts() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Contrato</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Frequência</TableHead>
+                      <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Contrato</SortableTableHead>
+                      <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
+                      <SortableTableHead sortKey="frequency_type" sortConfig={sortConfig} onSort={handleSort}>Frequência</SortableTableHead>
                       <TableHead>Próxima OS</TableHead>
                       <TableHead className="text-center">Itens</TableHead>
-                      <TableHead>Status</TableHead>
+                      <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                       <TableHead className="w-[140px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>

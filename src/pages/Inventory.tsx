@@ -215,12 +215,12 @@ export default function Inventory() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead className="text-right">Quantidade</TableHead>
-                    <TableHead className="text-right">Custo Unit.</TableHead>
-                    <TableHead className="text-right">Venda Unit.</TableHead>
+                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                    <SortableTableHead sortKey="sku" sortConfig={sortConfig} onSort={handleSort}>SKU</SortableTableHead>
+                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort}>Categoria</SortableTableHead>
+                    <SortableTableHead sortKey="quantity" sortConfig={sortConfig} onSort={handleSort} className="text-right">Quantidade</SortableTableHead>
+                    <SortableTableHead sortKey="cost_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">Custo Unit.</SortableTableHead>
+                    <SortableTableHead sortKey="sale_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">Venda Unit.</SortableTableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
