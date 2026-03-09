@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +26,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
 import {
   User, UserPlus, Palette, Wrench, Package, MapPin,
-  Calculator, Plus, Trash2, Tag, AlertTriangle,
+  Calculator, Plus, Trash2, Tag, AlertTriangle, Gift,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
@@ -99,6 +100,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // ── Discount (at end) ──
   const [discountType, setDiscountType] = useState<'valor' | 'percentual'>('valor');
   const [discountValue, setDiscountValue] = useState(0);
+  const [includeGifts, setIncludeGifts] = useState(true);
 
   // ── Add-service row state ──
   const [addSvcId, setAddSvcId] = useState('');
@@ -137,6 +139,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setDistanceKm(Number(quote.distance_km ?? 0));
       setDiscountType((quote.discount_type as 'valor' | 'percentual') ?? 'valor');
       setDiscountValue(Number(quote.discount_value ?? 0));
+      setIncludeGifts(quote.include_gifts !== false);
       setValidUntil(quote.valid_until ?? '');
       setProposalTemplateId(quote.proposal_template_id ?? '');
       setNotes(quote.notes ?? '');
@@ -171,6 +174,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       setDistanceKm(0);
       setDiscountType('valor');
       setDiscountValue(0);
+      setIncludeGifts(true);
       setValidUntil('');
       setNotes('');
       setTerms('');
