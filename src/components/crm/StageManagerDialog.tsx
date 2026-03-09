@@ -13,13 +13,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -29,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import { useCrmStages, STAGE_COLORS, type CrmStage } from '@/hooks/useCrmStages';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +35,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [newStage, setNewStage] = useState({ name: '', color: 'muted', is_won: false, is_lost: false });
+  const [newStage, setNewStage] = useState({ name: '', color: '#6B7280', is_won: false, is_lost: false });
   
   // Drag and drop state
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -51,7 +45,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
   const handleCreateStage = () => {
     if (!newStage.name.trim()) return;
     createStage.mutate(newStage, {
-      onSuccess: () => setNewStage({ name: '', color: 'muted', is_won: false, is_lost: false }),
+      onSuccess: () => setNewStage({ name: '', color: '#6B7280', is_won: false, is_lost: false }),
     });
   };
 
@@ -151,21 +145,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
               className="flex-1"
               autoFocus
             />
-            <Select value={color} onValueChange={setColor}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STAGE_COLORS.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    <div className="flex items-center gap-2">
-                      <div className={cn('w-3 h-3 rounded-full', c.class.split(' ')[0])} />
-                      {c.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ColorPicker value={color} onChange={setColor} />
           </div>
           
           <div className="flex items-center justify-between">
@@ -283,24 +263,7 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
                   placeholder="Nome do estágio"
                   className="flex-1"
                 />
-                <Select
-                  value={newStage.color}
-                  onValueChange={(color) => setNewStage({ ...newStage, color })}
-                >
-                  <SelectTrigger className="w-28">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAGE_COLORS.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={cn('w-3 h-3 rounded-full', c.class.split(' ')[0])} />
-                          {c.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <ColorPicker value={newStage.color} onChange={(color) => setNewStage({ ...newStage, color })} />
                 <Button
                   onClick={handleCreateStage}
                   disabled={!newStage.name.trim() || createStage.isPending}

@@ -73,15 +73,16 @@ export default function CRM() {
     });
   }, [leads, filters]);
 
-  // Group filtered leads by stage_id
+  // Group filtered leads by stage_id — assign leads without stage to the first stage
   const leadsByStage = useMemo(() => {
+    const firstStageId = stages.length > 0 ? stages[0].id : null;
     return filteredLeads.reduce((acc, lead) => {
-      const stageId = lead.stage_id || 'unassigned';
+      const stageId = lead.stage_id || firstStageId || 'unassigned';
       if (!acc[stageId]) acc[stageId] = [];
       acc[stageId].push(lead);
       return acc;
     }, {} as Record<string, Lead[]>);
-  }, [filteredLeads]);
+  }, [filteredLeads, stages]);
 
   // Calculate value by stage
   const valueByStage = useMemo(() => {
@@ -156,17 +157,19 @@ export default function CRM() {
     setPendingLossDrop(null);
   };
 
-  // Map stage color to saturated bg for column header
-  const getStageHeaderBg = (color: string) => {
-    switch (color) {
-      case 'muted': return 'bg-muted-foreground';
-      case 'info': return 'bg-info';
-      case 'warning': return 'bg-warning';
-      case 'success': return 'bg-success';
-      case 'destructive': return 'bg-destructive';
-      case 'primary': return 'bg-primary';
-      default: return 'bg-muted-foreground';
-    }
+  // Map stage color to style - supports both legacy named colors and hex
+  const getStageHeaderStyle = (color: string): { className?: string; style?: React.CSSProperties } => {
+    const legacyMap: Record<string, string> = {
+      muted: 'bg-muted-foreground',
+      info: 'bg-info',
+      warning: 'bg-warning',
+      success: 'bg-success',
+      destructive: 'bg-destructive',
+      primary: 'bg-primary',
+    };
+    if (legacyMap[color]) return { className: legacyMap[color] };
+    // Hex color
+    return { style: { backgroundColor: color } };
   };
 
   return (
@@ -438,7 +441,7 @@ export default function CRM() {
                   onDrop={(e) => handleDrop(e, stage.id)}
                 >
                   {/* Column Header - saturated solid color */}
-                  <div className={cn('rounded-t-lg p-3 text-white', getStageHeaderBg(stage.color))}>
+                  <div className={cn('rounded-t-lg p-3 text-white', getStageHeaderStyle(stage.color).className)} style={getStageHeaderStyle(stage.color).style}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm">{stage.name}</span>

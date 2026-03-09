@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { CATEGORY_ICONS, type CategoryIconKey } from './categoryIcons';
+import { ColorPicker } from '@/components/ui/ColorPicker';
 import type { FinancialCategory } from '@/hooks/useFinancialCategories';
 
 const schema = z.object({
@@ -24,11 +25,6 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
-
-const PRESET_COLORS = [
-  '#00C597', '#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#14b8a6',
-];
 
 interface CategoryFormDialogProps {
   open: boolean;
@@ -93,17 +89,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
             <FormField control={form.control} name="color" render={({ field }) => (
               <FormItem>
                 <FormLabel>Cor</FormLabel>
-                <div className="flex flex-wrap gap-2">
-                  {PRESET_COLORS.map((c) => (
-                    <button
-                      type="button"
-                      key={c}
-                      onClick={() => field.onChange(c)}
-                      className={`h-7 w-7 rounded-full border-2 transition-all ${field.value === c ? 'border-foreground scale-110' : 'border-transparent'}`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
+                <ColorPicker value={field.value} onChange={field.onChange} />
                 <FormMessage />
               </FormItem>
             )} />
