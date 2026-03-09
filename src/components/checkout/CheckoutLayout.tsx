@@ -162,11 +162,11 @@ export function CheckoutLayout({
               <img src={logoWhite} alt="Dominex" className="h-10" />
             </div>
             <button
-              onClick={() => navigate("/checkout")}
+              onClick={() => navigate("/dashboard")}
               className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm -mt-4"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Voltar</span>
+              <span>Voltar ao sistema</span>
             </button>
 
             <div className="space-y-6">

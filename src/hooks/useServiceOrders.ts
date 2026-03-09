@@ -52,19 +52,29 @@ export function useServiceOrders() {
   const serviceOrdersQuery = useQuery({
     queryKey: ['service-orders'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_orders')
-        .select(`
-          *,
-          customer:customers(id, name, phone, email, document, address, complement, city, state, zip_code, company_name, customer_type),
-          equipment:equipment(id, name, brand, model),
-          form_template:form_templates(id, name),
-          service_type:service_types(id, name, color, number_prefix)
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any })[];
+      // Fetch all service orders (paginated to avoid 1000 row limit)
+      let allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('service_orders')
+          .select(`
+            *,
+            customer:customers(id, name, phone, email, document, address, complement, city, state, zip_code, company_name, customer_type),
+            equipment:equipment(id, name, brand, model),
+            form_template:form_templates(id, name),
+            service_type:service_types(id, name, color, number_prefix)
+          `)
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+        
+        if (error) throw error;
+        allData = allData.concat(data || []);
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any })[];
     },
   });
 
@@ -154,6 +164,49 @@ export function useServiceOrders() {
 
   const deleteServiceOrder = useMutation({
     mutationFn: async (id: string) => {
+      // Clear FK references in contract_occurrences
+      await supabase
+        .from('contract_occurrences')
+        .update({ service_order_id: null })
+        .eq('service_order_id', id);
+
+      // Clear FK references in other tables
+      await supabase
+        .from('service_order_equipment')
+        .delete()
+        .eq('service_order_id', id);
+
+      // Delete form responses
+      await supabase
+        .from('form_responses')
+        .delete()
+        .eq('service_order_id', id);
+
+      // Delete OS photos
+      await supabase
+        .from('os_photos')
+        .delete()
+        .eq('service_order_id', id);
+
+      // Delete service ratings
+      await supabase
+        .from('service_ratings')
+        .delete()
+        .eq('service_order_id', id);
+
+      // Delete inventory movements
+      await supabase
+        .from('inventory_movements')
+        .delete()
+        .eq('service_order_id', id);
+
+      // Delete PMOC schedules references
+      await supabase
+        .from('pmoc_schedules')
+        .update({ service_order_id: null })
+        .eq('service_order_id', id);
+
+      // Now delete the OS
       const { error } = await supabase
         .from('service_orders')
         .delete()

@@ -80,15 +80,16 @@ export default function ServiceOrders() {
   const { statuses } = useOsStatuses();
 
   const filteredOrders = useMemo(() => {
-    const dateFiltered = filterByDate(serviceOrders, 'scheduled_date');
-    return dateFiltered.filter((os) => {
+    // For kanban, don't apply date filter
+    const baseOrders = viewMode === 'kanban' ? serviceOrders : filterByDate(serviceOrders, 'scheduled_date');
+    return baseOrders.filter((os) => {
       const matchesSearch =
         os.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         String(os.order_number).includes(searchTerm);
       const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [serviceOrders, searchTerm, statusFilter, range]);
+  }, [serviceOrders, searchTerm, statusFilter, range, viewMode]);
 
   const pagination = useDataPagination(filteredOrders);
 
