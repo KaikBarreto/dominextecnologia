@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { useMutation } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,9 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Building2, CreditCard, KeyRound, Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react';
+import { addDays, format } from 'date-fns';
 
 interface Props {
   open: boolean;
@@ -19,38 +20,34 @@ interface Props {
   onSuccess: () => void;
 }
 
-interface FormData {
-  name: string;
-  cnpj: string;
-  email: string;
-  phone: string;
-  address: string;
-  contact_name: string;
-  subscription_status: string;
-  subscription_plan: string;
-  subscription_value: string;
-  subscription_expires_at: string;
-  billing_cycle: string;
-  max_users: string;
-  notes: string;
+function generatePassword(length = 10): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
 export default function CompanyFormModal({ open, onOpenChange, company, onSuccess }: Props) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const isEditing = !!company;
+  const [activeTab, setActiveTab] = useState('basic');
+  const [showPassword, setShowPassword] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
-    defaultValues: {
-      name: '', cnpj: '', email: '', phone: '', address: '', contact_name: '',
-      subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
-      subscription_expires_at: '', billing_cycle: 'monthly',
-      max_users: '5', notes: '',
-    },
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '', cnpj: '', email: '', phone: '', address: '', contact_name: '',
+    subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
+    subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '', origin: '',
+    admin_email: '', admin_password: '',
   });
+
+  const updateField = useCallback((field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
 
   useEffect(() => {
     if (company) {
-      reset({
+      setFormData({
         name: company.name || '',
         cnpj: company.cnpj || '',
         email: company.email || '',
@@ -64,153 +61,284 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         billing_cycle: company.billing_cycle || 'monthly',
         max_users: String(company.max_users || 5),
         notes: company.notes || '',
+        origin: company.origin || '',
+        admin_email: '', admin_password: '',
       });
+      setActiveTab('basic');
     } else {
-      reset({
+      const defaultExpires = format(addDays(new Date(), 14), 'yyyy-MM-dd');
+      setFormData({
         name: '', cnpj: '', email: '', phone: '', address: '', contact_name: '',
         subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
-        subscription_expires_at: '', billing_cycle: 'monthly',
-        max_users: '5', notes: '',
+        subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
+        notes: '', origin: '', admin_email: '', admin_password: generatePassword(),
       });
+      setActiveTab('basic');
+      setShowPassword(true);
     }
-  }, [company, reset]);
+  }, [company, open]);
+
+  // Auto-sync email
+  useEffect(() => {
+    if (!isEditing && !formData.admin_email && formData.email) {
+      updateField('admin_email', formData.email);
+    }
+  }, [formData.email, formData.admin_email, isEditing, updateField]);
 
   const mutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const payload = {
-        name: data.name,
-        cnpj: data.cnpj || null,
-        email: data.email || null,
-        phone: data.phone || null,
-        address: data.address || null,
-        contact_name: data.contact_name || null,
-        subscription_status: data.subscription_status,
-        subscription_plan: data.subscription_plan,
-        subscription_value: parseFloat(data.subscription_value) || 0,
-        subscription_expires_at: data.subscription_expires_at || null,
-        billing_cycle: data.billing_cycle,
-        max_users: parseInt(data.max_users) || 5,
-        notes: data.notes || null,
-      };
-
+    mutationFn: async () => {
       if (isEditing) {
-        const { error } = await supabase.from('companies').update(payload).eq('id', company.id);
+        const { error } = await supabase.from('companies').update({
+          name: formData.name,
+          cnpj: formData.cnpj || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          address: formData.address || null,
+          contact_name: formData.contact_name || null,
+          subscription_status: formData.subscription_status,
+          subscription_plan: formData.subscription_plan,
+          subscription_value: parseFloat(formData.subscription_value) || 0,
+          subscription_expires_at: formData.subscription_expires_at || null,
+          billing_cycle: formData.billing_cycle,
+          max_users: parseInt(formData.max_users) || 5,
+          notes: formData.notes || null,
+          origin: formData.origin || null,
+        }).eq('id', company.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('companies').insert(payload);
-        if (error) throw error;
+        // Create via edge function
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session) throw new Error('Não autenticado');
+
+        const { data, error } = await supabase.functions.invoke('create-company', {
+          body: {
+            company_name: formData.name,
+            company_cnpj: formData.cnpj || null,
+            company_email: formData.email || null,
+            company_phone: formData.phone || null,
+            company_address: formData.address || null,
+            contact_name: formData.contact_name || null,
+            notes: formData.notes || null,
+            admin_email: formData.admin_email,
+            admin_password: formData.admin_password,
+            subscription_status: formData.subscription_status,
+            subscription_plan: formData.subscription_plan,
+            subscription_value: parseFloat(formData.subscription_value) || 0,
+            subscription_expires_at: formData.subscription_expires_at 
+              ? new Date(formData.subscription_expires_at).toISOString() : null,
+            billing_cycle: formData.billing_cycle,
+            max_users: parseInt(formData.max_users) || 5,
+            origin: formData.origin || null,
+          },
+          headers: { Authorization: `Bearer ${session.session.access_token}` },
+        });
+
+        if (error) {
+          // Try to extract error message
+          let msg = 'Erro ao criar empresa';
+          try {
+            if (error.context?.body) {
+              const parsed = JSON.parse(error.context.body);
+              if (parsed.error) msg = parsed.error;
+            }
+          } catch {}
+          throw new Error(msg);
+        }
+        if (data?.error) throw new Error(data.error);
       }
     },
     onSuccess: () => {
-      toast({ title: isEditing ? 'Empresa atualizada' : 'Empresa criada' });
+      toast({ title: isEditing ? 'Empresa atualizada!' : 'Empresa criada com sucesso!' });
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
       onSuccess();
     },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
   });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name) { setActiveTab('basic'); toast({ variant: 'destructive', title: 'Nome da empresa é obrigatório' }); return; }
+    if (!isEditing) {
+      if (!formData.admin_email) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Email do administrador é obrigatório' }); return; }
+      if (!formData.admin_password || formData.admin_password.length < 6) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Senha deve ter no mínimo 6 caracteres' }); return; }
+    }
+    mutation.mutate();
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(`Email: ${formData.admin_email}\nSenha: ${formData.admin_password}`);
+    setCopied(true);
+    toast({ title: 'Credenciais copiadas!' });
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
-          <div>
-            <Label>Nome*</Label>
-            <Input {...register('name', { required: 'Obrigatório' })} />
-            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-          </div>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <TabsList className={`grid mb-4 shrink-0 ${isEditing ? 'grid-cols-2' : 'grid-cols-3'}`}>
+              <TabsTrigger value="basic" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Dados</span>
+              </TabsTrigger>
+              <TabsTrigger value="commercial" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                <span className="hidden sm:inline">Comercial</span>
+              </TabsTrigger>
+              {!isEditing && (
+                <TabsTrigger value="access" className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4" />
+                  <span className="hidden sm:inline">Acesso</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>CNPJ</Label>
-              <Input {...register('cnpj', { onChange: (e) => { e.target.value = cpfCnpjMask(e.target.value); } })} maxLength={18} />
+            <div className="flex-1 overflow-y-auto min-h-0 pb-4">
+              {/* Tab: Dados Básicos */}
+              <TabsContent value="basic" className="m-0 space-y-4">
+                <div>
+                  <Label>Nome da Empresa *</Label>
+                  <Input value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="Nome da empresa" />
+                </div>
+                <div>
+                  <Label>Responsável</Label>
+                  <Input value={formData.contact_name} onChange={e => updateField('contact_name', e.target.value)} placeholder="Nome do responsável" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Email</Label>
+                    <Input type="email" value={formData.email} onChange={e => updateField('email', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Telefone</Label>
+                    <Input value={formData.phone} onChange={e => updateField('phone', phoneMask(e.target.value))} maxLength={15} />
+                  </div>
+                </div>
+                <div>
+                  <Label>CNPJ/CPF</Label>
+                  <Input value={formData.cnpj} onChange={e => updateField('cnpj', cpfCnpjMask(e.target.value))} maxLength={18} />
+                </div>
+                <div>
+                  <Label>Endereço</Label>
+                  <Input value={formData.address} onChange={e => updateField('address', e.target.value)} />
+                </div>
+                <div>
+                  <Label>Observações</Label>
+                  <Textarea value={formData.notes} onChange={e => updateField('notes', e.target.value)} rows={3} className="resize-none" />
+                </div>
+              </TabsContent>
+
+              {/* Tab: Comercial */}
+              <TabsContent value="commercial" className="m-0 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Status</Label>
+                    <Select value={formData.subscription_status} onValueChange={v => updateField('subscription_status', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="testing">Em Teste</SelectItem>
+                        <SelectItem value="active">Ativa</SelectItem>
+                        <SelectItem value="inactive">Inativa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Plano</Label>
+                    <Select value={formData.subscription_plan} onValueChange={v => updateField('subscription_plan', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="starter">Starter</SelectItem>
+                        <SelectItem value="pro">Pro</SelectItem>
+                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Valor (R$)</Label>
+                    <Input type="number" step="0.01" value={formData.subscription_value} onChange={e => updateField('subscription_value', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Máx Usuários</Label>
+                    <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Vencimento</Label>
+                    <Input type="date" value={formData.subscription_expires_at} onChange={e => updateField('subscription_expires_at', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Ciclo</Label>
+                    <Select value={formData.billing_cycle} onValueChange={v => updateField('billing_cycle', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="yearly">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Origem</Label>
+                  <Input value={formData.origin} onChange={e => updateField('origin', e.target.value)} placeholder="Ex: Google, Instagram..." />
+                </div>
+              </TabsContent>
+
+              {/* Tab: Acesso */}
+              {!isEditing && (
+                <TabsContent value="access" className="m-0 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Defina as credenciais de acesso do administrador da empresa.
+                  </p>
+                  <div>
+                    <Label>Email do Administrador *</Label>
+                    <Input type="email" value={formData.admin_email} onChange={e => updateField('admin_email', e.target.value)} placeholder="admin@empresa.com" />
+                  </div>
+                  <div>
+                    <Label>Senha *</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          value={formData.admin_password}
+                          onChange={e => updateField('admin_password', e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                          className="pr-10"
+                        />
+                        <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <Button type="button" variant="outline" size="icon" onClick={() => { updateField('admin_password', generatePassword()); setShowPassword(true); }} title="Gerar senha">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {formData.admin_email && formData.admin_password && (
+                    <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="w-full">
+                      {copied ? <><Check className="h-4 w-4 mr-2" /> Copiado!</> : <><Copy className="h-4 w-4 mr-2" /> Copiar credenciais</>}
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    As credenciais serão usadas para o primeiro acesso. O administrador poderá alterar a senha posteriormente.
+                  </p>
+                </TabsContent>
+              )}
             </div>
-            <div>
-              <Label>Telefone</Label>
-              <Input {...register('phone', { onChange: (e) => { e.target.value = phoneMask(e.target.value); } })} maxLength={15} />
-            </div>
-          </div>
+          </Tabs>
 
-          <div>
-            <Label>Email</Label>
-            <Input type="email" {...register('email')} />
-          </div>
-
-          <div>
-            <Label>Responsável</Label>
-            <Input {...register('contact_name')} />
-          </div>
-
-          <div>
-            <Label>Endereço</Label>
-            <Input {...register('address')} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Status</Label>
-              <Select value={watch('subscription_status')} onValueChange={(v) => setValue('subscription_status', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="testing">Em Teste</SelectItem>
-                  <SelectItem value="active">Ativa</SelectItem>
-                  <SelectItem value="inactive">Inativa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Plano</Label>
-              <Select value={watch('subscription_plan')} onValueChange={(v) => setValue('subscription_plan', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="starter">Starter</SelectItem>
-                  <SelectItem value="pro">Pro</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Valor (R$)</Label>
-              <Input type="number" step="0.01" {...register('subscription_value')} />
-            </div>
-            <div>
-              <Label>Máx Usuários</Label>
-              <Input type="number" {...register('max_users')} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Vencimento</Label>
-              <Input type="date" {...register('subscription_expires_at')} />
-            </div>
-            <div>
-              <Label>Ciclo</Label>
-              <Select value={watch('billing_cycle')} onValueChange={(v) => setValue('billing_cycle', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Mensal</SelectItem>
-                  <SelectItem value="yearly">Anual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label>Observações</Label>
-            <Textarea {...register('notes')} rows={3} />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-4 border-t shrink-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {isEditing ? 'Salvar' : 'Criar'}
+              {isEditing ? 'Salvar' : 'Criar Empresa'}
             </Button>
           </div>
         </form>
