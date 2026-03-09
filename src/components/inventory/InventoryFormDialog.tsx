@@ -243,7 +243,7 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="quantity">Quantidade</Label>
               <Input
@@ -257,29 +257,16 @@ export function InventoryFormDialog({ open, onOpenChange, item }: InventoryFormD
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="min_quantity">Qtd. Mínima</Label>
-              <Input
-                id="min_quantity"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.min_quantity || 0}
-                onChange={(e) => handleChange('min_quantity', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="unit">Unidade</Label>
-              <Select
-                value={formData.unit || 'un'}
-                onValueChange={(value) => handleChange('unit', value)}
-              >
+              <Select value={formData.unit || 'un'} onValueChange={(value) => handleChange('unit', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {UNITS.map(unit => (
-                    <SelectItem key={unit.value} value={unit.value}>{unit.label}</SelectItem>
+                  {UNITS.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
