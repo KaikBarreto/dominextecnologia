@@ -273,6 +273,7 @@ export default function Schedule() {
               movingOrderId={touchDrag.movingOrderId}
               onTouchPickUp={touchDrag.pickUp}
               onTouchDrop={touchDrag.dropOn}
+              holidayMap={holidayMap}
             />
           )}
           {viewMode === 'day' && (
