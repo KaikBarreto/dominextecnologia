@@ -97,7 +97,7 @@ export function useCostResources() {
       epiHourlyCost: byCategory.epi
         .filter(r => r.is_active)
         .reduce((sum, r) => sum + (r.hourly_rate ?? 0), 0),
-      giftMonthlyCost: byCategory.gift
+      giftCostPerUnit: byCategory.gift
         .filter(r => r.is_active)
         .reduce((sum, r) => sum + (r.total_monthly_cost ?? 0), 0),
     };
