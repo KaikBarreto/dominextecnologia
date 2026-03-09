@@ -132,6 +132,9 @@ const AppRoutes = () => (
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />
 
+    {/* Checkout - full screen, no layout */}
+    <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+
     {/* Protected Routes */}
     <Route
       element={
@@ -165,7 +168,6 @@ const AppRoutes = () => (
       <Route path="/rastreamento" element={<TechnicianTracking />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       <Route path="/assinatura" element={<Billing />} />
-      <Route path="/checkout" element={<Checkout />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/empresas" element={<AdminCompanies />} />

@@ -75,6 +75,24 @@ export function useInventory() {
 
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
+      // First remove references in service_materials
+      await supabase
+        .from('service_materials')
+        .update({ stock_item_id: null })
+        .eq('stock_item_id', id);
+
+      // Remove references in quote_items
+      await supabase
+        .from('quote_items')
+        .update({ inventory_id: null })
+        .eq('inventory_id', id);
+
+      // Remove inventory movements
+      await supabase
+        .from('inventory_movements')
+        .delete()
+        .eq('inventory_id', id);
+
       const { error } = await supabase
         .from('inventory')
         .delete()

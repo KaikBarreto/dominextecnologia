@@ -39,6 +39,16 @@ export const STAGE_COLORS = [
   { value: 'primary', label: 'Dourado', class: 'bg-primary text-white' },
 ];
 
+// Map legacy named colors to hex for badge inline styles
+const LEGACY_COLOR_MAP: Record<string, string> = {
+  muted: '#6B7280',
+  info: '#3B82F6',
+  warning: '#F59E0B',
+  success: '#22C55E',
+  destructive: '#EF4444',
+  primary: '#00C597',
+};
+
 export function useCrmStages() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -152,7 +162,12 @@ export function useCrmStages() {
 
   const getStageColorClass = (color: string) => {
     const stageColor = STAGE_COLORS.find(c => c.value === color);
-    return stageColor?.class || 'bg-muted text-muted-foreground';
+    return stageColor?.class || '';
+  };
+
+  /** Returns hex color for inline styles (supports both legacy names and hex) */
+  const getStageHex = (color: string): string => {
+    return LEGACY_COLOR_MAP[color] || color || '#6B7280';
   };
 
   return {
@@ -164,5 +179,6 @@ export function useCrmStages() {
     deleteStage,
     reorderStages,
     getStageColorClass,
+    getStageHex,
   };
 }
