@@ -107,6 +107,11 @@ export function useInventory() {
     const price = item.cost_price || 0;
     return acc + (qty * price);
   }, 0);
+  const totalSaleValue = items.reduce((acc, item) => {
+    const qty = item.quantity || 0;
+    const price = item.sale_price || item.cost_price || 0;
+    return acc + (qty * price);
+  }, 0);
 
   return {
     items,
@@ -119,6 +124,7 @@ export function useInventory() {
       totalItems,
       lowStockItems: lowStockItems.length,
       totalValue,
+      totalSaleValue,
     },
   };
 }
