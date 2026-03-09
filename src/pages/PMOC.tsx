@@ -232,13 +232,13 @@ export default function PMOC() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Frequência</TableHead>
-                            <TableHead>Próxima Geração</TableHead>
-                            <TableHead className="text-center">Equipamentos</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[140px]">Ações</TableHead>
+                            <SortableTableHead sortKey="name" sortConfig={planSortConfig} onSort={handlePlanSort}>Nome</SortableTableHead>
+                            <SortableTableHead sortKey="customers.name" sortConfig={planSortConfig} onSort={handlePlanSort}>Cliente</SortableTableHead>
+                            <SortableTableHead sortKey="frequency_months" sortConfig={planSortConfig} onSort={handlePlanSort}>Frequência</SortableTableHead>
+                            <SortableTableHead sortKey="next_generation_date" sortConfig={planSortConfig} onSort={handlePlanSort}>Próxima Geração</SortableTableHead>
+                            <SortableTableHead sortKey="" sortConfig={planSortConfig} onSort={() => {}} className="text-center">Equipamentos</SortableTableHead>
+                            <SortableTableHead sortKey="status" sortConfig={planSortConfig} onSort={handlePlanSort}>Status</SortableTableHead>
+                            <SortableTableHead sortKey="" sortConfig={planSortConfig} onSort={() => {}} className="w-[140px]">Ações</SortableTableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
