@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
-  FileText, Plus, Search, Pencil, Trash2, Eye, Send, CheckCircle2, XCircle,
-  ExternalLink, ClipboardList, DollarSign, Palette,
+  FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
+  ExternalLink, DollarSign, Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,10 +20,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/useQuotes';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
 import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
+import { PricingTab } from '@/components/pricing/PricingTab';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -34,6 +36,7 @@ export default function Quotes() {
   const isMobile = useIsMobile();
   const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
   const { toast } = useToast();
+  const [tab, setTab] = useState<'quotes' | 'pricing'>('quotes');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
@@ -98,216 +101,238 @@ export default function Quotes() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total em Aberto</p>
-            <p className="text-sm sm:text-lg font-bold text-foreground truncate">R$ {kpis.totalOpen.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Taxa de Conversão</p>
-            <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.conversionRate}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Ticket Médio</p>
-            <p className="text-sm sm:text-lg font-bold text-foreground truncate">R$ {kpis.avgTicket.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
-            <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.total}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="quotes" className="flex-1 sm:flex-none">Orçamentos</TabsTrigger>
+          <TabsTrigger value="pricing" className="flex-1 sm:flex-none">Precificação</TabsTrigger>
+        </TabsList>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por cliente ou número..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <TabsContent value="quotes" className="mt-4 space-y-6">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total em Aberto</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground truncate">R$ {kpis.totalOpen.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Taxa de Conversão</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.conversionRate}%</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Ticket Médio</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground truncate">R$ {kpis.avgTicket.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.total}</p>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Table */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground">Nenhum orçamento encontrado</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          {isMobile ? (
-            <div className="p-3 space-y-3">
-              {pagination.paginatedItems.map((q) => (
-                <Card key={q.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-medium text-sm">#{q.quote_number}</span>
-                      <Badge className={STATUS_COLORS[q.status] ?? ''}>{STATUS_LABELS[q.status] ?? q.status}</Badge>
-                    </div>
-                    <p className="text-sm font-medium truncate">{q.customers?.name ?? q.prospect_name ?? '—'}</p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}</span>
-                      <span className="font-semibold text-foreground">R$ {(q.total_value ?? 0).toFixed(2)}</span>
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-1 pt-1 border-t">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewQuote(q)}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}><ExternalLink className="h-3.5 w-3.5" /></Button>
-                      <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => { setEditQuote(q); setFormOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(q.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente ou número..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Table */}
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">Nenhum orçamento encontrado</p>
+              </CardContent>
+            </Card>
           ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nº</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="hidden md:table-cell">Data</TableHead>
-                <TableHead className="hidden sm:table-cell">Validade</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pagination.paginatedItems.map((q) => (
-                <TableRow key={q.id}>
-                  <TableCell className="font-medium">#{q.quote_number}</TableCell>
-                  <TableCell>
-                    {q.customers?.name ?? q.prospect_name ?? '—'}
-                    {!q.customer_id && q.prospect_name && (
-                      <span className="ml-1.5 text-[10px] text-muted-foreground">(prospecto)</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
-                    {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
-                    {q.valid_until ? format(new Date(q.valid_until), 'dd/MM/yy', { locale: ptBR }) : '—'}
-                  </TableCell>
-                  <TableCell className="font-semibold">R$ {(q.total_value ?? 0).toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge className={STATUS_COLORS[q.status] ?? ''}>
-                      {STATUS_LABELS[q.status] ?? q.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <TooltipProvider delayDuration={300}>
-                      <div className="flex justify-end gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewQuote(q)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Visualizar</TooltipContent>
-                        </Tooltip>
+            <Card>
+              {isMobile ? (
+                <div className="p-3 space-y-3">
+                  {pagination.paginatedItems.map((q) => (
+                    <Card key={q.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-medium text-sm">#{q.quote_number}</span>
+                          <Badge className={STATUS_COLORS[q.status] ?? ''}>{STATUS_LABELS[q.status] ?? q.status}</Badge>
+                        </div>
+                        <p className="text-sm font-medium truncate">{q.customers?.name ?? q.prospect_name ?? '—'}</p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}</span>
+                          <span className="font-semibold text-foreground">R$ {(q.total_value ?? 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex flex-wrap justify-end gap-1 pt-1 border-t">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewQuote(q)}><Eye className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}><ExternalLink className="h-3.5 w-3.5" /></Button>
+                          <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => { setEditQuote(q); setFormOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(q.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nº</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="hidden md:table-cell">Data</TableHead>
+                      <TableHead className="hidden sm:table-cell">Validade</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagination.paginatedItems.map((q) => (
+                      <TableRow key={q.id}>
+                        <TableCell className="font-medium">#{q.quote_number}</TableCell>
+                        <TableCell>
+                          {q.customers?.name ?? q.prospect_name ?? '—'}
+                          {!q.customer_id && q.prospect_name && (
+                            <span className="ml-1.5 text-[10px] text-muted-foreground">(prospecto)</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
+                          {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
+                          {q.valid_until ? format(new Date(q.valid_until), 'dd/MM/yy', { locale: ptBR }) : '—'}
+                        </TableCell>
+                        <TableCell className="font-semibold">R$ {(q.total_value ?? 0).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge className={STATUS_COLORS[q.status] ?? ''}>
+                            {STATUS_LABELS[q.status] ?? q.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <TooltipProvider delayDuration={300}>
+                            <div className="flex justify-end gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewQuote(q)}>
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Visualizar</TooltipContent>
+                              </Tooltip>
 
-                        {q.status === 'enviado' && (
-                          <>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
-                                  onClick={() => updateStatus.mutate({ id: q.id, status: 'aprovado' })}>
-                                  <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Aprovar</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                                  onClick={() => updateStatus.mutate({ id: q.id, status: 'rejeitado' })}>
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Rejeitar</TooltipContent>
-                            </Tooltip>
-                          </>
-                        )}
+                              {q.status === 'enviado' && (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
+                                        onClick={() => updateStatus.mutate({ id: q.id, status: 'aprovado' })}>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Aprovar</TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                                        onClick={() => updateStatus.mutate({ id: q.id, status: 'rejeitado' })}>
+                                        <XCircle className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Rejeitar</TooltipContent>
+                                  </Tooltip>
+                                </>
+                              )}
 
-                        {q.status === 'aprovado' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
-                                onClick={() => createFinancialFromQuote.mutate(q)}>
-                                <DollarSign className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Gerar Conta a Receber</TooltipContent>
-                          </Tooltip>
-                        )}
+                              {q.status === 'aprovado' && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
+                                      onClick={() => createFinancialFromQuote.mutate(q)}>
+                                      <DollarSign className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Gerar Conta a Receber</TooltipContent>
+                                </Tooltip>
+                              )}
 
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}>
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Abrir em nova guia</TooltipContent>
-                        </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}>
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Abrir em nova guia</TooltipContent>
+                              </Tooltip>
 
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="edit-ghost" size="icon" className="h-8 w-8"
-                              onClick={() => { setEditQuote(q); setFormOpen(true); }}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Editar</TooltipContent>
-                        </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="edit-ghost" size="icon" className="h-8 w-8"
+                                    onClick={() => { setEditQuote(q); setFormOpen(true); }}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Editar</TooltipContent>
+                              </Tooltip>
 
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(q.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Excluir</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TooltipProvider>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(q.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Excluir</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TooltipProvider>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              <DataTablePagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                from={pagination.from}
+                to={pagination.to}
+                pageSize={pagination.pageSize}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </Card>
           )}
-          <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
-        </Card>
-      )}
+        </TabsContent>
+
+        <TabsContent value="pricing" className="mt-4">
+          <PricingTab />
+        </TabsContent>
+      </Tabs>
 
       <QuoteFormDialog open={formOpen} onOpenChange={setFormOpen} quote={editQuote} />
       <QuoteViewDialog open={!!viewQuote} onOpenChange={(o) => !o && setViewQuote(null)} quote={viewQuote ? (quotes.find(q => q.id === viewQuote.id) ?? viewQuote) : null} />
