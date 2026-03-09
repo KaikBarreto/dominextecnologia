@@ -61,7 +61,8 @@ export function EquipmentPanel() {
     return matchesSearch && matchesCategory && matchesCustomer;
   });
 
-  const pagination = useDataPagination(filteredEquipment);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredEquipment);
+  const pagination = useDataPagination(sortedItems);
 
   const handleSubmit = async (data: EquipmentInput) => {
     if (editingEquipment) {
