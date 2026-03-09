@@ -9,17 +9,10 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { generateDreHtml } from '@/utils/dreHtmlGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
-// DRE classification by category name
-function classifyCategory(category: string | null): 'impostos' | 'cpv' | 'opex' {
-  const lower = (category || '').toLowerCase();
-  if (/imposto|taxa|tributo|icms|iss|pis|cofins/.test(lower)) return 'impostos';
-  if (/custo|material|peça|peca|fornecedor|insumo/.test(lower)) return 'cpv';
-  return 'opex';
 }
 
 interface FinanceDREProps {
@@ -34,20 +27,43 @@ interface CategoryBreakdown {
 
 export function FinanceDRE({ transactions }: FinanceDREProps) {
   const { settings } = useCompanySettings();
+  const { categories: financialCategories } = useFinancialCategories();
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
   const [showOpex, setShowOpex] = useState(false);
   const [showReceita, setShowReceita] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const { dre, impostosCategories, cpvCategories, opexCategories, receitaCategories } = useMemo(() => {
+  // Build a map from category name to dre_group using the DB field
+  const categoryDreGroupMap = useMemo(() => {
+    const map = new Map<string, string>();
+    financialCategories.forEach((c: any) => {
+      map.set(c.name, c.dre_group || 'opex');
+    });
+    return map;
+  }, [financialCategories]);
+
+  // Classify category using the dre_group field from financial_categories table
+  function classifyCategory(category: string | null): 'impostos' | 'cmv' | 'opex' {
+    const catName = category || '';
+    const dreGroup = categoryDreGroupMap.get(catName);
+    if (dreGroup === 'impostos') return 'impostos';
+    if (dreGroup === 'cmv') return 'cmv';
+    // Fallback: regex matching for backwards compatibility
+    const lower = catName.toLowerCase();
+    if (/imposto|taxa|tributo|icms|iss|pis|cofins/.test(lower)) return 'impostos';
+    if (/custo|material|peça|peca|fornecedor|insumo/.test(lower)) return 'cmv';
+    return 'opex';
+  }
+
+  const { dre, impostosCategories, cmvCategories, opexCategories, receitaCategories } = useMemo(() => {
     let receitaBruta = 0;
     let impostos = 0;
-    let cpv = 0;
+    let cmv = 0;
     let opex = 0;
 
     const impostosMap = new Map<string, number>();
-    const cpvMap = new Map<string, number>();
+    const cmvMap = new Map<string, number>();
     const opexMap = new Map<string, number>();
     const receitaMap = new Map<string, number>();
 
@@ -62,9 +78,9 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
         if (cls === 'impostos') {
           impostos += amount;
           impostosMap.set(cat, (impostosMap.get(cat) || 0) + amount);
-        } else if (cls === 'cpv') {
-          cpv += amount;
-          cpvMap.set(cat, (cpvMap.get(cat) || 0) + amount);
+        } else if (cls === 'cmv') {
+          cmv += amount;
+          cmvMap.set(cat, (cmvMap.get(cat) || 0) + amount);
         } else {
           opex += amount;
           opexMap.set(cat, (opexMap.get(cat) || 0) + amount);
@@ -73,9 +89,9 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
     });
 
     const receitaLiquida = receitaBruta - impostos;
-    const lucroBruto = receitaLiquida - cpv;
+    const lucroBruto = receitaLiquida - cmv;
     const resultadoLiquido = lucroBruto - opex;
-    const margem = receitaBruta > 0 ? (resultadoLiquido / receitaBruta) * 100 : 0;
+    const margem = receitaBruta > 0 ? (lucroBruto / receitaBruta) * 100 : 0;
 
     const mapToArray = (map: Map<string, number>): CategoryBreakdown[] =>
       Array.from(map.entries())
@@ -83,13 +99,13 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
         .sort((a, b) => b.value - a.value);
 
     return {
-      dre: { receitaBruta, impostos, receitaLiquida, cpv, lucroBruto, opex, resultadoLiquido, margem },
+      dre: { receitaBruta, impostos, receitaLiquida, cmv, lucroBruto, opex, resultadoLiquido, margem },
       impostosCategories: mapToArray(impostosMap),
-      cpvCategories: mapToArray(cpvMap),
+      cmvCategories: mapToArray(cmvMap),
       opexCategories: mapToArray(opexMap),
       receitaCategories: mapToArray(receitaMap),
     };
-  }, [transactions]);
+  }, [transactions, categoryDreGroupMap]);
 
   // Monthly chart data
   const monthlyData = useMemo(() => {
@@ -129,8 +145,8 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
         impostos: dre.impostos,
         impostosCategories,
         receitaLiquida: dre.receitaLiquida,
-        cpv: dre.cpv,
-        cpvCategories,
+        cpv: dre.cmv,
+        cpvCategories: cmvCategories,
         lucroBruto: dre.lucroBruto,
         opex: dre.opex,
         opexCategories,
@@ -145,12 +161,12 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
   const ResultIcon = dre.resultadoLiquido > 0 ? TrendingUp : dre.resultadoLiquido < 0 ? TrendingDown : Minus;
 
   const getResultBg = () => {
-    if (dre.resultadoLiquido === 0) return 'bg-foreground';
+    if (dre.resultadoLiquido === 0) return 'bg-muted-foreground';
     return dre.resultadoLiquido > 0 ? 'bg-success' : 'bg-destructive';
   };
 
   const getGrossProfitBg = () => {
-    if (dre.lucroBruto === 0) return 'bg-foreground';
+    if (dre.lucroBruto === 0) return 'bg-muted-foreground';
     return dre.lucroBruto > 0 ? 'bg-success' : 'bg-destructive';
   };
 
@@ -229,7 +245,7 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
         <Card className={cn('border-0', dre.margem >= 0 ? 'bg-success' : 'bg-destructive')}>
           <CardContent className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Margem de Lucro</p>
+            <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Margem Bruta</p>
             <p className="text-2xl sm:text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
           </CardContent>
         </Card>
@@ -271,10 +287,10 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
       )}
 
       {/* DRE Table */}
-      <Card className="border-0 shadow-lg overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-gray-900 to-gray-800 pb-4">
+      <Card className="border shadow-lg overflow-hidden">
+        <CardHeader className="bg-foreground pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 text-white">
+            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 text-background">
               Demonstrativo de Resultado (DRE)
             </CardTitle>
             <Button
@@ -282,7 +298,7 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
               size="sm"
               onClick={handleExport}
               disabled={isExporting}
-              className="gap-2 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white w-full sm:w-auto"
+              className="gap-2 text-xs bg-transparent border-background/20 text-background hover:bg-background/20 hover:text-background w-full sm:w-auto"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               {isExporting ? 'Exportando...' : 'Exportar'}
@@ -301,7 +317,7 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
             renderList={renderReceitaList}
           />
 
-          {/* Impostos */}
+          {/* Impostos e Deduções */}
           {impostosCategories.length > 0 && (
             <CollapsibleSection
               label="(-) Impostos e Deduções"
@@ -318,12 +334,12 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
             <span className="text-base font-bold text-white">{formatCurrency(dre.receitaLiquida)}</span>
           </div>
 
-          {/* CPV */}
-          {cpvCategories.length > 0 && (
+          {/* CMV - Custo de Mercadoria/Serviço Vendido */}
+          {cmvCategories.length > 0 && (
             <CollapsibleSection
-              label="(-) CPV (Custo do Serviço)"
-              total={dre.cpv}
-              categories={cpvCategories}
+              label="(-) CMV (Custo da Mercadoria/Serviço)"
+              total={dre.cmv}
+              categories={cmvCategories}
               open={showCpv}
               onToggle={() => setShowCpv(!showCpv)}
             />
@@ -366,8 +382,8 @@ export function FinanceDRE({ transactions }: FinanceDREProps) {
       </Card>
 
       <p className="text-xs text-muted-foreground text-center">
-        * O DRE é calculado automaticamente com base nas categorias das transações. 
-        Categorias com "imposto/taxa" são classificadas como deduções, "custo/material/fornecedor" como CPV, e demais como OPEX.
+        * O DRE é classificado automaticamente com base no campo "Grupo DRE" de cada categoria financeira. 
+        Categorias marcadas como "Impostos" vão para deduções, "CMV" para custo do serviço, e "OPEX" para despesas operacionais.
       </p>
     </div>
   );
