@@ -93,7 +93,8 @@ export default function ServiceOrders() {
     });
   }, [serviceOrders, searchTerm, statusFilter, range, viewMode]);
 
-  const pagination = useDataPagination(filteredOrders);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredOrders);
+  const pagination = useDataPagination(sortedItems);
 
   const statusOptions = statuses.length
     ? statuses.map((s) => ({ key: s.key as OsStatus, label: s.label, color: s.color }))
