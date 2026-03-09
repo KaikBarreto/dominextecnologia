@@ -95,17 +95,22 @@ export default function EquipmentDetail() {
     : '';
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !id) return;
     setUploadingFiles(true);
+    const total = files.length;
+    setUploadProgress({ current: 0, total });
     try {
-      for (const file of Array.from(files)) {
-        await uploadAttachment.mutateAsync({ equipmentId: id, file });
+      for (let i = 0; i < total; i++) {
+        await uploadAttachment.mutateAsync({ equipmentId: id, file: files[i] });
+        setUploadProgress({ current: i + 1, total });
       }
     } finally {
       setUploadingFiles(false);
+      setUploadProgress(null);
       e.target.value = '';
     }
   };
