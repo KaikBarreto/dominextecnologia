@@ -446,6 +446,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               onChange={e => setKmCostCfg(Number(e.target.value) || 0)} className="h-9" />
           </FieldBox>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <FieldBox label="Desconto à vista (%)">
+            <Input type="number" min={0} max={100} step="0.1" value={cardDiscountRateCfg}
+              onChange={e => setCardDiscountRateCfg(Number(e.target.value) || 0)} className="h-9" />
+          </FieldBox>
+          <FieldBox label="Parcelas (cartão)">
+            <Input type="number" min={1} step="1" value={cardInstallmentsCfg}
+              onChange={e => setCardInstallmentsCfg(Math.max(1, Number(e.target.value) || 1))} className="h-9" />
+          </FieldBox>
+        </div>
       </section>
 
       <Separator />
