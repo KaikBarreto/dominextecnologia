@@ -41,6 +41,7 @@ import ServiceRating from "./pages/ServiceRating";
 import Changelog from "./pages/Changelog";
 import Tutorials from "./pages/Tutorials";
 import Employees from "./pages/Employees";
+import TimeClock from "./pages/TimeClock";
 import Billing from "./pages/Billing";
 import TechnicianTracking from "./pages/TechnicianTracking";
 import LiveMap from "./pages/LiveMap";
@@ -165,6 +166,7 @@ const AppRoutes = () => (
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Teams />} />
       <Route path="/funcionarios" element={<Employees />} />
+      <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<TechnicianTracking />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       <Route path="/assinatura" element={<Billing />} />
