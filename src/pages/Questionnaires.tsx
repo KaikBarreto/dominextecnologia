@@ -108,7 +108,7 @@ export default function QuestionnairesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {templates.map((template) => {
+                  {sortedTemplates.map((template) => {
                     const serviceIds = (template as any).service_type_ids as string[] | undefined;
                     const appliesToAll = !serviceIds || serviceIds.length === 0;
                     const linkedServices = appliesToAll

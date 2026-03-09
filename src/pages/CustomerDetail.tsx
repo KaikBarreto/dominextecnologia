@@ -77,10 +77,14 @@ export default function CustomerDetail() {
   // Portal tickets (origin = 'portal')
   const portalTickets = customerOrders.filter(os => (os as any).origin === 'portal');
 
-  const ordersPagination = useDataPagination(customerOrders);
-  const transactionsPagination = useDataPagination(customerTransactions);
-  const ticketsPagination = useDataPagination(portalTickets);
-  const contractsPagination = useDataPagination(customerContracts);
+  const { sortedItems: sortedOrders, sortConfig: osSortConfig, handleSort: handleOsSort } = useTableSort(customerOrders);
+  const ordersPagination = useDataPagination(sortedOrders);
+  const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(customerTransactions);
+  const transactionsPagination = useDataPagination(sortedTransactions);
+  const { sortedItems: sortedTickets, sortConfig: ticketSortConfig, handleSort: handleTicketSort } = useTableSort(portalTickets);
+  const ticketsPagination = useDataPagination(sortedTickets);
+  const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(customerContracts);
+  const contractsPagination = useDataPagination(sortedContracts);
 
   // Load existing portal link
   useEffect(() => {
