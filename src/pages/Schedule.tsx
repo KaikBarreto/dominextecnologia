@@ -64,6 +64,30 @@ export default function Schedule() {
 
   const { financialEvents } = useFinancialScheduleEvents();
 
+  // Holidays
+  const showHolidays = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('usability-settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.showHolidays !== false; // default true
+      }
+    } catch {}
+    return true;
+  }, []);
+
+  const holidayMap = useMemo(() => {
+    if (!showHolidays) return {};
+    const city = companySettings?.city || '';
+    const state = companySettings?.state || '';
+    const year = getYear(currentDate);
+    const holidays = getAllHolidays(city, state, year);
+    // Also get adjacent year if near boundary
+    const prevYearHolidays = getAllHolidays(city, state, year - 1);
+    const nextYearHolidays = getAllHolidays(city, state, year + 1);
+    return buildHolidayMap([...prevYearHolidays, ...holidays, ...nextYearHolidays]);
+  }, [showHolidays, companySettings?.city, companySettings?.state, currentDate]);
+
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
       if (isTechnician && user?.id) {
