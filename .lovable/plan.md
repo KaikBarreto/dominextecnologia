@@ -1,17 +1,64 @@
 
+# Plan: Correções do Módulo BDI e Melhorias de UI
 
-## Plan: Módulo Contratos (ex-PMOC) — Implementado ✅
+## Diagnóstico dos Problemas
 
-### Implementado
+### 1. Erro ao Adicionar Material
+**Causa**: A coluna `subtotal` na tabela `service_materials` é **GENERATED** (`purchase_price * quantity`), não pode receber valores diretamente.
+**Solução**: Remover `subtotal` dos payloads de INSERT/UPDATE em `useServiceMaterials.ts`.
 
-1. **Banco de dados**: Tabelas `contracts`, `contract_items`, `contract_occurrences` criadas com RLS por `company_id`. Colunas `contract_id` e `origin` adicionadas a `service_orders`.
+### 2. Preço Unitário Zerado em Serviços  
+**Causa**: Não há registro em `service_costs` para o tipo de serviço "Instalação", então todos os custos vêm como 0.
+**Solução**: É necessário configurar os custos em **Serviços → Custos** primeiro. Adicionarei feedback visual indicando quando um serviço não tem custos configurados.
 
-2. **Hooks**: `useContracts.ts` (CRUD, stats, geração de OSs em batch) e `useContractDetail.ts` (detalhe, ocorrências, progresso).
+### 3. Coluna `labor_cost` também é GENERATED
+A tabela `service_costs` possui `labor_cost` como coluna gerada (`hourly_rate * hours`). Verificar que o hook não tenta inserir esse valor.
 
-3. **ContractFormDialog**: Sheet lateral com stepper de 4 etapas (Informações → Frequência → Itens → Revisão). Atalhos rápidos de frequência, prévia de datas, aviso de fins de semana, itens manuais.
+---
 
-4. **Páginas**: `/contratos` (listagem com KPIs, filtros, tabela) e `/contratos/:id` (detalhe 2 colunas com progresso e ocorrências).
+## Implementações
 
-5. **Navegação**: PMOC → Contratos em sidebar, topbar, mobile menu. Rota `/pmoc` redireciona para `/contratos`. Permissão `screen:contracts`.
+### A) Fix: useServiceMaterials.ts
+Remover campo `subtotal` das operações de insert/update (é coluna computada).
 
-### Tabelas PMOC antigas mantidas (sem perda de dados)
+### B) Fix: useServiceCosts.ts  
+Remover campo `labor_cost` das operações (é coluna computada).
+
+### C) BDI Summary Card - Estilo Dark Gradient
+Aplicar:
+- Background: gradiente escuro (`from-slate-900 via-slate-800 to-slate-900`)
+- Textos: brancos
+- Ícones: brancos
+- Badges: outline claro
+
+### D) Modal "Calcular" em Mão de Obra
+Novo componente `LaborCalculatorModal.tsx`:
+- Inputs: Salário mensal do funcionário, Horas/mês trabalhadas
+- Cálculo: Custo/hora = Salário ÷ Horas/mês
+- Botão "Aplicar" preenche o campo custo/hora automaticamente
+
+### E) Modal de Custos Extras
+Novo componente `ExtraCostModal.tsx`:
+- Tipos pré-definidos: Carro, Ferramentas, Equipamentos, EPI, Combustível, Outros
+- Campo descrição customizada quando "Outros"
+- Campo valor
+- Botão adicionar
+
+### F) Feedback em Orçamentos
+Quando serviço não tem custos configurados:
+- Mostrar badge de aviso: "Sem custos configurados"
+- Sugerir ir para Serviços → Custos
+
+---
+
+## Arquivos Modificados/Criados
+
+| Arquivo | Ação |
+|---------|------|
+| `src/hooks/useServiceMaterials.ts` | Remover `subtotal` do payload |
+| `src/hooks/useServiceCosts.ts` | Remover `labor_cost` do payload |
+| `src/components/quotes/BDISummaryCard.tsx` | Estilo dark gradient |
+| `src/components/service-orders/LaborCalculatorModal.tsx` | **Novo** - Modal cálculo HH |
+| `src/components/service-orders/ExtraCostModal.tsx` | **Novo** - Modal custos extras |
+| `src/components/service-orders/ServiceCostsTab.tsx` | Integrar modais |
+| `src/components/quotes/QuoteFormDialog.tsx` | Feedback serviço sem custo |
