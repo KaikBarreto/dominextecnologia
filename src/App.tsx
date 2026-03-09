@@ -166,6 +166,7 @@ const AppRoutes = () => (
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Teams />} />
       <Route path="/funcionarios" element={<Employees />} />
+      <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<TechnicianTracking />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       <Route path="/assinatura" element={<Billing />} />
