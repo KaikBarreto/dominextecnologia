@@ -268,6 +268,14 @@ export default function Settings() {
         { key: 'confirmDelete', title: 'Confirmar Exclusões', description: 'Exibir diálogo de confirmação antes de excluir registros' },
       ],
     },
+    {
+      title: 'Agenda',
+      icon: Calendar,
+      description: 'Configurações da agenda e calendário',
+      items: [
+        { key: 'showHolidays', title: 'Exibir Feriados', description: 'Mostrar feriados nacionais e municipais na agenda' },
+      ],
+    },
   ];
 
   const renderContent = () => {
