@@ -96,7 +96,7 @@ function TopbarAppLayout() {
   return (
     <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
       <TopbarLayout />
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4 lg:hidden">
         {logoLoading ? (
           <div className="h-6 w-24 rounded bg-muted animate-pulse" />
         ) : (
