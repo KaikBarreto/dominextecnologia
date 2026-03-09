@@ -57,22 +57,40 @@ function buildTooltipHtml(tech: TechMarker, routeInfo?: RouteInfo) {
   const ev = eventLabels[tech.event_type] || eventLabels.tracking;
   const color = eventColors[tech.event_type] || '#3b82f6';
 
+  return `
+    <div style="min-width:160px;font-family:system-ui,sans-serif;line-height:1.4">
+      <div style="font-weight:700;font-size:12px;margin-bottom:2px">${tech.full_name}</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block"></span>
+        <span style="font-size:11px;color:#555">${ev.emoji} ${ev.label}</span>
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:1px">Há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
+    </div>
+  `;
+}
+
+function buildPopupHtml(tech: TechMarker, routeInfo?: RouteInfo) {
+  const lastUpdate = new Date(tech.updated_at);
+  const timeAgo = Math.round((Date.now() - lastUpdate.getTime()) / 60000);
+  const ev = eventLabels[tech.event_type] || eventLabels.tracking;
+  const color = eventColors[tech.event_type] || '#3b82f6';
+
   const etaHtml = routeInfo
-    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding-top:4px;border-top:1px solid #e5e7eb">
-        <span style="font-size:12px;font-weight:600;color:#6366f1">🕐 Chegada em ~${routeInfo.route.durationMinutes} min</span>
-        <span style="font-size:11px;color:#888">(${routeInfo.route.distanceKm} km)</span>
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb">
+        <span style="font-size:13px;font-weight:600;color:#6366f1">🕐 Chegada em ~${routeInfo.route.durationMinutes} min</span>
+        <span style="font-size:12px;color:#888">(${routeInfo.route.distanceKm} km)</span>
       </div>`
     : '';
 
   return `
-    <div style="min-width:180px;font-family:system-ui,sans-serif;line-height:1.4">
-      <div style="font-weight:700;font-size:13px;margin-bottom:4px">${tech.full_name}</div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-        <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>
-        <span style="font-size:12px;color:#555">${ev.emoji} ${ev.label}</span>
+    <div style="min-width:260px;font-family:system-ui,sans-serif;line-height:1.5;padding:4px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">${tech.full_name}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block"></span>
+        <span style="font-size:14px;color:#555">${ev.emoji} ${ev.label}</span>
       </div>
-      ${tech.service_order_id ? `<div style="font-size:11px;color:#888">OS vinculada</div>` : ''}
-      <div style="font-size:11px;color:#aaa;margin-top:2px">Há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
+      ${tech.service_order_id ? `<div style="font-size:12px;color:#888">OS vinculada</div>` : ''}
+      <div style="font-size:12px;color:#aaa;margin-top:4px">Última atualização: há ${timeAgo < 1 ? 'menos de 1' : timeAgo} min</div>
       ${etaHtml}
     </div>
   `;
