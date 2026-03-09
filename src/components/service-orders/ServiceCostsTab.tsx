@@ -128,7 +128,7 @@ export function ServiceCostsTab() {
             </div>
           ) : (
             <Tabs defaultValue="mao_de_obra" className="w-full">
-              <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1">
+              <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
                 <TabsTrigger value="mao_de_obra">Mão de obra</TabsTrigger>
                 <TabsTrigger value="recursos">Recursos</TabsTrigger>
                 <TabsTrigger value="materiais">Materiais</TabsTrigger>
@@ -136,7 +136,7 @@ export function ServiceCostsTab() {
               </TabsList>
 
               <TabsContent value="mao_de_obra" className="mt-4">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                   <Card>
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
