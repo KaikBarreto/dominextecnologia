@@ -23,6 +23,7 @@ import {
   FolderOpen,
   Boxes,
   ScrollText,
+  Clock,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
