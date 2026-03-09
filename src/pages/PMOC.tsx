@@ -244,7 +244,7 @@ export default function PMOC() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredPlans.map(plan => {
+                          {sortedPlans.map(plan => {
                             const isOverdue = isBefore(new Date(plan.next_generation_date), new Date()) && plan.status === 'ativo';
                             const futureCount = futureOsCount(plan);
                             return (
