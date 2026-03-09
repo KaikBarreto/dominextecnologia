@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,6 +59,14 @@ function getDefaultItems(category: CostResourceCategory): CostItem[] {
   }
 }
 
+const categoryLabels: Record<CostResourceCategory, string> = {
+  vehicle: 'Veículo',
+  tool: 'Ferramenta',
+  gift: 'Brinde',
+  epi: 'EPI / Uniforme',
+  other: 'Outro',
+};
+
 export function CostResourceFormSheet({
   open,
   onOpenChange,
@@ -75,12 +83,10 @@ export function CostResourceFormSheet({
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<CostItem[]>([]);
   
-  // Depreciation calculator state
   const [depCalcOpen, setDepCalcOpen] = useState(false);
   const [value0km, setValue0km] = useState(0);
   const [value2years, setValue2years] = useState(0);
 
-  // Reset form when opening/closing or when resource changes
   useEffect(() => {
     if (open) {
       if (resource) {
@@ -107,61 +113,34 @@ export function CostResourceFormSheet({
     }
   }, [open, resource, existingItems, category]);
 
-  // Calculate totals
-  const totalMonthly = useMemo(() => {
-    return items.reduce((sum, item) => sum + (item.value || 0), 0);
-  }, [items]);
-
-  const hourlyRate = useMemo(() => {
-    return monthlyHours > 0 ? totalMonthly / monthlyHours : 0;
-  }, [totalMonthly, monthlyHours]);
-
+  const totalMonthly = useMemo(() => items.reduce((sum, item) => sum + (item.value || 0), 0), [items]);
+  const hourlyRate = useMemo(() => monthlyHours > 0 ? totalMonthly / monthlyHours : 0, [totalMonthly, monthlyHours]);
   const calculatedDepreciation = useMemo(() => {
-    if (value0km > 0 && value2years >= 0 && value0km > value2years) {
-      return (value0km - value2years) / 24;
-    }
+    if (value0km > 0 && value2years >= 0 && value0km > value2years) return (value0km - value2years) / 24;
     return 0;
   }, [value0km, value2years]);
 
-  const handleAddItem = () => {
-    setItems([...items, { name: '', value: 0, is_monthly: true, annual_value: null }]);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
+  const handleAddItem = () => setItems([...items, { name: '', value: 0, is_monthly: true, annual_value: null }]);
+  const handleRemoveItem = (index: number) => setItems(items.filter((_, i) => i !== index));
 
   const handleItemChange = (index: number, field: keyof CostItem, value: any) => {
     setItems(items.map((item, i) => {
       if (i !== index) return item;
-      
       const updated = { ...item, [field]: value };
-      
-      // If toggling to annual, set value to annual_value / 12
-      if (field === 'is_monthly' && !value && updated.annual_value) {
-        updated.value = updated.annual_value / 12;
-      }
-      // If changing annual_value, update monthly value
-      if (field === 'annual_value' && !item.is_monthly) {
-        updated.value = (value || 0) / 12;
-      }
-      
+      if (field === 'is_monthly' && !value && updated.annual_value) updated.value = updated.annual_value / 12;
+      if (field === 'annual_value' && !item.is_monthly) updated.value = (value || 0) / 12;
       return updated;
     }));
   };
 
   const applyDepreciation = () => {
-    // Find depreciation item and update it
     const depIndex = items.findIndex(i => i.name.toLowerCase().includes('deprecia'));
-    if (depIndex >= 0) {
-      handleItemChange(depIndex, 'value', calculatedDepreciation);
-    }
+    if (depIndex >= 0) handleItemChange(depIndex, 'value', calculatedDepreciation);
     setDepCalcOpen(false);
   };
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    
     onSave({
       name: name.trim(),
       monthly_hours: monthlyHours,
@@ -171,248 +150,170 @@ export function CostResourceFormSheet({
     });
   };
 
-  const categoryLabels: Record<CostResourceCategory, string> = {
-    vehicle: 'Veículo',
-    tool: 'Ferramenta',
-    gift: 'Brinde',
-    epi: 'EPI / Uniforme',
-    other: 'Outro',
-  };
+  const footer = (
+    <Button className="w-full" onClick={handleSubmit} disabled={!name.trim() || isPending}>
+      <Save className="h-4 w-4 mr-2" />
+      {isPending ? 'Salvando...' : 'Salvar'}
+    </Button>
+  );
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{resource ? 'Editar' : 'Novo'} {categoryLabels[category]}</SheetTitle>
-          <SheetDescription>
-            {category === 'gift'
-              ? 'Brindes são custos por execução do serviço, não rateados por hora.'
-              : 'Componentes de custo serão rateados automaticamente por hora.'}
-          </SheetDescription>
-        </SheetHeader>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`${resource ? 'Editar' : 'Novo'} ${categoryLabels[category]}`}
+      className="sm:max-w-[540px]"
+      footer={footer}
+    >
+      <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          {category === 'gift'
+            ? 'Brindes são custos por execução do serviço, não rateados por hora.'
+            : 'Componentes de custo serão rateados automaticamente por hora.'}
+        </p>
 
-        <div className="space-y-6 mt-6">
-          {/* Basic fields */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome do recurso</Label>
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder={`Ex: ${category === 'vehicle' ? 'Spin 2024' : category === 'tool' ? 'Manômetro Testo' : 'Kit Padrão'}`}
-              />
-            </div>
-
-            {category !== 'gift' && (
-              <div className="space-y-2">
-                <Label>Horas de uso mensal (para rateio)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={monthlyHours}
-                  onChange={e => setMonthlyHours(Number(e.target.value) || 176)}
-                />
-                <p className="text-xs text-muted-foreground">Padrão: 176h (22 dias × 8h)</p>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <Label>Recurso ativo</Label>
-              <Switch checked={isActive} onCheckedChange={setIsActive} />
-            </div>
-          </div>
-
-          {/* Depreciation calculator for vehicles */}
-          {category === 'vehicle' && (
-            <Collapsible open={depCalcOpen} onOpenChange={setDepCalcOpen}>
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="w-full justify-between">
-                  <span className="flex items-center gap-2">
-                    <Calculator className="h-4 w-4" />
-                    Calculadora de Depreciação
-                  </span>
-                  {depCalcOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card>
-                  <CardContent className="p-4 space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Fórmula: (Valor 0km − Valor após 2 anos) ÷ 24 meses
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Valor 0km (R$)</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={value0km || ''}
-                          onChange={e => setValue0km(Number(e.target.value) || 0)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Valor após 2 anos (R$)</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={value2years || ''}
-                          onChange={e => setValue2years(Number(e.target.value) || 0)}
-                        />
-                      </div>
-                    </div>
-                    {calculatedDepreciation > 0 && (
-                      <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
-                        <span className="text-sm">Depreciação mensal:</span>
-                        <span className="font-semibold text-primary">R$ {formatBRL(calculatedDepreciation)}</span>
-                      </div>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="w-full"
-                      disabled={calculatedDepreciation <= 0}
-                      onClick={applyDepreciation}
-                    >
-                      Aplicar ao campo de depreciação
-                    </Button>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-
-          {/* Cost items */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Componentes de Custo</Label>
-              <Button size="sm" variant="outline" onClick={handleAddItem}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {items.map((item, index) => (
-                <Card key={index}>
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Nome do componente"
-                        value={item.name}
-                        onChange={e => handleItemChange(index, 'name', e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-destructive hover:text-destructive"
-                        onClick={() => handleRemoveItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id={`annual-${index}`}
-                          checked={!item.is_monthly}
-                          onCheckedChange={checked => handleItemChange(index, 'is_monthly', !checked)}
-                        />
-                        <Label htmlFor={`annual-${index}`} className="text-xs cursor-pointer">
-                          Valor anual (÷12)
-                        </Label>
-                      </div>
-                      
-                      {!item.is_monthly ? (
-                        <div className="flex-1 flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            placeholder="Valor anual"
-                            value={item.annual_value ?? ''}
-                            onChange={e => handleItemChange(index, 'annual_value', Number(e.target.value) || 0)}
-                            className="flex-1"
-                          />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            = R$ {formatBRL(item.value)}/mês
-                          </span>
-                        </div>
-                      ) : (
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          placeholder="Valor mensal"
-                          value={item.value || ''}
-                          onChange={e => handleItemChange(index, 'value', Number(e.target.value) || 0)}
-                          className="flex-1"
-                        />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {items.length === 0 && (
-                <div className="text-center py-4 text-sm text-muted-foreground border border-dashed rounded-md">
-                  Nenhum componente de custo adicionado
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Notes */}
+        {/* Basic fields */}
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Observações</Label>
-            <Textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Observações internas sobre este recurso..."
-              rows={2}
+            <Label>Nome do recurso</Label>
+            <Input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder={`Ex: ${category === 'vehicle' ? 'Spin 2024' : category === 'tool' ? 'Manômetro Testo' : 'Kit Padrão'}`}
             />
           </div>
 
-          {/* Preview */}
-          <Card className="bg-muted/30">
-            <CardContent className="p-4 space-y-2">
-              <p className="text-sm font-medium text-foreground">Resumo</p>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total mensal:</span>
-                <span className="font-semibold">R$ {formatBRL(totalMonthly)}</span>
-              </div>
-              {category !== 'gift' && (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Horas mensais:</span>
-                    <span>{monthlyHours}h</span>
-                  </div>
-                  <div className="flex justify-between text-sm pt-2 border-t border-border">
-                    <span className="font-medium text-primary">Custo/hora:</span>
-                    <span className="text-lg font-bold text-primary">R$ {formatBRL(hourlyRate)}/h</span>
-                  </div>
-                </>
-              )}
-              {category === 'gift' && (
-                <div className="flex justify-between text-sm pt-2 border-t border-border">
-                  <span className="font-medium text-primary">Custo/execução:</span>
-                  <span className="text-lg font-bold text-primary">R$ {formatBRL(totalMonthly)}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {category !== 'gift' && (
+            <div className="space-y-2">
+              <Label>Horas de uso mensal (para rateio)</Label>
+              <Input type="number" min={1} value={monthlyHours} onChange={e => setMonthlyHours(Number(e.target.value) || 176)} />
+              <p className="text-xs text-muted-foreground">Padrão: 176h (22 dias × 8h)</p>
+            </div>
+          )}
 
-          {/* Save button */}
-          <Button
-            className="w-full"
-            onClick={handleSubmit}
-            disabled={!name.trim() || isPending}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {isPending ? 'Salvando...' : 'Salvar'}
-          </Button>
+          <div className="flex items-center justify-between">
+            <Label>Recurso ativo</Label>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        {/* Depreciation calculator for vehicles */}
+        {category === 'vehicle' && (
+          <Collapsible open={depCalcOpen} onOpenChange={setDepCalcOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Calculator className="h-4 w-4" />
+                  Calculadora de Depreciação
+                </span>
+                {depCalcOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">Fórmula: (Valor 0km − Valor após 2 anos) ÷ 24 meses</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Valor 0km (R$)</Label>
+                      <Input type="number" min={0} value={value0km || ''} onChange={e => setValue0km(Number(e.target.value) || 0)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Valor após 2 anos (R$)</Label>
+                      <Input type="number" min={0} value={value2years || ''} onChange={e => setValue2years(Number(e.target.value) || 0)} />
+                    </div>
+                  </div>
+                  {calculatedDepreciation > 0 && (
+                    <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                      <span className="text-sm">Depreciação mensal:</span>
+                      <span className="font-semibold text-primary">R$ {formatBRL(calculatedDepreciation)}</span>
+                    </div>
+                  )}
+                  <Button size="sm" variant="secondary" className="w-full" disabled={calculatedDepreciation <= 0} onClick={applyDepreciation}>
+                    Aplicar ao campo de depreciação
+                  </Button>
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Cost items */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Componentes de Custo</Label>
+            <Button size="sm" variant="outline" onClick={handleAddItem}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {items.map((item, index) => (
+              <Card key={index}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <Input placeholder="Nome do componente" value={item.name} onChange={e => handleItemChange(index, 'name', e.target.value)} className="flex-1" />
+                    <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(index)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch id={`annual-${index}`} checked={!item.is_monthly} onCheckedChange={checked => handleItemChange(index, 'is_monthly', !checked)} />
+                      <Label htmlFor={`annual-${index}`} className="text-xs cursor-pointer">Valor anual (÷12)</Label>
+                    </div>
+                    {!item.is_monthly ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input type="number" min={0} step="0.01" placeholder="Valor anual" value={item.annual_value ?? ''} onChange={e => handleItemChange(index, 'annual_value', Number(e.target.value) || 0)} className="flex-1" />
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">= R$ {formatBRL(item.value)}/mês</span>
+                      </div>
+                    ) : (
+                      <Input type="number" min={0} step="0.01" placeholder="Valor mensal" value={item.value || ''} onChange={e => handleItemChange(index, 'value', Number(e.target.value) || 0)} className="flex-1" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {items.length === 0 && (
+              <div className="text-center py-4 text-sm text-muted-foreground border border-dashed rounded-md">Nenhum componente de custo adicionado</div>
+            )}
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="space-y-2">
+          <Label>Observações</Label>
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observações internas sobre este recurso..." rows={2} />
+        </div>
+
+        {/* Preview */}
+        <Card className="bg-muted/30">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-medium text-foreground">Resumo</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Total mensal:</span>
+              <span className="font-semibold">R$ {formatBRL(totalMonthly)}</span>
+            </div>
+            {category !== 'gift' ? (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Horas mensais:</span>
+                  <span>{monthlyHours}h</span>
+                </div>
+                <div className="flex justify-between text-sm pt-2 border-t border-border">
+                  <span className="font-medium text-primary">Custo/hora:</span>
+                  <span className="text-lg font-bold text-primary">R$ {formatBRL(hourlyRate)}/h</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between text-sm pt-2 border-t border-border">
+                <span className="font-medium text-primary">Custo/execução:</span>
+                <span className="text-lg font-bold text-primary">R$ {formatBRL(totalMonthly)}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </ResponsiveModal>
   );
 }
