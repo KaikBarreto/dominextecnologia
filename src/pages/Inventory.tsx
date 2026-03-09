@@ -27,7 +27,8 @@ export default function Inventory() {
     item.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const pagination = useDataPagination(filteredItems);
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredItems);
+  const pagination = useDataPagination(sortedItems);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
