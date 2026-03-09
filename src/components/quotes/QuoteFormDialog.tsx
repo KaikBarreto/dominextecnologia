@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
@@ -19,11 +20,12 @@ import { useInventory } from '@/hooks/useInventory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
+import { BDISummaryCard } from '@/components/quotes/BDISummaryCard';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
 import {
   User, UserPlus, Palette, Wrench, Package, MapPin,
-  Calculator, Plus, Trash2, Tag,
+  Calculator, Plus, Trash2, Tag, AlertTriangle,
 } from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
@@ -204,6 +206,23 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   });
 
   const bdiFactor = bdi.bdiFactor;
+  const bdiWarning = bdiFactor < 0.20;
+  const bdiDanger = bdiFactor < 0.05 || (bdi.finalPrice > 0 && bdi.finalPrice < bdi.totalCost);
+
+  // ── Auto-recalculate service prices when BDI rates change ──
+  useEffect(() => {
+    if (items.length === 0) return;
+    setItems(prev => prev.map(it => {
+      if (it.item_type !== 'servico' || it.price_override) return it;
+      const newUnitPrice = bdiFactor > 0.01 ? Math.round((it.unit_total_cost / bdiFactor) * 100) / 100 : it.unit_total_cost;
+      return {
+        ...it,
+        unit_price: newUnitPrice,
+        total_price: Math.round(newUnitPrice * it.quantity * 100) / 100,
+        bdi: bdiFactor,
+      };
+    }));
+  }, [bdiFactor]);
 
   // ── Add service handler ──
   const handleAddService = useCallback(async () => {
@@ -667,33 +686,24 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       {items.length > 0 && (
         <>
           <Separator />
-          <section>
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Calculator className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-primary">Resumo BDI</span>
-                <Badge variant="outline" className="text-xs font-mono ml-1">fator {(bdiFactor * 100).toFixed(1)}%</Badge>
-                <span className="text-xs text-muted-foreground ml-auto">Lucro médio: {bdi.weightedProfitRate.toFixed(1)}%</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="space-y-0.5">
-                  <p className="text-[11px] text-muted-foreground">Custo total</p>
-                  <p className="text-sm font-bold text-foreground">{fmt(bdi.totalCost)}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[11px] text-muted-foreground">Preço BDI</p>
-                  <p className="text-sm font-bold text-primary">{fmt(bdi.finalPrice)}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[11px] text-muted-foreground">À vista ({cardDiscountRate}% desc.)</p>
-                  <p className="text-sm font-bold text-success">{fmt(bdi.cashPrice)}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[11px] text-muted-foreground">{cardInstallments}x cartão</p>
-                  <p className="text-sm font-bold text-foreground">{fmt(bdi.installmentValue)}</p>
-                </div>
-              </div>
-            </div>
+          <section className="space-y-3">
+            {bdiDanger && (
+              <Alert variant="destructive" className="border-destructive/50">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  O BDI está muito baixo ou negativo. O preço final não cobre os custos. Revise as taxas.
+                </AlertDescription>
+              </Alert>
+            )}
+            {bdiWarning && !bdiDanger && (
+              <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-400">
+                  BDI abaixo de 20% — margem de lucro muito apertada.
+                </AlertDescription>
+              </Alert>
+            )}
+            <BDISummaryCard data={{ ...bdi, cardInstallments }} />
           </section>
         </>
       )}
