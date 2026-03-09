@@ -287,6 +287,7 @@ export function useTimeRecord(userId: string | undefined) {
       const sheetData: any = {
         company_id: companyId,
         user_id: userId,
+        employee_id: employeeId,
         date: today,
         first_clock_in: clockIn?.recorded_at || now,
         total_worked_min: worked,
