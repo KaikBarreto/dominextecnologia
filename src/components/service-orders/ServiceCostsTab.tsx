@@ -31,6 +31,27 @@ export function ServiceCostsTab() {
   const [notes, setNotes] = useState('');
   const [extraCosts, setExtraCosts] = useState<ExtraCostLine[]>([]);
 
+  useEffect(() => {
+    if (!cost) {
+      setHourlyRate(0);
+      setHours(1);
+      setNotes('');
+      setExtraCosts([]);
+      return;
+    }
+    setHourlyRate(Number(cost.hourly_rate ?? 0));
+    setHours(Number(cost.hours ?? 1));
+    setNotes(cost.notes ?? '');
+    setExtraCosts(((cost.extra_costs as any) ?? []) as ExtraCostLine[]);
+  }, [cost, serviceId]);
+
+  const extrasTotal = useMemo(() => computeExtraCostsTotal(extraCosts), [extraCosts]);
+  const laborCost = useMemo(() => Math.max(0, hourlyRate * hours), [hourlyRate, hours]);
+  const totalServiceCost = useMemo(
+    () => laborCost + extrasTotal + (materialsTotal || 0),
+    [laborCost, extrasTotal, materialsTotal]
+  );
+
   const { settings } = usePricingSettings();
   const taxRate = Number(settings?.tax_rate ?? 10);
   const adminRate = Number(settings?.admin_indirect_rate ?? 12);
