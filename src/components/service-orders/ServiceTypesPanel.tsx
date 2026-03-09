@@ -42,6 +42,7 @@ const defaultForm: ServiceTypeForm = {
 export function ServiceTypesPanel() {
   const { serviceTypes, isLoading, createServiceType, updateServiceType, deleteServiceType } = useServiceTypes();
   const isMobile = useIsMobile();
+  const { sortedItems: sortedTypes, sortConfig: stSortConfig, handleSort: handleStSort } = useTableSort(serviceTypes);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ServiceTypeForm>(defaultForm);
