@@ -352,7 +352,8 @@ function QuotesList() {
                       </TooltipProvider>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}
