@@ -92,6 +92,12 @@ export default function CRM() {
     }, {} as Record<string, number>);
   }, [leadsByStage]);
 
+  // Compute stats from filtered leads (not all leads)
+  const filteredStats = useMemo(() => ({
+    total: filteredLeads.length,
+    totalValue: filteredLeads.reduce((sum, lead) => sum + (lead.value || 0), 0),
+  }), [filteredLeads]);
+
   const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
 
   const clearFilters = () => {
