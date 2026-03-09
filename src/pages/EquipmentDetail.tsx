@@ -77,7 +77,8 @@ export default function EquipmentDetail() {
 
   const equipment = allEquipment.find(eq => eq.id === id);
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
-  const ordersPagination = useDataPagination(equipmentOrders);
+  const { sortedItems: sortedEqOrders, sortConfig: eqOsSortConfig, handleSort: handleEqOsSort } = useTableSort(equipmentOrders);
+  const ordersPagination = useDataPagination(sortedEqOrders);
   // Fetch portal token for this customer to generate proper QR URL
   const { data: portalToken } = useQuery({
     queryKey: ['portalToken', equipment?.customer_id],
