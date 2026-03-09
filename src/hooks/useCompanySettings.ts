@@ -35,11 +35,18 @@ export function useCompanySettings() {
   const settingsQuery = useQuery({
     queryKey: ['company-settings'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('company_settings')
-        .select('*')
-        .limit(1)
+      // Try to get settings linked to user's company first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
         .single();
+
+      let query = supabase.from('company_settings').select('*');
+      if (profile?.company_id) {
+        query = query.eq('company_id', profile.company_id);
+      }
+      const { data, error } = await query.limit(1).single();
       if (error) throw error;
       return data as CompanySettings;
     },
