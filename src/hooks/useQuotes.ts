@@ -56,6 +56,8 @@ export interface Quote {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  converted_to_os_id: string | null;
+  final_price: number | null;
   customers?: { name: string; email: string | null; phone: string | null };
   quote_items?: QuoteItem[];
   proposal_templates?: { slug: string; name: string } | null;

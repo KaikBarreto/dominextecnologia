@@ -2,7 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, TrendingUp, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/utils/currency';
+
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
 
 interface BDISummaryData {
   bdiFactor: number;
@@ -70,13 +76,13 @@ export function BDISummaryCard({ data, className }: BDISummaryCardProps) {
         
         <div className="space-y-2">
           <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="h-3 w-3 text-green-600" />
-            <span className="text-xs font-medium text-green-600">Opções de Pagamento</span>
+            <DollarSign className="h-3 w-3 text-success" />
+            <span className="text-xs font-medium text-success">Opções de Pagamento</span>
           </div>
           
           <div className="flex justify-between items-center">
             <span className="text-xs text-muted-foreground">À vista (6% desc.)</span>
-            <span className="text-xs font-medium text-green-600">{formatCurrency(data.cashPrice)}</span>
+            <span className="text-xs font-medium text-success">{formatCurrency(data.cashPrice)}</span>
           </div>
           
           <div className="flex justify-between items-center">
