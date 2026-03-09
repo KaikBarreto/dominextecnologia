@@ -69,6 +69,7 @@ const STATUS_LABELS: Record<string, string> = {
   aprovado: 'Aprovado',
   rejeitado: 'Rejeitado',
   expirado: 'Expirado',
+  convertido: 'Convertido',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -77,6 +78,7 @@ const STATUS_COLORS: Record<string, string> = {
   aprovado: 'bg-success text-success-foreground',
   rejeitado: 'bg-destructive text-destructive-foreground',
   expirado: 'bg-warning text-warning-foreground',
+  convertido: 'bg-primary text-primary-foreground',
 };
 
 export { STATUS_LABELS, STATUS_COLORS };
