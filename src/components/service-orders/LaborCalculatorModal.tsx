@@ -1,17 +1,25 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calculator, Plus, Trash2, Users } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Calculator, Plus, Trash2, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { formatBRL } from '@/utils/currency';
+import { useEmployees } from '@/hooks/useEmployees';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 interface Worker {
   id: string;
   name: string;
   salary: number;
   hours: number;
-  hoursEdited: boolean; // whether user manually edited hours for this worker
+  hoursEdited: boolean;
+  isFixedCost: boolean; // true = valor fixo por serviço (não calcula por hora)
+  fixedCost: number;    // valor fixo para execução do serviço
+  employeeId: string | null;
 }
 
 interface LaborCalculatorModalProps {
@@ -27,7 +35,81 @@ const makeWorker = (defaultHours: number): Worker => ({
   salary: 0,
   hours: defaultHours,
   hoursEdited: false,
+  isFixedCost: false,
+  fixedCost: 0,
+  employeeId: null,
 });
+
+function EmployeeCombobox({
+  value,
+  employeeId,
+  onChange,
+}: {
+  value: string;
+  employeeId: string | null;
+  onChange: (name: string, employeeId: string | null, salary: number) => void;
+}) {
+  const { employees } = useEmployees();
+  const [open, setOpen] = useState(false);
+  const activeEmployees = useMemo(
+    () => (employees ?? []).filter(e => e.is_active),
+    [employees]
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative">
+          <Input
+            value={value}
+            onChange={e => onChange(e.target.value, null, 0)}
+            placeholder="Nome ou selecione..."
+            className="h-8 text-sm font-medium pr-8"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-8 w-8"
+            onClick={(e) => { e.preventDefault(); setOpen(!open); }}
+          >
+            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar funcionário..." />
+          <CommandList>
+            <CommandEmpty>Nenhum encontrado</CommandEmpty>
+            <CommandGroup>
+              {activeEmployees.map(emp => (
+                <CommandItem
+                  key={emp.id}
+                  value={emp.name}
+                  onSelect={() => {
+                    onChange(emp.name, emp.id, emp.salary ?? 0);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', employeeId === emp.id ? 'opacity-100' : 'opacity-0')} />
+                  <div className="flex flex-col">
+                    <span className="text-sm">{emp.name}</span>
+                    {emp.position && <span className="text-xs text-muted-foreground">{emp.position}</span>}
+                  </div>
+                  {emp.salary > 0 && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      R$ {formatBRL(emp.salary)}
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalculatorModalProps) {
   const [monthlyHours, setMonthlyHours] = useState(176);
@@ -46,23 +128,38 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
     setWorkers(prev => [...prev, makeWorker(defaultServiceHours)]);
   }, [defaultServiceHours]);
 
-  // When defaultServiceHours changes, update all workers that haven't been manually edited
   const handleDefaultHoursChange = useCallback((val: number) => {
     setDefaultServiceHours(val);
     setWorkers(prev => prev.map(w => w.hoursEdited ? w : { ...w, hours: val }));
   }, []);
 
+  // Calculation logic:
+  // - Hourly workers: rate = salary / monthlyHours, cost = rate * hours
+  // - Fixed-cost workers: cost = fixedCost (added directly to total)
+  // - totalHours = max hours among hourly workers (fixed-cost workers don't affect hours)
+  // - avgRate = totalCost / totalHours
   const calculations = useMemo(() => {
-    let totalCost = 0;
+    let totalCostHourly = 0;
+    let totalCostFixed = 0;
+    let maxHours = 0;
+
     const details = workers.map(w => {
+      if (w.isFixedCost) {
+        totalCostFixed += w.fixedCost;
+        return { ...w, rate: 0, cost: w.fixedCost };
+      }
       const rate = monthlyHours > 0 ? w.salary / monthlyHours : 0;
       const cost = rate * w.hours;
-      totalCost += cost;
+      totalCostHourly += cost;
+      if (w.hours > maxHours) maxHours = w.hours;
       return { ...w, rate, cost };
     });
-    const totalHours = Math.max(...workers.map(w => w.hours), 0);
+
+    const totalCost = totalCostHourly + totalCostFixed;
+    const totalHours = maxHours || Math.max(...workers.filter(w => !w.isFixedCost).map(w => w.hours), 0);
     const avgRate = totalHours > 0 ? totalCost / totalHours : 0;
-    return { details, totalCost, totalHours, avgRate };
+
+    return { details, totalCost, totalCostHourly, totalCostFixed, totalHours, avgRate };
   }, [workers, monthlyHours]);
 
   const handleApply = () => {
@@ -135,47 +232,84 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
             return (
               <div key={w.id} className="rounded-lg border border-border p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Input
-                    value={w.name}
-                    onChange={e => updateWorker(w.id, { name: e.target.value })}
-                    placeholder={`Funcionário ${idx + 1}`}
-                    className="h-8 text-sm font-medium"
-                  />
+                  <div className="flex-1">
+                    <EmployeeCombobox
+                      value={w.name}
+                      employeeId={w.employeeId}
+                      onChange={(name, empId, salary) => {
+                        const patch: Partial<Worker> = { name, employeeId: empId };
+                        if (empId && salary > 0) patch.salary = salary;
+                        updateWorker(w.id, patch);
+                      }}
+                    />
+                  </div>
                   {workers.length > 1 && (
                     <Button
-                      variant="destructive-ghost"
+                      variant="ghost"
                       size="icon"
-                      className="h-8 w-8 flex-shrink-0"
+                      className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive"
                       onClick={() => removeWorker(w.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+                {/* Fixed cost toggle */}
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`fixed-${w.id}`}
+                    checked={w.isFixedCost}
+                    onCheckedChange={checked => updateWorker(w.id, { isFixedCost: checked })}
+                  />
+                  <Label htmlFor={`fixed-${w.id}`} className="text-[11px] cursor-pointer text-muted-foreground">
+                    Valor fixo por serviço (não é mensalista)
+                  </Label>
+                </div>
+
+                {w.isFixedCost ? (
                   <div className="space-y-1">
-                    <Label className="text-[11px]">Custo mensal (R$)</Label>
+                    <Label className="text-[11px]">Valor fixo para este serviço (R$)</Label>
                     <Input
                       type="number" min={0} step="0.01"
-                      value={w.salary || ''}
-                      onChange={e => updateWorker(w.id, { salary: Number(e.target.value) || 0 })}
-                      placeholder="Ex: 3500"
+                      value={w.fixedCost || ''}
+                      onChange={e => updateWorker(w.id, { fixedCost: Number(e.target.value) || 0 })}
+                      placeholder="Ex: 150"
                       className="h-8 text-sm"
                     />
+                    <p className="text-[11px] text-muted-foreground">Este valor será somado diretamente ao custo total</p>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">Horas neste serviço</Label>
-                    <Input
-                      type="number" min={0} step="0.25"
-                      value={w.hours}
-                      onChange={e => updateWorker(w.id, { hours: Number(e.target.value) || 0, hoursEdited: true })}
-                      className="h-8 text-sm"
-                    />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px]">Custo mensal (R$)</Label>
+                      <Input
+                        type="number" min={0} step="0.01"
+                        value={w.salary || ''}
+                        onChange={e => updateWorker(w.id, { salary: Number(e.target.value) || 0 })}
+                        placeholder="Ex: 3500"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px]">Horas neste serviço</Label>
+                      <Input
+                        type="number" min={0} step="0.25"
+                        value={w.hours}
+                        onChange={e => updateWorker(w.id, { hours: Number(e.target.value) || 0, hoursEdited: true })}
+                        className="h-8 text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
-                {detail && detail.rate > 0 && (
+                )}
+
+                {detail && detail.cost > 0 && (
                   <p className="text-[11px] text-muted-foreground">
-                    R$ {formatBRL(detail.rate)}/h × {w.hours}h = <span className="font-medium text-foreground">R$ {formatBRL(detail.cost)}</span>
+                    {w.isFixedCost ? (
+                      <>Custo fixo: <span className="font-medium text-foreground">R$ {formatBRL(detail.cost)}</span></>
+                    ) : (
+                      <>R$ {formatBRL(detail.rate)}/h × {w.hours}h = <span className="font-medium text-foreground">R$ {formatBRL(detail.cost)}</span></>
+                    )}
                   </p>
                 )}
               </div>
@@ -187,7 +321,10 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
         <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
           {calculations.details.filter(d => d.cost > 0).map(d => (
             <div key={d.id} className="flex justify-between text-xs">
-              <span className="text-muted-foreground">{d.name || 'Funcionário'}</span>
+              <span className="text-muted-foreground">
+                {d.name || 'Funcionário'}
+                {d.isFixedCost && <span className="ml-1 text-primary">(fixo)</span>}
+              </span>
               <span className="font-medium">R$ {formatBRL(d.cost)}</span>
             </div>
           ))}
@@ -198,6 +335,12 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
             <span className="text-muted-foreground">Horas do serviço</span>
             <span className="font-medium">{calculations.totalHours}h</span>
           </div>
+          {calculations.totalCostFixed > 0 && (
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Custos fixos incluídos</span>
+              <span className="font-medium">R$ {formatBRL(calculations.totalCostFixed)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center pt-2 border-t">
             <span className="text-sm font-semibold">Custo HH total</span>
             <span className="text-sm font-bold text-primary">R$ {formatBRL(calculations.totalCost)}</span>
@@ -206,6 +349,11 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
             <span className="text-sm font-semibold">Custo/hora médio</span>
             <span className="text-sm font-bold text-primary">R$ {formatBRL(calculations.avgRate)}/h</span>
           </div>
+          {calculations.totalCostFixed > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              * Custos fixos são diluídos no custo/hora médio para compor o preço final
+            </p>
+          )}
         </div>
       </div>
     </ResponsiveModal>
