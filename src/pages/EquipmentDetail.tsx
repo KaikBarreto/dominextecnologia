@@ -36,6 +36,7 @@ import { osStatusLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas';
 
