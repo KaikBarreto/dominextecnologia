@@ -2,10 +2,12 @@ import { Trash2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useDataPagination } from '@/hooks/useDataPagination';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { BalanceSummary, formatMovementType, getMovementBadgeVariant, EmployeeMovement } from '@/utils/employeeCalculations';
 import { format } from 'date-fns';
 
