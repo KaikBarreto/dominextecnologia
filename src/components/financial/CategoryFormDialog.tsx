@@ -22,6 +22,7 @@ const schema = z.object({
   type: z.string().min(1, 'Tipo é obrigatório'),
   color: z.string().min(1, 'Cor é obrigatória'),
   icon: z.string().default('Tag'),
+  dre_group: z.string().default('opex'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -42,6 +43,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       type: category?.type ?? 'ambos',
       color: category?.color ?? '#00C597',
       icon: category?.icon ?? 'Tag',
+      dre_group: (category as any)?.dre_group ?? 'opex',
     },
   });
 
@@ -80,6 +82,21 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
                     <SelectItem value="entrada">Receita</SelectItem>
                     <SelectItem value="saida">Despesa</SelectItem>
                     <SelectItem value="ambos">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="dre_group" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Grupo DRE</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="impostos">Impostos e Deduções</SelectItem>
+                    <SelectItem value="cmv">CMV (Custo do Serviço)</SelectItem>
+                    <SelectItem value="opex">Despesas Operacionais (OPEX)</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +11,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { buildCustomerAddress } from '@/utils/geolocation';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 
 const osTypeLabels: Record<OsType, string> = {
@@ -27,20 +31,24 @@ interface ScheduleDetailPanelProps {
   onOrderSelect: (order: ServiceOrder & { customer: any; equipment: any }) => void;
   onClearSelection: () => void;
   onEdit?: () => void;
+  onDelete?: (id: string) => void;
 }
 
 function OrderDetail({
   order,
   onBack,
   onEdit,
+  onDelete,
 }: {
   order: ServiceOrder & { customer: any; equipment: any };
   onBack: () => void;
   onEdit?: () => void;
+  onDelete?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleCopyTrackingLink = async () => {
     const link = `${window.location.origin}/os-tecnico/${order.id}`;
@@ -147,6 +155,16 @@ function OrderDetail({
             <ClipboardList className="h-4 w-4 mr-2" />
             {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
           </Button>
+          {onDelete && (
+            <Button
+              variant="outline"
+              className="w-full mt-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir OS
+            </Button>
+          )}
           {order.customer_id && (
             <button
               onClick={handleCopyTrackingLink}
@@ -156,6 +174,28 @@ function OrderDetail({
               {linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento do cliente'}
             </button>
           )}
+          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. A ordem de serviço será excluída permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    onDelete?.(order.id);
+                    setShowDeleteConfirm(false);
+                  }}
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </ScrollArea>
     </>
@@ -169,6 +209,7 @@ export function ScheduleDetailPanel({
   onOrderSelect,
   onClearSelection,
   onEdit,
+  onDelete,
 }: ScheduleDetailPanelProps) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -181,7 +222,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} />
       ) : (
         <>
           <div className="mb-4">
