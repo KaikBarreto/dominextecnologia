@@ -222,35 +222,26 @@ export function useTimeRecord(userId: string | undefined) {
     }) => {
       if (!userId) throw new Error('Usuário não identificado');
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('user_id', userId)
-        .single();
+      // Fetch profile and linked employee in parallel
+      const [{ data: profile }, { data: linkedEmployee }] = await Promise.all([
+        supabase.from('profiles').select('company_id').eq('user_id', userId).single(),
+        supabase.from('employees').select('id').eq('user_id', userId).maybeSingle(),
+      ]);
       
       let companyId = profile?.company_id;
+      const employeeId = linkedEmployee?.id || null;
 
-      // Fallback: look up company_id via linked employee's creator profile
+      // Fallback: look up company_id via any profile
       if (!companyId) {
-        const { data: emp } = await supabase
-          .from('employees')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-        if (emp) {
-          // Try to get company_id from any other profile in the same company
-          const { data: anyProfile } = await supabase
-            .from('profiles')
-            .select('company_id')
-            .not('company_id', 'is', null)
-            .limit(1)
-            .single();
-          companyId = anyProfile?.company_id;
-
-          // Also fix the profile for future calls
-          if (companyId) {
-            await supabase.from('profiles').update({ company_id: companyId }).eq('user_id', userId);
-          }
+        const { data: anyProfile } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .not('company_id', 'is', null)
+          .limit(1)
+          .single();
+        companyId = anyProfile?.company_id;
+        if (companyId) {
+          await supabase.from('profiles').update({ company_id: companyId }).eq('user_id', userId);
         }
       }
 
@@ -273,6 +264,7 @@ export function useTimeRecord(userId: string | undefined) {
       const { error: recErr } = await supabase.from('time_records').insert({
         company_id: companyId,
         user_id: userId,
+        employee_id: employeeId,
         date: today,
         type,
         recorded_at: now,
