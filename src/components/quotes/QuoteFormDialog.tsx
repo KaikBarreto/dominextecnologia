@@ -1,19 +1,51 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useQuotes, type QuoteInput, type QuoteItem, type Quote } from '@/hooks/useQuotes';
+import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
 import { useProposalTemplates } from '@/hooks/useProposalTemplates';
-import { QuoteItemsTable } from './QuoteItemsTable';
+import { usePricingSettings } from '@/hooks/usePricingSettings';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useInventory } from '@/hooks/useInventory';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBDICalculator } from '@/hooks/useBDICalculator';
+import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { User, UserPlus, Palette } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  User, UserPlus, Palette, Wrench, Package, MapPin,
+  Calculator, Plus, Trash2, Tag,
+} from 'lucide-react';
+
+// ─── Extended item type for the form ───────────────────────────────────────
+interface FormQuoteItem {
+  id?: string;
+  item_type: 'servico' | 'material';
+  description: string;
+  quantity: number;
+  unit_total_cost: number;   // cost per unit (before BDI markup)
+  unit_price: number;        // final sell price per unit
+  total_price: number;       // unit_price * quantity
+  service_type_id?: string | null;
+  inventory_id?: string | null;
+  unit_hourly_rate: number;
+  unit_hours: number;
+  unit_labor_cost: number;
+  unit_materials_cost: number;
+  unit_extras_cost: number;
+  profit_rate: number;
+  bdi: number;
+  price_override?: number | null;
+}
 
 interface QuoteFormDialogProps {
   open: boolean;
@@ -21,87 +53,305 @@ interface QuoteFormDialogProps {
   quote?: Quote | null;
 }
 
+const fmt = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogProps) {
   const isMobile = useIsMobile();
   const { customers } = useCustomers();
   const { createQuote, updateQuote } = useQuotes();
   const { templates } = useProposalTemplates();
+  const { settings: pricing } = usePricingSettings();
+  const { serviceTypes } = useServiceTypes();
+  const { items: inventoryItems } = useInventory();
+  const { profile } = useAuth();
 
+  // ── Customer ──
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
   const [customerId, setCustomerId] = useState('');
   const [prospectName, setProspectName] = useState('');
   const [prospectPhone, setProspectPhone] = useState('');
   const [prospectEmail, setProspectEmail] = useState('');
+
+  // ── BDI Configuration ──
+  const [taxRate, setTaxRate] = useState(10);
+  const [adminRate, setAdminRate] = useState(12);
+  const [profitRate, setProfitRate] = useState(10);
+  const [kmCostCfg, setKmCostCfg] = useState(1);
+
+  // ── Items ──
+  const [items, setItems] = useState<FormQuoteItem[]>([]);
+
+  // ── Displacement ──
+  const [distanceKm, setDistanceKm] = useState(0);
+
+  // ── Validity / Template ──
   const [validUntil, setValidUntil] = useState('');
-  const [discountType, setDiscountType] = useState('valor');
-  const [discountValue, setDiscountValue] = useState(0);
-  const [notes, setNotes] = useState('');
-  const [terms, setTerms] = useState('');
-  const [items, setItems] = useState<QuoteItem[]>([]);
   const [proposalTemplateId, setProposalTemplateId] = useState('');
 
+  // ── Notes / Terms ──
+  const [notes, setNotes] = useState('');
+  const [terms, setTerms] = useState('');
+
+  // ── Discount (at end) ──
+  const [discountType, setDiscountType] = useState<'valor' | 'percentual'>('valor');
+  const [discountValue, setDiscountValue] = useState(0);
+
+  // ── Add-service row state ──
+  const [addSvcId, setAddSvcId] = useState('');
+  const [addSvcQty, setAddSvcQty] = useState(1);
+  const [isFetchingSvc, setIsFetchingSvc] = useState(false);
+
+  // ── Add-material row state ──
+  const [addMatId, setAddMatId] = useState('');
+  const [addMatQty, setAddMatQty] = useState(1);
+  const [addMatPrice, setAddMatPrice] = useState(0);
+
+  // ── Initialize BDI config from pricing settings (new quote) ──
   useEffect(() => {
+    if (pricing && !quote) {
+      setTaxRate(Number(pricing.tax_rate ?? 10));
+      setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
+      setProfitRate(Number(pricing.default_profit_rate ?? 10));
+      setKmCostCfg(Number(pricing.km_cost ?? 1));
+    }
+  }, [pricing, quote]);
+
+  // ── Populate form when editing ──
+  useEffect(() => {
+    if (!open) return;
+
     if (quote) {
       setCustomerId(quote.customer_id || '');
       setCustomerMode(quote.customer_id ? 'existing' : 'prospect');
-      setProspectName((quote as any).prospect_name ?? '');
-      setProspectPhone((quote as any).prospect_phone ?? '');
-      setProspectEmail((quote as any).prospect_email ?? '');
+      setProspectName(quote.prospect_name ?? '');
+      setProspectPhone(quote.prospect_phone ?? '');
+      setProspectEmail(quote.prospect_email ?? '');
+      setTaxRate(Number(quote.tax_rate ?? 10));
+      setAdminRate(Number(quote.admin_indirect_rate ?? 12));
+      setProfitRate(Number(quote.profit_rate ?? 10));
+      setKmCostCfg(Number(quote.km_cost ?? 1));
+      setDistanceKm(Number(quote.distance_km ?? 0));
+      setDiscountType((quote.discount_type as 'valor' | 'percentual') ?? 'valor');
+      setDiscountValue(Number(quote.discount_value ?? 0));
       setValidUntil(quote.valid_until ?? '');
-      setDiscountType(quote.discount_type ?? 'valor');
-      setDiscountValue(quote.discount_value ?? 0);
+      setProposalTemplateId(quote.proposal_template_id ?? '');
       setNotes(quote.notes ?? '');
       setTerms(quote.terms ?? '');
-      setItems(quote.quote_items ?? []);
-      setProposalTemplateId(quote.proposal_template_id ?? '');
+      setItems(
+        (quote.quote_items ?? []).map(qi => ({
+          id: qi.id,
+          item_type: (qi.item_type as 'servico' | 'material') ?? 'servico',
+          description: qi.description,
+          quantity: Number(qi.quantity),
+          unit_total_cost: Number(qi.unit_total_cost ?? 0),
+          unit_price: Number(qi.unit_price),
+          total_price: Number(qi.total_price),
+          service_type_id: qi.service_type_id ?? null,
+          inventory_id: qi.inventory_id ?? null,
+          unit_hourly_rate: Number(qi.unit_hourly_rate ?? 0),
+          unit_hours: Number(qi.unit_hours ?? 0),
+          unit_labor_cost: Number(qi.unit_labor_cost ?? 0),
+          unit_materials_cost: Number(qi.unit_materials_cost ?? 0),
+          unit_extras_cost: Number(qi.unit_extras_cost ?? 0),
+          profit_rate: Number(qi.profit_rate ?? 10),
+          bdi: Number(qi.bdi ?? 0.68),
+          price_override: qi.price_override ?? null,
+        }))
+      );
     } else {
       setCustomerMode('existing');
       setCustomerId('');
       setProspectName('');
       setProspectPhone('');
       setProspectEmail('');
-      setValidUntil('');
+      setDistanceKm(0);
       setDiscountType('valor');
       setDiscountValue(0);
+      setValidUntil('');
       setNotes('');
       setTerms('');
       setItems([]);
-      // Default to first template
       setProposalTemplateId(templates[0]?.id ?? '');
+      if (pricing) {
+        setTaxRate(Number(pricing.tax_rate ?? 10));
+        setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
+        setProfitRate(Number(pricing.default_profit_rate ?? 10));
+        setKmCostCfg(Number(pricing.km_cost ?? 1));
+      }
     }
-  }, [quote, open, templates]);
+  }, [quote, open]);
 
-  const subtotal = items.reduce((s, i) => s + (i.quantity * i.unit_price), 0);
-  const discountAmount = discountType === 'percentual'
-    ? subtotal * (discountValue / 100)
-    : discountValue;
-  const totalValue = Math.max(0, subtotal - discountAmount);
-
-  const customerOptions = useMemo(
-    () => (customers ?? []).map(c => ({ value: c.id, label: c.name })),
-    [customers]
+  // ── BDI Calculation ──
+  const bdiItems = useMemo(
+    () => items.map(it => ({
+      totalCost: it.unit_total_cost * it.quantity,
+      profitRate: it.profit_rate ?? profitRate,
+    })),
+    [items, profitRate]
   );
 
-  const hasCustomerInfo = customerMode === 'existing' ? !!customerId : !!prospectName;
+  const bdi = useBDICalculator({
+    taxRate,
+    adminRate,
+    profitRate,
+    items: bdiItems,
+    distanceKm,
+    kmCost: kmCostCfg,
+    cardDiscountRate: Number(pricing?.card_discount_rate ?? 6),
+    cardInstallments: Number(pricing?.card_installments ?? 10),
+  });
 
+  const bdiFactor = bdi.bdiFactor;
+
+  // ── Add service handler ──
+  const handleAddService = useCallback(async () => {
+    if (!addSvcId) return;
+    setIsFetchingSvc(true);
+    const st = serviceTypes.find(s => s.id === addSvcId);
+    const companyId = profile?.company_id;
+    let laborCost = 0, matsCost = 0, extrasCost = 0, hourlyRate = 0, hours = 0;
+
+    if (companyId) {
+      try {
+        const [costRes, matRes] = await Promise.all([
+          supabase.from('service_costs').select('*').eq('company_id', companyId).eq('service_id', addSvcId).maybeSingle(),
+          supabase.from('service_materials').select('*').eq('company_id', companyId).eq('service_id', addSvcId).order('sort_order'),
+        ]);
+        if (costRes.data) {
+          hourlyRate = Number(costRes.data.hourly_rate ?? 0);
+          hours = Number(costRes.data.hours ?? 0);
+          laborCost = hourlyRate * hours;
+          extrasCost = computeExtraCostsTotal((costRes.data.extra_costs as any) ?? []);
+        }
+        if (matRes.data) {
+          matsCost = matRes.data.reduce((sum, m) => sum + Number(m.subtotal ?? 0), 0);
+        }
+      } catch { /* use zeros */ }
+    }
+
+    const unitTotalCost = laborCost + matsCost + extrasCost;
+    const unitPrice = bdiFactor > 0.01 ? Math.round((unitTotalCost / bdiFactor) * 100) / 100 : unitTotalCost;
+
+    setItems(prev => [...prev, {
+      item_type: 'servico',
+      description: st?.name ?? 'Serviço',
+      quantity: addSvcQty,
+      unit_total_cost: unitTotalCost,
+      unit_price: unitPrice,
+      total_price: Math.round(unitPrice * addSvcQty * 100) / 100,
+      service_type_id: addSvcId,
+      inventory_id: null,
+      unit_hourly_rate: hourlyRate,
+      unit_hours: hours,
+      unit_labor_cost: laborCost,
+      unit_materials_cost: matsCost,
+      unit_extras_cost: extrasCost,
+      profit_rate: profitRate,
+      bdi: bdiFactor,
+    }]);
+    setAddSvcId('');
+    setAddSvcQty(1);
+    setIsFetchingSvc(false);
+  }, [addSvcId, addSvcQty, serviceTypes, profile, bdiFactor, profitRate]);
+
+  // ── Add material handler ──
+  const handleAddMaterial = useCallback(() => {
+    if (!addMatId && addMatPrice <= 0) return;
+    const inv = inventoryItems.find(m => m.id === addMatId);
+    const name = inv?.name ?? 'Material';
+    const costPrice = Number(inv?.cost_price ?? 0);
+    const unitPrice = addMatPrice > 0 ? addMatPrice : Number(inv?.sale_price ?? costPrice);
+
+    setItems(prev => [...prev, {
+      item_type: 'material',
+      description: name,
+      quantity: addMatQty,
+      unit_total_cost: costPrice,
+      unit_price: unitPrice,
+      total_price: Math.round(unitPrice * addMatQty * 100) / 100,
+      service_type_id: null,
+      inventory_id: addMatId || null,
+      unit_hourly_rate: 0,
+      unit_hours: 0,
+      unit_labor_cost: 0,
+      unit_materials_cost: costPrice,
+      unit_extras_cost: 0,
+      profit_rate: profitRate,
+      bdi: bdiFactor,
+    }]);
+    setAddMatId('');
+    setAddMatQty(1);
+    setAddMatPrice(0);
+  }, [addMatId, addMatQty, addMatPrice, inventoryItems, profitRate, bdiFactor]);
+
+  // ── Item price update ──
+  const updateItemPrice = (idx: number, newPrice: number) => {
+    setItems(prev => prev.map((it, i) =>
+      i === idx ? { ...it, unit_price: newPrice, total_price: Math.round(newPrice * it.quantity * 100) / 100, price_override: newPrice } : it
+    ));
+  };
+
+  const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
+
+  // ── Totals ──
+  const totalItemsPrice = items.reduce((s, i) => s + i.total_price, 0);
+  const subtotalBeforeDiscount = totalItemsPrice + bdi.displacementCost;
+  const discountAmount = discountType === 'percentual'
+    ? subtotalBeforeDiscount * (discountValue / 100)
+    : discountValue;
+  const finalTotal = Math.max(0, subtotalBeforeDiscount - discountAmount);
+
+  // ── Submit ──
   const handleSubmit = () => {
-    if (!hasCustomerInfo || items.length === 0) return;
+    const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
+    if (!hasCustomer || items.length === 0) return;
 
     const payload: QuoteInput = {
       customer_id: customerMode === 'existing' ? customerId : undefined,
       prospect_name: customerMode === 'prospect' ? prospectName : undefined,
       prospect_phone: customerMode === 'prospect' ? prospectPhone : undefined,
       prospect_email: customerMode === 'prospect' ? prospectEmail : undefined,
+      tax_rate: taxRate,
+      admin_indirect_rate: adminRate,
+      profit_rate: profitRate,
+      km_cost: kmCostCfg,
+      distance_km: distanceKm,
+      displacement_cost: bdi.displacementCost,
+      bdi: bdiFactor,
+      total_cost: bdi.totalCost,
+      total_price: bdi.finalPrice,
       valid_until: validUntil || undefined,
       discount_type: discountType,
       discount_value: discountValue,
-      subtotal,
+      subtotal: totalItemsPrice,
       discount_amount: discountAmount,
-      total_value: totalValue,
+      total_value: finalTotal,
+      final_price: finalTotal,
       notes: notes || undefined,
       terms: terms || undefined,
       proposal_template_id: proposalTemplateId || undefined,
-      items,
+      items: items.map((it, idx) => ({
+        id: it.id,
+        position: idx,
+        item_type: it.item_type,
+        description: it.description,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        total_price: it.total_price,
+        service_type_id: it.service_type_id ?? null,
+        inventory_id: it.inventory_id ?? null,
+        unit_hourly_rate: it.unit_hourly_rate,
+        unit_hours: it.unit_hours,
+        unit_labor_cost: it.unit_labor_cost,
+        unit_materials_cost: it.unit_materials_cost,
+        unit_extras_cost: it.unit_extras_cost,
+        unit_total_cost: it.unit_total_cost,
+        profit_rate: it.profit_rate,
+        bdi: it.bdi,
+        price_override: it.price_override ?? null,
+      })),
     };
 
     if (quote) {
@@ -111,20 +361,42 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     }
   };
 
+  // ── Options ──
+  const customerOptions = useMemo(
+    () => (customers ?? []).map(c => ({ value: c.id, label: c.name })),
+    [customers]
+  );
+  const serviceOptions = useMemo(
+    () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({ value: s.id, label: s.name })),
+    [serviceTypes]
+  );
+  const materialOptions = useMemo(
+    () => (inventoryItems ?? []).map(m => ({
+      value: m.id, label: m.name, sublabel: m.sku ? `SKU: ${m.sku}` : undefined,
+    })),
+    [inventoryItems]
+  );
+
+  const serviceItems = items.filter(i => i.item_type === 'servico');
+  const materialItemsList = items.filter(i => i.item_type === 'material');
+  const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
+  const cardInstallments = Number(pricing?.card_installments ?? 10);
+  const cardDiscountRate = Number(pricing?.card_discount_rate ?? 6);
+
+  // ── Form Content ───────────────────────────────────────────────────────────
   const content = (
-    <div className="space-y-5 p-1 max-h-[75vh] overflow-y-auto">
-      {/* Cliente / Prospect */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold">Destinatário</Label>
-        <Tabs value={customerMode} onValueChange={(v) => setCustomerMode(v as 'existing' | 'prospect')}>
+    <div className="space-y-5 overflow-y-auto max-h-[78vh] pr-1">
+
+      {/* ══ 1. DESTINATÁRIO ══ */}
+      <section className="space-y-3">
+        <SectionHeader icon={<User className="h-4 w-4 text-primary" />} title="Destinatário" />
+        <Tabs value={customerMode} onValueChange={(v) => setCustomerMode(v as any)}>
           <TabsList className="w-full">
             <TabsTrigger value="existing" className="flex-1 gap-1.5">
-              <User className="h-3.5 w-3.5" />
-              Cliente Cadastrado
+              <User className="h-3.5 w-3.5" />Cliente Cadastrado
             </TabsTrigger>
             <TabsTrigger value="prospect" className="flex-1 gap-1.5">
-              <UserPlus className="h-3.5 w-3.5" />
-              Novo Prospecto
+              <UserPlus className="h-3.5 w-3.5" />Novo Prospecto
             </TabsTrigger>
           </TabsList>
           <TabsContent value="existing" className="mt-3">
@@ -139,63 +411,321 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Nome *</Label>
-                <Input
-                  placeholder="Nome do prospecto"
-                  value={prospectName}
-                  onChange={(e) => setProspectName(e.target.value)}
-                />
+                <Input placeholder="Nome do prospecto" value={prospectName} onChange={e => setProspectName(e.target.value)} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Telefone</Label>
-                <Input
-                  placeholder="(00) 00000-0000"
-                  value={prospectPhone}
-                  onChange={(e) => setProspectPhone(e.target.value)}
-                />
+                <Input placeholder="(00) 00000-0000" value={prospectPhone} onChange={e => setProspectPhone(e.target.value)} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">E-mail</Label>
-                <Input
-                  placeholder="email@exemplo.com"
-                  type="email"
-                  value={prospectEmail}
-                  onChange={(e) => setProspectEmail(e.target.value)}
-                />
+                <Input type="email" placeholder="email@exemplo.com" value={prospectEmail} onChange={e => setProspectEmail(e.target.value)} />
               </div>
             </div>
           </TabsContent>
         </Tabs>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label>Válido até</Label>
-          <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+      <Separator />
+
+      {/* ══ 2. CONFIGURAÇÕES BDI ══ */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title="Configurações BDI" />
+          <Badge variant="outline" className="text-xs font-mono ml-auto">
+            Fator {(bdiFactor * 100).toFixed(1)}%
+          </Badge>
         </div>
-        <div className="space-y-2">
-          <Label>Desconto</Label>
-          <div className="flex gap-2">
-            <Select value={discountType} onValueChange={setDiscountType}>
-              <SelectTrigger className="w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="valor">R$</SelectItem>
-                <SelectItem value="percentual">%</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="number"
-              value={discountValue || ''}
-              onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-              min={0}
-              step="0.01"
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <FieldBox label="Imposto (%)">
+            <Input type="number" min={0} max={100} step="0.1" value={taxRate}
+              onChange={e => setTaxRate(Number(e.target.value) || 0)} className="h-9" />
+          </FieldBox>
+          <FieldBox label="Adm. Indireta (%)">
+            <Input type="number" min={0} max={100} step="0.1" value={adminRate}
+              onChange={e => setAdminRate(Number(e.target.value) || 0)} className="h-9" />
+          </FieldBox>
+          <FieldBox label="Lucro (%)">
+            <Input type="number" min={0} max={100} step="0.1" value={profitRate}
+              onChange={e => setProfitRate(Number(e.target.value) || 0)} className="h-9" />
+          </FieldBox>
+          <FieldBox label="Custo / km (R$)">
+            <Input type="number" min={0} step="0.01" value={kmCostCfg}
+              onChange={e => setKmCostCfg(Number(e.target.value) || 0)} className="h-9" />
+          </FieldBox>
+        </div>
+      </section>
+
+      <Separator />
+
+      {/* ══ 3. SERVIÇOS E MÃO DE OBRA ══ */}
+      <section className="space-y-3">
+        <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title="Serviços e Mão de Obra" />
+
+        {/* Add service row */}
+        <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
+          <div className="flex-1 min-w-0">
+            <SearchableSelect
+              options={serviceOptions}
+              value={addSvcId}
+              onValueChange={setAddSvcId}
+              placeholder="Selecionar tipo de serviço..."
             />
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+            <Input type="number" min={1} value={addSvcQty}
+              onChange={e => setAddSvcQty(Math.max(1, Number(e.target.value) || 1))}
+              className="h-9 w-16 text-sm" />
+            <Button size="sm" onClick={handleAddService} disabled={!addSvcId || isFetchingSvc} className="h-9 shrink-0">
+              {isFetchingSvc ? '…' : <><Plus className="h-3.5 w-3.5 mr-1" />Adicionar</>}
+            </Button>
+          </div>
+        </div>
+
+        {serviceItems.length > 0 ? (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-2 font-medium text-muted-foreground">Serviço</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-24 hidden sm:table-cell">Custo unit.</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+                  <th className="w-8 p-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {serviceItems.map((item) => {
+                  const globalIdx = items.indexOf(item);
+                  return (
+                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="p-2 font-medium">{item.description}</td>
+                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                      <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">
+                        {item.unit_total_cost > 0 ? fmt(item.unit_total_cost) : '—'}
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          type="number" min={0} step="0.01"
+                          value={item.unit_price || ''}
+                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
+                          className="h-7 w-24 text-xs text-right ml-auto"
+                        />
+                      </td>
+                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
+                      <td className="p-2">
+                        <Button type="button" variant="ghost" size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => removeItem(globalIdx)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-muted/30 border-t">
+                  <td colSpan={4} className="p-2 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                    Subtotal Serviços
+                  </td>
+                  <td colSpan={2} className="p-2 text-right text-xs font-medium text-muted-foreground sm:hidden">
+                    Subtotal
+                  </td>
+                  <td className="p-2 text-right font-bold">
+                    {fmt(serviceItems.reduce((s, i) => s + i.total_price, 0))}
+                  </td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState>Nenhum serviço adicionado</EmptyState>
+        )}
+      </section>
+
+      <Separator />
+
+      {/* ══ 4. MATERIAIS ══ */}
+      <section className="space-y-3">
+        <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
+
+        {/* Add material row */}
+        <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
+          <div className="flex-1 min-w-0">
+            <SearchableSelect
+              options={materialOptions}
+              value={addMatId}
+              onValueChange={(id) => {
+                setAddMatId(id);
+                const inv = inventoryItems.find(m => m.id === id);
+                if (inv) setAddMatPrice(Number(inv.sale_price ?? inv.cost_price ?? 0));
+              }}
+              placeholder="Selecionar do estoque..."
+            />
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+            <Input type="number" min={1} value={addMatQty}
+              onChange={e => setAddMatQty(Math.max(1, Number(e.target.value) || 1))}
+              className="h-9 w-16 text-sm" />
+            <Label className="text-xs whitespace-nowrap">R$:</Label>
+            <Input type="number" min={0} step="0.01" value={addMatPrice || ''}
+              onChange={e => setAddMatPrice(parseFloat(e.target.value) || 0)}
+              className="h-9 w-24 text-sm" placeholder="0,00" />
+            <Button size="sm" onClick={handleAddMaterial}
+              disabled={!addMatId && addMatPrice <= 0} className="h-9 shrink-0">
+              <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
+            </Button>
+          </div>
+        </div>
+
+        {materialItemsList.length > 0 ? (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-2 font-medium text-muted-foreground">Material</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+                  <th className="w-8 p-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {materialItemsList.map((item) => {
+                  const globalIdx = items.indexOf(item);
+                  return (
+                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="p-2 font-medium">{item.description}</td>
+                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                      <td className="p-2">
+                        <Input
+                          type="number" min={0} step="0.01"
+                          value={item.unit_price || ''}
+                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
+                          className="h-7 w-24 text-xs text-right ml-auto"
+                        />
+                      </td>
+                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
+                      <td className="p-2">
+                        <Button type="button" variant="ghost" size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => removeItem(globalIdx)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-muted/30 border-t">
+                  <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
+                    Subtotal Materiais
+                  </td>
+                  <td className="p-2 text-right font-bold">
+                    {fmt(materialItemsList.reduce((s, i) => s + i.total_price, 0))}
+                  </td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState>Nenhum material adicionado</EmptyState>
+        )}
+      </section>
+
+      <Separator />
+
+      {/* ══ 5. DESLOCAMENTO ══ */}
+      <section className="space-y-3">
+        <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs whitespace-nowrap">Distância (km):</Label>
+            <Input type="number" min={0} step="1" value={distanceKm || ''}
+              onChange={e => setDistanceKm(Number(e.target.value) || 0)}
+              className="h-9 w-28" placeholder="0" />
+          </div>
+          {bdi.displacementCost > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Custo de deslocamento: <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* ══ 6. RESUMO BDI ══ */}
+      {items.length > 0 && (
+        <>
+          <Separator />
+          <section>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">Resumo BDI</span>
+                <Badge variant="outline" className="text-xs font-mono ml-1">fator {(bdiFactor * 100).toFixed(1)}%</Badge>
+                <span className="text-xs text-muted-foreground ml-auto">Lucro médio: {bdi.weightedProfitRate.toFixed(1)}%</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="space-y-0.5">
+                  <p className="text-[11px] text-muted-foreground">Custo total</p>
+                  <p className="text-sm font-bold text-foreground">{fmt(bdi.totalCost)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[11px] text-muted-foreground">Preço BDI</p>
+                  <p className="text-sm font-bold text-primary">{fmt(bdi.finalPrice)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[11px] text-muted-foreground">À vista ({cardDiscountRate}% desc.)</p>
+                  <p className="text-sm font-bold text-success">{fmt(bdi.cashPrice)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[11px] text-muted-foreground">{cardInstallments}x cartão</p>
+                  <p className="text-sm font-bold text-foreground">{fmt(bdi.installmentValue)}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      <Separator />
+
+      {/* ══ 7. DESCONTO ══ */}
+      <section className="space-y-3">
+        <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Desconto" />
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select value={discountType} onValueChange={(v) => setDiscountType(v as any)}>
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="valor">R$</SelectItem>
+              <SelectItem value="percentual">%</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="number" min={0} step="0.01" value={discountValue || ''}
+            onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+            placeholder="0" className="w-32 h-9" />
+          {discountAmount > 0 && (
+            <span className="text-sm text-destructive font-medium">− {fmt(discountAmount)}</span>
+          )}
+        </div>
+      </section>
+
+      <Separator />
+
+      {/* ══ 8. VALIDADE + TEMPLATE ══ */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Válido até</Label>
+          <Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
-            <Palette className="h-3.5 w-3.5" /> Template da Proposta
+            <Palette className="h-3.5 w-3.5" />Template da Proposta
           </Label>
           <Select value={proposalTemplateId} onValueChange={setProposalTemplateId}>
             <SelectTrigger>
@@ -205,7 +735,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               {templates.map(t => (
                 <SelectItem key={t.id} value={t.id}>
                   <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.preview_color }} />
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: t.preview_color }} />
                     {t.name}
                   </div>
                 </SelectItem>
@@ -213,36 +743,42 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </section>
 
-      <QuoteItemsTable items={items} onChange={setItems} />
-
-      <div className="flex flex-col items-end gap-1 text-sm border-t pt-3">
-        {discountAmount > 0 && (
-          <span className="text-muted-foreground">
-            Desconto: <span className="font-medium text-destructive">- R$ {discountAmount.toFixed(2)}</span>
+      {/* ══ 9. TOTAL FINAL ══ */}
+      {items.length > 0 && (
+        <div className="flex flex-col items-end gap-1 text-sm rounded-lg bg-muted/30 border p-3">
+          <span className="text-xs text-muted-foreground">Subtotal itens: {fmt(totalItemsPrice)}</span>
+          {bdi.displacementCost > 0 && (
+            <span className="text-xs text-muted-foreground">+ Deslocamento: {fmt(bdi.displacementCost)}</span>
+          )}
+          {discountAmount > 0 && (
+            <span className="text-xs text-destructive">− Desconto: {fmt(discountAmount)}</span>
+          )}
+          <span className="text-base font-bold text-foreground border-t w-full text-right pt-1.5 mt-0.5">
+            Total: {fmt(finalTotal)}
           </span>
-        )}
-        <span className="text-foreground font-bold text-base">
-          Total: R$ {totalValue.toFixed(2)}
-        </span>
+        </div>
+      )}
+
+      {/* ══ 10. NOTAS + TERMOS ══ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Observações</Label>
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observações internas" rows={2} />
+        </div>
+        <div className="space-y-2">
+          <Label>Condições / Termos</Label>
+          <Textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder="Condições de pagamento, garantia, etc." rows={2} />
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Observações</Label>
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observações internas" rows={2} />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Condições / Termos</Label>
-        <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="Condições de pagamento, garantia, etc." rows={2} />
-      </div>
-
-      <div className="flex justify-end gap-2 pt-2">
+      {/* ══ ACTIONS ══ */}
+      <div className="flex justify-end gap-2 pt-2 pb-1">
         <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
         <Button
           onClick={handleSubmit}
-          disabled={!hasCustomerInfo || items.length === 0 || createQuote.isPending || updateQuote.isPending}
+          disabled={!hasCustomer || items.length === 0 || createQuote.isPending || updateQuote.isPending}
         >
           {quote ? 'Salvar Alterações' : 'Criar Orçamento'}
         </Button>
@@ -255,9 +791,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh]">
+        <DrawerContent className="max-h-[95vh]">
           <DrawerHeader><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
-          <div className="px-4 pb-4">{content}</div>
+          <div className="px-4 pb-6">{content}</div>
         </DrawerContent>
       </Drawer>
     );
@@ -270,5 +806,32 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         {content}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Small helpers ───────────────────────────────────────────────────────────
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      {icon}
+      <span className="text-sm font-semibold uppercase tracking-wide text-foreground">{title}</span>
+    </div>
+  );
+}
+
+function FieldBox({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border border-dashed rounded-lg p-5 text-center text-sm text-muted-foreground">
+      {children}
+    </div>
   );
 }
