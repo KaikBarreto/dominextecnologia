@@ -373,6 +373,16 @@ export default function EquipmentDetail() {
             </div>
             <input ref={fileInputRef} type="file" className="hidden" multiple onChange={handleFileUpload} />
           </div>
+          {/* Upload progress bar */}
+          {uploadProgress && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Enviando {uploadProgress.current} de {uploadProgress.total}...</span>
+                <span>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+              </div>
+              <Progress value={(uploadProgress.current / uploadProgress.total) * 100} className="h-2" />
+            </div>
+          )}
           {attachLoading ? (
             <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : attachments.length === 0 ? (
