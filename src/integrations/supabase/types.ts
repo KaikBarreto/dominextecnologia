@@ -396,6 +396,95 @@ export type Database = {
           },
         ]
       }
+      cost_resource_items: {
+        Row: {
+          annual_value: number | null
+          id: string
+          is_monthly: boolean | null
+          name: string
+          resource_id: string
+          sort_order: number | null
+          value: number
+        }
+        Insert: {
+          annual_value?: number | null
+          id?: string
+          is_monthly?: boolean | null
+          name: string
+          resource_id: string
+          sort_order?: number | null
+          value?: number
+        }
+        Update: {
+          annual_value?: number | null
+          id?: string
+          is_monthly?: boolean | null
+          name?: string
+          resource_id?: string
+          sort_order?: number | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_resource_items_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "cost_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_resource_items_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "cost_resources_with_rate"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_resources: {
+        Row: {
+          category: string
+          company_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          monthly_hours: number | null
+          name: string
+          notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          company_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          monthly_hours?: number | null
+          name: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          monthly_hours?: number | null
+          name?: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_resources_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           color: string
@@ -2320,6 +2409,49 @@ export type Database = {
           },
         ]
       }
+      service_cost_resources: {
+        Row: {
+          id: string
+          override_value: number | null
+          resource_id: string
+          service_id: string
+        }
+        Insert: {
+          id?: string
+          override_value?: number | null
+          resource_id: string
+          service_id: string
+        }
+        Update: {
+          id?: string
+          override_value?: number | null
+          resource_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_cost_resources_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "cost_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_cost_resources_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "cost_resources_with_rate"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_cost_resources_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_costs: {
         Row: {
           company_id: string
@@ -2360,6 +2492,58 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "service_costs_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_gifts: {
+        Row: {
+          id: string
+          name: string
+          quantity: number | null
+          resource_id: string | null
+          service_id: string
+          subtotal: number | null
+          unit_cost: number | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          quantity?: number | null
+          resource_id?: string | null
+          service_id: string
+          subtotal?: number | null
+          unit_cost?: number | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          quantity?: number | null
+          resource_id?: string | null
+          service_id?: string
+          subtotal?: number | null
+          unit_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_gifts_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "cost_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_gifts_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "cost_resources_with_rate"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_gifts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "service_types"
@@ -3158,7 +3342,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      cost_resources_with_rate: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          created_at: string | null
+          hourly_rate: number | null
+          id: string | null
+          is_active: boolean | null
+          monthly_hours: number | null
+          name: string | null
+          notes: string | null
+          total_monthly_cost: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_resources_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_bootstrap_admin: { Args: never; Returns: boolean }
