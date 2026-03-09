@@ -124,6 +124,7 @@ export default function Employees() {
                   phone: employeeData.phone || editingEmployee.phone || undefined,
                   avatar_url: employeeData.photo_url || editingEmployee.photo_url || undefined,
                   role: 'tecnico',
+                  employee_id: editingEmployee.id,
                 },
               });
               
