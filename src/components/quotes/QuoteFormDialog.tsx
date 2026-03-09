@@ -631,25 +631,46 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
       <Separator />
 
-      {/* ══ 5. DESLOCAMENTO ══ */}
+      {/* ══ DESLOCAMENTO + DESCONTO (mesma linha) ══ */}
       <section className="space-y-3">
-        <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Label className="text-xs whitespace-nowrap">Distância (km):</Label>
-            <Input type="number" min={0} step="1" value={distanceKm || ''}
-              onChange={e => setDistanceKm(Number(e.target.value) || 0)}
-              className="h-9 w-28" placeholder="0" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input type="number" min={0} step="1" value={distanceKm || ''}
+                onChange={e => setDistanceKm(Number(e.target.value) || 0)}
+                className="h-9 w-28" placeholder="0 km" />
+              {bdi.displacementCost > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
+                </span>
+              )}
+            </div>
           </div>
-          {bdi.displacementCost > 0 && (
-            <p className="text-sm text-muted-foreground">
-              Custo de deslocamento: <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
-            </p>
-          )}
+          <div className="space-y-2">
+            <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Desconto" />
+            <div className="flex items-center gap-2">
+              <Select value={discountType} onValueChange={(v) => setDiscountType(v as any)}>
+                <SelectTrigger className="w-20 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="valor">R$</SelectItem>
+                  <SelectItem value="percentual">%</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input type="number" min={0} step="0.01" value={discountValue || ''}
+                onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                placeholder="0" className="w-28 h-9" />
+              {discountAmount > 0 && (
+                <span className="text-xs text-destructive font-medium">− {fmt(discountAmount)}</span>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ══ 5b. BRINDES ══ */}
+      {/* ══ BRINDES ══ */}
       <div className="flex items-center gap-2 px-1">
         <Checkbox
           id="include-gifts"
@@ -662,7 +683,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </Label>
       </div>
 
-
+      {/* ══ RESUMO DO ORÇAMENTO ══ */}
       {items.length > 0 && (
         <>
           <Separator />
@@ -690,31 +711,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
       <Separator />
 
-      {/* ══ 7. DESCONTO ══ */}
-      <section className="space-y-3">
-        <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Desconto" />
-        <div className="flex items-center gap-3 flex-wrap">
-          <Select value={discountType} onValueChange={(v) => setDiscountType(v as any)}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="valor">R$</SelectItem>
-              <SelectItem value="percentual">%</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input type="number" min={0} step="0.01" value={discountValue || ''}
-            onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
-            placeholder="0" className="w-32 h-9" />
-          {discountAmount > 0 && (
-            <span className="text-sm text-destructive font-medium">− {fmt(discountAmount)}</span>
-          )}
-        </div>
-      </section>
-
-      <Separator />
-
-      {/* ══ 8. VALIDADE + TEMPLATE ══ */}
+      {/* ══ VALIDADE + TEMPLATE ══ */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Válido até</Label>
@@ -741,22 +738,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           </Select>
         </div>
       </section>
-
-      {/* ══ 9. TOTAL FINAL ══ */}
-      {items.length > 0 && (
-        <div className="flex flex-col items-end gap-1 text-sm rounded-lg bg-muted/30 border p-3">
-          <span className="text-xs text-muted-foreground">Subtotal itens: {fmt(totalItemsPrice)}</span>
-          {bdi.displacementCost > 0 && (
-            <span className="text-xs text-muted-foreground">+ Deslocamento: {fmt(bdi.displacementCost)}</span>
-          )}
-          {discountAmount > 0 && (
-            <span className="text-xs text-destructive">− Desconto: {fmt(discountAmount)}</span>
-          )}
-          <span className="text-base font-bold text-foreground border-t w-full text-right pt-1.5 mt-0.5">
-            Total: {fmt(finalTotal)}
-          </span>
-        </div>
-      )}
 
       {/* ══ 10. NOTAS + TERMOS ══ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
