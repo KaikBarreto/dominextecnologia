@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import { Loader2, Building2, CreditCard, KeyRound, Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react';
 import { addDays, format } from 'date-fns';
+import { CepLookup } from '@/components/CepLookup';
+import { StateCitySelector } from '@/components/StateCitySelector';
 
 interface Props {
   open: boolean;
@@ -25,6 +27,26 @@ function generatePassword(length = 10): string {
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
+function parseAddress(address: string | null) {
+  if (!address) return { logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' };
+  // Try to parse "Rua X, 123, Comp, Bairro, Cidade - UF, 00000-000"
+  const parts = address.split(',').map(p => p.trim());
+  return {
+    logradouro: parts[0] || '',
+    numero: parts[1] || '',
+    complemento: parts[2] || '',
+    bairro: parts[3] || '',
+    cidade: parts[4]?.split('-')[0]?.trim() || '',
+    estado: parts[4]?.split('-')[1]?.trim() || '',
+    cep: parts[5] || '',
+  };
+}
+
+function buildAddress(addr: { logradouro: string; numero: string; complemento: string; bairro: string; cidade: string; estado: string; cep: string }) {
+  const parts = [addr.logradouro, addr.numero, addr.complemento, addr.bairro, addr.cidade && addr.estado ? `${addr.cidade} - ${addr.estado}` : addr.cidade || addr.estado, addr.cep].filter(Boolean);
+  return parts.join(', ');
+}
+
 export default function CompanyFormModal({ open, onOpenChange, company, onSuccess }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -33,67 +55,63 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState({
-    name: '', cnpj: '', email: '', phone: '', address: '', contact_name: '',
+    name: '', cnpj: '', email: '', phone: '', contact_name: '',
     subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '', origin: '',
     admin_email: '', admin_password: '',
   });
 
+  const [addr, setAddr] = useState({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
+
   const updateField = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const updateAddr = useCallback((field: string, value: string) => {
+    setAddr(prev => ({ ...prev, [field]: value }));
   }, []);
 
   useEffect(() => {
     if (company) {
       setFormData({
-        name: company.name || '',
-        cnpj: company.cnpj || '',
-        email: company.email || '',
-        phone: company.phone || '',
-        address: company.address || '',
-        contact_name: company.contact_name || '',
+        name: company.name || '', cnpj: company.cnpj || '', email: company.email || '',
+        phone: company.phone || '', contact_name: company.contact_name || '',
         subscription_status: company.subscription_status || 'testing',
         subscription_plan: company.subscription_plan || 'starter',
         subscription_value: String(company.subscription_value || 0),
         subscription_expires_at: company.subscription_expires_at ? company.subscription_expires_at.split('T')[0] : '',
         billing_cycle: company.billing_cycle || 'monthly',
-        max_users: String(company.max_users || 5),
-        notes: company.notes || '',
-        origin: company.origin || '',
-        admin_email: '', admin_password: '',
+        max_users: String(company.max_users || 5), notes: company.notes || '',
+        origin: company.origin || '', admin_email: '', admin_password: '',
       });
+      setAddr(parseAddress(company.address));
       setActiveTab('basic');
     } else {
       const defaultExpires = format(addDays(new Date(), 14), 'yyyy-MM-dd');
       setFormData({
-        name: '', cnpj: '', email: '', phone: '', address: '', contact_name: '',
+        name: '', cnpj: '', email: '', phone: '', contact_name: '',
         subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
         notes: '', origin: '', admin_email: '', admin_password: generatePassword(),
       });
+      setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
       setActiveTab('basic');
       setShowPassword(true);
     }
   }, [company, open]);
 
-  // Auto-sync email
   useEffect(() => {
-    if (!isEditing && !formData.admin_email && formData.email) {
-      updateField('admin_email', formData.email);
-    }
+    if (!isEditing && !formData.admin_email && formData.email) updateField('admin_email', formData.email);
   }, [formData.email, formData.admin_email, isEditing, updateField]);
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const address = buildAddress(addr);
       if (isEditing) {
         const { error } = await supabase.from('companies').update({
-          name: formData.name,
-          cnpj: formData.cnpj || null,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          address: formData.address || null,
+          name: formData.name, cnpj: formData.cnpj || null, email: formData.email || null,
+          phone: formData.phone || null, address: address || null,
           contact_name: formData.contact_name || null,
           subscription_status: formData.subscription_status,
           subscription_plan: formData.subscription_plan,
@@ -101,47 +119,31 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           subscription_expires_at: formData.subscription_expires_at || null,
           billing_cycle: formData.billing_cycle,
           max_users: parseInt(formData.max_users) || 5,
-          notes: formData.notes || null,
-          origin: formData.origin || null,
+          notes: formData.notes || null, origin: formData.origin || null,
         }).eq('id', company.id);
         if (error) throw error;
       } else {
-        // Create via edge function
         const { data: session } = await supabase.auth.getSession();
         if (!session.session) throw new Error('Não autenticado');
-
         const { data, error } = await supabase.functions.invoke('create-company', {
           body: {
-            company_name: formData.name,
-            company_cnpj: formData.cnpj || null,
-            company_email: formData.email || null,
-            company_phone: formData.phone || null,
-            company_address: formData.address || null,
-            contact_name: formData.contact_name || null,
-            notes: formData.notes || null,
-            admin_email: formData.admin_email,
+            company_name: formData.name, company_cnpj: formData.cnpj || null,
+            company_email: formData.email || null, company_phone: formData.phone || null,
+            company_address: address || null, contact_name: formData.contact_name || null,
+            notes: formData.notes || null, admin_email: formData.admin_email,
             admin_password: formData.admin_password,
             subscription_status: formData.subscription_status,
             subscription_plan: formData.subscription_plan,
             subscription_value: parseFloat(formData.subscription_value) || 0,
-            subscription_expires_at: formData.subscription_expires_at 
-              ? new Date(formData.subscription_expires_at).toISOString() : null,
-            billing_cycle: formData.billing_cycle,
-            max_users: parseInt(formData.max_users) || 5,
+            subscription_expires_at: formData.subscription_expires_at ? new Date(formData.subscription_expires_at).toISOString() : null,
+            billing_cycle: formData.billing_cycle, max_users: parseInt(formData.max_users) || 5,
             origin: formData.origin || null,
           },
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
-
         if (error) {
-          // Try to extract error message
           let msg = 'Erro ao criar empresa';
-          try {
-            if (error.context?.body) {
-              const parsed = JSON.parse(error.context.body);
-              if (parsed.error) msg = parsed.error;
-            }
-          } catch {}
+          try { if (error.context?.body) { const p = JSON.parse(error.context.body); if (p.error) msg = p.error; } } catch {}
           throw new Error(msg);
         }
         if (data?.error) throw new Error(data.error);
@@ -183,23 +185,19 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
             <TabsList className={`grid mb-4 shrink-0 ${isEditing ? 'grid-cols-2' : 'grid-cols-3'}`}>
               <TabsTrigger value="basic" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Dados</span>
+                <Building2 className="h-4 w-4" /><span className="hidden sm:inline">Dados</span>
               </TabsTrigger>
               <TabsTrigger value="commercial" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                <span className="hidden sm:inline">Comercial</span>
+                <CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Comercial</span>
               </TabsTrigger>
               {!isEditing && (
                 <TabsTrigger value="access" className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4" />
-                  <span className="hidden sm:inline">Acesso</span>
+                  <KeyRound className="h-4 w-4" /><span className="hidden sm:inline">Acesso</span>
                 </TabsTrigger>
               )}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto min-h-0 pb-4">
-              {/* Tab: Dados Básicos */}
               <TabsContent value="basic" className="m-0 space-y-4">
                 <div>
                   <Label>Nome da Empresa *</Label>
@@ -223,17 +221,64 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   <Label>CNPJ/CPF</Label>
                   <Input value={formData.cnpj} onChange={e => updateField('cnpj', cpfCnpjMask(e.target.value))} maxLength={18} />
                 </div>
-                <div>
-                  <Label>Endereço</Label>
-                  <Input value={formData.address} onChange={e => updateField('address', e.target.value)} />
+
+                {/* Structured Address */}
+                <div className="space-y-3 rounded-md border p-3">
+                  <Label className="text-sm font-semibold">Endereço</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-1">
+                      <Label className="text-xs">CEP</Label>
+                      <CepLookup
+                        value={addr.cep}
+                        onChange={(v) => updateAddr('cep', v)}
+                        onAddressFound={(data) => {
+                          setAddr(prev => ({
+                            ...prev,
+                            logradouro: data.logradouro || prev.logradouro,
+                            bairro: data.bairro || prev.bairro,
+                            cidade: data.cidade || prev.cidade,
+                            estado: data.estado || prev.estado,
+                          }));
+                        }}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Logradouro</Label>
+                      <Input value={addr.logradouro} onChange={e => updateAddr('logradouro', e.target.value)} placeholder="Rua, Av..." />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs">Número</Label>
+                      <Input value={addr.numero} onChange={e => updateAddr('numero', e.target.value)} placeholder="Nº" />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Complemento</Label>
+                      <Input value={addr.complemento} onChange={e => updateAddr('complemento', e.target.value)} placeholder="Sala, Bloco..." />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs">Bairro</Label>
+                      <Input value={addr.bairro} onChange={e => updateAddr('bairro', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Cidade</Label>
+                      <Input value={addr.cidade} onChange={e => updateAddr('cidade', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Estado</Label>
+                      <Input value={addr.estado} onChange={e => updateAddr('estado', e.target.value)} maxLength={2} placeholder="UF" />
+                    </div>
+                  </div>
                 </div>
+
                 <div>
                   <Label>Observações</Label>
                   <Textarea value={formData.notes} onChange={e => updateField('notes', e.target.value)} rows={3} className="resize-none" />
                 </div>
               </TabsContent>
 
-              {/* Tab: Comercial */}
               <TabsContent value="commercial" className="m-0 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -291,12 +336,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 </div>
               </TabsContent>
 
-              {/* Tab: Acesso */}
               {!isEditing && (
                 <TabsContent value="access" className="m-0 space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Defina as credenciais de acesso do administrador da empresa.
-                  </p>
+                  <p className="text-sm text-muted-foreground">Defina as credenciais de acesso do administrador da empresa.</p>
                   <div>
                     <Label>Email do Administrador *</Label>
                     <Input type="email" value={formData.admin_email} onChange={e => updateField('admin_email', e.target.value)} placeholder="admin@empresa.com" />
@@ -305,13 +347,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     <Label>Senha *</Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
-                          value={formData.admin_password}
-                          onChange={e => updateField('admin_password', e.target.value)}
-                          placeholder="Mínimo 6 caracteres"
-                          className="pr-10"
-                        />
+                        <Input type={showPassword ? 'text' : 'password'} value={formData.admin_password} onChange={e => updateField('admin_password', e.target.value)} placeholder="Mínimo 6 caracteres" className="pr-10" />
                         <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
@@ -326,9 +362,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                       {copied ? <><Check className="h-4 w-4 mr-2" /> Copiado!</> : <><Copy className="h-4 w-4 mr-2" /> Copiar credenciais</>}
                     </Button>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    As credenciais serão usadas para o primeiro acesso. O administrador poderá alterar a senha posteriormente.
-                  </p>
+                  <p className="text-xs text-muted-foreground">As credenciais serão usadas para o primeiro acesso. O administrador poderá alterar a senha posteriormente.</p>
                 </TabsContent>
               )}
             </div>
