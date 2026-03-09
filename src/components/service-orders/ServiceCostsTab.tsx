@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Calculator, Save } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { Calculator, Save, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,20 +33,29 @@ export function ServiceCostsTab() {
   const [hours, setHours] = useState(1);
   const [notes, setNotes] = useState('');
   const [extraCosts, setExtraCosts] = useState<ExtraCostLine[]>([]);
+  const [savedIndicator, setSavedIndicator] = useState(false);
+
+  // Track if data was loaded from DB (to avoid saving empty state)
+  const loadedRef = useRef(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    loadedRef.current = false;
     if (!cost) {
       setHourlyRate(0);
       setHours(1);
       setNotes('');
       setExtraCosts([]);
+      loadedRef.current = true;
       return;
     }
     setHourlyRate(Number(cost.hourly_rate ?? 0));
     setHours(Number(cost.hours ?? 1));
     setNotes(cost.notes ?? '');
     setExtraCosts(((cost.extra_costs as any) ?? []) as ExtraCostLine[]);
-  }, [cost, serviceId]);
+    // Small delay to avoid triggering auto-save on load
+    setTimeout(() => { loadedRef.current = true; }, 200);
+  }, [cost?.id, serviceId]);
 
   const extrasTotal = useMemo(() => computeExtraCostsTotal(extraCosts), [extraCosts]);
   const laborCost = useMemo(() => Math.max(0, hourlyRate * hours), [hourlyRate, hours]);
@@ -81,6 +90,23 @@ export function ServiceCostsTab() {
   const [laborCalcOpen, setLaborCalcOpen] = useState(false);
   const [extraCostModalOpen, setExtraCostModalOpen] = useState(false);
 
+  // Auto-save with debounce
+  const triggerAutoSave = useCallback(() => {
+    if (!serviceId || !loadedRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      await saveCost.mutateAsync({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), 2000);
+    }, 1000);
+  }, [serviceId, hourlyRate, hours, extraCosts, notes, saveCost]);
+
+  // Trigger auto-save when data changes
+  useEffect(() => {
+    triggerAutoSave();
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [hourlyRate, hours, extraCosts, notes]);
+
   const addExtraLine = (label: string, amount: number) => {
     setExtraCosts((prev) => [...prev, { label, amount }]);
   };
@@ -94,12 +120,9 @@ export function ServiceCostsTab() {
   };
 
   const handleSave = async () => {
-    await saveCost.mutateAsync({
-      hourly_rate: hourlyRate,
-      hours,
-      extra_costs: extraCosts,
-      notes,
-    });
+    await saveCost.mutateAsync({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
+    setSavedIndicator(true);
+    setTimeout(() => setSavedIndicator(false), 2000);
   };
 
   return (
@@ -208,10 +231,15 @@ export function ServiceCostsTab() {
                     <CardContent className="p-4 space-y-2">
                       <Label className="text-xs">Observações</Label>
                       <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Observações internas do custo" />
-                      <div className="flex justify-end">
-                        <Button onClick={handleSave} disabled={saveCost.isPending}>
-                          <Save className="h-4 w-4 mr-2" />
-                          {saveCost.isPending ? 'Salvando...' : 'Salvar'}
+                      <div className="flex items-center justify-end gap-2">
+                        {savedIndicator && (
+                          <span className="text-xs text-success flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Salvo automaticamente
+                          </span>
+                        )}
+                        <Button onClick={handleSave} disabled={saveCost.isPending} variant="outline">
+                          {saveCost.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                          Salvar
                         </Button>
                       </div>
                     </CardContent>

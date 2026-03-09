@@ -89,7 +89,6 @@ const adminMenuItems: MenuItem[] = [
   { title: 'Empresas', icon: Building2, path: '/admin/empresas' },
   { title: 'Assinaturas', icon: CreditCard, path: '/admin/assinaturas' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
-  { title: 'Configurações', icon: Settings, path: '/configuracoes' },
 ];
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
