@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.2',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Feriados nacionais e municipais na agenda',
+        description: 'A agenda exibe automaticamente feriados nacionais e municipais (baseados na cidade/UF da empresa). Configurável em Usabilidade > Agenda.',
+        category: 'recurso',
+      },
+      {
+        title: 'Base da empresa no mapa ao vivo',
+        description: 'O mapa ao vivo agora exibe a localização da sede da empresa com um marcador distinto, calculado a partir do endereço cadastrado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tooltips persistentes no mapa',
+        description: 'Ao clicar em um ponto no mapa ao vivo, o popup permanece fixo até o usuário fechar. Hover continua mostrando preview rápido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ordenação por colunas em todas as tabelas restantes',
+        description: 'Adicionada ordenação por colunas em Questionários, Detalhe do Cliente, Detalhe do Equipamento, Detalhe do Contrato, Tipos de Serviço e Extrato de Funcionários.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '09 de março de 2026',
     type: 'minor',
