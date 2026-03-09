@@ -16,6 +16,7 @@ import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { formatBRL } from '@/utils/currency';
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
 import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
+import { LinkedResourcesSection } from '@/components/service-orders/LinkedResourcesSection';
 
 export function ServiceCostsTab() {
   const { serviceTypes } = useServiceTypes();
