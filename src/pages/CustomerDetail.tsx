@@ -575,12 +575,12 @@ export default function CustomerDetail() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Frequência</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Início</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Ações</TableHead>
+                     <TableRow>
+                      <SortableTableHead sortKey="name" sortConfig={contractSortConfig} onSort={handleContractSort}>Nome</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={contractSortConfig} onSort={handleContractSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="frequency_type" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">Frequência</SortableTableHead>
+                      <SortableTableHead sortKey="start_date" sortConfig={contractSortConfig} onSort={handleContractSort} className="hidden sm:table-cell">Início</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={contractSortConfig} onSort={() => {}}>Ações</SortableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
