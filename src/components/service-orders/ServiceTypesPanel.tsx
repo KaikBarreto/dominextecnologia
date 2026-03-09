@@ -181,7 +181,7 @@ export function ServiceTypesPanel() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {serviceTypes.map((st) => (
+                {sortedTypes.map((st) => (
                   <TableRow key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
                     <TableCell>
                       <div
