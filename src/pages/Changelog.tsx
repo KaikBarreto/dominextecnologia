@@ -40,6 +40,261 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.0',
+    date: '09 de março de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Tela dedicada de Ponto Eletrônico',
+        description: 'Nova tela "Ponto Eletrônico" no menu Operacional, exclusiva para o usuário registrar seu ponto. Acessível automaticamente por qualquer usuário vinculado a um funcionário, sem necessidade de permissão específica.',
+        category: 'recurso',
+      },
+      {
+        title: 'Controle de Ponto na tela de Funcionários',
+        description: 'A aba "Controle de Ponto" com todas as subabas administrativas (Hoje, Histórico, Relatórios, Configurações) agora fica dentro da tela Funcionários, visível apenas para quem tem permissão de gestão.',
+        category: 'recurso',
+      },
+      {
+        title: 'Filtro de data padrão no Histórico de Ponto',
+        description: 'O histórico de ponto agora utiliza o componente DateRangeFilter padrão do sistema, com preset "Este mês" por padrão, mantendo consistência visual com Dashboard e Financeiro.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botão de visualizar detalhes no Histórico',
+        description: 'Adicionado botão de visualização na coluna de ações do histórico de ponto, abrindo o mesmo modal de detalhes disponível na aba "Hoje".',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.20',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção do botão de ação após jornada concluída',
+        description: 'Corrigido bug que exibia o botão "Iniciar Intervalo" mesmo após a jornada ser concluída. Agora nenhum botão de ação é exibido após o encerramento.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.4.19',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vinculação automática de funcionário no registro de ponto',
+        description: 'Os registros de ponto agora incluem automaticamente o employee_id do funcionário vinculado ao usuário, garantindo que o histórico apareça corretamente na gestão administrativa.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.4.18',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção de perfil de usuário sem empresa',
+        description: 'Corrigido problema onde perfis de usuários vinculados a funcionários não tinham company_id definido, impedindo o registro de ponto.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.4.17',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Automação de criação de usuário para funcionário',
+        description: 'Ao criar um funcionário, o sistema permite criar automaticamente um usuário vinculado com preset de permissões e role, sincronizando e-mail e foto de perfil.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.16',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Sincronia bidirecional de fotos',
+        description: 'Fotos de perfil são sincronizadas automaticamente entre o cadastro de funcionário e o perfil de usuário vinculado, em ambas as direções.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.15',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resolução de conflito de e-mail',
+        description: 'Ao vincular funcionário e usuário com e-mails diferentes, o administrador pode escolher qual endereço prevalecerá em ambos os cadastros.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.14',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Dashboard de funcionários aprimorado',
+        description: 'Dashboard com métricas de total de funcionários, salário médio, folha mensal e contagem de inativos, com cards visuais e indicadores.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.13',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Extrato financeiro do funcionário',
+        description: 'Extrato detalhado com paginação mostrando vales, bônus, faltas e pagamentos, com cálculo automático de saldo acumulado.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.12',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Pagamento mensal de funcionário',
+        description: 'Modal de pagamento que calcula automaticamente salário base + bônus - vales - faltas, com seleção de método de pagamento.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.11',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Movimentações financeiras de funcionários',
+        description: 'Registro de adiantamentos, bônus, faltas e descontos com histórico completo e atualização automática de saldo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.10',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório mensal de ponto com calendário visual',
+        description: 'Calendário visual colorido no relatório mensal mostrando status de cada dia com gráficos de resumo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.9',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exportação de folha de ponto em CSV',
+        description: 'Botão de exportação CSV no histórico de ponto com dados de funcionário, data, entrada, saída, trabalhado e saldo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.8',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configurações de jornada de trabalho',
+        description: 'Painel de configurações com horário padrão, tolerância de atraso, exigência de selfie/geolocalização e raio máximo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.7',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Escalas individuais por funcionário',
+        description: 'Configuração de escala semanal personalizada por funcionário, definindo dias úteis, horários e duração de intervalo.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.6',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Registro manual de ponto pelo admin',
+        description: 'Administradores podem registrar pontos manualmente para funcionários com justificativa obrigatória.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.5',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Modal de detalhes do dia',
+        description: 'Ao clicar no ícone de visualização de um funcionário, abre modal com timeline de todos os registros do dia, incluindo horário, tipo, localização e foto.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.4',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'KPIs de presença em tempo real',
+        description: 'Painel administrativo com contadores em tempo real de presentes, ausentes, em intervalo e jornadas concluídas, atualizado via Realtime.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.4.3',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Histórico de ponto com filtros',
+        description: 'Subaba "Histórico" no controle de ponto com filtros por funcionário, período e status, exibindo saldos acumulados.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.4.2',
+    date: '09 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Painel administrativo de ponto por funcionário',
+        description: 'Aba "Controle de Ponto" movida para a tela Funcionários, organizando o gerenciamento de ponto por vínculo empregatício.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.4.1',
     date: '08 de março de 2026',
     type: 'patch',
