@@ -99,11 +99,11 @@ export default function QuestionnairesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider hidden sm:table-cell">Perguntas</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider hidden md:table-cell">Serviços</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider w-[80px]">Ações</TableHead>
+                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden sm:table-cell">Perguntas</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden md:table-cell">Serviços</SortableTableHead>
+                    <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Ações</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
