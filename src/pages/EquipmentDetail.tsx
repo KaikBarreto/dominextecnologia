@@ -146,7 +146,7 @@ export default function EquipmentDetail() {
   if (!equipment) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/equipamentos')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
+        <Button variant="ghost" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
         <p className="text-muted-foreground">Equipamento não encontrado.</p>
       </div>
     );
