@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
-import { icons } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
