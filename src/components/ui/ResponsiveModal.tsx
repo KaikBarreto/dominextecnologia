@@ -37,7 +37,7 @@ export function ResponsiveModal({ open, onOpenChange, title, children, className
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-h-[90vh] flex flex-col sm:max-w-[600px]", className)}>
+      <DialogContent className={cn("max-h-[90vh] flex flex-col sm:max-w-[600px]", className)} aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

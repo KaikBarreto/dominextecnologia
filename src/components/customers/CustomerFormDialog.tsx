@@ -270,7 +270,7 @@ export function CustomerFormDialog({
                     <SelectContent>
                       <SelectItem value="__none__">Nenhuma</SelectItem>
                       {activeOrigins.map((o) => {
-                        const LucideIcon = (icons as any)[o.icon];
+                        const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
                         return (
                           <SelectItem key={o.id} value={o.name}>
                             <div className="flex items-center gap-2">
