@@ -265,10 +265,10 @@ export function CustomerFormDialog({
               <FormField control={form.control} name="origin" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Origem</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <Select onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)} value={field.value || '__none__'}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
+                      <SelectItem value="__none__">Nenhuma</SelectItem>
                       {activeOrigins.map((o) => {
                         const LucideIcon = (icons as any)[o.icon];
                         return (
