@@ -151,8 +151,8 @@ export function ScheduleHeader({
             </div>
           ))}
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-foreground flex items-center justify-center">
-              <Star className="h-2 w-2 text-white" />
+            <div className="h-3 w-3 rounded-full bg-secondary flex items-center justify-center">
+              <Star className="h-2 w-2 text-secondary-foreground" />
             </div>
             <span className="text-xs text-muted-foreground">Feriado</span>
           </div>

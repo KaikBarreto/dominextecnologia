@@ -161,7 +161,7 @@ export function MonthlyCalendar({
                 )}
                 {dayHolidays.length > 0 && dayOrders.length === 0 && (
                   <div className="flex gap-0.5 mt-1 h-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-foreground" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-secondary" />
                   </div>
                 )}
                 {dayOrders.length === 0 && dayHolidays.length === 0 && <div className="h-2 mt-1" />}
@@ -233,7 +233,7 @@ export function MonthlyCalendar({
               {dayHolidays.length > 0 && (
                 <div className="mb-1">
                   {dayHolidays.map((h, i) => (
-                    <div key={i} className="text-[10px] leading-tight font-medium text-white bg-foreground rounded px-1 py-0.5 truncate mb-0.5 flex items-center gap-0.5">
+                    <div key={i} className="text-[10px] leading-tight font-medium text-secondary-foreground bg-secondary rounded px-1 py-0.5 truncate mb-0.5 flex items-center gap-0.5">
                       <Star className="h-2.5 w-2.5 shrink-0" /> {h.name}
                     </div>
                   ))}
