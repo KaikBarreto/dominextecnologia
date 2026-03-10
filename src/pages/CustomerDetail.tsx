@@ -227,7 +227,7 @@ export default function CustomerDetail() {
           )}
           {(customer as any).origin && (() => {
             const originData = activeOrigins.find(o => o.name === (customer as any).origin);
-            const LucideIcon = originData ? (icons as any)[originData.icon] : null;
+            const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
             return (
               <Card><CardContent className="p-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Origem</p>
