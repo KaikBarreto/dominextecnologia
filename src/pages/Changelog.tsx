@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.3',
+    date: '10 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Error Boundary global',
+        description: 'Adicionada proteção contra tela branca: quando ocorre um erro inesperado, o sistema exibe uma mensagem amigável com botão para recarregar ao invés de travar completamente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção de tela branca ao abrir diálogos',
+        description: 'Corrigido problema que podia causar tela em branco ao abrir formulários como "Novo Cliente". Ajustada compatibilidade com Radix UI e importação de ícones.',
+        category: 'correcao',
+      },
+      {
+        title: 'Feriados na agenda com melhor contraste',
+        description: 'Os feriados na agenda agora usam fundo escuro com texto branco e ícone de estrela para melhor legibilidade. Adicionado item "Feriado" na legenda.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.2',
     date: '09 de março de 2026',
     type: 'patch',
