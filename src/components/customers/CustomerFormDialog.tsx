@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Loader2, ChevronRight, ChevronLeft, Check, Upload, Users } from 'lucide-react';
-import { icons } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
@@ -270,7 +270,7 @@ export function CustomerFormDialog({
                     <SelectContent>
                       <SelectItem value="__none__">Nenhuma</SelectItem>
                       {activeOrigins.map((o) => {
-                        const LucideIcon = (icons as any)[o.icon];
+                        const LucideIcon = o.icon ? (LucideIcons as any)[o.icon] : null;
                         return (
                           <SelectItem key={o.id} value={o.name}>
                             <div className="flex items-center gap-2">

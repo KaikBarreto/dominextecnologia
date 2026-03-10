@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
-import { icons } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const ICON_OPTIONS = ['Globe', 'UserPlus', 'Megaphone', 'Handshake', 'Phone', 'Mail', 'MapPin', 'Star', 'Heart', 'Target', 'Zap', 'TrendingUp', 'Share2', 'Users'];
 
 function IconPreview({ name, className }: { name: string; className?: string }) {
-  const LucideIcon = (icons as any)[name];
+  const LucideIcon = (LucideIcons as any)[name];
   if (!LucideIcon) return null;
   return <LucideIcon className={className || 'h-4 w-4'} />;
 }

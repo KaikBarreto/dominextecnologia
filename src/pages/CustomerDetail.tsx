@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, Loader2, FileText, Megaphone } from 'lucide-react';
-import { icons } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -227,7 +227,7 @@ export default function CustomerDetail() {
           )}
           {(customer as any).origin && (() => {
             const originData = activeOrigins.find(o => o.name === (customer as any).origin);
-            const LucideIcon = originData ? (icons as any)[originData.icon] : null;
+            const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
             return (
               <Card><CardContent className="p-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Origem</p>
