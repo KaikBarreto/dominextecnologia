@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
