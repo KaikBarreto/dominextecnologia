@@ -168,14 +168,15 @@ export function EquipmentFormDialog({
     setPhotoPreview(equipment?.photo_url ?? null);
   }, [open, formContextKey, form, defaultCustomerId, equipment, autoIdentifier]);
 
-  const uploadPhoto = async (): Promise<string | undefined> => {
-    if (!photoFile) return undefined;
+  const uploadPhoto = async (): Promise<string | null> => {
+    if (!photoFile) return null;
+
     setUploadingPhoto(true);
     try {
-      const ext = photoFile.name.split('.').pop();
-      const path = `photos/${crypto.randomUUID()}.${ext}`;
+      const path = buildStorageFilePath({ folder: 'photos', fileName: photoFile.name });
       const { error } = await supabase.storage.from('equipment-files').upload(path, photoFile);
       if (error) throw error;
+
       const { data } = supabase.storage.from('equipment-files').getPublicUrl(path);
       return data.publicUrl;
     } finally {
