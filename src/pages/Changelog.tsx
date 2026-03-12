@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.5',
+    date: '12 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Colunas ordenáveis na lista de equipamentos',
+        description: 'A tabela de equipamentos agora permite ordenar por nome, cliente, categoria e status clicando nos cabeçalhos das colunas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Seleção de cliente com busca (Combobox)',
+        description: 'Os campos de seleção de cliente em OS, Equipamentos, CRM e PMOC agora possuem busca integrada, facilitando encontrar clientes pelo nome, documento ou e-mail.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção de scroll em selects dentro de modais',
+        description: 'Corrigido problema onde a lista de opções do select de cliente não permitia rolar verticalmente em dispositivos móveis dentro de modais e drawers.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.4',
     date: '12 de março de 2026',
     type: 'patch',
