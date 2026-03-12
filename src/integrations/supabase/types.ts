@@ -3522,6 +3522,7 @@ export type Database = {
         | "fechado_ganho"
         | "fechado_perdido"
       os_status:
+        | "agendada"
         | "pendente"
         | "a_caminho"
         | "em_andamento"
@@ -3677,6 +3678,7 @@ export const Constants = {
         "fechado_perdido",
       ],
       os_status: [
+        "agendada",
         "pendente",
         "a_caminho",
         "em_andamento",

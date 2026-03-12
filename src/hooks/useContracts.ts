@@ -193,7 +193,7 @@ export function useContracts() {
               scheduled_date: dateStr,
               description,
               require_tech_signature: true,
-              status: 'pendente' as const,
+              status: 'agendada' as const,
               contract_id: (contract as any).id,
               origin: 'contract',
             })
