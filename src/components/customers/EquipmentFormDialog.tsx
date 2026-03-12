@@ -14,8 +14,10 @@ import {
 } from '@/components/ui/select';
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
+import { buildStorageFilePath } from '@/utils/storagePath';
 import type { Equipment, Customer } from '@/types/database';
 import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
 
@@ -55,17 +57,22 @@ export function EquipmentFormDialog({
   open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
+  const { toast } = useToast();
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initializedContextRef = useRef<string | null>(null);
 
   const autoIdentifier = useMemo(() => {
     if (equipment?.identifier) return equipment.identifier;
     const part1 = Math.floor(Math.random() * 9000000000000000) + 1000000000000000;
     return String(part1);
   }, [equipment]);
+
+  const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
+  const formContextKey = equipment?.id ?? `new:${defaultCustomerId || 'none'}`;
 
   const form = useForm<EquipmentFormData>({
     resolver: zodResolver(equipmentSchema),
@@ -97,70 +104,79 @@ export function EquipmentFormDialog({
   }, [customFieldValues, saveCache]);
 
   useEffect(() => {
-    if (open) {
-      const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
-
-      // Try to restore from cache only if same context (same equipment id or both new)
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      let restored = false;
-      const currentEditingId = equipment?.id ?? null;
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          const cachedEditingId = parsed.editingId ?? null;
-          const sameContext = currentEditingId === cachedEditingId;
-          // Only restore if values have meaningful content (not all empty)
-          if (sameContext && parsed.values && (parsed.values.name || parsed.values.customer_id)) {
-            form.reset(parsed.values);
-            setCustomFieldValues(parsed.customFieldValues ?? {});
-            restored = true;
-          }
-        } catch { /* ignore */ }
-      }
-
-      // Always clear stale cache if context changed
-      if (!restored) {
-        sessionStorage.removeItem(CACHE_KEY);
-        form.reset({
-          customer_id: defaultCustomerId,
-          name: equipment?.name ?? '',
-          category_id: equipment?.category_id ?? '',
-          identifier: equipment?.identifier ?? autoIdentifier,
-          brand: equipment?.brand ?? '',
-          model: equipment?.model ?? '',
-          serial_number: equipment?.serial_number ?? '',
-          capacity: equipment?.capacity ?? '',
-          location: equipment?.location ?? '',
-          install_date: equipment?.install_date ?? '',
-          warranty_until: (equipment as any)?.warranty_until ?? '',
-          notes: equipment?.notes ?? '',
-        });
-        // Restore custom field values from equipment.custom_fields
-        const cf: Record<string, string> = {};
-        if (equipment?.custom_fields) {
-          Object.entries(equipment.custom_fields).forEach(([k, v]) => {
-            cf[k] = String(v ?? '');
-          });
-        }
-        setCustomFieldValues(cf);
-      }
-
-      setPhotoFile(null);
-      setPhotoPreview(equipment?.photo_url ?? null);
-    } else {
+    if (!open) {
       // Clear cache when dialog closes (submitted or cancelled)
       sessionStorage.removeItem(CACHE_KEY);
+      initializedContextRef.current = null;
+      return;
     }
-  }, [open, equipment, autoIdentifier, customers]);
 
-  const uploadPhoto = async (): Promise<string | undefined> => {
-    if (!photoFile) return undefined;
+    // Prevent unwanted resets while the same dialog/context remains open
+    if (initializedContextRef.current === formContextKey) return;
+    initializedContextRef.current = formContextKey;
+
+    // Try to restore from cache only if same context (same equipment id or same create context)
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    let restored = false;
+
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        const cachedEditingId = parsed.editingId ?? null;
+        const currentEditingId = equipment?.id ?? null;
+        const sameContext = currentEditingId === cachedEditingId;
+
+        // Only restore if values have meaningful content (not all empty)
+        if (sameContext && parsed.values && (parsed.values.name || parsed.values.customer_id)) {
+          form.reset(parsed.values);
+          setCustomFieldValues(parsed.customFieldValues ?? {});
+          restored = true;
+        }
+      } catch {
+        // ignore cache parse errors
+      }
+    }
+
+    if (!restored) {
+      sessionStorage.removeItem(CACHE_KEY);
+      form.reset({
+        customer_id: defaultCustomerId,
+        name: equipment?.name ?? '',
+        category_id: equipment?.category_id ?? '',
+        identifier: equipment?.identifier ?? autoIdentifier,
+        brand: equipment?.brand ?? '',
+        model: equipment?.model ?? '',
+        serial_number: equipment?.serial_number ?? '',
+        capacity: equipment?.capacity ?? '',
+        location: equipment?.location ?? '',
+        install_date: equipment?.install_date ?? '',
+        warranty_until: (equipment as any)?.warranty_until ?? '',
+        notes: equipment?.notes ?? '',
+      });
+
+      // Restore custom field values from equipment.custom_fields
+      const cf: Record<string, string> = {};
+      if (equipment?.custom_fields) {
+        Object.entries(equipment.custom_fields).forEach(([k, v]) => {
+          cf[k] = String(v ?? '');
+        });
+      }
+      setCustomFieldValues(cf);
+    }
+
+    setPhotoFile(null);
+    setPhotoPreview(equipment?.photo_url ?? null);
+  }, [open, formContextKey, form, defaultCustomerId, equipment, autoIdentifier]);
+
+  const uploadPhoto = async (): Promise<string | null> => {
+    if (!photoFile) return null;
+
     setUploadingPhoto(true);
     try {
-      const ext = photoFile.name.split('.').pop();
-      const path = `photos/${crypto.randomUUID()}.${ext}`;
+      const path = buildStorageFilePath({ folder: 'photos', fileName: photoFile.name });
       const { error } = await supabase.storage.from('equipment-files').upload(path, photoFile);
       if (error) throw error;
+
       const { data } = supabase.storage.from('equipment-files').getPublicUrl(path);
       return data.publicUrl;
     } finally {
@@ -178,35 +194,49 @@ export function EquipmentFormDialog({
   };
 
   const handleSubmit = async (data: EquipmentFormData) => {
-    let photo_url = equipment?.photo_url;
-    if (photoFile) {
-      photo_url = await uploadPhoto();
+    try {
+      let photo_url: string | null = equipment?.photo_url ?? null;
+
+      if (photoFile) {
+        photo_url = await uploadPhoto();
+      } else if (!photoPreview) {
+        photo_url = null;
+      }
+
+      const cleaned: any = { ...data, photo_url };
+      // Convert empty strings to null so updates actually clear values
+      Object.keys(cleaned).forEach(key => {
+        if (cleaned[key] === '') cleaned[key] = null;
+      });
+      cleaned.customer_id = data.customer_id;
+      cleaned.name = data.name;
+
+      // Merge custom fields into custom_fields jsonb
+      const existingCustom = equipment?.custom_fields ?? {};
+      const mergedCustom = { ...existingCustom, ...customFieldValues };
+      // Remove empty values
+      Object.keys(mergedCustom).forEach(k => {
+        if (!mergedCustom[k]) delete mergedCustom[k];
+      });
+      if (Object.keys(mergedCustom).length > 0) {
+        cleaned.custom_fields = mergedCustom;
+      }
+
+      await onSubmit(cleaned);
+      sessionStorage.removeItem(CACHE_KEY);
+      form.reset();
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setCustomFieldValues({});
+      onOpenChange(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível salvar o equipamento.';
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar equipamento',
+        description: message,
+      });
     }
-
-    const cleaned: any = { ...data, photo_url };
-    // Convert empty strings to null so updates actually clear values
-    Object.keys(cleaned).forEach(key => {
-      if (cleaned[key] === '') cleaned[key] = null;
-    });
-    cleaned.customer_id = data.customer_id;
-    cleaned.name = data.name;
-
-    // Merge custom fields into custom_fields jsonb
-    const existingCustom = equipment?.custom_fields ?? {};
-    const mergedCustom = { ...existingCustom, ...customFieldValues };
-    // Remove empty values
-    Object.keys(mergedCustom).forEach(k => {
-      if (!mergedCustom[k]) delete mergedCustom[k];
-    });
-    if (Object.keys(mergedCustom).length > 0) {
-      cleaned.custom_fields = mergedCustom;
-    }
-
-    await onSubmit(cleaned);
-    sessionStorage.removeItem(CACHE_KEY);
-    form.reset();
-    setCustomFieldValues({});
-    onOpenChange(false);
   };
 
   const fieldKeyToName: Record<string, keyof EquipmentFormData> = {
