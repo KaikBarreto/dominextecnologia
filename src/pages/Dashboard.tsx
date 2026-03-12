@@ -50,6 +50,12 @@ function formatCurrency(value: number) {
 }
 
 const statusConfig = {
+  agendada: {
+    label: 'Agendada',
+    icon: CalendarClock,
+    color: 'text-white',
+    bgColor: 'bg-violet-500',
+  },
   pendente: {
     label: 'Pendente',
     icon: Clock,
@@ -67,6 +73,12 @@ const statusConfig = {
     icon: CheckCircle2,
     color: 'text-white',
     bgColor: 'bg-success',
+  },
+  cancelada: {
+    label: 'Cancelada',
+    icon: XCircle,
+    color: 'text-white',
+    bgColor: 'bg-destructive',
   },
 };
 
