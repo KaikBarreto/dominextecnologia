@@ -225,11 +225,11 @@ export function EquipmentPanel() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[60px] text-xs uppercase tracking-wider">Foto</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider">Nome</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Local</TableHead>
-                      <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">Cliente</TableHead>
-                      <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Categoria</TableHead>
-                      <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">Status</TableHead>
+                      <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                      <SortableTableHead sortKey="location" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Local</SortableTableHead>
+                      <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Cliente</SortableTableHead>
+                      <SortableTableHead sortKey="category_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Categoria</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Status</SortableTableHead>
                       <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
