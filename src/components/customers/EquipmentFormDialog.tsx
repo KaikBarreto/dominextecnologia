@@ -14,8 +14,10 @@ import {
 } from '@/components/ui/select';
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
+import { buildStorageFilePath } from '@/utils/storagePath';
 import type { Equipment, Customer } from '@/types/database';
 import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
 
