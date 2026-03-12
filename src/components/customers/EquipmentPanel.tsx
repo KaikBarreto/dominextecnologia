@@ -149,17 +149,18 @@ export function EquipmentPanel() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={customerFilter} onValueChange={setCustomerFilter}>
-          <SelectTrigger className="sm:w-[200px]">
-            <SelectValue placeholder="Cliente" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos clientes</SelectItem>
-            {customersWithEquipment.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="sm:w-[200px]">
+          <SearchableSelect
+            options={[
+              { value: 'all', label: 'Todos clientes' },
+              ...customersWithEquipment.map(c => ({ value: c.id, label: c.name })),
+            ]}
+            value={customerFilter}
+            onValueChange={setCustomerFilter}
+            placeholder="Cliente"
+            searchPlaceholder="Buscar cliente..."
+          />
+        </div>
       </div>
 
       <div>
