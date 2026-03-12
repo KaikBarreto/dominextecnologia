@@ -300,20 +300,17 @@ export function EquipmentFormDialog({
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Cliente *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente" />
-                      </SelectTrigger>
+                  <FormControl>
+                      <SearchableSelect
+                        options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Selecione o cliente"
+                        searchPlaceholder="Buscar cliente..."
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
+                    <FormMessage />
+                  </FormItem>
               )}
             />
             <FormField

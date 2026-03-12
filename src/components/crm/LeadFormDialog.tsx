@@ -106,22 +106,16 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="customer_id">Cliente</Label>
-              <Select
+              <SearchableSelect
+                options={[
+                  { value: 'none', label: 'Nenhum cliente' },
+                  ...customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined })),
+                ]}
                 value={formData.customer_id || 'none'}
                 onValueChange={(value) => handleChange('customer_id', value === 'none' ? null : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum cliente</SelectItem>
-                  {customers.map(customer => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Selecione um cliente (opcional)"
+                searchPlaceholder="Buscar cliente..."
+              />
             </div>
 
             <div className="space-y-2">
