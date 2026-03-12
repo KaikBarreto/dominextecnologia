@@ -194,35 +194,49 @@ export function EquipmentFormDialog({
   };
 
   const handleSubmit = async (data: EquipmentFormData) => {
-    let photo_url = equipment?.photo_url;
-    if (photoFile) {
-      photo_url = await uploadPhoto();
+    try {
+      let photo_url: string | null = equipment?.photo_url ?? null;
+
+      if (photoFile) {
+        photo_url = await uploadPhoto();
+      } else if (!photoPreview) {
+        photo_url = null;
+      }
+
+      const cleaned: any = { ...data, photo_url };
+      // Convert empty strings to null so updates actually clear values
+      Object.keys(cleaned).forEach(key => {
+        if (cleaned[key] === '') cleaned[key] = null;
+      });
+      cleaned.customer_id = data.customer_id;
+      cleaned.name = data.name;
+
+      // Merge custom fields into custom_fields jsonb
+      const existingCustom = equipment?.custom_fields ?? {};
+      const mergedCustom = { ...existingCustom, ...customFieldValues };
+      // Remove empty values
+      Object.keys(mergedCustom).forEach(k => {
+        if (!mergedCustom[k]) delete mergedCustom[k];
+      });
+      if (Object.keys(mergedCustom).length > 0) {
+        cleaned.custom_fields = mergedCustom;
+      }
+
+      await onSubmit(cleaned);
+      sessionStorage.removeItem(CACHE_KEY);
+      form.reset();
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setCustomFieldValues({});
+      onOpenChange(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível salvar o equipamento.';
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar equipamento',
+        description: message,
+      });
     }
-
-    const cleaned: any = { ...data, photo_url };
-    // Convert empty strings to null so updates actually clear values
-    Object.keys(cleaned).forEach(key => {
-      if (cleaned[key] === '') cleaned[key] = null;
-    });
-    cleaned.customer_id = data.customer_id;
-    cleaned.name = data.name;
-
-    // Merge custom fields into custom_fields jsonb
-    const existingCustom = equipment?.custom_fields ?? {};
-    const mergedCustom = { ...existingCustom, ...customFieldValues };
-    // Remove empty values
-    Object.keys(mergedCustom).forEach(k => {
-      if (!mergedCustom[k]) delete mergedCustom[k];
-    });
-    if (Object.keys(mergedCustom).length > 0) {
-      cleaned.custom_fields = mergedCustom;
-    }
-
-    await onSubmit(cleaned);
-    sessionStorage.removeItem(CACHE_KEY);
-    form.reset();
-    setCustomFieldValues({});
-    onOpenChange(false);
   };
 
   const fieldKeyToName: Record<string, keyof EquipmentFormData> = {
