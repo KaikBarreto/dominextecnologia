@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
             scheduled_date: plan.next_generation_date,
             description: `PMOC automático: ${plan.name} - ${item.equipment?.name || 'Equipamento'}`,
             require_tech_signature: true,
-            status: 'pendente',
+            status: 'agendada',
           } as any)
           .select('id')
           .single()
