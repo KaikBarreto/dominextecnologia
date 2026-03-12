@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -148,17 +149,18 @@ export function EquipmentPanel() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={customerFilter} onValueChange={setCustomerFilter}>
-          <SelectTrigger className="sm:w-[200px]">
-            <SelectValue placeholder="Cliente" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos clientes</SelectItem>
-            {customersWithEquipment.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="sm:w-[200px]">
+          <SearchableSelect
+            options={[
+              { value: 'all', label: 'Todos clientes' },
+              ...customersWithEquipment.map(c => ({ value: c.id, label: c.name })),
+            ]}
+            value={customerFilter}
+            onValueChange={setCustomerFilter}
+            placeholder="Cliente"
+            searchPlaceholder="Buscar cliente..."
+          />
+        </div>
       </div>
 
       <div>

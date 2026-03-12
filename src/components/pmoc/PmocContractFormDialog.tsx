@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Switch } from '@/components/ui/switch';
 import { usePmocContracts, type PmocContract, type PmocContractInsert } from '@/hooks/usePmocContracts';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -95,22 +96,13 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="customer_id">Cliente *</Label>
-              <Select
+              <SearchableSelect
+                options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
                 value={formData.customer_id}
                 onValueChange={(value) => handleChange('customer_id', value)}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map(customer => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Selecione o cliente"
+                searchPlaceholder="Buscar cliente..."
+              />
             </div>
 
             <div className="space-y-2">
