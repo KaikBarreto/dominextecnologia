@@ -104,61 +104,69 @@ export function EquipmentFormDialog({
   }, [customFieldValues, saveCache]);
 
   useEffect(() => {
-    if (open) {
-      const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
-
-      // Try to restore from cache only if same context (same equipment id or both new)
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      let restored = false;
-      const currentEditingId = equipment?.id ?? null;
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          const cachedEditingId = parsed.editingId ?? null;
-          const sameContext = currentEditingId === cachedEditingId;
-          // Only restore if values have meaningful content (not all empty)
-          if (sameContext && parsed.values && (parsed.values.name || parsed.values.customer_id)) {
-            form.reset(parsed.values);
-            setCustomFieldValues(parsed.customFieldValues ?? {});
-            restored = true;
-          }
-        } catch { /* ignore */ }
-      }
-
-      // Always clear stale cache if context changed
-      if (!restored) {
-        sessionStorage.removeItem(CACHE_KEY);
-        form.reset({
-          customer_id: defaultCustomerId,
-          name: equipment?.name ?? '',
-          category_id: equipment?.category_id ?? '',
-          identifier: equipment?.identifier ?? autoIdentifier,
-          brand: equipment?.brand ?? '',
-          model: equipment?.model ?? '',
-          serial_number: equipment?.serial_number ?? '',
-          capacity: equipment?.capacity ?? '',
-          location: equipment?.location ?? '',
-          install_date: equipment?.install_date ?? '',
-          warranty_until: (equipment as any)?.warranty_until ?? '',
-          notes: equipment?.notes ?? '',
-        });
-        // Restore custom field values from equipment.custom_fields
-        const cf: Record<string, string> = {};
-        if (equipment?.custom_fields) {
-          Object.entries(equipment.custom_fields).forEach(([k, v]) => {
-            cf[k] = String(v ?? '');
-          });
-        }
-        setCustomFieldValues(cf);
-      }
-
-      setPhotoFile(null);
-      setPhotoPreview(equipment?.photo_url ?? null);
-    } else {
+    if (!open) {
       // Clear cache when dialog closes (submitted or cancelled)
       sessionStorage.removeItem(CACHE_KEY);
+      initializedContextRef.current = null;
+      return;
     }
-  }, [open, equipment, autoIdentifier, customers]);
+
+    // Prevent unwanted resets while the same dialog/context remains open
+    if (initializedContextRef.current === formContextKey) return;
+    initializedContextRef.current = formContextKey;
+
+    // Try to restore from cache only if same context (same equipment id or same create context)
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    let restored = false;
+
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        const cachedEditingId = parsed.editingId ?? null;
+        const currentEditingId = equipment?.id ?? null;
+        const sameContext = currentEditingId === cachedEditingId;
+
+        // Only restore if values have meaningful content (not all empty)
+        if (sameContext && parsed.values && (parsed.values.name || parsed.values.customer_id)) {
+          form.reset(parsed.values);
+          setCustomFieldValues(parsed.customFieldValues ?? {});
+          restored = true;
+        }
+      } catch {
+        // ignore cache parse errors
+      }
+    }
+
+    if (!restored) {
+      sessionStorage.removeItem(CACHE_KEY);
+      form.reset({
+        customer_id: defaultCustomerId,
+        name: equipment?.name ?? '',
+        category_id: equipment?.category_id ?? '',
+        identifier: equipment?.identifier ?? autoIdentifier,
+        brand: equipment?.brand ?? '',
+        model: equipment?.model ?? '',
+        serial_number: equipment?.serial_number ?? '',
+        capacity: equipment?.capacity ?? '',
+        location: equipment?.location ?? '',
+        install_date: equipment?.install_date ?? '',
+        warranty_until: (equipment as any)?.warranty_until ?? '',
+        notes: equipment?.notes ?? '',
+      });
+
+      // Restore custom field values from equipment.custom_fields
+      const cf: Record<string, string> = {};
+      if (equipment?.custom_fields) {
+        Object.entries(equipment.custom_fields).forEach(([k, v]) => {
+          cf[k] = String(v ?? '');
+        });
+      }
+      setCustomFieldValues(cf);
+    }
+
+    setPhotoFile(null);
+    setPhotoPreview(equipment?.photo_url ?? null);
+  }, [open, formContextKey, form, defaultCustomerId, equipment, autoIdentifier]);
 
   const uploadPhoto = async (): Promise<string | undefined> => {
     if (!photoFile) return undefined;
