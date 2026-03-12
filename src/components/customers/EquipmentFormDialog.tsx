@@ -71,6 +71,9 @@ export function EquipmentFormDialog({
     return String(part1);
   }, [equipment]);
 
+  const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
+  const formContextKey = equipment?.id ?? `new:${defaultCustomerId || 'none'}`;
+
   const form = useForm<EquipmentFormData>({
     resolver: zodResolver(equipmentSchema),
     defaultValues: {
