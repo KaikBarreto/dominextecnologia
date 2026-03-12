@@ -43,6 +43,7 @@ interface ServiceOrderViewDialogProps {
 }
 
 const statusColors: Record<OsStatus, string> = {
+  agendada: 'bg-violet-500/10 text-violet-600 border-violet-500',
   pendente: 'bg-warning/10 text-warning border-warning',
   a_caminho: 'bg-indigo-500/10 text-indigo-600 border-indigo-500',
   em_andamento: 'bg-info/10 text-info border-info',

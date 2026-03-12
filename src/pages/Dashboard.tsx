@@ -8,6 +8,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  XCircle,
+  CalendarClock,
   BarChart3,
   Activity,
 } from 'lucide-react';

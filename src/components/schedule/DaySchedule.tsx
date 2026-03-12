@@ -28,6 +28,7 @@ const osTypeLabels: Record<OsType, string> = {
 };
 
 const statusLabels: Record<OsStatus, string> = {
+  agendada: 'Agendada',
   pendente: 'Pendente',
   a_caminho: 'A Caminho',
   em_andamento: 'Em Andamento',
@@ -36,6 +37,7 @@ const statusLabels: Record<OsStatus, string> = {
 };
 
 const statusVariants: Record<OsStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  agendada: 'secondary',
   pendente: 'secondary',
   a_caminho: 'default',
   em_andamento: 'default',

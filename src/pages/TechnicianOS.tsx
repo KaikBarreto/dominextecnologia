@@ -341,6 +341,7 @@ export default function TechnicianOS() {
   }
 
   const statusBadgeVariant: Record<OsStatus, 'warning' | 'info' | 'success' | 'destructive'> = {
+    agendada: 'info',
     pendente: 'warning',
     a_caminho: 'info',
     em_andamento: 'info',
