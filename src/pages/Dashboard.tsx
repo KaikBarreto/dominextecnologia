@@ -197,8 +197,8 @@ export default function Dashboard() {
       }));
   }, [stats?.allOS, range]);
 
-  const filteredOsAbertas = filteredOsByStatus.pendente + filteredOsByStatus.em_andamento;
-  const totalFilteredOS = filteredOsByStatus.pendente + filteredOsByStatus.em_andamento + filteredOsByStatus.concluida;
+  const filteredOsAbertas = (filteredOsByStatus.agendada || 0) + filteredOsByStatus.pendente + filteredOsByStatus.em_andamento;
+  const totalFilteredOS = (filteredOsByStatus.agendada || 0) + filteredOsByStatus.pendente + filteredOsByStatus.em_andamento + filteredOsByStatus.concluida;
   const filteredTaxaConclusao = totalFilteredOS > 0 ? Math.round((filteredOsByStatus.concluida / totalFilteredOS) * 100) : 0;
 
   const pieData = Object.entries(filteredOsByType)
