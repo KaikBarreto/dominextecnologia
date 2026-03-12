@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.4',
+    date: '12 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção de upload de anexos em equipamentos',
+        description: 'Corrigido erro "Invalid key" ao anexar arquivos com caracteres especiais ou acentos no nome (ex: imagens do WhatsApp). Os nomes são agora sanitizados automaticamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Persistência da foto ao criar/editar equipamento',
+        description: 'Corrigido problema onde a foto selecionada desaparecia durante o cadastro ou edição do equipamento. A imagem agora é mantida corretamente até o envio do formulário.',
+        category: 'correcao',
+      },
+      {
+        title: 'Padronização de caminhos de storage',
+        description: 'Criado utilitário centralizado para geração de caminhos seguros no storage, eliminando falhas com nomes de arquivo problemáticos em todo o sistema.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.3',
     date: '10 de março de 2026',
     type: 'patch',
