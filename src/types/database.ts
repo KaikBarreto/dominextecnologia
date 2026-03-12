@@ -223,6 +223,7 @@ export interface PmocContract {
 
 // Status labels em português
 export const osStatusLabels: Record<OsStatus, string> = {
+  agendada: 'Agendada',
   pendente: 'Pendente',
   a_caminho: 'A Caminho',
   em_andamento: 'Em Andamento',
