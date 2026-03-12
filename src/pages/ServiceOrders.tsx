@@ -11,6 +11,7 @@ import {
   AlertCircle,
   XCircle,
   Calendar,
+  CalendarClock,
   Eye,
   ExternalLink,
   Settings,
@@ -55,6 +56,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
+  agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500' },
   pendente: { icon: Clock, color: 'text-white', bgColor: 'bg-warning' },
   a_caminho: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-indigo-500' },
   em_andamento: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-info' },
@@ -206,7 +208,7 @@ export default function ServiceOrders() {
       </div>
 
       {/* Status Summary Cards */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {(Object.keys(statusConfig) as OsStatus[]).map((status) => {
           const config = statusConfig[status];
           const count = serviceOrders.filter((os) => os.status === status).length;

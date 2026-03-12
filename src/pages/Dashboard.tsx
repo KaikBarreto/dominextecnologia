@@ -8,6 +8,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  XCircle,
+  CalendarClock,
   BarChart3,
   Activity,
 } from 'lucide-react';
@@ -50,6 +52,12 @@ function formatCurrency(value: number) {
 }
 
 const statusConfig = {
+  agendada: {
+    label: 'Agendada',
+    icon: CalendarClock,
+    color: 'text-white',
+    bgColor: 'bg-violet-500',
+  },
   pendente: {
     label: 'Pendente',
     icon: Clock,
@@ -67,6 +75,12 @@ const statusConfig = {
     icon: CheckCircle2,
     color: 'text-white',
     bgColor: 'bg-success',
+  },
+  cancelada: {
+    label: 'Cancelada',
+    icon: XCircle,
+    color: 'text-white',
+    bgColor: 'bg-destructive',
   },
 };
 
@@ -96,11 +110,11 @@ export default function Dashboard() {
 
   // Filter OS status counts
   const filteredOsByStatus = useMemo(() => {
-    if (!stats?.allOS) return { pendente: 0, em_andamento: 0, concluida: 0, cancelada: 0 };
+    if (!stats?.allOS) return { agendada: 0, pendente: 0, a_caminho: 0, em_andamento: 0, concluida: 0, cancelada: 0 };
     const filtered = filterByDate(stats.allOS, 'scheduled_date');
-    const counts = { pendente: 0, em_andamento: 0, concluida: 0, cancelada: 0 };
+    const counts: Record<string, number> = { agendada: 0, pendente: 0, a_caminho: 0, em_andamento: 0, concluida: 0, cancelada: 0 };
     filtered.forEach((os: any) => {
-      if (os.status in counts) counts[os.status as keyof typeof counts]++;
+      if (os.status in counts) counts[os.status]++;
     });
     return counts;
   }, [stats?.allOS, range]);
@@ -183,8 +197,8 @@ export default function Dashboard() {
       }));
   }, [stats?.allOS, range]);
 
-  const filteredOsAbertas = filteredOsByStatus.pendente + filteredOsByStatus.em_andamento;
-  const totalFilteredOS = filteredOsByStatus.pendente + filteredOsByStatus.em_andamento + filteredOsByStatus.concluida;
+  const filteredOsAbertas = (filteredOsByStatus.agendada || 0) + filteredOsByStatus.pendente + filteredOsByStatus.em_andamento;
+  const totalFilteredOS = (filteredOsByStatus.agendada || 0) + filteredOsByStatus.pendente + filteredOsByStatus.em_andamento + filteredOsByStatus.concluida;
   const filteredTaxaConclusao = totalFilteredOS > 0 ? Math.round((filteredOsByStatus.concluida / totalFilteredOS) * 100) : 0;
 
   const pieData = Object.entries(filteredOsByType)
