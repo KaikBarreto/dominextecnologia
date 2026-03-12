@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { buildStorageFilePath } from '@/utils/storagePath';
 
 export interface EquipmentAttachment {
   id: string;
@@ -33,7 +34,12 @@ export function useEquipmentAttachments(equipmentId?: string) {
 
   const uploadAttachment = useMutation({
     mutationFn: async ({ equipmentId, file, description }: { equipmentId: string; file: File; description?: string }) => {
-      const filePath = `${equipmentId}/${Date.now()}_${file.name}`;
+      const filePath = buildStorageFilePath({
+        folder: equipmentId,
+        fileName: file.name,
+        prefix: String(Date.now()),
+      });
+
       const { error: uploadError } = await supabase.storage
         .from('equipment-files')
         .upload(filePath, file);
