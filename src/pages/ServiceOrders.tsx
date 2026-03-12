@@ -55,6 +55,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
+  agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500' },
   pendente: { icon: Clock, color: 'text-white', bgColor: 'bg-warning' },
   a_caminho: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-indigo-500' },
   em_andamento: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-info' },
