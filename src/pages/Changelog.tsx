@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.6',
+    date: '13 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atalhos de teclado configuráveis',
+        description: 'Nova aba "Atalhos" nas Configurações com navegação rápida via Shift + letra (ex: Shift+D para Dashboard, Shift+O para OS). Atalhos podem ser ativados/desativados.',
+        category: 'recurso',
+      },
+      {
+        title: 'Títulos dinâmicos na aba do navegador',
+        description: 'O título da aba do navegador agora reflete a tela atual (ex: "Dashboard | Dominex", "Clientes | Dominex").',
+        category: 'melhoria',
+      },
+      {
+        title: 'Novo favicon e logo atualizado',
+        description: 'Favicon atualizado para o ícone verde da Dominex. Logo no login e cadastro agora usa a versão horizontal verde, igual ao header da landing page.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Origem automática no cadastro',
+        description: 'A etapa de origem no cadastro é pulada automaticamente, registrando "Site/Google" por padrão. Parâmetros de URL (?origem=...) sobrescrevem o valor.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botão "Criar Conta" na landing page',
+        description: 'O botão "Agendar Demo" no header da landing page foi alterado para "Criar Conta" com link direto ao cadastro.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Skeleton loading no login',
+        description: 'Tela de login agora exibe skeletons animados enquanto o estado de autenticação carrega, em vez de um spinner simples.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.5',
     date: '12 de março de 2026',
     type: 'patch',
