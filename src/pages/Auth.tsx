@@ -229,11 +229,31 @@ export default function Auth() {
     toast({ title: 'Login cancelado' });
   };
 
-  // Show loading spinner while auth state is loading
+  // Show skeleton while auth state is loading
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
+        <div className="absolute inset-0 z-0 bg-[hsl(0,0%,4%)]" />
+        <div className="w-full max-w-md relative z-10">
+          <div className="mb-8 flex flex-col items-center gap-3">
+            <div className="h-14 w-48 rounded-lg bg-white/10 animate-pulse" />
+            <div className="h-4 w-64 rounded bg-white/10 animate-pulse" />
+          </div>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-8 space-y-6">
+            <div className="h-6 w-20 mx-auto rounded bg-white/10 animate-pulse" />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="h-3 w-16 rounded bg-white/10 animate-pulse" />
+                <div className="h-10 w-full rounded-md bg-white/10 animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-16 rounded bg-white/10 animate-pulse" />
+                <div className="h-10 w-full rounded-md bg-white/10 animate-pulse" />
+              </div>
+              <div className="h-10 w-full rounded-md bg-white/10 animate-pulse" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -245,7 +265,7 @@ export default function Auth() {
       </div>
       <div className="w-full max-w-md relative z-10">
         <div className="mb-8 flex flex-col items-center">
-          <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" />
+          <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" onError={() => {}} />
           <p className="text-white/80 text-sm">Sistema de Gestão de Equipes Externas</p>
         </div>
 
