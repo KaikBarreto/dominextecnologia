@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { SettingsAppearanceContent } from '@/components/settings/SettingsAppearanceContent';
+import { SettingsShortcutsContent } from '@/components/settings/SettingsShortcutsContent';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
@@ -23,6 +24,7 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 const settingsTabs: SettingsTab[] = [
   { value: 'empresa', label: 'Empresa', icon: Building },
   { value: 'usabilidade', label: 'Usabilidade', icon: SlidersHorizontal },
+  { value: 'atalhos', label: 'Atalhos', icon: Keyboard },
   { value: 'aparencia', label: 'Aparência', icon: Palette },
 ];
 
@@ -30,7 +32,7 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
-    return tabFromUrl && ['empresa', 'usabilidade', 'aparencia'].includes(tabFromUrl) ? tabFromUrl : 'empresa';
+    return tabFromUrl && ['empresa', 'usabilidade', 'atalhos', 'aparencia'].includes(tabFromUrl) ? tabFromUrl : 'empresa';
   });
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
@@ -647,6 +649,9 @@ export default function Settings() {
             </CardContent>
           </Card>
         );
+
+      case 'atalhos':
+        return <SettingsShortcutsContent />;
 
       case 'aparencia':
         return <SettingsAppearanceContent />;

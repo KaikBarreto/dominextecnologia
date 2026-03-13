@@ -5,6 +5,7 @@ import { SystemFooter } from './SystemFooter';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { LogOut, PanelLeftClose, PanelLeft, Menu, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Button } from '@/components/ui/button';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -129,6 +130,7 @@ function TopbarAppLayout() {
 
 export function AppLayout() {
   const { navigationStyle } = useNavigationPreference();
+  useKeyboardShortcuts(true);
 
   if (navigationStyle === 'topbar') {
     return <TopbarAppLayout />;
