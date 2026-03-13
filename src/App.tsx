@@ -138,6 +138,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const PageTitleUpdater = () => { usePageTitle(); return null; };
+
 const AppRoutes = () => (
   <Routes>
     {/* Landing page — public, no redirect */}
