@@ -24,6 +24,7 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 const settingsTabs: SettingsTab[] = [
   { value: 'empresa', label: 'Empresa', icon: Building },
   { value: 'usabilidade', label: 'Usabilidade', icon: SlidersHorizontal },
+  { value: 'atalhos', label: 'Atalhos', icon: Keyboard },
   { value: 'aparencia', label: 'Aparência', icon: Palette },
 ];
 
