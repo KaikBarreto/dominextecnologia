@@ -85,7 +85,7 @@ export default function LandingNavbar() {
               <Link to="/login">Entrar</Link>
             </Button>
             <Button className="w-full bg-primary text-primary-foreground" asChild>
-              <Link to="/cadastro">Agendar Demo</Link>
+              <Link to="/cadastro">Criar Conta</Link>
             </Button>
           </div>
         </div>

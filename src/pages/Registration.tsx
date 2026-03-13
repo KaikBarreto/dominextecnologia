@@ -16,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
-import logoWhite from '@/assets/logo-white.png';
+import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 
