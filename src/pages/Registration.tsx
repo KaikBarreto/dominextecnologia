@@ -45,12 +45,10 @@ export default function Registration() {
   const [selectedOrigin, setSelectedOrigin] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const originFromUrl = searchParams.get('origem');
+  const originFromUrl = searchParams.get('origem') || 'Site/Google';
 
   useEffect(() => {
-    if (originFromUrl) {
-      setSelectedOrigin(originFromUrl);
-    }
+    setSelectedOrigin(originFromUrl);
   }, [originFromUrl]);
 
   const { register, handleSubmit, watch, formState: { errors }, trigger } = useForm<RegistrationFormData>();
