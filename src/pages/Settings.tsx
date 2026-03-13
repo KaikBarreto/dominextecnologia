@@ -650,6 +650,9 @@ export default function Settings() {
           </Card>
         );
 
+      case 'atalhos':
+        return <SettingsShortcutsContent />;
+
       case 'aparencia':
         return <SettingsAppearanceContent />;
 
