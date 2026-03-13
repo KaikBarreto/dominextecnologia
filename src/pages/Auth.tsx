@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
 import { SessionConfirmDialog } from '@/components/SessionConfirmDialog';
-import logoWhite from '@/assets/logo-white.png';
+import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 import { supabase } from '@/integrations/supabase/client';

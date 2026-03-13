@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { UpdateBanner } from "@/components/pwa/UpdateBanner";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -137,6 +138,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const PageTitleUpdater = () => { usePageTitle(); return null; };
+
 const AppRoutes = () => (
   <Routes>
     {/* Landing page — public, no redirect */}
@@ -232,6 +235,7 @@ const App = () => (
         
         <OfflineIndicator />
         <BrowserRouter>
+          <PageTitleUpdater />
           <AuthProvider>
             <AppRoutes />
           </AuthProvider>
