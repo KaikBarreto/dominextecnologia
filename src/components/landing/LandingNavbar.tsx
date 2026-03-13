@@ -53,7 +53,7 @@ export default function LandingNavbar() {
               <Link to="/login">Entrar</Link>
             </Button>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90" asChild>
-              <Link to="/cadastro">Agendar Demo</Link>
+              <Link to="/cadastro">Criar Conta</Link>
             </Button>
           </div>
 
