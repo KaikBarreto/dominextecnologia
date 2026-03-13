@@ -166,13 +166,15 @@ export default function Registration() {
       </div>
 
       <div className="relative z-10 w-full max-w-2xl">
+        {/* Logo outside card */}
+        <div className="mb-8 flex flex-col items-center">
+          <img src={logoWhite} alt="Dominex" className="h-14 w-auto mb-2" />
+          <p className="text-white/80 text-sm">Sistema de Gestão de Equipes Externas</p>
+        </div>
+
         <Card className="border-0 sm:border sm:border-white/15 bg-black/60 sm:bg-black/40 backdrop-blur-xl shadow-2xl rounded-none sm:rounded-xl">
           <CardContent className="p-6 xl:p-8">
             <div className="space-y-6">
-              {/* Logo */}
-              <div className="flex justify-center">
-                <img src={logoWhite} alt="Dominex" className="h-12" />
-              </div>
 
               {/* Header */}
               <div className="text-center space-y-2">
