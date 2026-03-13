@@ -265,7 +265,7 @@ export default function Auth() {
       </div>
       <div className="w-full max-w-md relative z-10">
         <div className="mb-8 flex flex-col items-center">
-          <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" />
+          <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" onError={() => {}} />
           <p className="text-white/80 text-sm">Sistema de Gestão de Equipes Externas</p>
         </div>
 
