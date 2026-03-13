@@ -16,6 +16,7 @@ import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { SettingsAppearanceContent } from '@/components/settings/SettingsAppearanceContent';
+import { SettingsShortcutsContent } from '@/components/settings/SettingsShortcutsContent';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
