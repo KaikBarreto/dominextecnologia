@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
