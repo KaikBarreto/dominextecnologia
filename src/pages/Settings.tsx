@@ -32,7 +32,7 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
-    return tabFromUrl && ['empresa', 'usabilidade', 'aparencia'].includes(tabFromUrl) ? tabFromUrl : 'empresa';
+    return tabFromUrl && ['empresa', 'usabilidade', 'atalhos', 'aparencia'].includes(tabFromUrl) ? tabFromUrl : 'empresa';
   });
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
