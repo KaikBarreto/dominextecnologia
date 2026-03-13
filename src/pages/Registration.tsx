@@ -417,7 +417,9 @@ export default function Registration() {
           </CardContent>
         </Card>
 
-        <SystemFooter variant="dark" />
+        <div className="mt-8">
+          <SystemFooter variant="dark" />
+        </div>
       </div>
     </div>
   );
