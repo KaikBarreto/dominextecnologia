@@ -235,6 +235,7 @@ const App = () => (
         
         <OfflineIndicator />
         <BrowserRouter>
+          <PageTitleUpdater />
           <AuthProvider>
             <AppRoutes />
           </AuthProvider>
