@@ -336,30 +336,30 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 lg:gap-6">
         {/* Left column */}
         <div className="contents lg:block lg:space-y-6">
-          <div className="order-6 lg:order-none">
+          <div className="order-1 lg:order-none">
             <DashboardLiveMap technicians={techsInField} isLoading={isLoading} />
           </div>
           <div className="order-4 lg:order-none">
             <DashboardCashFlow data={cashFlowData} isLoading={isLoading} />
           </div>
-          <div className="order-7 lg:order-none">
+          <div className="order-5 lg:order-none">
             <DashboardOSEvolution data={evolutionData} isLoading={isLoading} />
+          </div>
+          <div className="order-6 lg:order-none">
+            <DashboardTopTechnicians technicians={topTechnicians} isLoading={isLoading} />
           </div>
         </div>
 
         {/* Right column */}
         <div className="contents lg:block lg:space-y-6">
           <div className="order-2 lg:order-none">
-            <DashboardCriticalOS items={criticalOS} isLoading={isLoading} />
-          </div>
-          <div className="order-3 lg:order-none">
             <DashboardStatusSummary counts={statusCounts} isLoading={isLoading} />
           </div>
-          <div className="order-5 lg:order-none">
-            <DashboardTopTechnicians technicians={topTechnicians} isLoading={isLoading} />
-          </div>
-          <div className="order-8 lg:order-none">
+          <div className="order-3 lg:order-none">
             <DashboardOSByType data={osByType} isLoading={isLoading} />
+          </div>
+          <div className="order-7 lg:order-none">
+            <DashboardCriticalOS items={criticalOS} isLoading={isLoading} />
           </div>
         </div>
       </div>
