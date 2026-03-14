@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, RefreshCw, Moon, Sun } from 'lucide-react';
+import { MapPin, RefreshCw, Moon, Sun, Map, Clock } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TrackingHistoryTab } from '@/components/tracking/TrackingHistoryTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
