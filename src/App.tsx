@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
-import { UpdateBanner } from "@/components/pwa/UpdateBanner";
+
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 class ErrorBoundary extends React.Component<
