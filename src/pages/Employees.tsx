@@ -13,6 +13,7 @@ import { EmployeePaymentModal } from '@/components/employees/EmployeePaymentModa
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
+import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
