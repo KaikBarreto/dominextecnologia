@@ -1,50 +1,33 @@
 
 
-## Plano: Substituir UpdateBanner por Notificação de Versão no Dashboard + Melhorias Gerais
+## Plan: Módulo Contratos (ex-PMOC) — Implementado ✅
 
-### 1. Remover o UpdateBanner fixo do topo
+### Implementado
 
-**Arquivo:** `src/App.tsx`
-- Remover o import e o componente `<UpdateBanner />` do render global.
+1. **Banco de dados**: Tabelas `contracts`, `contract_items`, `contract_occurrences` criadas com RLS por `company_id`. Colunas `contract_id` e `origin` adicionadas a `service_orders`.
 
-**Arquivo:** `src/components/pwa/UpdateBanner.tsx`
-- Pode ser mantido mas não será mais usado (ou removido).
+2. **Hooks**: `useContracts.ts` (CRUD, stats, geração de OSs em batch) e `useContractDetail.ts` (detalhe, ocorrências, progresso).
 
-### 2. Criar hook `useVersionUpdate`
+3. **ContractFormDialog**: Sheet lateral com stepper de 4 etapas (Informações → Frequência → Itens → Revisão). Atalhos rápidos de frequência, prévia de datas, aviso de fins de semana, itens manuais.
 
-**Novo arquivo:** `src/hooks/useVersionUpdate.ts`
+4. **Páginas**: `/contratos` (listagem com KPIs, filtros, tabela) e `/contratos/:id` (detalhe 2 colunas com progresso e ocorrências).
 
-Lógica (baseada no EcoSistema):
-- Ao montar, compara `localStorage.getItem('app_version')` com `APP_VERSION` de `config/version.ts`.
-- Se a versão armazenada existir e for diferente da atual, e a notificação ainda não foi mostrada para essa versão (`notification_shown_version`), ativa `showUpdateNotification = true`.
-- Salva `APP_VERSION` no localStorage.
-- Expõe `dismissNotification()` para fechar.
+5. **Navegação**: PMOC → Contratos em sidebar, topbar, mobile menu. Rota `/pmoc` redireciona para `/contratos`. Permissão `screen:contracts`.
 
-### 3. Criar componente `VersionUpdateNotification`
+### Tabelas PMOC antigas mantidas (sem perda de dados)
 
-**Novo arquivo:** `src/components/pwa/VersionUpdateNotification.tsx`
+---
 
-- Usa `useVersionUpdate` + `toast.custom()` do Sonner.
-- Exibe um toast estilizado no `top-center` com:
-  - Ícone `Sparkles` + título "Sistema Atualizado!"
-  - Texto: "O Dominex foi atualizado para a versão X.X.X"
-  - Botão "Ver Novidades" → navega para `/changelog`
-  - Botão X para fechar
-- Duração: 10 segundos, auto-dismiss.
-- Renderiza `null` (componente invisível, só dispara o toast).
+## Plan: Feriados na Agenda + Melhorias Mapa ao Vivo — Implementado ✅
 
-### 4. Integrar no AppLayout
+### Implementado
 
-**Arquivo:** `src/components/layout/AppLayout.tsx`
-- Importar e renderizar `<VersionUpdateNotification />` dentro do layout autenticado (não na landing page nem no login).
+1. **Feriados**: `src/utils/holidays.ts` com cálculo de feriados nacionais (fixos + móveis como Carnaval, Corpus Christi, Páscoa) e municipais (capitais e cidades maiores). Integrado em todos os calendários (Mês, Semana, Dia, Agenda Mobile).
 
-### 5. Sugestões de melhorias adicionais
+2. **Toggle Feriados**: Nova seção "Agenda" em Configurações > Usabilidade com switch `showHolidays` (padrão: ativado).
 
-Além da tarefa principal, identifico estas oportunidades de melhoria que posso apresentar como sugestões após a implementação:
+3. **Base da Empresa no Mapa**: Marcador teal com ícone de casa mostrando a localização da empresa (geocodificação automática via Nominatim). Incluído nos bounds do mapa.
 
-- **Tratamento de erros globais**: Feedback visual consistente em falhas de rede.
-- **Empty states**: Vários módulos não têm empty states adequados (estoque, CRM, contratos).
-- **Acessibilidade**: Faltam `aria-labels` em botões de ícone, skip-links, e focus trapping nos modais.
-- **Performance**: Lazy loading de rotas com `React.lazy()` + `Suspense` para reduzir bundle inicial.
-- **Validação de formulários**: Alguns formulários não têm feedback de erro inline.
+4. **Popups Maiores + Click-to-Pin**: Tooltip pequeno no hover, popup maior e persistente no clique (fecha com X nativo do Leaflet). CSS customizado para popups com border-radius e shadow.
 
+5. **Legenda atualizada**: Adicionado item "Base da empresa" na legenda do mapa.
