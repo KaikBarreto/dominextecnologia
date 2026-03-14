@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, RefreshCw, Moon, Sun } from 'lucide-react';
+import { MapPin, RefreshCw, Moon, Sun, Map as MapIcon, Clock } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TrackingHistoryTab } from '@/components/tracking/TrackingHistoryTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -111,6 +113,7 @@ export default function LiveMap() {
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
   const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -469,38 +472,60 @@ export default function LiveMap() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Mapa ao Vivo</h1>
-          <p className="text-muted-foreground text-sm">Posição em tempo real dos técnicos em campo</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
-            {darkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            <span className="hidden sm:inline">Atualizar</span>
-          </Button>
-          <Badge variant="secondary" className="gap-1">
-            <MapPin className="h-3 w-3" />
-            {technicians.length} técnico{technicians.length !== 1 ? 's' : ''} ativo{technicians.length !== 1 ? 's' : ''}
-          </Badge>
+          <h1 className="text-2xl font-bold tracking-tight">Mapa e Rastreamento</h1>
+          <p className="text-muted-foreground text-sm">Posição em tempo real e histórico de deslocamentos</p>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }}></span> Executando OS</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#6366f1' }}></span> A Caminho</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }}></span> Check-out</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', border: '2px solid white', boxShadow: '0 0 0 1px #ef4444' }}></span> Destino cliente</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#0d9488' }}></span> Base da empresa</div>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="mapa" className="gap-1.5">
+              <MapIcon className="h-4 w-4" /> Mapa ao Vivo
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="gap-1.5">
+              <Clock className="h-4 w-4" /> Histórico
+            </TabsTrigger>
+          </TabsList>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          <div ref={mapRef} className="h-[calc(100vh-260px)] min-h-[400px] w-full" />
-        </CardContent>
-      </Card>
+          {activeTab === 'mapa' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
+                {darkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                <span className="hidden sm:inline">Atualizar</span>
+              </Button>
+              <Badge variant="secondary" className="gap-1">
+                <MapPin className="h-3 w-3" />
+                {technicians.length} técnico{technicians.length !== 1 ? 's' : ''} ativo{technicians.length !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+          )}
+        </div>
+
+        <TabsContent value="mapa" className="mt-4 space-y-3">
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }}></span> Executando OS</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#6366f1' }}></span> A Caminho</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }}></span> Check-out</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', border: '2px solid white', boxShadow: '0 0 0 1px #ef4444' }}></span> Destino cliente</div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full" style={{ background: '#0d9488' }}></span> Base da empresa</div>
+          </div>
+
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div ref={mapRef} className="h-[calc(100vh-320px)] min-h-[400px] w-full" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="historico" className="mt-4">
+          <TrackingHistoryTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

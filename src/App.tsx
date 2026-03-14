@@ -206,7 +206,7 @@ const AppRoutes = () => (
       <Route path="/equipes" element={<Teams />} />
       <Route path="/funcionarios" element={<Employees />} />
       <Route path="/ponto" element={<TimeClock />} />
-      <Route path="/rastreamento" element={<TechnicianTracking />} />
+      <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
