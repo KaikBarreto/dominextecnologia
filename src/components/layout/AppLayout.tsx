@@ -11,6 +11,7 @@ import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import logoDark from '@/assets/logo-dark.png';
+import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 
 function HeaderContent() {
   const { user, signOut } = useAuth();
