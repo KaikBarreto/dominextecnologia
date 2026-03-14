@@ -359,6 +359,8 @@ export default function Employees() {
               </div>
             )}
           </div>
+        ) : activeTab === 'teams' ? (
+          <TeamsPanel />
         ) : activeTab === 'timeclock' ? (
           <AdminTimePanel />
         ) : (
