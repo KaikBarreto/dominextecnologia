@@ -315,6 +315,36 @@ export function AppSidebar() {
               );
             })}
           </nav>
+
+          {/* ── Separator + System items ── */}
+          {filteredSystemMenu.length > 0 && (
+            <>
+              <div className={cn("my-2 border-t border-border/50", collapsed ? "mx-1" : "mx-3")} />
+              <nav className="space-y-0.5">
+                {filteredSystemMenu.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path!}
+                    title={collapsed ? item.title : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center rounded-lg py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-colors',
+                        collapsed
+                          ? 'justify-center'
+                          : 'gap-3 px-3',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
+                      )
+                    }
+                  >
+                    <item.icon className={ICON_SIZE} />
+                    {!collapsed && <span>{item.title}</span>}
+                  </NavLink>
+                ))}
+              </nav>
+            </>
+          )}
         </div>
 
         {/* ── Footer: WhatsApp ── */}
