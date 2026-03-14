@@ -56,6 +56,7 @@ const menuItems: MenuItem[] = [
     title: 'Operacional',
     icon: Wrench,
     children: [
+      { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
       { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto' },
@@ -63,7 +64,6 @@ const menuItems: MenuItem[] = [
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
-  { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
   {
     title: 'Gestão',
     icon: FolderOpen,
