@@ -60,7 +60,6 @@ const menuItems: MenuItem[] = [
       { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto' },
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
-      { title: 'Equipes', icon: UsersRound, path: '/equipes' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
