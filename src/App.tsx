@@ -203,7 +203,7 @@ const AppRoutes = () => (
       <Route path="/usuarios" element={<Users />} />
       <Route path="/configuracoes" element={<Settings />} />
       <Route path="/perfil" element={<Profile />} />
-      <Route path="/equipes" element={<Teams />} />
+      <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
       <Route path="/funcionarios" element={<Employees />} />
       <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
