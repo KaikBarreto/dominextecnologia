@@ -272,3 +272,16 @@ Design Premium com Verde da Marca #00C597
 .landing-scrollbar {
   scrollbar-color: hsl(var(--primary)) hsl(0, 0%, 10%);
 }
+
+/* Prevent mobile virtual keyboard from pushing drawer content up */
+@supports (height: 100dvh) {
+  [vaul-drawer] {
+    position: fixed !important;
+  }
+}
+
+/* Prevent iOS Safari from scrolling the body when keyboard opens inside drawers */
+html {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}

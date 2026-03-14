@@ -128,15 +128,28 @@ export default function Dashboard() {
     };
   }, [statusCounts, stats, start, end, prevRange, prevFilteredOS]);
 
-  // Cash flow data
+  // Cash flow data — always show current month + last 2 months
   const cashFlowData = useMemo(() => {
-    const filteredFin = stats?.allFinancial ? filterByRange(stats.allFinancial, 'transaction_date', start, end) : [];
+    if (!stats?.allFinancial) return { monthlyData: [], totalEntradas: 0, totalSaidas: 0 };
+    const now = new Date();
+    const threeMonthsAgo = subDays(startOfMonth(now), 1);
+    const cfStart = startOfMonth(subDays(startOfMonth(threeMonthsAgo), 1));
+    const cfEnd = endOfMonth(now);
+
     const monthMap = new Map<string, { entradas: number; saidas: number }>();
+    // Pre-fill the 3 months so they always appear
+    for (let i = 2; i >= 0; i--) {
+      const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = format(m, 'MMM/yy', { locale: ptBR });
+      monthMap.set(key, { entradas: 0, saidas: 0 });
+    }
+
     let totalEntradas = 0, totalSaidas = 0;
-    filteredFin.forEach((t: any) => {
+    stats.allFinancial.forEach((t: any) => {
       const d = new Date(t.transaction_date);
-      const key = format(d, period === 'today' ? 'HH:00' : period === 'week' ? 'EEE' : 'dd/MM', { locale: ptBR });
-      if (!monthMap.has(key)) monthMap.set(key, { entradas: 0, saidas: 0 });
+      if (d < cfStart || d > cfEnd) return;
+      const key = format(d, 'MMM/yy', { locale: ptBR });
+      if (!monthMap.has(key)) return;
       const cur = monthMap.get(key)!;
       const amount = Number(t.amount);
       if (t.transaction_type === 'entrada') { cur.entradas += amount; totalEntradas += amount; }
@@ -147,7 +160,7 @@ export default function Dashboard() {
       totalEntradas,
       totalSaidas,
     };
-  }, [stats?.allFinancial, start, end, period]);
+  }, [stats?.allFinancial]);
 
   // OS Evolution data
   const evolutionData = useMemo(() => {
