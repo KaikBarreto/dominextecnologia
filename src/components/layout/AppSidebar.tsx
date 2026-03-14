@@ -77,8 +77,11 @@ const menuItems: MenuItem[] = [
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
-  { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
+];
+
+const systemMenuItems: MenuItem[] = [
   { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
+  { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
   { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
@@ -126,6 +129,7 @@ export function AppSidebar() {
 
   const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems);
   const filteredMenu = activeMenu;
+  const filteredSystemMenu = isSuperAdmin ? [] : filterByAccess(systemMenuItems);
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
     children?.some((c) => location.pathname === c.path) ?? false;
@@ -311,6 +315,36 @@ export function AppSidebar() {
               );
             })}
           </nav>
+
+          {/* ── Separator + System items ── */}
+          {filteredSystemMenu.length > 0 && (
+            <>
+              <div className={cn("my-2 border-t border-border/50", collapsed ? "mx-1" : "mx-3")} />
+              <nav className="space-y-0.5">
+                {filteredSystemMenu.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path!}
+                    title={collapsed ? item.title : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center rounded-lg py-2.5 text-[13px] font-semibold tracking-[0.01em] transition-colors',
+                        collapsed
+                          ? 'justify-center'
+                          : 'gap-3 px-3',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
+                      )
+                    }
+                  >
+                    <item.icon className={ICON_SIZE} />
+                    {!collapsed && <span>{item.title}</span>}
+                  </NavLink>
+                ))}
+              </nav>
+            </>
+          )}
         </div>
 
         {/* ── Footer: WhatsApp ── */}
