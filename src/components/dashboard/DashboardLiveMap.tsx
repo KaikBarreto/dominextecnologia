@@ -121,9 +121,9 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
               <p className="text-sm text-muted-foreground">Nenhum técnico em campo agora</p>
               <button
                 onClick={() => navigate('/mapa-ao-vivo')}
-                className="text-xs text-primary font-medium mt-2 hover:underline"
+                className="text-xs text-primary font-medium mt-2 hover:underline flex items-center gap-1"
               >
-                Abrir Mapa ao Vivo →
+                Abrir Mapa ao Vivo <ArrowRight className="h-3 w-3" />
               </button>
             </div>
           )}
