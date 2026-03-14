@@ -35,15 +35,15 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
               <Activity className="h-5 w-5 text-muted-foreground" />
               Evolução de OS
             </CardTitle>
-            <div className="flex rounded-lg border border-border overflow-hidden">
+            <div className="inline-flex rounded-lg border border-border bg-muted/50 p-1">
               {(['daily', 'weekly', 'monthly'] as ViewMode[]).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`px-3 py-1 text-xs font-medium transition-colors ${
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
                     view === v
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {viewLabels[v]}

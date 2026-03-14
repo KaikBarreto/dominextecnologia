@@ -312,15 +312,15 @@ export default function Dashboard() {
           </h1>
           <p className="text-sm text-muted-foreground">{getGreeting()}</p>
         </div>
-        <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
+        <div className="inline-flex rounded-lg border border-border bg-muted/50 p-1 shrink-0">
           {(['today', 'week', 'month'] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
                 period === p
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {periodLabels[p]}

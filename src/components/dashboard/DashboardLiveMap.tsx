@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Map as MapIcon } from 'lucide-react';
+import { MapPin, Map as MapIcon, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -84,8 +84,8 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
               <MapPin className="h-5 w-5 text-muted-foreground" />
               Equipe em Campo
             </CardTitle>
-            <Badge className="bg-accent text-white border-accent hover:bg-accent/90 gap-1 text-xs">
-              <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+            <Badge className="bg-primary text-primary-foreground border-primary hover:bg-primary/90 gap-1 text-xs">
+              <span className="h-2 w-2 rounded-full bg-primary-foreground animate-pulse" />
               Ao vivo
             </Badge>
           </div>
@@ -121,9 +121,9 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
               <p className="text-sm text-muted-foreground">Nenhum técnico em campo agora</p>
               <button
                 onClick={() => navigate('/mapa-ao-vivo')}
-                className="text-xs text-primary font-medium mt-2 hover:underline"
+                className="text-xs text-primary font-medium mt-2 hover:underline flex items-center gap-1"
               >
-                Abrir Mapa ao Vivo →
+                Abrir Mapa ao Vivo <ArrowRight className="h-3 w-3" />
               </button>
             </div>
           )}
