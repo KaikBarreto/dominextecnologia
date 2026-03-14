@@ -129,6 +129,7 @@ export function AppSidebar() {
 
   const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems);
   const filteredMenu = activeMenu;
+  const filteredSystemMenu = isSuperAdmin ? [] : filterByAccess(systemMenuItems);
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
     children?.some((c) => location.pathname === c.path) ?? false;
