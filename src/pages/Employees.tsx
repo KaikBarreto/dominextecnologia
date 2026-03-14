@@ -42,6 +42,7 @@ export default function Employees() {
   const tabs: SettingsTab[] = useMemo(() => {
     const base: SettingsTab[] = [
       { value: 'list', label: 'Funcionários', icon: Users },
+      { value: 'teams', label: 'Equipes', icon: UsersRound },
       { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     ];
     if (canManageTime) {
