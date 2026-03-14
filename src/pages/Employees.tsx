@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users, BarChart3, Plus, Search, Clock } from 'lucide-react';
+import { Users, BarChart3, Plus, Search, Clock, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { EmployeePaymentModal } from '@/components/employees/EmployeePaymentModa
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
+import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
@@ -41,6 +42,7 @@ export default function Employees() {
   const tabs: SettingsTab[] = useMemo(() => {
     const base: SettingsTab[] = [
       { value: 'list', label: 'Funcionários', icon: Users },
+      { value: 'teams', label: 'Equipes', icon: UsersRound },
       { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     ];
     if (canManageTime) {
@@ -357,6 +359,8 @@ export default function Employees() {
               </div>
             )}
           </div>
+        ) : activeTab === 'teams' ? (
+          <TeamsPanel />
         ) : activeTab === 'timeclock' ? (
           <AdminTimePanel />
         ) : (
