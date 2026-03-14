@@ -84,8 +84,8 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
               <MapPin className="h-5 w-5 text-muted-foreground" />
               Equipe em Campo
             </CardTitle>
-            <Badge className="bg-accent text-white border-accent hover:bg-accent/90 gap-1 text-xs">
-              <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+            <Badge className="bg-primary text-primary-foreground border-primary hover:bg-primary/90 gap-1 text-xs">
+              <span className="h-2 w-2 rounded-full bg-primary-foreground animate-pulse" />
               Ao vivo
             </Badge>
           </div>
