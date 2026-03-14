@@ -184,33 +184,57 @@ export function AppSidebar() {
           }
         </NavLink>
 
-        {/* ── Profile (expanded only) ── */}
-        {!collapsed && (
-          <div className="p-4 pb-3 border-b border-border">
-            {profile ? (
-              <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11 shrink-0">
-                  <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{initials}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-sidebar-foreground truncate">{profile.full_name}</p>
-                  <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] px-1.5 py-0 mt-0.5 hover:bg-primary">
-                    {roleLabel}
-                  </Badge>
-                </div>
+        {/* ── Profile ── */}
+        <div className={cn(
+          "border-b border-border flex items-center transition-all duration-300",
+          collapsed ? "p-2 justify-center" : "p-4 pb-3 justify-center"
+        )}>
+          {profile ? (
+            <div className={cn(
+              "flex items-center transition-all duration-300 origin-center",
+              collapsed ? "justify-center" : "gap-3.5"
+            )}>
+              <Avatar className={cn(
+                "shrink-0 transition-all duration-300",
+                collapsed ? "h-9 w-9" : "h-12 w-12"
+              )}>
+                <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
+                <AvatarFallback className={cn(
+                  "bg-primary text-primary-foreground font-bold transition-all duration-300",
+                  collapsed ? "text-xs" : "text-sm"
+                )}>{initials}</AvatarFallback>
+              </Avatar>
+              <div className={cn(
+                "min-w-0 overflow-hidden transition-all duration-300",
+                collapsed ? "w-0 opacity-0" : "flex-1 opacity-100 max-w-[120px]"
+              )}>
+                <p className="text-sm font-semibold text-sidebar-foreground break-words leading-tight">
+                  {profile.full_name?.split(' ').slice(0, 2).join(' ')}
+                </p>
+                <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] px-1.5 py-0 mt-0.5 hover:bg-primary">
+                  {roleLabel}
+                </Badge>
               </div>
-            ) : (
-              <div className="flex items-center gap-3 animate-pulse">
-                <div className="h-11 w-11 rounded-full bg-muted shrink-0" />
-                <div className="min-w-0 space-y-2">
-                  <div className="h-4 w-28 bg-muted rounded" />
-                  <div className="h-3 w-20 bg-muted rounded" />
-                </div>
+            </div>
+          ) : (
+            <div className={cn(
+              "flex items-center animate-pulse transition-all duration-300",
+              collapsed ? "justify-center" : "gap-3"
+            )}>
+              <div className={cn(
+                "rounded-full bg-muted shrink-0 transition-all duration-300",
+                collapsed ? "h-9 w-9" : "h-12 w-12"
+              )} />
+              <div className={cn(
+                "min-w-0 space-y-2 overflow-hidden transition-all duration-300",
+                collapsed ? "w-0 opacity-0" : "flex-1 opacity-100"
+              )}>
+                <div className="h-4 w-28 bg-muted rounded" />
+                <div className="h-3 w-20 bg-muted rounded" />
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {/* ── Menu ── */}
         <div ref={menuScrollRef} className={cn("flex-1 overflow-y-auto pt-2", collapsed ? "px-1.5" : "px-4")}>
