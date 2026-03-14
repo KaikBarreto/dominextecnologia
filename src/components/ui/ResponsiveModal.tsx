@@ -22,11 +22,11 @@ export function ResponsiveModal({ open, onOpenChange, title, children, className
   if (isCompact) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh]">
+        <DrawerContent className="max-h-[90dvh]">
           <DrawerHeader>
             <DrawerTitle>{title}</DrawerTitle>
           </DrawerHeader>
-          <div className={cn("px-4 pb-6 overflow-y-auto", className)} style={{ maxHeight: footer ? 'calc(90vh - 140px)' : 'calc(90vh - 80px)' }}>
+          <div className={cn("px-4 pb-6 overflow-y-auto", className)} style={{ maxHeight: footer ? 'calc(90dvh - 140px)' : 'calc(90dvh - 80px)' }}>
             {children}
           </div>
           {footer && <div className="px-4 pb-4 border-t pt-3">{footer}</div>}
