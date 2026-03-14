@@ -77,8 +77,11 @@ const menuItems: MenuItem[] = [
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
-  { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
+];
+
+const systemMenuItems: MenuItem[] = [
   { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
+  { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
   { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
