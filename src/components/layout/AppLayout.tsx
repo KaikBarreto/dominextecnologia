@@ -133,9 +133,10 @@ export function AppLayout() {
   const { navigationStyle } = useNavigationPreference();
   useKeyboardShortcuts(true);
 
-  if (navigationStyle === 'topbar') {
-    return <TopbarAppLayout />;
-  }
-
-  return <SidebarAppLayout />;
+  return (
+    <>
+      <VersionUpdateNotification />
+      {navigationStyle === 'topbar' ? <TopbarAppLayout /> : <SidebarAppLayout />}
+    </>
+  );
 }
