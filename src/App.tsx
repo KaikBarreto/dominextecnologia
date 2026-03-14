@@ -186,7 +186,7 @@ const AppRoutes = () => (
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/ordens-servico" element={<ServiceOrders />} />
       <Route path="/servicos" element={<ServicesPage />} />
-      <Route path="/questionarios" element={<QuestionnairesPage />} />
+      <Route path="/questionarios" element={<Navigate to="/servicos" replace />} />
       <Route path="/questionarios/:id" element={<QuestionnaireDetail />} />
       <Route path="/agenda" element={<Schedule />} />
       <Route path="/clientes" element={<Customers />} />
