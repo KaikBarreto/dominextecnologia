@@ -481,7 +481,7 @@ export default function LiveMap() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <TabsList>
             <TabsTrigger value="mapa" className="gap-1.5">
-              <Map className="h-4 w-4" /> Mapa ao Vivo
+              <MapIcon className="h-4 w-4" /> Mapa ao Vivo
             </TabsTrigger>
             <TabsTrigger value="historico" className="gap-1.5">
               <Clock className="h-4 w-4" /> Histórico
