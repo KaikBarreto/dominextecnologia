@@ -62,7 +62,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                   </div>
                   {!os.hasTechnician && (
                     <button
-                      className="text-xs text-primary font-medium flex items-center gap-1 mt-1"
+                      className="text-xs text-primary font-medium flex items-center gap-1 mt-1 hover:underline"
                       onClick={(e) => { e.stopPropagation(); navigate('/os'); }}
                     >
                       Atribuir técnico <ArrowRight className="h-3 w-3" />
