@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +62,7 @@ function OrderDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const assignees: AssigneeInfo[] = (order as any)._assignees ?? [];
+  const teamInfo = (order as any)._team as { id: string; name: string; color: string; photo_url?: string | null; icon_name?: string | null } | undefined;
 
   const handleCopyTrackingLink = async () => {
     const link = `${window.location.origin}/os-tecnico/${order.id}`;
@@ -142,13 +143,40 @@ function OrderDetail({
           </div>
 
           {/* Assignees (technicians / team) */}
-          {assignees.length > 0 && (
+          {(assignees.length > 0 || teamInfo) && (
             <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <UsersRound className="h-4 w-4 text-primary" />
                 Responsáveis
               </div>
               <div className="flex flex-wrap gap-2 pl-6">
+                {teamInfo && (() => {
+                  const ICON_MAP: Record<string, any> = {
+                    UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
+                    HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge,
+                  };
+                  const IconComp = ICON_MAP[teamInfo.icon_name || ''] || UsersRound;
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      {teamInfo.photo_url ? (
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={teamInfo.photo_url} />
+                          <AvatarFallback style={{ backgroundColor: teamInfo.color }} className="text-[9px] text-white">
+                            <IconComp className="h-3.5 w-3.5" />
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <div
+                          className="h-6 w-6 rounded-full flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: teamInfo.color }}
+                        >
+                          <IconComp className="h-3.5 w-3.5 text-white" />
+                        </div>
+                      )}
+                      <span className="text-xs font-medium">{teamInfo.name}</span>
+                    </div>
+                  );
+                })()}
                 {assignees.map((a) => (
                   <div key={a.id} className="flex items-center gap-1.5">
                     <Avatar className="h-6 w-6">

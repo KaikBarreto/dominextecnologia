@@ -1,14 +1,27 @@
-import { MapPin, User } from 'lucide-react';
+import { MapPin, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
 
+const ICON_MAP: Record<string, any> = {
+  UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
+  HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge,
+};
+
 interface AssigneeInfo {
   id: string;
   name: string;
   avatar_url?: string | null;
+}
+
+interface TeamBadgeInfo {
+  id: string;
+  name: string;
+  color: string;
+  photo_url?: string | null;
+  icon_name?: string | null;
 }
 
 interface EventCardProps {
@@ -63,10 +76,37 @@ function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function AssigneeAvatars({ assignees, light }: { assignees: AssigneeInfo[]; light?: boolean }) {
-  if (!assignees || assignees.length === 0) return null;
+function TeamAvatar({ team, light }: { team: TeamBadgeInfo; light?: boolean }) {
+  const IconComp = ICON_MAP[team.icon_name || ''] || UsersRound;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {team.photo_url ? (
+          <Avatar className={cn('h-5 w-5 border', light ? 'border-white/50' : 'border-background')}>
+            <AvatarImage src={team.photo_url} />
+            <AvatarFallback style={{ backgroundColor: team.color }} className="text-[8px] text-white">
+              <IconComp className="h-3 w-3" />
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div
+            className={cn('h-5 w-5 rounded-full flex items-center justify-center border shrink-0', light ? 'border-white/50' : 'border-background')}
+            style={{ backgroundColor: team.color }}
+          >
+            <IconComp className="h-3 w-3 text-white" />
+          </div>
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">{team.name}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function AssigneeAvatars({ assignees, team, light }: { assignees: AssigneeInfo[]; team?: TeamBadgeInfo; light?: boolean }) {
+  if ((!assignees || assignees.length === 0) && !team) return null;
   return (
     <div className="flex items-center -space-x-1.5">
+      {team && <TeamAvatar team={team} light={light} />}
       {assignees.slice(0, 3).map((a) => (
         <Tooltip key={a.id}>
           <TooltipTrigger asChild>
@@ -89,6 +129,7 @@ function AssigneeAvatars({ assignees, light }: { assignees: AssigneeInfo[]; ligh
 
 export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false, assignees: assigneesProp }: EventCardProps) {
   const assignees = assigneesProp ?? (order as any)._assignees;
+  const team: TeamBadgeInfo | undefined = (order as any)._team;
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const serviceTypeColor = (order as any).service_type?.color;
 
@@ -152,9 +193,9 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           <span className="truncate">{order.customer.city}</span>
         </div>
       )}
-      {assignees && assignees.length > 0 && (
+      {(assignees?.length > 0 || team) && (
         <div className="flex justify-end pt-0.5">
-          <AssigneeAvatars assignees={assignees} light={!!bgColor} />
+          <AssigneeAvatars assignees={assignees || []} team={team} light={!!bgColor} />
         </div>
       )}
     </div>
