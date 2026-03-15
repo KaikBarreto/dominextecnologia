@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
+import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays';
 
@@ -88,6 +89,8 @@ export default function Schedule() {
     return buildHolidayMap([...prevYearHolidays, ...holidays, ...nextYearHolidays]);
   }, [showHolidays, companySettings?.city, companySettings?.state, currentDate]);
 
+  const getAssignees = useOrderAssignees(technicians, teamsWithMembers);
+
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
       if (isTechnician && user?.id) {
@@ -100,9 +103,12 @@ export default function Schedule() {
       if (customerFilter !== 'all' && order.customer_id !== customerFilter) return false;
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
       return true;
-    });
+    }).map(order => ({
+      ...order,
+      _assignees: getAssignees(order),
+    }));
     return [...osFiltered, ...financialEvents];
-  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents]);
+  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees]);
 
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));

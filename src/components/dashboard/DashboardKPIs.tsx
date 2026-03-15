@@ -49,7 +49,7 @@ function KPICard({ title, value, formattedValue, subtitle, subtitleColor, icon: 
         <CardContent className="p-4 lg:p-5">
           <div className="flex items-start justify-between">
             <div className="space-y-2 min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">{title}</p>
               <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
                 {formattedValue ?? animatedValue.toLocaleString('pt-BR')}
               </p>
@@ -82,7 +82,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
 
   if (isLoading) {
     return (
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         {[...Array(5)].map((_, i) => (
           <Card key={i}><CardContent className="p-4 lg:p-5"><Skeleton className="h-20 w-full" /></CardContent></Card>
         ))}
@@ -94,7 +94,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
   const conclusionColor = data.taxaConclusao < 30 ? 'text-destructive' : data.taxaConclusao < 70 ? 'text-warning' : 'text-success';
 
   return (
-    <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
       <KPICard
         title="OS Abertas"
         value={data.osAbertas}

@@ -87,7 +87,8 @@ function AssigneeAvatars({ assignees, light }: { assignees: AssigneeInfo[]; ligh
   );
 }
 
-export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false, assignees }: EventCardProps) {
+export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false, assignees: assigneesProp }: EventCardProps) {
+  const assignees = assigneesProp ?? (order as any)._assignees;
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const serviceTypeColor = (order as any).service_type?.color;
 

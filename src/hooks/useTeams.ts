@@ -12,6 +12,8 @@ export interface Team {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  photo_url?: string | null;
+  icon_name?: string | null;
 }
 
 export interface TeamMember {
@@ -31,6 +33,8 @@ export interface TeamInput {
   color?: string;
   is_active?: boolean;
   member_ids?: string[];
+  photo_url?: string;
+  icon_name?: string;
 }
 
 export function useTeams() {
