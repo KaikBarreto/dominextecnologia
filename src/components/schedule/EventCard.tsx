@@ -1,7 +1,15 @@
 import { MapPin, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
+
+interface AssigneeInfo {
+  id: string;
+  name: string;
+  avatar_url?: string | null;
+}
 
 interface EventCardProps {
   order: ServiceOrder & { customer: any; equipment: any };
@@ -12,6 +20,7 @@ interface EventCardProps {
   onDragStart?: (e: React.DragEvent) => void;
   colorShift?: number;
   isMoving?: boolean;
+  assignees?: AssigneeInfo[];
 }
 
 const osTypeLabels: Record<OsType, string> = {
@@ -42,18 +51,44 @@ export function getStatusBadgeClass(status: OsStatus, scheduledDate?: string | n
 
 function getShiftedColor(hex: string, shift: number): string {
   if (!shift) return hex;
-  // Parse hex color and adjust lightness
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  const factor = 1 + shift * 0.15; // lighten by 15% per step
+  const factor = 1 + shift * 0.15;
   const clamp = (v: number) => Math.min(255, Math.round(v * factor + (255 - v * factor) * 0.1 * shift));
   return `rgb(${clamp(r)}, ${clamp(g)}, ${clamp(b)})`;
 }
 
-export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false }: EventCardProps) {
-  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
 
+function AssigneeAvatars({ assignees, light }: { assignees: AssigneeInfo[]; light?: boolean }) {
+  if (!assignees || assignees.length === 0) return null;
+  return (
+    <div className="flex items-center -space-x-1.5">
+      {assignees.slice(0, 3).map((a) => (
+        <Tooltip key={a.id}>
+          <TooltipTrigger asChild>
+            <Avatar className={cn('h-5 w-5 border', light ? 'border-white/50' : 'border-background')}>
+              <AvatarImage src={a.avatar_url || undefined} />
+              <AvatarFallback className="text-[8px] bg-muted">{getInitials(a.name)}</AvatarFallback>
+            </Avatar>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">{a.name}</TooltipContent>
+        </Tooltip>
+      ))}
+      {assignees.length > 3 && (
+        <span className={cn('text-[9px] ml-1', light ? 'text-white/70' : 'text-muted-foreground')}>
+          +{assignees.length - 3}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function EventCard({ order, compact = false, fillHeight = false, onClick, draggable, onDragStart, colorShift = 0, isMoving = false, assignees }: EventCardProps) {
+  const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const serviceTypeColor = (order as any).service_type?.color;
 
   if (compact) {
@@ -73,9 +108,14 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         <span className="font-medium shrink-0">
           {order.scheduled_time?.slice(0, 5) || '--:--'}
         </span>
-        <span className="truncate">
+        <span className="truncate flex-1">
           {order.customer?.name || 'Cliente'}
         </span>
+        {assignees && assignees.length > 0 && (
+          <div className="shrink-0 ml-auto">
+            <AssigneeAvatars assignees={assignees} light={!!serviceTypeColor} />
+          </div>
+        )}
       </div>
     );
   }
@@ -114,6 +154,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
           <MapPin className="h-3 w-3 shrink-0" />
           <span className="truncate">{order.customer.city}</span>
+        </div>
+      )}
+      {assignees && assignees.length > 0 && (
+        <div className="flex justify-end pt-0.5">
+          <AssigneeAvatars assignees={assignees} light={!!bgColor} />
         </div>
       )}
     </div>
