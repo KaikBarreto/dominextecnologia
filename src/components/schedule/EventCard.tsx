@@ -112,11 +112,6 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         <span className="truncate flex-1">
           {order.customer?.name || 'Cliente'}
         </span>
-        {assignees && assignees.length > 0 && (
-          <div className="shrink-0 ml-auto">
-            <AssigneeAvatars assignees={assignees} light={!!serviceTypeColor} />
-          </div>
-        )}
       </div>
     );
   }
