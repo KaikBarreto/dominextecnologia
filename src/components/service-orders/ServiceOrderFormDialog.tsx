@@ -308,20 +308,22 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Serviço</FormLabel>
-                  <Select onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {serviceTypes.filter(t => t.is_active).map((st) => (
-                        <SelectItem key={st.id} value={st.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
-                            {st.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={[
+                        { value: 'none', label: 'Nenhum' },
+                        ...serviceTypes.filter(t => t.is_active).map((st) => ({
+                          value: st.id,
+                          label: st.name,
+                          icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
+                        })),
+                      ]}
+                      value={field.value || 'none'}
+                      onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
+                      placeholder="Selecione"
+                      searchPlaceholder="Buscar tipo de serviço..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
