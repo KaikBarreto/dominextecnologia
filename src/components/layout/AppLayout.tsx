@@ -41,7 +41,7 @@ function HeaderContent() {
           {logoLoading ? (
             <div className="h-6 w-24 rounded bg-muted animate-pulse" />
           ) : (
-            <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+            <img src={document.documentElement.classList.contains('dark') ? logoGreen : logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
           )}
         </div>
       )}

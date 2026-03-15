@@ -197,7 +197,7 @@ export default function Checkout() {
 
         <div className="text-center space-y-3">
           <img 
-            src={resolvedTheme === 'dark' ? logoWhite : logoBlack} 
+            src={resolvedTheme === 'dark' ? logoGreen : logoBlack} 
             alt="Dominex" 
             className="h-10 mx-auto" 
           />
