@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Pencil, Trash2, UsersRound } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTeams, type TeamWithMembers } from '@/hooks/useTeams';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { TeamFormDialog } from '@/components/teams/TeamFormDialog';
+
+const ICON_MAP: Record<string, any> = {
+  UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
+  HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge,
+};
 
 export function TeamsPanel() {
   const { teamsWithMembers, isLoading, createTeam, updateTeam, deleteTeam } = useTeams();
@@ -36,6 +41,11 @@ export function TeamsPanel() {
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta equipe?')) return;
     await deleteTeam.mutateAsync(id);
+  };
+
+  const getTeamIcon = (team: TeamWithMembers) => {
+    const iconName = (team as any).icon_name;
+    return ICON_MAP[iconName] || UsersRound;
   };
 
   return (
@@ -72,50 +82,62 @@ export function TeamsPanel() {
         </Card>
       ) : (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map(team => (
-            <Card key={team.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: team.color }}>
-                      <UsersRound className="h-5 w-5 text-white" />
+          {filtered.map(team => {
+            const TeamIcon = getTeamIcon(team);
+            const teamPhotoUrl = (team as any).photo_url;
+
+            return (
+              <Card key={team.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="h-10 w-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0"
+                        style={{ backgroundColor: teamPhotoUrl ? undefined : team.color }}
+                      >
+                        {teamPhotoUrl ? (
+                          <img src={teamPhotoUrl} alt={team.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <TeamIcon className="h-5 w-5 text-white" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold truncate">{team.name}</h3>
+                        {team.description && <p className="text-xs text-muted-foreground line-clamp-1">{team.description}</p>}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold">{team.name}</h3>
-                      {team.description && <p className="text-xs text-muted-foreground line-clamp-1">{team.description}</p>}
-                    </div>
+                    <Badge variant={team.is_active ? 'default' : 'secondary'} className="text-xs shrink-0">
+                      {team.is_active ? 'Ativa' : 'Inativa'}
+                    </Badge>
                   </div>
-                  <Badge variant={team.is_active ? 'default' : 'secondary'} className="text-xs">
-                    {team.is_active ? 'Ativa' : 'Inativa'}
-                  </Badge>
-                </div>
 
-                <div className="flex items-center gap-1">
-                  {team.members.slice(0, 5).map(m => (
-                    <Avatar key={m.id} className="h-7 w-7 border-2 border-background">
-                      <AvatarImage src={getMemberAvatar(m.user_id)} />
-                      <AvatarFallback className="text-[10px]">{getInitials(getMemberName(m.user_id))}</AvatarFallback>
-                    </Avatar>
-                  ))}
-                  {team.members.length > 5 && (
-                    <span className="text-xs text-muted-foreground ml-1">+{team.members.length - 5}</span>
-                  )}
-                  {team.members.length === 0 && (
-                    <span className="text-xs text-muted-foreground">Sem membros</span>
-                  )}
-                </div>
+                  <div className="flex items-center gap-1">
+                    {team.members.slice(0, 5).map(m => (
+                      <Avatar key={m.id} className="h-7 w-7 border-2 border-background">
+                        <AvatarImage src={getMemberAvatar(m.user_id)} />
+                        <AvatarFallback className="text-[10px]">{getInitials(getMemberName(m.user_id))}</AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {team.members.length > 5 && (
+                      <span className="text-xs text-muted-foreground ml-1">+{team.members.length - 5}</span>
+                    )}
+                    {team.members.length === 0 && (
+                      <span className="text-xs text-muted-foreground">Sem membros</span>
+                    )}
+                  </div>
 
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditingTeam(team); setFormOpen(true); }}>
-                    <Pencil className="h-3 w-3 mr-1" /> Editar
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(team.id)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditingTeam(team); setFormOpen(true); }}>
+                      <Pencil className="h-3 w-3 mr-1" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDelete(team.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

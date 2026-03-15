@@ -49,7 +49,7 @@ function KPICard({ title, value, formattedValue, subtitle, subtitleColor, icon: 
         <CardContent className="p-4 lg:p-5">
           <div className="flex items-start justify-between">
             <div className="space-y-2 min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">{title}</p>
               <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
                 {formattedValue ?? animatedValue.toLocaleString('pt-BR')}
               </p>

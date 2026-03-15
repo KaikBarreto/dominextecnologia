@@ -40,6 +40,48 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.7',
+    date: '15 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos de técnicos nos cards da agenda',
+        description: 'Os cards de OS na agenda agora exibem os avatares dos técnicos e membros de equipe atribuídos. O resumo da OS também mostra a seção "Responsáveis" com fotos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Upload de foto e seletor de ícone para equipes',
+        description: 'Ao criar ou editar uma equipe, é possível enviar uma foto personalizada ou escolher entre 17 ícones temáticos. O visual agora usa fundo saturado com ícone branco.',
+        category: 'recurso',
+      },
+      {
+        title: 'Logo corrigido no modo escuro (checkout e mobile)',
+        description: 'O logo no checkout e no header mobile agora usa a versão verde horizontal quando o tema escuro está ativo, consistente com o sidebar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Dashboard responsivo para telas menores',
+        description: 'KPIs adaptados com grid progressivo (2→3→5 colunas), seletor de período padrão (DateRangeFilter), títulos centralizados no mobile e cards sem overflow.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Coluna "Criador" na lista de OS',
+        description: 'Nova coluna com avatar do usuário que criou a OS, com nome exibido no hover.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Combobox com busca nos selects de OS',
+        description: 'Os campos de técnico/equipe e tipo de serviço no formulário de OS agora são pesquisáveis, com avatares e cores inline.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mapas com tema escuro automático',
+        description: 'Os mapas agora detectam automaticamente o tema do sistema e aplicam tiles escuros quando o modo noturno está ativo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.6',
     date: '13 de março de 2026',
     type: 'patch',

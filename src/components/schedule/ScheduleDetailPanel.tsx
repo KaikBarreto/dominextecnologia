@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2 } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EventCard, getStatusBadgeClass } from './EventCard';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,12 @@ const osTypeLabels: Record<OsType, string> = {
   visita_tecnica: 'Visita Técnica',
 };
 
+interface AssigneeInfo {
+  id: string;
+  name: string;
+  avatar_url?: string | null;
+}
+
 interface ScheduleDetailPanelProps {
   selectedDate: Date;
   orders: (ServiceOrder & { customer: any; equipment: any })[];
@@ -32,6 +39,10 @@ interface ScheduleDetailPanelProps {
   onClearSelection: () => void;
   onEdit?: () => void;
   onDelete?: (id: string) => void;
+}
+
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
 function OrderDetail({
@@ -49,6 +60,8 @@ function OrderDetail({
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const assignees: AssigneeInfo[] = (order as any)._assignees ?? [];
 
   const handleCopyTrackingLink = async () => {
     const link = `${window.location.origin}/os-tecnico/${order.id}`;
@@ -97,7 +110,10 @@ function OrderDetail({
                 <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                 <span className="break-words">
                   {order.customer.address}
+                  {order.customer.address_number && `, ${order.customer.address_number}`}
+                  {order.customer.neighborhood && ` - ${order.customer.neighborhood}`}
                   {order.customer.city && `, ${order.customer.city}`}
+                  {order.customer.state && `/${order.customer.state}`}
                 </span>
               </div>
             )}
@@ -124,6 +140,28 @@ function OrderDetail({
               </div>
             )}
           </div>
+
+          {/* Assignees (technicians / team) */}
+          {assignees.length > 0 && (
+            <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <UsersRound className="h-4 w-4 text-primary" />
+                Responsáveis
+              </div>
+              <div className="flex flex-wrap gap-2 pl-6">
+                {assignees.map((a) => (
+                  <div key={a.id} className="flex items-center gap-1.5">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={a.avatar_url || undefined} />
+                      <AvatarFallback className="text-[9px]">{getInitials(a.name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-muted-foreground">{a.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {order.equipment && (
             <div className="flex items-center gap-2 text-sm">
               <Wrench className="h-4 w-4 text-muted-foreground" />
