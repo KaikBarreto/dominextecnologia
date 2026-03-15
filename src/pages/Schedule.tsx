@@ -103,10 +103,10 @@ export default function Schedule() {
       if (customerFilter !== 'all' && order.customer_id !== customerFilter) return false;
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
       return true;
-    }).map(order => ({
-      ...order,
-      _assignees: getAssignees(order),
-    }));
+    }).map(order => {
+      const { assignees, team } = getAssignees(order);
+      return { ...order, _assignees: assignees, _team: team };
+    });
     return [...osFiltered, ...financialEvents];
   }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees]);
 
