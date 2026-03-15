@@ -62,6 +62,7 @@ function OrderDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const assignees: AssigneeInfo[] = (order as any)._assignees ?? [];
+  const teamInfo = (order as any)._team as { id: string; name: string; color: string; photo_url?: string | null; icon_name?: string | null } | undefined;
 
   const handleCopyTrackingLink = async () => {
     const link = `${window.location.origin}/os-tecnico/${order.id}`;
