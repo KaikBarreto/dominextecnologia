@@ -14,7 +14,7 @@ import { motion } from 'framer-motion';
 import { differenceInDays, addMonths } from 'date-fns';
 import { CheckoutLayout } from '@/components/checkout/CheckoutLayout';
 import { toast } from 'sonner';
-import logoWhite from '@/assets/logo-white-horizontal.png';
+import logoGreen from '@/assets/logo-horizontal-verde.png';
 import logoBlack from '@/assets/logo-black-horizontal.png';
 
 type PaymentMethod = 'pix' | 'boleto' | 'card' | null;
