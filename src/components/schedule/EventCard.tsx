@@ -194,9 +194,9 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           <span className="truncate">{order.customer.city}</span>
         </div>
       )}
-      {assignees && assignees.length > 0 && (
+      {(assignees?.length > 0 || team) && (
         <div className="flex justify-end pt-0.5">
-          <AssigneeAvatars assignees={assignees} light={!!bgColor} />
+          <AssigneeAvatars assignees={assignees || []} team={team} light={!!bgColor} />
         </div>
       )}
     </div>
