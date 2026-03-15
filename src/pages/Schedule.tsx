@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
+import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays';
 
