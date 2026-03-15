@@ -492,10 +492,8 @@ export default function LiveMap() {
 
           {activeTab === 'mapa' && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="gap-1">
-                <MapPin className="h-3 w-3" />
-                {technicians.length} técnico{technicians.length !== 1 ? 's' : ''} ativo{technicians.length !== 1 ? 's' : ''}
-              </Badge>
+              <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 <span className="hidden sm:inline">Atualizar</span>
               </Button>
               <Badge variant="secondary" className="gap-1">
