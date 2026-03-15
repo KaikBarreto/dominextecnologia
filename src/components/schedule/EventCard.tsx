@@ -5,10 +5,23 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
 
+const ICON_MAP: Record<string, any> = {
+  UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
+  HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge,
+};
+
 interface AssigneeInfo {
   id: string;
   name: string;
   avatar_url?: string | null;
+}
+
+interface TeamBadgeInfo {
+  id: string;
+  name: string;
+  color: string;
+  photo_url?: string | null;
+  icon_name?: string | null;
 }
 
 interface EventCardProps {
