@@ -76,10 +76,37 @@ function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function AssigneeAvatars({ assignees, light }: { assignees: AssigneeInfo[]; light?: boolean }) {
-  if (!assignees || assignees.length === 0) return null;
+function TeamAvatar({ team, light }: { team: TeamBadgeInfo; light?: boolean }) {
+  const IconComp = ICON_MAP[team.icon_name || ''] || UsersRound;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {team.photo_url ? (
+          <Avatar className={cn('h-5 w-5 border', light ? 'border-white/50' : 'border-background')}>
+            <AvatarImage src={team.photo_url} />
+            <AvatarFallback style={{ backgroundColor: team.color }} className="text-[8px] text-white">
+              <IconComp className="h-3 w-3" />
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div
+            className={cn('h-5 w-5 rounded-full flex items-center justify-center border shrink-0', light ? 'border-white/50' : 'border-background')}
+            style={{ backgroundColor: team.color }}
+          >
+            <IconComp className="h-3 w-3 text-white" />
+          </div>
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">{team.name}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function AssigneeAvatars({ assignees, team, light }: { assignees: AssigneeInfo[]; team?: TeamBadgeInfo; light?: boolean }) {
+  if ((!assignees || assignees.length === 0) && !team) return null;
   return (
     <div className="flex items-center -space-x-1.5">
+      {team && <TeamAvatar team={team} light={light} />}
       {assignees.slice(0, 3).map((a) => (
         <Tooltip key={a.id}>
           <TooltipTrigger asChild>
