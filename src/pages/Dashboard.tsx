@@ -17,24 +17,13 @@ import { DashboardStatusSummary } from '@/components/dashboard/DashboardStatusSu
 import { DashboardTopTechnicians, type TechnicianPerf } from '@/components/dashboard/DashboardTopTechnicians';
 import { DashboardOSByType } from '@/components/dashboard/DashboardOSByType';
 import { DashboardLiveMap } from '@/components/dashboard/DashboardLiveMap';
-
-type Period = 'today' | 'week' | 'month';
-const periodLabels: Record<Period, string> = { today: 'Hoje', week: 'Esta semana', month: 'Este mês' };
+import { DateRangeFilter, useDateRangeFilter, type DateRange } from '@/components/ui/DateRangeFilter';
 
 function getGreeting() {
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return 'Bom dia. Aqui está o resumo da sua operação.';
   if (h >= 12 && h < 18) return 'Boa tarde. Veja como está o dia.';
   return 'Boa noite. Resumo do dia de hoje.';
-}
-
-function getDateRange(period: Period) {
-  const now = new Date();
-  switch (period) {
-    case 'today': return { start: startOfDay(now), end: endOfDay(now) };
-    case 'week': return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfDay(now) };
-    case 'month': return { start: startOfMonth(now), end: endOfMonth(now) };
-  }
 }
 
 function filterByRange<T extends Record<string, any>>(items: T[], field: string, start: Date, end: Date) {
@@ -53,13 +42,11 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useDashboardStats();
   const isMobile = useIsMobile();
 
-  const [period, setPeriod] = useState<Period>(() =>
-    (localStorage.getItem('dashboard-period') as Period) || 'month'
-  );
+  const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
-  useEffect(() => { localStorage.setItem('dashboard-period', period); }, [period]);
+  const start = range.from ?? startOfMonth(new Date());
+  const end = range.to ?? endOfMonth(new Date());
 
-  const { start, end } = useMemo(() => getDateRange(period), [period]);
   const prevRange = useMemo(() => {
     const diff = differenceInDays(end, start) + 1;
     return { start: subDays(start, diff), end: subDays(start, 1) };
@@ -91,7 +78,6 @@ export default function Dashboard() {
     const totalWithResult = osAbertas + osConcluidas;
     const taxaConclusao = totalWithResult > 0 ? Math.round((osConcluidas / totalWithResult) * 100) : 0;
 
-    // Em campo agora (unique technicians with em_andamento or a_caminho today)
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
     const emCampoSet = new Set<string>();
@@ -101,7 +87,6 @@ export default function Dashboard() {
       }
     });
 
-    // Financial
     const filteredFin = stats?.allFinancial ? filterByRange(stats.allFinancial, 'transaction_date', start, end) : [];
     let faturamento = 0;
     filteredFin.forEach((t: any) => { if (t.transaction_type === 'entrada') faturamento += Number(t.amount); });
@@ -128,7 +113,7 @@ export default function Dashboard() {
     };
   }, [statusCounts, stats, start, end, prevRange, prevFilteredOS]);
 
-  // Cash flow data — always show current month + last 2 months
+  // Cash flow data
   const cashFlowData = useMemo(() => {
     if (!stats?.allFinancial) return { monthlyData: [], totalEntradas: 0, totalSaidas: 0 };
     const now = new Date();
@@ -137,7 +122,6 @@ export default function Dashboard() {
     const cfEnd = endOfMonth(now);
 
     const monthMap = new Map<string, { entradas: number; saidas: number }>();
-    // Pre-fill the 3 months so they always appear
     for (let i = 2; i >= 0; i--) {
       const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = format(m, 'MMM/yy', { locale: ptBR });
@@ -306,26 +290,19 @@ export default function Dashboard() {
     <div className="space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
+        <div className={isMobile ? 'text-center' : ''}>
           <h1 className="text-xl font-bold text-foreground lg:text-3xl">
             Olá, {firstName}! 👋
           </h1>
           <p className="text-sm text-muted-foreground">{getGreeting()}</p>
         </div>
-        <div className="inline-flex rounded-lg border border-border bg-muted/50 p-1 shrink-0">
-          {(['today', 'week', 'month'] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                period === p
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {periodLabels[p]}
-            </button>
-          ))}
+        <div className={isMobile ? 'flex justify-center' : ''}>
+          <DateRangeFilter
+            value={range}
+            preset={preset}
+            onPresetChange={setPreset}
+            onRangeChange={setRange}
+          />
         </div>
       </div>
 

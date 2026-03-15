@@ -35,7 +35,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start">
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
             Fluxo de Caixa
           </CardTitle>
@@ -59,7 +59,7 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
                   <Bar dataKey="saidas" name="Saídas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm">
+              <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm justify-center lg:justify-start">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-primary" />
                   <span className="text-muted-foreground">Entradas:</span>

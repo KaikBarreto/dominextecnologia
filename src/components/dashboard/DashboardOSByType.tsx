@@ -31,7 +31,7 @@ export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoa
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }}>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start">
             <Layers className="h-5 w-5 text-muted-foreground" />
             OS por Tipo de Serviço
           </CardTitle>
@@ -62,7 +62,6 @@ export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoa
                     <Tooltip contentStyle={tooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
-                {/* Center label */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-2xl font-bold text-foreground">{total}</span>
                   <span className="text-[10px] text-muted-foreground">total</span>
