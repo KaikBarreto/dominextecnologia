@@ -77,8 +77,8 @@ export function TeamsPanel() {
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: team.color + '20' }}>
-                      <UsersRound className="h-5 w-5" style={{ color: team.color }} />
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: team.color }}>
+                      <UsersRound className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <h3 className="font-semibold">{team.name}</h3>
