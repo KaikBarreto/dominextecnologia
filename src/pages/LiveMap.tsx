@@ -114,7 +114,7 @@ export default function LiveMap() {
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const { resolvedTheme } = useTheme();
-  const [darkMode, setDarkMode] = useState(false);
+  const darkMode = resolvedTheme === 'dark';
   const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
   const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
