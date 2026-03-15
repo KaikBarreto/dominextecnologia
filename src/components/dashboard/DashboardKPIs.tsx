@@ -82,7 +82,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
 
   if (isLoading) {
     return (
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         {[...Array(5)].map((_, i) => (
           <Card key={i}><CardContent className="p-4 lg:p-5"><Skeleton className="h-20 w-full" /></CardContent></Card>
         ))}
