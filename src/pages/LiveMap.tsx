@@ -113,6 +113,7 @@ export default function LiveMap() {
   const [trails, setTrails] = useState<Map<string, TrackingPoint[]>>(new Map());
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
+  const { resolvedTheme } = useTheme();
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
