@@ -492,11 +492,10 @@ export default function LiveMap() {
 
           {activeTab === 'mapa' && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
-                {darkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              <Badge variant="secondary" className="gap-1">
+                <MapPin className="h-3 w-3" />
+                {technicians.length} técnico{technicians.length !== 1 ? 's' : ''} ativo{technicians.length !== 1 ? 's' : ''}
+              </Badge>
                 <span className="hidden sm:inline">Atualizar</span>
               </Button>
               <Badge variant="secondary" className="gap-1">
