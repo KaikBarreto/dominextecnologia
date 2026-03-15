@@ -21,7 +21,7 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start">
             <ListChecks className="h-5 w-5 text-muted-foreground" />
             OS por Status
           </CardTitle>

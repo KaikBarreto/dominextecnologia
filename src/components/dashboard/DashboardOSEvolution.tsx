@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Activity } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, AreaChart } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
@@ -30,8 +30,8 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }}>
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2">
+          <div className="flex flex-col items-center gap-2 lg:flex-row lg:justify-between">
+            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left">
               <Activity className="h-5 w-5 text-muted-foreground" />
               Evolução de OS
             </CardTitle>

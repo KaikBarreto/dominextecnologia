@@ -94,68 +94,58 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
   const conclusionColor = data.taxaConclusao < 30 ? 'text-destructive' : data.taxaConclusao < 70 ? 'text-warning' : 'text-success';
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 lg:pb-0 lg:grid lg:grid-cols-5 no-scrollbar">
-      <div className="min-w-[200px] lg:min-w-0 flex-shrink-0 lg:flex-shrink">
-        <KPICard
-          title="OS Abertas"
-          value={data.osAbertas}
-          subtitle={`${data.osPendentes} pendentes`}
-          subtitleColor={pendingHighRatio ? 'text-destructive' : undefined}
-          icon={ClipboardList}
-          iconColor="text-primary"
-          trend={data.trendOS}
-          delay={0}
-          onClick={() => navigate('/os')}
-        />
-      </div>
-      <div className="min-w-[200px] lg:min-w-0 flex-shrink-0 lg:flex-shrink">
-        <KPICard
-          title="Em Campo Agora"
-          value={data.emCampoAgora}
-          subtitle="técnicos ativos agora"
-          icon={MapPin}
-          iconColor="text-success"
-          delay={1}
-          pulsing
-          onClick={() => navigate('/mapa-ao-vivo')}
-        />
-      </div>
-      <div className="min-w-[200px] lg:min-w-0 flex-shrink-0 lg:flex-shrink">
-        <KPICard
-          title="Taxa de Conclusão"
-          value={data.taxaConclusao}
-          formattedValue={`${data.taxaConclusao}%`}
-          subtitle={`${data.osConcluidas} concluídas este mês`}
-          icon={TrendingUp}
-          iconColor={conclusionColor}
-          delay={2}
-          onClick={() => navigate('/os')}
-        />
-      </div>
-      <div className="min-w-[200px] lg:min-w-0 flex-shrink-0 lg:flex-shrink">
-        <KPICard
-          title="Faturamento"
-          value={data.faturamento}
-          formattedValue={formatCurrency(animatedFaturamento)}
-          subtitle="no período selecionado"
-          icon={DollarSign}
-          iconColor="text-info"
-          trend={data.trendFaturamento}
-          delay={3}
-          onClick={() => navigate('/financeiro')}
-        />
-      </div>
-      <div className="min-w-[200px] lg:min-w-0 flex-shrink-0 lg:flex-shrink">
-        <KPICard
-          title="Clientes Ativos"
-          value={data.clientesAtivos}
-          subtitle="cadastrados"
-          icon={Users}
-          iconColor="text-muted-foreground"
-          delay={4}
-          onClick={() => navigate('/clientes')}
-        />
-      </div>
+    <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+      <KPICard
+        title="OS Abertas"
+        value={data.osAbertas}
+        subtitle={`${data.osPendentes} pendentes`}
+        subtitleColor={pendingHighRatio ? 'text-destructive' : undefined}
+        icon={ClipboardList}
+        iconColor="text-primary"
+        trend={data.trendOS}
+        delay={0}
+        onClick={() => navigate('/os')}
+      />
+      <KPICard
+        title="Em Campo Agora"
+        value={data.emCampoAgora}
+        subtitle="técnicos ativos agora"
+        icon={MapPin}
+        iconColor="text-success"
+        delay={1}
+        pulsing
+        onClick={() => navigate('/mapa-ao-vivo')}
+      />
+      <KPICard
+        title="Taxa de Conclusão"
+        value={data.taxaConclusao}
+        formattedValue={`${data.taxaConclusao}%`}
+        subtitle={`${data.osConcluidas} concluídas este mês`}
+        icon={TrendingUp}
+        iconColor={conclusionColor}
+        delay={2}
+        onClick={() => navigate('/os')}
+      />
+      <KPICard
+        title="Faturamento"
+        value={data.faturamento}
+        formattedValue={formatCurrency(animatedFaturamento)}
+        subtitle="no período selecionado"
+        icon={DollarSign}
+        iconColor="text-info"
+        trend={data.trendFaturamento}
+        delay={3}
+        onClick={() => navigate('/financeiro')}
+      />
+      <KPICard
+        title="Clientes Ativos"
+        value={data.clientesAtivos}
+        subtitle="cadastrados"
+        icon={Users}
+        iconColor="text-muted-foreground"
+        delay={4}
+        onClick={() => navigate('/clientes')}
+      />
     </div>
   );
 }

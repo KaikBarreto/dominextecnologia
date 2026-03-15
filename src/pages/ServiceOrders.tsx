@@ -321,6 +321,7 @@ export default function ServiceOrders() {
                       <TableHeader>
                         <TableRow>
                           <SortableTableHead sortKey="order_number" sortConfig={sortConfig} onSort={handleSort}>OS</SortableTableHead>
+                          <TableHead className="text-xs uppercase tracking-wider w-[40px]">Criador</TableHead>
                           <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
                           <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
                           <SortableTableHead sortKey="scheduled_date" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
@@ -337,6 +338,20 @@ export default function ServiceOrders() {
                                 <span className="font-mono font-medium text-sm">
                                   {getOsCode(os)}
                                 </span>
+                              </TableCell>
+                              <TableCell>
+                                {(os as any).created_by_profile?.avatar_url ? (
+                                  <img
+                                    src={(os as any).created_by_profile.avatar_url}
+                                    alt={(os as any).created_by_profile.full_name || ''}
+                                    title={(os as any).created_by_profile.full_name || 'Usuário'}
+                                    className="h-7 w-7 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground" title={(os as any).created_by_profile?.full_name || 'Usuário'}>
+                                    {((os as any).created_by_profile?.full_name || '?').slice(0, 2).toUpperCase()}
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <div>

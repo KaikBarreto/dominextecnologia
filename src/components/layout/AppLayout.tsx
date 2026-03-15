@@ -11,6 +11,7 @@ import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import logoDark from '@/assets/logo-dark.png';
+import logoGreen from '@/assets/logo-horizontal-verde.png';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 
 function HeaderContent() {
@@ -40,7 +41,7 @@ function HeaderContent() {
           {logoLoading ? (
             <div className="h-6 w-24 rounded bg-muted animate-pulse" />
           ) : (
-            <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+            <img src={document.documentElement.classList.contains('dark') ? logoGreen : logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
           )}
         </div>
       )}

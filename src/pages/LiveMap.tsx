@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, RefreshCw, Moon, Sun, Map as MapIcon, Clock } from 'lucide-react';
+import { MapPin, RefreshCw, Map as MapIcon, Clock } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrackingHistoryTab } from '@/components/tracking/TrackingHistoryTab';
 import { Card, CardContent } from '@/components/ui/card';
@@ -112,7 +113,8 @@ export default function LiveMap() {
   const [trails, setTrails] = useState<Map<string, TrackingPoint[]>>(new Map());
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const darkMode = resolvedTheme === 'dark';
   const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
   const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -490,9 +492,6 @@ export default function LiveMap() {
 
           {activeTab === 'mapa' && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
-                {darkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-              </Button>
               <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 <span className="hidden sm:inline">Atualizar</span>

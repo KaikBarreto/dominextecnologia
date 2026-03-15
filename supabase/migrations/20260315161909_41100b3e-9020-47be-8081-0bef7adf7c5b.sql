@@ -1,0 +1,2 @@
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS icon_name TEXT;
