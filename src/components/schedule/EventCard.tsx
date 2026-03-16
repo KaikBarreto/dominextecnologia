@@ -1,4 +1,4 @@
-import { MapPin, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge } from 'lucide-react';
+import { MapPin, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -132,6 +132,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   const team: TeamBadgeInfo | undefined = (order as any)._team;
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const serviceTypeColor = (order as any).service_type?.color;
+  const isTask = (order as any).entry_type === 'tarefa';
+  const taskTitle = (order as any).task_title;
 
   if (compact) {
     return (
@@ -142,16 +144,18 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         className={cn(
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
-          !serviceTypeColor && statusBadge.className,
+          isTask && !serviceTypeColor && 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-300/50 dark:border-violet-600/50',
+          !isTask && !serviceTypeColor && statusBadge.className,
           isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
         )}
         style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
       >
+        {isTask && <CheckSquare className="h-3 w-3 shrink-0 mt-px" />}
         <span className="font-medium shrink-0">
           {order.scheduled_time?.slice(0, 5) || '--:--'}
         </span>
         <span className="truncate flex-1">
-          {order.customer?.name || 'Cliente'}
+          {isTask ? (taskTitle || 'Tarefa') : (order.customer?.name || 'Cliente')}
         </span>
       </div>
     );
@@ -160,6 +164,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   const bgColor = serviceTypeColor
     ? (colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor)
     : undefined;
+
+  const taskBorderClass = isTask && !bgColor ? 'border-l-4 border-l-violet-500' : '';
 
   return (
     <div
@@ -170,27 +176,44 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
         fillHeight && 'h-full',
         !bgColor && 'border bg-card hover:border-primary/30',
+        taskBorderClass,
         isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
       )}
       style={bgColor ? { backgroundColor: bgColor, color: 'white' } : undefined}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold text-sm">
-          {order.scheduled_time?.slice(0, 5) || '--:--'}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {isTask && <CheckSquare className={cn('h-3.5 w-3.5', bgColor ? 'text-white/80' : 'text-violet-500')} />}
+          <span className="font-semibold text-sm">
+            {order.scheduled_time?.slice(0, 5) || '--:--'}
+          </span>
+        </div>
         <Badge className={cn('text-[10px] px-1.5 h-5 shadow-sm shadow-black/20', statusBadge.className)}>
           {statusBadge.label}
         </Badge>
       </div>
-      <p className={cn('text-xs font-medium', bgColor ? 'text-white/90' : 'text-primary')}>{osTypeLabels[order.os_type]}</p>
-      <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
-        <User className="h-3 w-3 shrink-0" />
-        <span className="truncate">{order.customer?.name || 'Cliente'}</span>
-      </div>
-      {order.customer?.city && (
+      {isTask ? (
+        <p className={cn('text-xs font-medium', bgColor ? 'text-white/90' : 'text-violet-600 dark:text-violet-400')}>
+          {taskTitle || 'Tarefa'}
+        </p>
+      ) : (
+        <p className={cn('text-xs font-medium', bgColor ? 'text-white/90' : 'text-primary')}>{osTypeLabels[order.os_type]}</p>
+      )}
+      {!isTask && (
+        <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
+          <User className="h-3 w-3 shrink-0" />
+          <span className="truncate">{order.customer?.name || 'Cliente'}</span>
+        </div>
+      )}
+      {!isTask && order.customer?.city && (
         <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
           <MapPin className="h-3 w-3 shrink-0" />
           <span className="truncate">{order.customer.city}</span>
+        </div>
+      )}
+      {isTask && order.description && (
+        <div className={cn('text-xs truncate', bgColor ? 'text-white/70' : 'text-muted-foreground')}>
+          {order.description}
         </div>
       )}
       {(assignees?.length > 0 || team) && (

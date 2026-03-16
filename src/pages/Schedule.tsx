@@ -12,7 +12,7 @@ import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
 import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
@@ -34,7 +34,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
-  const { data: technicians = [] } = useTechnicians();
+  const { data: allProfiles = [] } = useProfiles();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
@@ -69,8 +69,8 @@ export default function Schedule() {
 
   // Check if current user is a technician
   const isTechnician = useMemo(() => {
-    return technicians.some(t => t.user_id === user?.id);
-  }, [technicians, user?.id]);
+    return allProfiles.some(t => t.user_id === user?.id);
+  }, [allProfiles, user?.id]);
 
   const { financialEvents } = useFinancialScheduleEvents();
 
@@ -98,7 +98,7 @@ export default function Schedule() {
     return buildHolidayMap([...prevYearHolidays, ...holidays, ...nextYearHolidays]);
   }, [showHolidays, companySettings?.city, companySettings?.state, currentDate]);
 
-  const getAssignees = useOrderAssignees(technicians, teamsWithMembers);
+  const getAssignees = useOrderAssignees(allProfiles, teamsWithMembers);
 
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
@@ -187,16 +187,29 @@ export default function Schedule() {
     // Generate dates for recurrence
     const dates: string[] = [data.scheduled_date || format(new Date(), 'yyyy-MM-dd')];
     if (data.recurrence_type && data.recurrence_end_date) {
-      let current = new Date(dates[0] + 'T12:00:00');
       const endDate = new Date(data.recurrence_end_date + 'T12:00:00');
-      while (true) {
-        if (data.recurrence_type === 'daily') current = addDays(current, data.recurrence_interval || 1);
-        else if (data.recurrence_type === 'weekly') current = addWeeks(current, data.recurrence_interval || 1);
-        else if (data.recurrence_type === 'biweekly') current = addWeeks(current, 2 * (data.recurrence_interval || 1));
-        else if (data.recurrence_type === 'monthly') current = addMonths(current, data.recurrence_interval || 1);
-        else break;
-        if (current > endDate) break;
-        dates.push(format(current, 'yyyy-MM-dd'));
+
+      if (data.recurrence_type === 'custom' && data.recurrence_weekdays && data.recurrence_weekdays.length > 0) {
+        // Custom: generate dates for each selected weekday within range
+        let current = addDays(new Date(dates[0] + 'T12:00:00'), 1);
+        while (current <= endDate) {
+          if (data.recurrence_weekdays.includes(current.getDay())) {
+            dates.push(format(current, 'yyyy-MM-dd'));
+          }
+          current = addDays(current, 1);
+        }
+      } else {
+        let current = new Date(dates[0] + 'T12:00:00');
+        const interval = data.recurrence_interval || 1;
+        while (true) {
+          if (data.recurrence_type === 'daily') current = addDays(current, interval);
+          else if (data.recurrence_type === 'weekly') current = addWeeks(current, interval);
+          else if (data.recurrence_type === 'biweekly') current = addWeeks(current, 2 * interval);
+          else if (data.recurrence_type === 'monthly') current = addMonths(current, interval);
+          else break;
+          if (current > endDate) break;
+          dates.push(format(current, 'yyyy-MM-dd'));
+        }
       }
     }
 
@@ -478,7 +491,7 @@ export default function Schedule() {
         onNewOrder={handleNewOrder}
         technicianFilter={technicianFilter}
         onTechnicianFilterChange={setTechnicianFilter}
-        technicians={technicians}
+        technicians={allProfiles}
         customerFilter={customerFilter}
         onCustomerFilterChange={setCustomerFilter}
         customers={customers}

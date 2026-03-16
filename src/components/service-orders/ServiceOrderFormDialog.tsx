@@ -22,7 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
@@ -74,7 +74,7 @@ export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId,
 }: ServiceOrderFormDialogProps) {
   const { customers, createCustomer } = useCustomers();
-  const { data: technicians } = useTechnicians();
+  const { data: technicians } = useProfiles();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { teams, teamsWithMembers } = useTeams();

@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 export interface TaskFormData {
@@ -29,6 +30,7 @@ export interface TaskFormData {
   recurrence_type?: string;
   recurrence_interval?: number;
   recurrence_end_date?: string;
+  recurrence_weekdays?: number[];
 }
 
 interface TaskFormDialogProps {
@@ -45,10 +47,13 @@ const RECURRENCE_OPTIONS = [
   { value: 'weekly', label: 'Semanal' },
   { value: 'biweekly', label: 'Quinzenal' },
   { value: 'monthly', label: 'Mensal' },
+  { value: 'custom', label: 'Personalizado' },
 ];
 
+const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
 export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime }: TaskFormDialogProps) {
-  const { data: technicians = [] } = useTechnicians();
+  const { data: profiles = [] } = useProfiles();
   const { taskTypes } = useTaskTypes();
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
@@ -67,6 +72,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   const [recurrenceType, setRecurrenceType] = useState('weekly');
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -84,8 +90,17 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
       setRecurrenceType('weekly');
       setRecurrenceInterval(1);
       setRecurrenceEndDate('');
+      // Default weekday from scheduled date
+      const dayOfWeek = new Date(defaultDate || new Date()).getDay();
+      setRecurrenceWeekdays([dayOfWeek]);
     }
   }, [open, defaultDate, defaultTime]);
+
+  const toggleWeekday = (day: number) => {
+    setRecurrenceWeekdays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,9 +121,17 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
       recurrence_type: recurrenceEnabled ? recurrenceType : undefined,
       recurrence_interval: recurrenceEnabled ? recurrenceInterval : undefined,
       recurrence_end_date: recurrenceEnabled && recurrenceEndDate ? recurrenceEndDate : undefined,
+      recurrence_weekdays: recurrenceEnabled && recurrenceType === 'custom' ? recurrenceWeekdays : undefined,
     });
     onOpenChange(false);
   };
+
+  // Map profiles to the format AssigneeMultiSelect expects
+  const technicianOptions = profiles.map(p => ({
+    user_id: p.user_id,
+    full_name: p.full_name,
+    avatar_url: p.avatar_url,
+  }));
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Tarefa">
@@ -171,7 +194,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         </div>
 
         <AssigneeMultiSelect
-          technicians={technicians}
+          technicians={technicianOptions}
           teams={teamsWithMembers}
           selectedUserIds={selectedUserIds}
           selectedTeamIds={selectedTeamIds}
@@ -212,26 +235,59 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
             <Label className="cursor-pointer">Recorrência</Label>
           </div>
           {recurrenceEnabled && (
-            <div className="grid gap-3 sm:grid-cols-3 pt-1">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Frequência</Label>
-                <Select value={recurrenceType} onValueChange={setRecurrenceType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {RECURRENCE_OPTIONS.map(o => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            <div className="space-y-3 pt-1">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Frequência</Label>
+                  <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {RECURRENCE_OPTIONS.map(o => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">A cada</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Input type="number" min={1} max={12} value={recurrenceInterval} onChange={(e) => setRecurrenceInterval(Number(e.target.value))} />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {recurrenceType === 'daily' ? 'dia(s)' :
+                       recurrenceType === 'monthly' ? 'mês(es)' :
+                       'semana(s)'}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Até</Label>
+                  <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
+                </div>
+              </div>
+
+              {/* Weekday picker for custom / weekly */}
+              {(recurrenceType === 'custom' || recurrenceType === 'weekly') && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Repetir em:</Label>
+                  <div className="flex gap-1">
+                    {WEEKDAY_LABELS.map((label, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => toggleWeekday(idx)}
+                        className={cn(
+                          'h-8 w-8 rounded-md text-xs font-medium transition-colors border',
+                          recurrenceWeekdays.includes(idx)
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                        )}
+                      >
+                        {label}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">A cada</Label>
-                <Input type="number" min={1} max={12} value={recurrenceInterval} onChange={(e) => setRecurrenceInterval(Number(e.target.value))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Até</Label>
-                <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
-              </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
