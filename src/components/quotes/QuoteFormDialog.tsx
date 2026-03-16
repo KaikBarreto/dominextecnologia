@@ -550,7 +550,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     if (quote) {
       updateQuote.mutate({ ...payload, id: quote.id }, { onSuccess: () => onOpenChange(false) });
     } else {
-      createQuote.mutate(payload, { onSuccess: () => onOpenChange(false) });
+      createQuote.mutate(payload, { onSuccess: () => { draft.clearDraft(); onOpenChange(false); } });
     }
   };
 
