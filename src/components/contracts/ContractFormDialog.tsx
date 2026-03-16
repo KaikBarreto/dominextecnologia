@@ -473,14 +473,39 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
               {customerId && activeEquipment.length > 0 && (
                 <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar equipamento..."
-                      value={itemSearch}
-                      onChange={e => setItemSearch(e.target.value)}
-                      className="pl-8"
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar equipamento..."
+                        value={itemSearch}
+                        onChange={e => setItemSearch(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const allSelected = filteredEquipment.every(eq => isEquipmentSelected(eq.id));
+                        if (allSelected) {
+                          setSelectedItems(prev => prev.filter(i => !filteredEquipment.some(eq => eq.id === i.equipment_id)));
+                        } else {
+                          const newItems = filteredEquipment
+                            .filter(eq => !isEquipmentSelected(eq.id))
+                            .map(eq => ({
+                              equipment_id: eq.id,
+                              item_name: eq.name,
+                              item_description: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined,
+                            }));
+                          setSelectedItems(prev => [...prev, ...newItems]);
+                        }
+                      }}
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />
+                      {filteredEquipment.every(eq => isEquipmentSelected(eq.id)) ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </Button>
                   </div>
                   <div className="rounded-md border max-h-52 overflow-y-auto divide-y">
                     {filteredEquipment.map(eq => (

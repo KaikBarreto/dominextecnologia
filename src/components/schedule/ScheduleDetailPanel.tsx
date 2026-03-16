@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -39,6 +39,7 @@ interface ScheduleDetailPanelProps {
   onClearSelection: () => void;
   onEdit?: () => void;
   onDelete?: (id: string) => void;
+  onFinalize?: (id: string) => void;
 }
 
 function getInitials(name: string) {
@@ -50,16 +51,19 @@ function OrderDetail({
   onBack,
   onEdit,
   onDelete,
+  onFinalize,
 }: {
   order: ServiceOrder & { customer: any; equipment: any };
   onBack: () => void;
   onEdit?: () => void;
   onDelete?: (id: string) => void;
+  onFinalize?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
 
   const assignees: AssigneeInfo[] = (order as any)._assignees ?? [];
   const teamInfo = (order as any)._team as { id: string; name: string; color: string; photo_url?: string | null; icon_name?: string | null } | undefined;
@@ -209,8 +213,17 @@ function OrderDetail({
               <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
             </div>
           )}
+          {onFinalize && order.status !== 'concluida' && (
+            <Button
+              className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setShowFinalizeConfirm(true)}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Finalizar OS
+            </Button>
+          )}
           {onEdit && (
-            <Button onClick={onEdit} variant="outline" className="w-full mt-4">
+            <Button onClick={onEdit} variant="outline" className="w-full mt-2">
               Editar OS
             </Button>
           )}
@@ -262,6 +275,28 @@ function OrderDetail({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Finalizar OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    onFinalize?.(order.id);
+                    setShowFinalizeConfirm(false);
+                  }}
+                >
+                  Finalizar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </ScrollArea>
     </>
@@ -276,6 +311,7 @@ export function ScheduleDetailPanel({
   onClearSelection,
   onEdit,
   onDelete,
+  onFinalize,
 }: ScheduleDetailPanelProps) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -288,7 +324,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onFinalize={onFinalize} />
       ) : (
         <>
           <div className="mb-4">

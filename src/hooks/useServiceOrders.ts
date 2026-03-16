@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsStatus, OsType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id: string;
@@ -116,7 +117,7 @@ export function useServiceOrders() {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao criar OS', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });
@@ -157,7 +158,7 @@ export function useServiceOrders() {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao atualizar OS', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });
@@ -223,7 +224,7 @@ export function useServiceOrders() {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao excluir OS', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });

@@ -79,6 +79,7 @@ export default function ContractDetail() {
   const [recFrequency, setRecFrequency] = useState('unica');
   const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
+  const [eqPage, setEqPage] = useState(1);
 
   const sortedOccurrences = useMemo(() => 
     (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
@@ -288,15 +289,15 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          {/* Items */}
+          {/* Equipment */}
           <Card>
-            <CardHeader><CardTitle>Itens do Contrato ({items.length})</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Equipamentos do Contrato ({items.length})</CardTitle></CardHeader>
             <CardContent>
               {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum item vinculado</p>
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento vinculado</p>
               ) : (
                 <div className="space-y-2">
-                  {items.map(item => (
+                  {items.slice((eqPage - 1) * 5, eqPage * 5).map(item => (
                     <div key={item.id} className="flex items-center gap-3 p-3 rounded-md border">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{item.item_name}</p>
@@ -307,6 +308,17 @@ export default function ContractDetail() {
                       )}
                     </div>
                   ))}
+                  {items.length > 5 && (
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <span className="text-xs text-muted-foreground">
+                        {(eqPage - 1) * 5 + 1}-{Math.min(eqPage * 5, items.length)} de {items.length}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setEqPage(p => p - 1)} disabled={eqPage <= 1}>Anterior</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEqPage(p => p + 1)} disabled={eqPage >= Math.ceil(items.length / 5)}>Próxima</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

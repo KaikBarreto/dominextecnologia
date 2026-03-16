@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface ServiceType {
   id: string;
@@ -54,7 +55,7 @@ export function useServiceTypes() {
       toast({ title: 'Tipo de serviço criado!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     },
   });
 
@@ -74,7 +75,7 @@ export function useServiceTypes() {
       toast({ title: 'Tipo de serviço atualizado!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     },
   });
 
@@ -91,7 +92,7 @@ export function useServiceTypes() {
       toast({ title: 'Tipo de serviço removido!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir tipo de serviço', description: getErrorMessage(error) });
     },
   });
 

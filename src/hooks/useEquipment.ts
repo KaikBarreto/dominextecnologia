@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Equipment } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface EquipmentInput {
   customer_id: string;
@@ -67,7 +68,7 @@ export function useEquipment(customerId?: string) {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao criar equipamento', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });

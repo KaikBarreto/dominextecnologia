@@ -147,6 +147,11 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
+  const handleFinalizeFromSummary = (id: string) => {
+    updateServiceOrder.mutate({ id, status: 'concluida' as any });
+    setSummaryOrder(null);
+  };
+
   const handleNewOrder = () => {
     setSelectedOrder(null);
     setDefaultDate(format(currentDate, 'yyyy-MM-dd'));
@@ -344,6 +349,7 @@ export default function Schedule() {
               onClearSelection={handleClearSummary}
               onEdit={handleEditFromSummary}
               onDelete={handleDeleteFromSummary}
+              onFinalize={handleFinalizeFromSummary}
             />
           </div>
         )}
@@ -431,6 +437,7 @@ export default function Schedule() {
             onClearSelection={handleClearSummary}
             onEdit={handleEditFromSummary}
             onDelete={handleDeleteFromSummary}
+            onFinalize={handleFinalizeFromSummary}
           />
         </div>
       </div>

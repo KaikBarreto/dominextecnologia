@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface QuoteItem {
   id?: string;
@@ -165,7 +166,7 @@ export function useQuotes() {
 
   const createQuote = useMutation({
     mutationFn: async (input: QuoteInput) => {
-      const { items, displacement_cost, ...quoteData } = input as any;
+      const { items, displacement_cost, final_price, ...quoteData } = input as any;
 
       const { data: quote, error } = await supabase
         .from('quotes')
@@ -190,12 +191,12 @@ export function useQuotes() {
       toast({ title: 'Orçamento criado com sucesso!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao criar orçamento', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao criar orçamento', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
   const updateQuote = useMutation({
-    mutationFn: async ({ id, items, displacement_cost, ...quoteData }: QuoteInput & { id: string } & { displacement_cost?: any }) => {
+    mutationFn: async ({ id, items, displacement_cost, final_price, ...quoteData }: QuoteInput & { id: string } & { displacement_cost?: any; final_price?: any }) => {
       const { error } = await supabase
         .from('quotes')
         .update(quoteData as any)
@@ -219,7 +220,7 @@ export function useQuotes() {
       toast({ title: 'Orçamento atualizado!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao atualizar orçamento', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao atualizar orçamento', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -237,7 +238,7 @@ export function useQuotes() {
       toast({ title: 'Status atualizado!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao atualizar status', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao atualizar status', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -251,7 +252,7 @@ export function useQuotes() {
       toast({ title: 'Orçamento excluído!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao excluir orçamento', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir orçamento', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -299,7 +300,7 @@ export function useQuotes() {
       toast({ title: 'Orçamento duplicado como rascunho!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao duplicar', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao duplicar', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
