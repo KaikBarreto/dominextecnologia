@@ -226,11 +226,9 @@ export function ServiceOrderFormDialog({
     }
 
     if (!customerId) return;
-    const assignee = data.technician_id || '';
-    const isAll = assignee === 'all';
-    const isTechTeam = !isAll && assignee.startsWith('team:');
-    const techId = isAll ? undefined : (isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined);
-    const teamId = isAll ? undefined : (isTechTeam ? assignee.slice(5) : undefined);
+    // Use first selected user as legacy technician_id, first team as team_id
+    const techId = selectedAssigneeUserIds[0] || undefined;
+    const teamId = selectedAssigneeTeamIds[0] || undefined;
 
     const baseData = {
       ...data,
@@ -254,6 +252,8 @@ export function ServiceOrderFormDialog({
       require_tech_signature: requireTechSignature,
       require_client_signature: requireClientSignature,
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
+      assignee_user_ids: selectedAssigneeUserIds,
+      assignee_team_ids: selectedAssigneeTeamIds,
     };
     await onSubmit(cleanedData);
     draft.clearDraft();
