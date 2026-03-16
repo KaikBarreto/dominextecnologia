@@ -242,7 +242,7 @@ export default function Schedule() {
     setSelectedOrder(null);
     setDefaultDate(format(date, 'yyyy-MM-dd'));
     setDefaultTime(undefined);
-    setIsFormOpen(true);
+    setIsTypeSelectorOpen(true);
   };
 
   const handleDrop = async (orderId: string, newDate: string, newTime: string) => {
