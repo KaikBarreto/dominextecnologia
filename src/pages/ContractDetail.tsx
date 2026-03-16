@@ -288,29 +288,49 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          {/* Items */}
-          <Card>
-            <CardHeader><CardTitle>Itens do Contrato ({items.length})</CardTitle></CardHeader>
-            <CardContent>
-              {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum item vinculado</p>
-              ) : (
-                <div className="space-y-2">
-                  {items.map(item => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-md border">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{item.item_name}</p>
-                        {item.item_description && <p className="text-xs text-muted-foreground">{item.item_description}</p>}
-                      </div>
-                      {item.equipment && (
-                        <Badge variant="secondary" className="text-xs">Equipamento</Badge>
+          {/* Equipment */}
+          {(() => {
+            const itemsPerPage = 5;
+            const [eqPage, setEqPage] = useState(1);
+            const totalEqPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
+            const paginatedItems = items.slice((eqPage - 1) * itemsPerPage, eqPage * itemsPerPage);
+            
+            return (
+              <Card>
+                <CardHeader><CardTitle>Equipamentos do Contrato ({items.length})</CardTitle></CardHeader>
+                <CardContent>
+                  {items.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento vinculado</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {paginatedItems.map(item => (
+                        <div key={item.id} className="flex items-center gap-3 p-3 rounded-md border">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{item.item_name}</p>
+                            {item.item_description && <p className="text-xs text-muted-foreground">{item.item_description}</p>}
+                          </div>
+                          {item.equipment && (
+                            <Badge variant="secondary" className="text-xs">Equipamento</Badge>
+                          )}
+                        </div>
+                      ))}
+                      {items.length > itemsPerPage && (
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <span className="text-xs text-muted-foreground">
+                            {(eqPage - 1) * itemsPerPage + 1}-{Math.min(eqPage * itemsPerPage, items.length)} de {items.length}
+                          </span>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setEqPage(p => p - 1)} disabled={eqPage <= 1}>Anterior</Button>
+                            <Button size="sm" variant="outline" onClick={() => setEqPage(p => p + 1)} disabled={eqPage >= totalEqPages}>Próxima</Button>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Receivables */}
           <Card>
