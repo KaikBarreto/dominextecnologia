@@ -192,6 +192,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { settings: pricing } = usePricingSettings();
   const { serviceTypes } = useServiceTypes();
   const { profile } = useAuth();
+  const isEditing = !!quote;
 
   // ── Customer ──
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
