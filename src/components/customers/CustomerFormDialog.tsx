@@ -161,6 +161,21 @@ export function CustomerFormDialog({
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? 'Editar Cliente' : 'Novo Cliente'}>
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) form.reset(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          form.reset({
+            name: '', customer_type: 'pj', company_name: '', document: '',
+            email: '', phone: '', birth_date: '', address: '', address_number: '',
+            complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '', origin: '',
+          });
+        }}
+      />
       {/* Step indicators */}
       <div className="flex items-center justify-center gap-2 mb-6">
         {STEPS.map((s, i) => (
