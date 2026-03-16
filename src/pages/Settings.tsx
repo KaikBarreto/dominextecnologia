@@ -118,6 +118,11 @@ export default function Settings() {
       zip_code: companyZip || null,
       white_label_enabled: wlEnabled,
       white_label_primary_color: wlColor || null,
+      show_name_in_documents: showNameInDocs,
+      show_cnpj_in_documents: showCnpjInDocs,
+      show_address_in_documents: showAddressInDocs,
+      show_phone_in_documents: showPhoneInDocs,
+      show_email_in_documents: showEmailInDocs,
     } as any);
   };
 
