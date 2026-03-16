@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Trash2 } from 'lucide-react';
+import { Plus, FileText, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
@@ -145,13 +145,24 @@ export function QuestionnairesPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="destructive-ghost"
-                            size="icon"
-                            onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); navigate(`/questionarios/${template.id}`); }}
+                              title="Editar"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive-ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

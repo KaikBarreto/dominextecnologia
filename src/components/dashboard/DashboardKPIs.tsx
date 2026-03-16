@@ -100,7 +100,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
         iconColor="text-primary"
         trend={data.trendOS}
         delay={0}
-        onClick={() => navigate('/os')}
+        onClick={() => navigate('/ordens-servico')}
       />
       <KPICard
         title="Taxa de Conclusão"
@@ -110,7 +110,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
         icon={TrendingUp}
         iconColor={conclusionColor}
         delay={1}
-        onClick={() => navigate('/os')}
+        onClick={() => navigate('/ordens-servico')}
       />
       <KPICard
         title="Faturamento"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { TaskTypesPanel } from '@/components/service-orders/TaskTypesPanel';
 import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
@@ -36,7 +37,15 @@ const tabs = [
 ];
 
 export default function ServicesPage() {
-  const [activeTab, setActiveTab] = useState('types');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTabState] = useState(() => {
+    const tabFromUrl = searchParams.get('tab');
+    return tabFromUrl && tabs.some(t => t.value === tabFromUrl) ? tabFromUrl : 'types';
+  });
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
 
   return (
     <div className="space-y-6">

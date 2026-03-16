@@ -94,7 +94,7 @@ export default function QuestionnaireDetail() {
   if (!template) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/questionarios')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
+        <Button variant="ghost" onClick={() => navigate('/servicos?tab=questionnaires')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
         <p className="text-muted-foreground">Questionário não encontrado.</p>
       </div>
     );
@@ -207,7 +207,7 @@ export default function QuestionnaireDetail() {
   };
 
   const handleDeleteTemplate = () => {
-    deleteTemplate.mutate(template.id, { onSuccess: () => navigate('/questionarios') });
+    deleteTemplate.mutate(template.id, { onSuccess: () => navigate('/servicos?tab=questionnaires') });
   };
 
   const handleDeleteQuestion = () => {
@@ -224,7 +224,7 @@ export default function QuestionnaireDetail() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/questionarios')} className="self-start">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/servicos?tab=questionnaires')} className="self-start">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
