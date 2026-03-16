@@ -262,11 +262,8 @@ export function ServiceOrderFormDialog({
   };
 
   const handleEditSubmit = async (data: ServiceOrderFormData) => {
-    const assignee = data.technician_id || '';
-    const isAll = assignee === 'all';
-    const isTechTeam = !isAll && assignee.startsWith('team:');
-    const techId = isAll ? undefined : (isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined);
-    const teamId = isAll ? undefined : (isTechTeam ? assignee.slice(5) : undefined);
+    const techId = selectedAssigneeUserIds[0] || undefined;
+    const teamId = selectedAssigneeTeamIds[0] || undefined;
 
     const cleanedData = {
       ...data,
@@ -277,6 +274,7 @@ export function ServiceOrderFormDialog({
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
+      assignee_user_ids: selectedAssigneeUserIds,
     };
     await onSubmit(cleanedData);
     form.reset();
