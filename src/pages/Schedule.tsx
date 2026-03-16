@@ -228,7 +228,7 @@ export default function Schedule() {
     setSelectedOrder(null);
     setDefaultDate(date);
     setDefaultTime(time);
-    setIsFormOpen(true);
+    setIsTypeSelectorOpen(true);
   };
 
   const handleDateSelect = (date: Date) => {
