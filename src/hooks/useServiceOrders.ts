@@ -184,6 +184,16 @@ export function useServiceOrders() {
         }
       }
 
+      // Sync assignees if provided
+      if (assignee_user_ids !== undefined) {
+        await supabase.from('service_order_assignees').delete().eq('service_order_id', id);
+        if (assignee_user_ids.length > 0) {
+          await supabase.from('service_order_assignees').insert(
+            assignee_user_ids.map(uid => ({ service_order_id: id, user_id: uid }))
+          );
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
