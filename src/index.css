@@ -290,7 +290,15 @@ html {
 
 /* Prevent iOS zoom on input focus — inputs must be >= 16px */
 @media screen and (max-width: 1023px) {
-  input, select, textarea, [contenteditable] {
+  input,
+  select,
+  textarea,
+  [contenteditable],
+  input.text-sm,
+  textarea.text-sm,
+  select.text-sm,
+  [role="combobox"],
+  [data-slot="input"] {
     font-size: 16px !important;
   }
 }
