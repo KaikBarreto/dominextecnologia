@@ -187,16 +187,29 @@ export default function Schedule() {
     // Generate dates for recurrence
     const dates: string[] = [data.scheduled_date || format(new Date(), 'yyyy-MM-dd')];
     if (data.recurrence_type && data.recurrence_end_date) {
-      let current = new Date(dates[0] + 'T12:00:00');
       const endDate = new Date(data.recurrence_end_date + 'T12:00:00');
-      while (true) {
-        if (data.recurrence_type === 'daily') current = addDays(current, data.recurrence_interval || 1);
-        else if (data.recurrence_type === 'weekly') current = addWeeks(current, data.recurrence_interval || 1);
-        else if (data.recurrence_type === 'biweekly') current = addWeeks(current, 2 * (data.recurrence_interval || 1));
-        else if (data.recurrence_type === 'monthly') current = addMonths(current, data.recurrence_interval || 1);
-        else break;
-        if (current > endDate) break;
-        dates.push(format(current, 'yyyy-MM-dd'));
+
+      if (data.recurrence_type === 'custom' && data.recurrence_weekdays && data.recurrence_weekdays.length > 0) {
+        // Custom: generate dates for each selected weekday within range
+        let current = addDays(new Date(dates[0] + 'T12:00:00'), 1);
+        while (current <= endDate) {
+          if (data.recurrence_weekdays.includes(current.getDay())) {
+            dates.push(format(current, 'yyyy-MM-dd'));
+          }
+          current = addDays(current, 1);
+        }
+      } else {
+        let current = new Date(dates[0] + 'T12:00:00');
+        const interval = data.recurrence_interval || 1;
+        while (true) {
+          if (data.recurrence_type === 'daily') current = addDays(current, interval);
+          else if (data.recurrence_type === 'weekly') current = addWeeks(current, interval);
+          else if (data.recurrence_type === 'biweekly') current = addWeeks(current, 2 * interval);
+          else if (data.recurrence_type === 'monthly') current = addMonths(current, interval);
+          else break;
+          if (current > endDate) break;
+          dates.push(format(current, 'yyyy-MM-dd'));
+        }
       }
     }
 
