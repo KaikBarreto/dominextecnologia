@@ -161,7 +161,7 @@ export function useServiceOrders() {
   });
 
   const updateServiceOrder = useMutation({
-    mutationFn: async ({ id, ...input }: ServiceOrderUpdate) => {
+    mutationFn: async ({ id, assignee_user_ids, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[] }) => {
       const { data, error } = await supabase
         .from('service_orders')
         .update(input)
