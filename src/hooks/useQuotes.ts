@@ -252,7 +252,7 @@ export function useQuotes() {
       toast({ title: 'Orçamento excluído!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao excluir orçamento', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir orçamento', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
