@@ -220,10 +220,20 @@ export default function Schedule() {
       recurrence_group_id: groupId || null,
     }));
 
-    const { error } = await supabase.from('service_orders').insert(inserts as any);
+    const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
     if (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: error.message });
     } else {
+      // Insert assignees for each created task
+      if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
+        const assigneeRows = created.flatMap((row: any) =>
+          data.assignee_user_ids!.map(uid => ({
+            service_order_id: row.id,
+            user_id: uid,
+          }))
+        );
+        await supabase.from('service_order_assignees').insert(assigneeRows);
+      }
       toast({ title: `${dates.length} tarefa(s) criada(s)!` });
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
     }
