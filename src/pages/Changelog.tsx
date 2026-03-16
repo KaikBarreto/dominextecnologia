@@ -40,6 +40,48 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.10',
+    date: '16 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Múltiplos responsáveis em OS e Tarefas',
+        description: 'Agora é possível atribuir vários técnicos e equipes a uma OS ou tarefa usando a nova seleção múltipla.',
+        category: 'recurso',
+      },
+      {
+        title: 'Recorrência personalizada',
+        description: 'Adicionada opção "Personalizado" na recorrência de tarefas, permitindo escolher dias específicos da semana.',
+        category: 'recurso',
+      },
+      {
+        title: 'Diferenciação visual OS vs Tarefas',
+        description: 'Cards de tarefas na agenda agora exibem borda roxa e ícone distinto para fácil identificação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Filtro de agenda por perfil',
+        description: 'Técnicos veem apenas suas OS/tarefas atribuídas, enquanto gestores e admins veem toda a agenda.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Edição de OS em etapas',
+        description: 'O modal de edição de OS agora segue o mesmo fluxo em etapas da criação (Cliente, Equipamento, Detalhes).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Validação de rascunhos aprimorada',
+        description: 'O modal de "rascunho encontrado" não aparece mais quando nenhum dado foi preenchido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Responsáveis expandidos',
+        description: 'Qualquer usuário da empresa pode ser atribuído como responsável, não apenas técnicos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.9',
     date: '16 de março de 2026',
     type: 'patch',

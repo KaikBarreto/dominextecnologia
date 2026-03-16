@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.9";
+export const APP_VERSION = "1.5.10";
 
-export const VERSION_NOTES = "Dashboard otimizado: KPIs mais largos, técnicos em campo no gráfico de equipe";
+export const VERSION_NOTES = "Agenda: multi-responsáveis, recorrência personalizada, diferenciação visual OS/Tarefas";
