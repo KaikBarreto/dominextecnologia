@@ -570,6 +570,17 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // ── Form Content ───────────────────────────────────────────────────────────
   const content = (
     <div className="space-y-5 overflow-y-auto max-h-[70vh] pr-1 pb-4">
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) applyQuoteDraft(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          resetQuoteForm();
+        }}
+      />
 
       {/* ══ 1. DESTINATÁRIO ══ */}
       <section className="space-y-3">
