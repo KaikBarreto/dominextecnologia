@@ -196,7 +196,7 @@ export function useQuotes() {
   });
 
   const updateQuote = useMutation({
-    mutationFn: async ({ id, items, displacement_cost, ...quoteData }: QuoteInput & { id: string } & { displacement_cost?: any }) => {
+    mutationFn: async ({ id, items, displacement_cost, final_price, ...quoteData }: QuoteInput & { id: string } & { displacement_cost?: any; final_price?: any }) => {
       const { error } = await supabase
         .from('quotes')
         .update(quoteData as any)
