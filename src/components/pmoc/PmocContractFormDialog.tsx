@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,10 +44,8 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
   };
 
   const [formData, setFormData] = useState<Partial<PmocContractInsert>>(defaultFormData);
-
   const draft = useFormDraft<Partial<PmocContractInsert>>({ key: 'pmoc-contract-form', isOpen: open, isEditing });
 
-  // Save draft on changes
   useEffect(() => {
     if (open && !isEditing && !draft.showResumePrompt) {
       draft.saveDraft(formData);
@@ -75,13 +73,11 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (isEditing && contract) {
       await updateContract.mutateAsync({ id: contract.id, ...formData });
     } else {
       await createContract.mutateAsync(formData as PmocContractInsert);
     }
-    
     draft.clearDraft();
     onOpenChange(false);
   };
@@ -91,137 +87,84 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEditing ? 'Editar Contrato PMOC' : 'Novo Contrato PMOC'}
+      className="sm:max-w-[600px]"
+      footer={
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
+          <Button
+            onClick={handleSubmit as any}
+            disabled={createContract.isPending || updateContract.isPending}
+            className="flex-1"
+          >
+            {createContract.isPending || updateContract.isPending ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
+      }
+    >
       <DraftResumeDialog
         open={draft.showResumePrompt}
-        onResume={() => {
-          if (draft.draftData) setFormData(draft.draftData);
-          draft.acceptDraft();
-        }}
-        onDiscard={() => {
-          draft.discardDraft();
-          setFormData({ ...defaultFormData });
-        }}
+        onResume={() => { if (draft.draftData) setFormData(draft.draftData); draft.acceptDraft(); }}
+        onDiscard={() => { draft.discardDraft(); setFormData({ ...defaultFormData }); }}
       />
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            {isEditing ? 'Editar Contrato PMOC' : 'Novo Contrato PMOC'}
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="customer_id">Cliente *</Label>
-              <SearchableSelect
-                options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
-                value={formData.customer_id}
-                onValueChange={(value) => handleChange('customer_id', value)}
-                placeholder="Selecione o cliente"
-                searchPlaceholder="Buscar cliente..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contract_number">Número do Contrato</Label>
-              <Input
-                id="contract_number"
-                value={formData.contract_number || ''}
-                onChange={(e) => handleChange('contract_number', e.target.value)}
-                placeholder="Ex: PMOC-2025-001"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="start_date">Data de Início *</Label>
-              <Input
-                id="start_date"
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => handleChange('start_date', e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="end_date">Data de Término *</Label>
-              <Input
-                id="end_date"
-                type="date"
-                value={formData.end_date}
-                onChange={(e) => handleChange('end_date', e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="monthly_value">Valor Mensal (R$)</Label>
-              <Input
-                id="monthly_value"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.monthly_value || 0}
-                onChange={(e) => handleChange('monthly_value', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="maintenance_frequency">Frequência de Manutenção</Label>
-              <Select
-                value={formData.maintenance_frequency || 'mensal'}
-                onValueChange={(value) => handleChange('maintenance_frequency', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FREQUENCIES.map(freq => (
-                    <SelectItem key={freq.value} value={freq.value}>{freq.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Switch
-              id="is_active"
-              checked={formData.is_active ?? true}
-              onCheckedChange={(checked) => handleChange('is_active', checked)}
-            />
-            <Label htmlFor="is_active">Contrato Ativo</Label>
-          </div>
-
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes || ''}
-              onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Observações sobre o contrato..."
-              rows={3}
+            <Label>Cliente *</Label>
+            <SearchableSelect
+              options={customers.map(c => ({ value: c.id, label: c.name, sublabel: c.document || c.email || undefined }))}
+              value={formData.customer_id}
+              onValueChange={(value) => handleChange('customer_id', value)}
+              placeholder="Selecione o cliente"
+              searchPlaceholder="Buscar cliente..."
             />
           </div>
+          <div className="space-y-2">
+            <Label>Número do Contrato</Label>
+            <Input value={formData.contract_number || ''} onChange={(e) => handleChange('contract_number', e.target.value)} placeholder="Ex: PMOC-2025-001" />
+          </div>
+        </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={createContract.isPending || updateContract.isPending}
-            >
-              {createContract.isPending || updateContract.isPending ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Data de Início *</Label>
+            <Input type="date" value={formData.start_date} onChange={(e) => handleChange('start_date', e.target.value)} required />
+          </div>
+          <div className="space-y-2">
+            <Label>Data de Término *</Label>
+            <Input type="date" value={formData.end_date} onChange={(e) => handleChange('end_date', e.target.value)} required />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Valor Mensal (R$)</Label>
+            <Input type="number" min="0" step="0.01" value={formData.monthly_value || 0} onChange={(e) => handleChange('monthly_value', parseFloat(e.target.value) || 0)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Frequência de Manutenção</Label>
+            <Select value={formData.maintenance_frequency || 'mensal'} onValueChange={(value) => handleChange('maintenance_frequency', value)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {FREQUENCIES.map(freq => (<SelectItem key={freq.value} value={freq.value}>{freq.label}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Switch checked={formData.is_active ?? true} onCheckedChange={(checked) => handleChange('is_active', checked)} />
+          <Label>Contrato Ativo</Label>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Observações</Label>
+          <Textarea value={formData.notes || ''} onChange={(e) => handleChange('notes', e.target.value)} placeholder="Observações sobre o contrato..." rows={3} />
+        </div>
+      </form>
+    </ResponsiveModal>
   );
 }
