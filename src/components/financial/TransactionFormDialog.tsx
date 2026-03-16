@@ -64,6 +64,8 @@ export function TransactionFormDialog({
   defaultType = 'entrada',
 }: TransactionFormDialogProps) {
   const { categories: dbCategories } = useFinancialCategories();
+  const isEditing = !!transaction;
+  const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
 
   const getCategoriesForType = (type: 'entrada' | 'saida') => {
     const fromDb = dbCategories
@@ -82,17 +84,29 @@ export function TransactionFormDialog({
     },
   });
 
+  // Save draft on changes
+  const watchedValues = form.watch();
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft(watchedValues);
+    }
+  }, [watchedValues, open, isEditing, draft.showResumePrompt]);
+
   // Reset form defaults when dialog opens with new defaultType or transaction
   useEffect(() => {
     if (open) {
-      form.reset({
-        transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
-        category: transaction?.category ?? '',
-        description: transaction?.description ?? '',
-        amount: transaction?.amount ?? 0,
-        transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
-        is_paid: transaction?.is_paid ?? true,
-      });
+      if (!isEditing && draft.hasDraft && draft.draftData) {
+        // Draft will be applied via DraftResumeDialog
+      } else {
+        form.reset({
+          transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
+          category: transaction?.category ?? '',
+          description: transaction?.description ?? '',
+          amount: transaction?.amount ?? 0,
+          transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
+          is_paid: transaction?.is_paid ?? true,
+        });
+      }
     }
   }, [open, defaultType, transaction]);
 
