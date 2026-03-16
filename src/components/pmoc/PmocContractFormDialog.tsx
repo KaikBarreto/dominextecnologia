@@ -82,6 +82,7 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
       await createContract.mutateAsync(formData as PmocContractInsert);
     }
     
+    draft.clearDraft();
     onOpenChange(false);
   };
 
