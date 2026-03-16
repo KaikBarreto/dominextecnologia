@@ -273,6 +273,28 @@ function OrderDetail({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Finalizar OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    onFinalize?.(order.id);
+                    setShowFinalizeConfirm(false);
+                  }}
+                >
+                  Finalizar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </ScrollArea>
     </>
