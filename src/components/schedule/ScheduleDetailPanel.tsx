@@ -39,6 +39,7 @@ interface ScheduleDetailPanelProps {
   onClearSelection: () => void;
   onEdit?: () => void;
   onDelete?: (id: string) => void;
+  onFinalize?: (id: string) => void;
 }
 
 function getInitials(name: string) {
