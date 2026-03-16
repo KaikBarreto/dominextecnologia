@@ -61,6 +61,7 @@ function OrderDetail({
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
 
   const assignees: AssigneeInfo[] = (order as any)._assignees ?? [];
   const teamInfo = (order as any)._team as { id: string; name: string; color: string; photo_url?: string | null; icon_name?: string | null } | undefined;
