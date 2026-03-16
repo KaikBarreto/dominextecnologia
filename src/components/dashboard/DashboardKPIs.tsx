@@ -1,4 +1,4 @@
-import { ClipboardList, MapPin, TrendingUp, DollarSign, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ClipboardList, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCountUp } from './useCountUp';
@@ -21,7 +21,7 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-function KPICard({ title, value, formattedValue, subtitle, subtitleColor, icon: Icon, iconColor, trend, delay, pulsing, onClick }: {
+function KPICard({ title, value, formattedValue, subtitle, subtitleColor, icon: Icon, iconColor, trend, delay, onClick }: {
   title: string;
   value: number;
   formattedValue?: string;
@@ -31,7 +31,6 @@ function KPICard({ title, value, formattedValue, subtitle, subtitleColor, icon: 
   iconColor: string;
   trend?: number;
   delay: number;
-  pulsing?: boolean;
   onClick?: () => void;
 }) {
   const animatedValue = useCountUp(value);
@@ -47,20 +46,17 @@ function KPICard({ title, value, formattedValue, subtitle, subtitleColor, icon: 
         onClick={onClick}
       >
         <CardContent className="p-4 lg:p-5">
-          <div className="flex items-start justify-between gap-2">
-            <div className="space-y-2 min-w-0 flex-1 overflow-hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2 min-w-0 flex-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">{title}</p>
-              <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight truncate">
+              <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight whitespace-nowrap">
                 {formattedValue ?? animatedValue.toLocaleString('pt-BR')}
               </p>
-              <p className={`text-xs truncate ${subtitleColor || 'text-muted-foreground'}`}>{subtitle}</p>
+              <p className={`text-xs ${subtitleColor || 'text-muted-foreground'}`}>{subtitle}</p>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <div className={`p-2.5 rounded-xl bg-muted/50 ${pulsing ? 'relative' : ''}`}>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <div className="p-2.5 rounded-xl bg-muted/50">
                 <Icon className={`h-5 w-5 ${iconColor}`} />
-                {pulsing && (
-                  <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
-                )}
               </div>
               {trend !== undefined && trend !== 0 && (
                 <div className={`flex items-center gap-0.5 text-xs font-medium ${trend > 0 ? 'text-success' : 'text-destructive'}`}>
@@ -82,8 +78,8 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
 
   if (isLoading) {
     return (
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-        {[...Array(5)].map((_, i) => (
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        {[...Array(3)].map((_, i) => (
           <Card key={i}><CardContent className="p-4 lg:p-5"><Skeleton className="h-20 w-full" /></CardContent></Card>
         ))}
       </div>
@@ -94,7 +90,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
   const conclusionColor = data.taxaConclusao < 30 ? 'text-destructive' : data.taxaConclusao < 70 ? 'text-warning' : 'text-success';
 
   return (
-    <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+    <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
       <KPICard
         title="OS Abertas"
         value={data.osAbertas}
@@ -107,23 +103,13 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
         onClick={() => navigate('/os')}
       />
       <KPICard
-        title="Em Campo Agora"
-        value={data.emCampoAgora}
-        subtitle="técnicos ativos agora"
-        icon={MapPin}
-        iconColor="text-success"
-        delay={1}
-        pulsing
-        onClick={() => navigate('/mapa-ao-vivo')}
-      />
-      <KPICard
         title="Taxa de Conclusão"
         value={data.taxaConclusao}
         formattedValue={`${data.taxaConclusao}%`}
         subtitle={`${data.osConcluidas} concluídas este mês`}
         icon={TrendingUp}
         iconColor={conclusionColor}
-        delay={2}
+        delay={1}
         onClick={() => navigate('/os')}
       />
       <KPICard
@@ -134,17 +120,8 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
         icon={DollarSign}
         iconColor="text-info"
         trend={data.trendFaturamento}
-        delay={3}
+        delay={2}
         onClick={() => navigate('/financeiro')}
-      />
-      <KPICard
-        title="Clientes Ativos"
-        value={data.clientesAtivos}
-        subtitle="cadastrados"
-        icon={Users}
-        iconColor="text-muted-foreground"
-        delay={4}
-        onClick={() => navigate('/clientes')}
       />
     </div>
   );

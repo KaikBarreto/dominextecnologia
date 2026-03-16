@@ -323,7 +323,7 @@ export default function Dashboard() {
             <DashboardOSEvolution data={evolutionData} isLoading={isLoading} />
           </div>
           <div className="order-6 lg:order-none">
-            <DashboardTopTechnicians technicians={topTechnicians} isLoading={isLoading} />
+            <DashboardTopTechnicians technicians={topTechnicians} isLoading={isLoading} emCampoAgora={kpiData.emCampoAgora} />
           </div>
         </div>
 

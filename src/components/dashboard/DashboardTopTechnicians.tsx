@@ -22,7 +22,7 @@ function formatTime(minutes: number) {
   return m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`;
 }
 
-export function DashboardTopTechnicians({ technicians, isLoading }: { technicians: TechnicianPerf[]; isLoading: boolean }) {
+export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }: { technicians: TechnicianPerf[]; isLoading: boolean; emCampoAgora?: number }) {
   const navigate = useNavigate();
 
   return (
@@ -68,12 +68,23 @@ export function DashboardTopTechnicians({ technicians, isLoading }: { technician
                   </div>
                 </div>
               ))}
-              <button
-                onClick={() => navigate('/os')}
-                className="w-full text-center text-xs text-primary font-medium py-2 hover:underline flex items-center justify-center gap-1"
-              >
-                Ver relatório completo <ArrowRight className="h-3 w-3" />
-              </button>
+              <div className="flex items-center justify-between pt-1">
+                {emCampoAgora !== undefined && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
+                    </span>
+                    <span><strong className="text-foreground">{emCampoAgora}</strong> técnico{emCampoAgora !== 1 ? 's' : ''} em campo agora</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => navigate('/os')}
+                  className="text-xs text-primary font-medium hover:underline flex items-center gap-1 ml-auto"
+                >
+                  Ver relatório <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex h-[120px] items-center justify-center text-muted-foreground text-sm">
