@@ -372,34 +372,17 @@ export function ServiceOrderFormDialog({
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="technician_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Técnico / Equipe</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={[
-                        { value: 'all', label: '👥 Todos (empresa inteira)' },
-                        ...(technicians?.map((t) => ({
-                          value: `user:${t.user_id}`,
-                          label: t.full_name,
-                          icon: <img src={t.avatar_url || ''} alt="" className="h-5 w-5 rounded-full object-cover bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
-                        })) || []),
-                        ...teams.filter(t => t.is_active).map((t) => ({
-                          value: `team:${t.id}`,
-                          label: t.name,
-                          sublabel: 'Equipe',
-                          icon: <span className="h-5 w-5 rounded-full shrink-0 flex items-center justify-center text-[10px] text-white font-bold" style={{ backgroundColor: t.color || 'hsl(var(--primary))' }}>{t.name.slice(0, 1)}</span>,
-                        })),
-                      ]}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Selecione"
-                      searchPlaceholder="Buscar técnico ou equipe..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <div className="sm:col-span-2">
+                <AssigneeMultiSelect
+                  technicians={technicians || []}
+                  teams={teamsWithMembers}
+                  selectedUserIds={selectedAssigneeUserIds}
+                  selectedTeamIds={selectedAssigneeTeamIds}
+                  onChangeUsers={setSelectedAssigneeUserIds}
+                  onChangeTeams={setSelectedAssigneeTeamIds}
+                  label="Responsáveis"
+                />
+              </div>
               <FormField control={form.control} name="form_template_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Questionário</FormLabel>
