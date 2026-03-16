@@ -67,10 +67,9 @@ export default function Schedule() {
       .map(t => t.id);
   }, [teamsWithMembers, user?.id]);
 
-  // Check if current user is a technician
-  const isTechnician = useMemo(() => {
-    return allProfiles.some(t => t.user_id === user?.id);
-  }, [allProfiles, user?.id]);
+  // Check if current user has technician role (only filter for tecnico role)
+  const { hasRole } = useAuth();
+  const isTechnician = hasRole('tecnico');
 
   const { financialEvents } = useFinancialScheduleEvents();
 
