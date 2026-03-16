@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -40,58 +40,54 @@ export function LossReasonDialog({ open, onOpenChange, onConfirm, leadTitle }: L
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-destructive" />
-            Motivo da Perda
-          </DialogTitle>
-        </DialogHeader>
-
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Motivo da Perda"
+      footer={
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleCancel} className="flex-1">Cancelar</Button>
+          <Button
+            onClick={handleConfirm}
+            disabled={!reason}
+            className="flex-1 bg-destructive text-white hover:bg-destructive/90"
+          >
+            Confirmar Perda
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
         {leadTitle && (
           <p className="text-sm text-muted-foreground">
             Registre o motivo da perda do negócio <strong>"{leadTitle}"</strong>
           </p>
         )}
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Motivo *</Label>
-            <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o motivo" />
-              </SelectTrigger>
-              <SelectContent>
-                {LOSS_REASONS.map(r => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Detalhes (opcional)</Label>
-            <Textarea
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder="Adicione mais detalhes sobre a perda..."
-              rows={3}
-            />
-          </div>
+        <div className="space-y-2">
+          <Label>Motivo *</Label>
+          <Select value={reason} onValueChange={setReason}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o motivo" />
+            </SelectTrigger>
+            <SelectContent>
+              {LOSS_REASONS.map(r => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>Cancelar</Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={!reason}
-            className="bg-destructive text-white hover:bg-destructive/90"
-          >
-            Confirmar Perda
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-2">
+          <Label>Detalhes (opcional)</Label>
+          <Textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            placeholder="Adicione mais detalhes sobre a perda..."
+            rows={3}
+          />
+        </div>
+      </div>
+    </ResponsiveModal>
   );
 }
