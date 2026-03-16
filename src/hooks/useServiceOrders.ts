@@ -117,7 +117,7 @@ export function useServiceOrders() {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao criar OS', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });
