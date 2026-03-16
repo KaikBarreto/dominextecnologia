@@ -67,10 +67,10 @@ export function QuestionnairesPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Button above table */}
+      {/* Button */}
       <div className="flex justify-end">
         <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          className="w-full lg:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -78,101 +78,178 @@ export function QuestionnairesPanel() {
         </Button>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {templates.length === 0 ? (
+      {templates.length === 0 ? (
+        <Card>
+          <CardContent className="p-0">
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="text-lg font-medium">Nenhum questionário criado</h3>
               <p className="text-muted-foreground">Clique em "Novo questionário" para começar</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden sm:table-cell">Perguntas</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden md:table-cell">Serviços</SortableTableHead>
-                    <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Ações</SortableTableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedTemplates.map((template) => {
-                    const serviceIds = (template as any).service_type_ids as string[] | undefined;
-                    const appliesToAll = !serviceIds || serviceIds.length === 0;
-                    const linkedServices = appliesToAll
-                      ? []
-                      : serviceTypes.filter(st => serviceIds!.includes(st.id));
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-3 lg:hidden">
+            {sortedTemplates.map((template) => {
+              const serviceIds = (template as any).service_type_ids as string[] | undefined;
+              const appliesToAll = !serviceIds || serviceIds.length === 0;
+              const linkedServices = appliesToAll
+                ? []
+                : serviceTypes.filter(st => serviceIds!.includes(st.id));
 
-                    return (
-                      <TableRow
-                        key={template.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/questionarios/${template.id}`)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="font-medium">{template.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <span className="text-sm">{template.questions?.length || 0}</span>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {appliesToAll ? (
-                            <Badge variant="secondary" className="text-xs">Todos</Badge>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {linkedServices.slice(0, 3).map(st => (
-                                <Badge key={st.id} variant="outline" className="text-xs">
-                                  <span className="inline-block h-2 w-2 rounded-full mr-1" style={{ backgroundColor: st.color }} />
-                                  {st.name}
-                                </Badge>
-                              ))}
-                              {linkedServices.length > 3 && (
-                                <Badge variant="outline" className="text-xs">+{linkedServices.length - 3}</Badge>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
+              return (
+                <Card
+                  key={template.id}
+                  className="cursor-pointer active:scale-[0.98] transition-transform"
+                  onClick={() => navigate(`/questionarios/${template.id}`)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-primary shrink-0" />
+                          <span className="font-medium truncate">{template.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
                             {template.is_active ? 'Ativo' : 'Inativo'}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/questionarios/${template.id}`); }}
-                              title="Editar"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive-ghost"
-                              size="icon"
-                              onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <span className="text-xs text-muted-foreground">
+                            {template.questions?.length || 0} perguntas
+                          </span>
+                        </div>
+                        {appliesToAll ? (
+                          <Badge variant="secondary" className="text-xs">Todos os serviços</Badge>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {linkedServices.slice(0, 3).map(st => (
+                              <Badge key={st.id} variant="outline" className="text-xs">
+                                <span className="inline-block h-2 w-2 rounded-full mr-1" style={{ backgroundColor: st.color }} />
+                                {st.name}
+                              </Badge>
+                            ))}
+                            {linkedServices.length > 3 && (
+                              <Badge variant="outline" className="text-xs">+{linkedServices.length - 3}</Badge>
+                            )}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/questionarios/${template.id}`); }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive-ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <Card className="hidden lg:block">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>Perguntas</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>Serviços</SortableTableHead>
+                      <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedTemplates.map((template) => {
+                      const serviceIds = (template as any).service_type_ids as string[] | undefined;
+                      const appliesToAll = !serviceIds || serviceIds.length === 0;
+                      const linkedServices = appliesToAll
+                        ? []
+                        : serviceTypes.filter(st => serviceIds!.includes(st.id));
+
+                      return (
+                        <TableRow
+                          key={template.id}
+                          className="cursor-pointer"
+                          onClick={() => navigate(`/questionarios/${template.id}`)}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="font-medium">{template.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">{template.questions?.length || 0}</span>
+                          </TableCell>
+                          <TableCell>
+                            {appliesToAll ? (
+                              <Badge variant="secondary" className="text-xs">Todos</Badge>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {linkedServices.slice(0, 3).map(st => (
+                                  <Badge key={st.id} variant="outline" className="text-xs">
+                                    <span className="inline-block h-2 w-2 rounded-full mr-1" style={{ backgroundColor: st.color }} />
+                                    {st.name}
+                                  </Badge>
+                                ))}
+                                {linkedServices.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">+{linkedServices.length - 3}</Badge>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
+                              {template.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/questionarios/${template.id}`); }}
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive-ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Create Modal */}
       <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Questionário">
