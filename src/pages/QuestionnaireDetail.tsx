@@ -339,7 +339,29 @@ export default function QuestionnaireDetail() {
                   onDrop={(e) => handleDrop(e, question.id)}
                   onDragEnd={() => { setDraggedQuestionId(null); setDragOverQuestionId(null); }}
                 >
-                  <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab active:cursor-grabbing shrink-0" />
+                  {/* Desktop: drag handle */}
+                  <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab active:cursor-grabbing shrink-0 hidden lg:block" />
+                  {/* Mobile: up/down buttons */}
+                  <div className="flex flex-col gap-0.5 lg:hidden shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      disabled={index === 0}
+                      onClick={() => moveQuestion(question.id, 'up')}
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      disabled={index === sortedQuestions.length - 1}
+                      onClick={() => moveQuestion(question.id, 'down')}
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                   <div className="flex-1 min-w-0 space-y-1">
                     <p className="text-sm font-medium leading-tight">{question.question}</p>
                     {question.description && (
