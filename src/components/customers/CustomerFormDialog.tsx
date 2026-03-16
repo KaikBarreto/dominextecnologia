@@ -72,6 +72,9 @@ export function CustomerFormDialog({
   const { toast } = useToast();
   const { activeOrigins } = useCustomerOrigins();
 
+  const isEditing = !!customer;
+  const draft = useFormDraft<CustomerFormData>({ key: 'customer-form', isOpen: open, isEditing });
+
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -81,29 +84,41 @@ export function CustomerFormDialog({
     },
   });
 
+  // Save draft on form changes
+  const watchedValues = form.watch();
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft(watchedValues);
+    }
+  }, [watchedValues, open, isEditing, draft.showResumePrompt]);
+
   useEffect(() => {
     if (open) {
       setStep(0);
       setPhotoFile(null);
       setPhotoPreview((customer as any)?.photo_url || null);
-      form.reset({
-        name: customer?.name ?? '',
-        customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
-        company_name: (customer as any)?.company_name ?? '',
-        document: customer?.document ?? '',
-        email: customer?.email ?? '',
-        phone: customer?.phone ?? '',
-        birth_date: (customer as any)?.birth_date ?? '',
-        address: customer?.address ?? '',
-        address_number: (customer as any)?.address_number ?? '',
-        complement: (customer as any)?.complement ?? '',
-        neighborhood: (customer as any)?.neighborhood ?? '',
-        city: customer?.city ?? '',
-        state: customer?.state ?? '',
-        zip_code: customer?.zip_code ?? '',
-        notes: customer?.notes ?? '',
-        origin: (customer as any)?.origin ?? '',
-      });
+      if (!isEditing && draft.hasDraft && draft.draftData) {
+        // Draft will be applied when user accepts via DraftResumeDialog
+      } else {
+        form.reset({
+          name: customer?.name ?? '',
+          customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
+          company_name: (customer as any)?.company_name ?? '',
+          document: customer?.document ?? '',
+          email: customer?.email ?? '',
+          phone: customer?.phone ?? '',
+          birth_date: (customer as any)?.birth_date ?? '',
+          address: customer?.address ?? '',
+          address_number: (customer as any)?.address_number ?? '',
+          complement: (customer as any)?.complement ?? '',
+          neighborhood: (customer as any)?.neighborhood ?? '',
+          city: customer?.city ?? '',
+          state: customer?.state ?? '',
+          zip_code: customer?.zip_code ?? '',
+          notes: customer?.notes ?? '',
+          origin: (customer as any)?.origin ?? '',
+        });
+      }
     }
   }, [open, customer]);
 
