@@ -77,7 +77,7 @@ export function ServiceOrderFormDialog({
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
-  const { teams } = useTeams();
+  const { teams, teamsWithMembers } = useTeams();
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
