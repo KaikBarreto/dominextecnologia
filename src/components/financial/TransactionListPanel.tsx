@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -18,11 +19,21 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
-import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+/** Parse a date string like "2026-03-25" without timezone shift */
+function parseLocalDate(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDate(dateStr: string) {
+  const date = parseLocalDate(dateStr);
+  return date.toLocaleDateString('pt-BR');
 }
 
 interface TransactionListPanelProps {
@@ -43,6 +54,8 @@ export function TransactionListPanel({
 }: TransactionListPanelProps) {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const filtered = transactions
@@ -59,9 +72,36 @@ export function TransactionListPanel({
     if (deleteId) {
       await onDelete(deleteId);
       setDeleteId(null);
+      selectedIds.delete(deleteId);
+      setSelectedIds(new Set(selectedIds));
     }
   };
 
+  const handleBulkDelete = async () => {
+    for (const id of selectedIds) {
+      await onDelete(id);
+    }
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((t) => t.id)));
+    }
+  };
+
+  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+  const someSelected = selectedIds.size > 0;
   const showTypeColumn = type === 'all';
 
   return (
@@ -71,12 +111,20 @@ export function TransactionListPanel({
           <h2 className="text-xl font-bold">{title}</h2>
           <p className="text-sm text-muted-foreground">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</p>
         </div>
-        {onNew && (
-          <Button onClick={onNew} className={buttonColor}>
-            <Plus className="mr-2 h-4 w-4" />
-            {type === 'entrada' ? 'Nova Receita' : type === 'saida' ? 'Nova Despesa' : 'Nova Transação'}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {someSelected && (
+            <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir {selectedIds.size}
+            </Button>
+          )}
+          {onNew && (
+            <Button onClick={onNew} className={buttonColor}>
+              <Plus className="mr-2 h-4 w-4" />
+              {type === 'entrada' ? 'Nova Receita' : type === 'saida' ? 'Nova Despesa' : 'Nova Transação'}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="relative">
@@ -96,13 +144,28 @@ export function TransactionListPanel({
         </div>
       ) : isMobile ? (
         <div className="space-y-3">
+          {type !== 'all' && (
+            <div className="flex items-center gap-2 px-1">
+              <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
+              <span className="text-xs text-muted-foreground">Selecionar todos</span>
+            </div>
+          )}
           {pagination.paginatedItems.map((t) => (
-            <Card key={t.id}>
+            <Card key={t.id} className={selectedIds.has(t.id) ? 'ring-2 ring-primary' : ''}>
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{t.description}</p>
-                    {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
+                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                    {type !== 'all' && (
+                      <Checkbox
+                        checked={selectedIds.has(t.id)}
+                        onCheckedChange={() => toggleSelect(t.id)}
+                        className="mt-0.5"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{t.description}</p>
+                      {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
+                    </div>
                   </div>
                   <Badge variant={t.is_paid ? 'default' : 'secondary'} className="shrink-0 text-[10px]">
                     {t.is_paid ? 'Pago' : 'Pendente'}
@@ -111,7 +174,7 @@ export function TransactionListPanel({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
-                      {format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
+                      {formatDate(t.transaction_date)}
                     </span>
                     {showTypeColumn && (
                       <Badge className={`text-[10px] ${t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}`}>
@@ -152,6 +215,11 @@ export function TransactionListPanel({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {type !== 'all' && (
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[40px]">
+                        <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
+                      </SortableTableHead>
+                    )}
                     <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
                     {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
@@ -163,9 +231,14 @@ export function TransactionListPanel({
                 </TableHeader>
                 <TableBody>
                   {pagination.paginatedItems.map((t) => (
-                    <TableRow key={t.id}>
+                    <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
+                      {type !== 'all' && (
+                        <TableCell>
+                          <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} />
+                        </TableCell>
+                      )}
                       <TableCell className="text-sm">
-                        {format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
+                        {formatDate(t.transaction_date)}
                       </TableCell>
                       {showTypeColumn && (
                         <TableCell>
@@ -227,6 +300,7 @@ export function TransactionListPanel({
         </Card>
       )}
 
+      {/* Single delete */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -237,6 +311,22 @@ export function TransactionListPanel({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {selectedIds.size} transações</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir {selectedIds.size} transações selecionadas? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir {selectedIds.size}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
