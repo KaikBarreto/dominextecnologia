@@ -103,12 +103,17 @@ export default function Schedule() {
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
       if (isTechnician && user?.id) {
-        const isAssignedToMe = order.technician_id === user.id;
+        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
+        const isAssignedToMe = assigneeIds?.includes(user.id) || order.technician_id === user.id;
         const isAssignedToMyTeam = order.team_id && myTeamIds.includes(order.team_id);
         if (!isAssignedToMe && !isAssignedToMyTeam) return false;
       }
 
-      if (technicianFilter !== 'all' && order.technician_id !== technicianFilter) return false;
+      if (technicianFilter !== 'all') {
+        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
+        const matchesTech = assigneeIds?.includes(technicianFilter) || order.technician_id === technicianFilter;
+        if (!matchesTech) return false;
+      }
       if (customerFilter !== 'all' && order.customer_id !== customerFilter) return false;
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
       return true;
