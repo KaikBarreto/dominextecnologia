@@ -392,7 +392,7 @@ export default function Schedule() {
           </div>
           <Button size="sm" onClick={handleNewOrder}>
             <Plus className="h-4 w-4 mr-1" />
-            Nova Tarefa
+            Nova Tarefa/OS
           </Button>
         </div>
 
