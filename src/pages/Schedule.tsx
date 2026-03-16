@@ -439,16 +439,16 @@ export default function Schedule() {
         />
 
         {summaryOrder && (
-          <div className="min-h-[200px]">
+          <div ref={summaryRef} className="min-h-[200px]">
             <ScheduleDetailPanel
               selectedDate={currentDate}
               orders={filteredOrders}
               selectedOrder={summaryOrder}
               onOrderSelect={handleOrderSelect}
               onClearSelection={handleClearSummary}
-              onEdit={handleEditFromSummary}
-              onDelete={handleDeleteFromSummary}
-              onFinalize={handleFinalizeFromSummary}
+              onEdit={(summaryOrder as any)._isFinancialEvent ? undefined : handleEditFromSummary}
+              onDelete={(summaryOrder as any)._isFinancialEvent ? undefined : handleDeleteFromSummary}
+              onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
             />
           </div>
         )}
