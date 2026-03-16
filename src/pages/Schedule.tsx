@@ -520,12 +520,25 @@ export default function Schedule() {
         </div>
       </div>
 
+      <EntryTypeSelectorDialog
+        open={isTypeSelectorOpen}
+        onOpenChange={setIsTypeSelectorOpen}
+        onSelectOS={handleSelectOS}
+        onSelectTask={handleSelectTask}
+      />
       <ServiceOrderFormDialog
         open={isFormOpen}
         onOpenChange={handleCloseForm}
         serviceOrder={selectedOrder}
         onSubmit={handleSubmit}
         isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
+        defaultDate={defaultDate}
+        defaultTime={defaultTime}
+      />
+      <TaskFormDialog
+        open={isTaskFormOpen}
+        onOpenChange={setIsTaskFormOpen}
+        onSubmit={handleTaskSubmit}
         defaultDate={defaultDate}
         defaultTime={defaultTime}
       />
