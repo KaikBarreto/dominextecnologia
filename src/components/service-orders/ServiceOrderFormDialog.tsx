@@ -598,9 +598,28 @@ export function ServiceOrderFormDialog({
           {/* Step 2: Equipment(s) */}
           {currentStepKey === 'equipment' && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {equipment.length > 1 ? 'Selecione um ou mais equipamentos para esta OS.' : 'Selecione o equipamento.'}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {equipment.length > 1 ? 'Selecione um ou mais equipamentos para esta OS.' : 'Selecione o equipamento.'}
+                </p>
+                {equipment.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedEquipmentIds.length === equipment.length) {
+                        setSelectedEquipmentIds([]);
+                      } else {
+                        setSelectedEquipmentIds(equipment.map(eq => eq.id));
+                      }
+                    }}
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    {selectedEquipmentIds.length === equipment.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                  </Button>
+                )}
+              </div>
               {equipment.length === 0 && selectedCustomerId && (
                 <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente.</p>
               )}
