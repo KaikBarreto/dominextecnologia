@@ -292,7 +292,6 @@ export default function ContractDetail() {
           {/* Equipment */}
           {(() => {
             const itemsPerPage = 5;
-            const [eqPage, setEqPage] = useState(1);
             const totalEqPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
             const paginatedItems = items.slice((eqPage - 1) * itemsPerPage, eqPage * itemsPerPage);
             
