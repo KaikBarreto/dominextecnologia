@@ -207,7 +207,7 @@ export default function QuestionnaireDetail() {
   };
 
   const handleDeleteTemplate = () => {
-    deleteTemplate.mutate(template.id, { onSuccess: () => navigate('/questionarios') });
+    deleteTemplate.mutate(template.id, { onSuccess: () => navigate('/servicos?tab=questionnaires') });
   };
 
   const handleDeleteQuestion = () => {
