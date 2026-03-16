@@ -238,7 +238,7 @@ export function useQuotes() {
       toast({ title: 'Status atualizado!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao atualizar status', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao atualizar status', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
