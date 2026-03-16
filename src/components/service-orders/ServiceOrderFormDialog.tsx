@@ -29,6 +29,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
 import { CepLookup } from '@/components/CepLookup';
 import { useFormDraft } from '@/hooks/useFormDraft';
