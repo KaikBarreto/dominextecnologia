@@ -97,6 +97,8 @@ export function ServiceOrderFormDialog({
   const [adhocCity, setAdhocCity] = useState('');
   const [adhocState, setAdhocState] = useState('');
   const [adhocNeighborhood, setAdhocNeighborhood] = useState('');
+  const [selectedAssigneeUserIds, setSelectedAssigneeUserIds] = useState<string[]>([]);
+  const [selectedAssigneeTeamIds, setSelectedAssigneeTeamIds] = useState<string[]>([]);
   const { equipment } = useEquipment(selectedCustomerId);
 
   const selectedServiceType = useMemo(
