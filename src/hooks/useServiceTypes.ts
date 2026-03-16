@@ -75,7 +75,7 @@ export function useServiceTypes() {
       toast({ title: 'Tipo de serviço atualizado!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     },
   });
 
