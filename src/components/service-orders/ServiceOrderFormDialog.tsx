@@ -430,6 +430,27 @@ export function ServiceOrderFormDialog({
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço">
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) {
+            const { _selectedCustomerId, _selectedServiceTypeId, ...formValues } = draft.draftData;
+            form.reset(formValues);
+            if (_selectedCustomerId) setSelectedCustomerId(_selectedCustomerId);
+            if (_selectedServiceTypeId) setSelectedServiceTypeId(_selectedServiceTypeId);
+          }
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          form.reset({
+            customer_id: '', equipment_id: '', technician_id: '',
+            os_type: 'manutencao_corretiva', service_type_id: '',
+            scheduled_date: computedDate, scheduled_time: computedTime,
+            duration_minutes: 120, description: '', notes: '', form_template_id: '',
+          });
+        }}
+      />
       {/* Step indicators */}
       <div className="flex flex-col items-center mb-6">
         <div className="flex items-center justify-center gap-2">
