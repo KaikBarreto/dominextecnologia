@@ -153,7 +153,7 @@ function OrderDetail({
                 <UsersRound className="h-4 w-4 text-primary" />
                 Responsáveis
               </div>
-              <div className="flex flex-wrap gap-2 pl-6">
+              <div className="pl-6 space-y-1.5">
                 {teamInfo && (() => {
                   const ICON_MAP: Record<string, any> = {
                     UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
@@ -161,27 +161,41 @@ function OrderDetail({
                   };
                   const IconComp = ICON_MAP[teamInfo.icon_name || ''] || UsersRound;
                   return (
-                    <div className="flex items-center gap-1.5">
-                      {teamInfo.photo_url ? (
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={teamInfo.photo_url} />
-                          <AvatarFallback style={{ backgroundColor: teamInfo.color }} className="text-[9px] text-white">
-                            <IconComp className="h-3.5 w-3.5" />
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div
-                          className="h-6 w-6 rounded-full flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: teamInfo.color }}
-                        >
-                          <IconComp className="h-3.5 w-3.5 text-white" />
-                        </div>
-                      )}
-                      <span className="text-xs font-medium">{teamInfo.name}</span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        {teamInfo.photo_url ? (
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={teamInfo.photo_url} />
+                            <AvatarFallback style={{ backgroundColor: teamInfo.color }} className="text-[9px] text-white">
+                              <IconComp className="h-3.5 w-3.5" />
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <div
+                            className="h-6 w-6 rounded-full flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: teamInfo.color }}
+                          >
+                            <IconComp className="h-3.5 w-3.5 text-white" />
+                          </div>
+                        )}
+                        <span className="text-xs font-bold">{teamInfo.name}</span>
+                      </div>
+                      {/* Team members indented */}
+                      <div className="ml-4 pl-3 border-l-2 border-muted space-y-1">
+                        {assignees.map((a) => (
+                          <div key={a.id} className="flex items-center gap-1.5">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={a.avatar_url || undefined} />
+                              <AvatarFallback className="text-[8px]">{getInitials(a.name)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">{a.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   );
                 })()}
-                {assignees.map((a) => (
+                {!teamInfo && assignees.map((a) => (
                   <div key={a.id} className="flex items-center gap-1.5">
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={a.avatar_url || undefined} />
