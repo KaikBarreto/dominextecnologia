@@ -74,7 +74,7 @@ export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId,
 }: ServiceOrderFormDialogProps) {
   const { customers, createCustomer } = useCustomers();
-  const { data: technicians } = useTechnicians();
+  const { data: technicians } = useProfiles();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { teams, teamsWithMembers } = useTeams();
