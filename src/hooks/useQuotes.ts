@@ -220,7 +220,7 @@ export function useQuotes() {
       toast({ title: 'Orçamento atualizado!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao atualizar orçamento', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao atualizar orçamento', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
