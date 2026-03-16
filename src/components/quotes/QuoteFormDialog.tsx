@@ -24,10 +24,12 @@ import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
 import { BDISummaryCard } from '@/components/quotes/BDISummaryCard';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { supabase } from '@/integrations/supabase/client';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import {
   User, UserPlus, Palette, Wrench, MapPin,
   Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
-} from 'lucide-react';
+}from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
 interface FormQuoteItem {
@@ -190,6 +192,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { settings: pricing } = usePricingSettings();
   const { serviceTypes } = useServiceTypes();
   const { profile } = useAuth();
+  const isEditing = !!quote;
 
   // ── Customer ──
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
@@ -231,6 +234,65 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [isFetchingSvc, setIsFetchingSvc] = useState(false);
 
   // (material state removed — materials are now part of services)
+
+  type QuoteDraft = {
+    customerMode: string; customerId: string; prospectName: string; prospectPhone: string; prospectEmail: string;
+    distanceKm: number; discountType: string; discountValue: number; includeGifts: boolean;
+    validUntil: string; notes: string; terms: string; proposalTemplateId: string;
+  };
+  const draft = useFormDraft<QuoteDraft>({ key: 'quote-form', isOpen: open, isEditing });
+
+  // Save draft on changes (lightweight — excludes items to avoid perf issues)
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft({
+        customerMode, customerId, prospectName, prospectPhone, prospectEmail,
+        distanceKm, discountType, discountValue, includeGifts,
+        validUntil, notes, terms, proposalTemplateId,
+      });
+    }
+  }, [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, open, isEditing, draft.showResumePrompt]);
+
+  const applyQuoteDraft = (d: QuoteDraft) => {
+    setCustomerMode(d.customerMode as any || 'existing');
+    setCustomerId(d.customerId || '');
+    setProspectName(d.prospectName || '');
+    setProspectPhone(d.prospectPhone || '');
+    setProspectEmail(d.prospectEmail || '');
+    setDistanceKm(d.distanceKm || 0);
+    setDiscountType(d.discountType as any || 'valor');
+    setDiscountValue(d.discountValue || 0);
+    setIncludeGifts(d.includeGifts !== false);
+    setValidUntil(d.validUntil || '');
+    setNotes(d.notes || '');
+    setTerms(d.terms || '');
+    setProposalTemplateId(d.proposalTemplateId || '');
+  };
+
+  const resetQuoteForm = () => {
+    setCustomerMode('existing');
+    setCustomerId('');
+    setProspectName('');
+    setProspectPhone('');
+    setProspectEmail('');
+    setDistanceKm(0);
+    setDiscountType('valor');
+    setDiscountValue(0);
+    setIncludeGifts(true);
+    setValidUntil('');
+    setNotes('');
+    setTerms('');
+    setItems([]);
+    setProposalTemplateId(templates[0]?.id ?? '');
+    if (pricing) {
+      setTaxRate(Number(pricing.tax_rate ?? 10));
+      setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
+      setProfitRate(Number(pricing.default_profit_rate ?? 10));
+      setKmCostCfg(Number(pricing.km_cost ?? 1));
+      setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
+      setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
+    }
+  };
 
   // ── Initialize BDI config from pricing settings (new quote) ──
   useEffect(() => {
@@ -289,29 +351,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           price_override: qi.price_override ?? null,
         }))
       );
+    } else if (!isEditing && draft.hasDraft && draft.draftData) {
+      // Draft will be applied via DraftResumeDialog
     } else {
-      setCustomerMode('existing');
-      setCustomerId('');
-      setProspectName('');
-      setProspectPhone('');
-      setProspectEmail('');
-      setDistanceKm(0);
-      setDiscountType('valor');
-      setDiscountValue(0);
-      setIncludeGifts(true);
-      setValidUntil('');
-      setNotes('');
-      setTerms('');
-      setItems([]);
-      setProposalTemplateId(templates[0]?.id ?? '');
-      if (pricing) {
-        setTaxRate(Number(pricing.tax_rate ?? 10));
-        setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
-        setProfitRate(Number(pricing.default_profit_rate ?? 10));
-        setKmCostCfg(Number(pricing.km_cost ?? 1));
-        setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
-        setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
-      }
+      resetQuoteForm();
     }
   }, [quote, open]);
 
@@ -507,7 +550,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     if (quote) {
       updateQuote.mutate({ ...payload, id: quote.id }, { onSuccess: () => onOpenChange(false) });
     } else {
-      createQuote.mutate(payload, { onSuccess: () => onOpenChange(false) });
+      createQuote.mutate(payload, { onSuccess: () => { draft.clearDraft(); onOpenChange(false); } });
     }
   };
 
@@ -527,6 +570,17 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // ── Form Content ───────────────────────────────────────────────────────────
   const content = (
     <div className="space-y-5 overflow-y-auto max-h-[70vh] pr-1 pb-4">
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) applyQuoteDraft(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          resetQuoteForm();
+        }}
+      />
 
       {/* ══ 1. DESTINATÁRIO ══ */}
       <section className="space-y-3">

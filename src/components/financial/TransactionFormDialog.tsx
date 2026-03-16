@@ -26,6 +26,8 @@ import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const transactionSchema = z.object({
@@ -62,6 +64,8 @@ export function TransactionFormDialog({
   defaultType = 'entrada',
 }: TransactionFormDialogProps) {
   const { categories: dbCategories } = useFinancialCategories();
+  const isEditing = !!transaction;
+  const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
 
   const getCategoriesForType = (type: 'entrada' | 'saida') => {
     const fromDb = dbCategories
@@ -80,17 +84,29 @@ export function TransactionFormDialog({
     },
   });
 
+  // Save draft on changes
+  const watchedValues = form.watch();
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft(watchedValues);
+    }
+  }, [watchedValues, open, isEditing, draft.showResumePrompt]);
+
   // Reset form defaults when dialog opens with new defaultType or transaction
   useEffect(() => {
     if (open) {
-      form.reset({
-        transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
-        category: transaction?.category ?? '',
-        description: transaction?.description ?? '',
-        amount: transaction?.amount ?? 0,
-        transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
-        is_paid: transaction?.is_paid ?? true,
-      });
+      if (!isEditing && draft.hasDraft && draft.draftData) {
+        // Draft will be applied via DraftResumeDialog
+      } else {
+        form.reset({
+          transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
+          category: transaction?.category ?? '',
+          description: transaction?.description ?? '',
+          amount: transaction?.amount ?? 0,
+          transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
+          is_paid: transaction?.is_paid ?? true,
+        });
+      }
     }
   }, [open, defaultType, transaction]);
 
@@ -102,6 +118,7 @@ export function TransactionFormDialog({
       paid_date: data.is_paid ? data.transaction_date : undefined,
     };
     await onSubmit(payload);
+    draft.clearDraft();
     form.reset();
     onOpenChange(false);
   };
@@ -116,6 +133,24 @@ export function TransactionFormDialog({
       title={transaction ? 'Editar Transação' : 'Nova Transação'}
       className="sm:max-w-[480px]"
     >
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) form.reset(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          form.reset({
+            transaction_type: defaultType,
+            category: '',
+            description: '',
+            amount: 0,
+            transaction_date: new Date().toISOString().split('T')[0],
+            is_paid: true,
+          });
+        }}
+      />
       <p className="text-sm text-muted-foreground -mt-2 mb-4">Registre uma receita ou despesa</p>
 
       <Form {...form}>

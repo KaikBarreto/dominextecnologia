@@ -23,6 +23,8 @@ import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { Customer, CustomerType } from '@/types/database';
 
 
@@ -70,6 +72,9 @@ export function CustomerFormDialog({
   const { toast } = useToast();
   const { activeOrigins } = useCustomerOrigins();
 
+  const isEditing = !!customer;
+  const draft = useFormDraft<CustomerFormData>({ key: 'customer-form', isOpen: open, isEditing });
+
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -79,29 +84,41 @@ export function CustomerFormDialog({
     },
   });
 
+  // Save draft on form changes
+  const watchedValues = form.watch();
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft(watchedValues);
+    }
+  }, [watchedValues, open, isEditing, draft.showResumePrompt]);
+
   useEffect(() => {
     if (open) {
       setStep(0);
       setPhotoFile(null);
       setPhotoPreview((customer as any)?.photo_url || null);
-      form.reset({
-        name: customer?.name ?? '',
-        customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
-        company_name: (customer as any)?.company_name ?? '',
-        document: customer?.document ?? '',
-        email: customer?.email ?? '',
-        phone: customer?.phone ?? '',
-        birth_date: (customer as any)?.birth_date ?? '',
-        address: customer?.address ?? '',
-        address_number: (customer as any)?.address_number ?? '',
-        complement: (customer as any)?.complement ?? '',
-        neighborhood: (customer as any)?.neighborhood ?? '',
-        city: customer?.city ?? '',
-        state: customer?.state ?? '',
-        zip_code: customer?.zip_code ?? '',
-        notes: customer?.notes ?? '',
-        origin: (customer as any)?.origin ?? '',
-      });
+      if (!isEditing && draft.hasDraft && draft.draftData) {
+        // Draft will be applied when user accepts via DraftResumeDialog
+      } else {
+        form.reset({
+          name: customer?.name ?? '',
+          customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
+          company_name: (customer as any)?.company_name ?? '',
+          document: customer?.document ?? '',
+          email: customer?.email ?? '',
+          phone: customer?.phone ?? '',
+          birth_date: (customer as any)?.birth_date ?? '',
+          address: customer?.address ?? '',
+          address_number: (customer as any)?.address_number ?? '',
+          complement: (customer as any)?.complement ?? '',
+          neighborhood: (customer as any)?.neighborhood ?? '',
+          city: customer?.city ?? '',
+          state: customer?.state ?? '',
+          zip_code: customer?.zip_code ?? '',
+          notes: customer?.notes ?? '',
+          origin: (customer as any)?.origin ?? '',
+        });
+      }
     }
   }, [open, customer]);
 
@@ -124,6 +141,7 @@ export function CustomerFormDialog({
       }
       const cleanedData = { ...data, birth_date: data.birth_date || undefined, ...(photo_url ? { photo_url } : {}) };
       await onSubmit(cleanedData);
+      draft.clearDraft();
       form.reset();
       setStep(0);
       onOpenChange(false);
@@ -143,6 +161,21 @@ export function CustomerFormDialog({
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? 'Editar Cliente' : 'Novo Cliente'}>
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) form.reset(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          form.reset({
+            name: '', customer_type: 'pj', company_name: '', document: '',
+            email: '', phone: '', birth_date: '', address: '', address_number: '',
+            complement: '', neighborhood: '', city: '', state: '', zip_code: '', notes: '', origin: '',
+          });
+        }}
+      />
       {/* Step indicators */}
       <div className="flex items-center justify-center gap-2 mb-6">
         {STEPS.map((s, i) => (

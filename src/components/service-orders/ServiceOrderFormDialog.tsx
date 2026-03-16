@@ -31,6 +31,8 @@ import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
 import { CepLookup } from '@/components/CepLookup';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -75,6 +77,7 @@ export function ServiceOrderFormDialog({
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { teams } = useTeams();
+  const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
@@ -145,6 +148,17 @@ export function ServiceOrderFormDialog({
     },
   });
 
+  type OSDraft = ServiceOrderFormData & { _selectedCustomerId?: string; _selectedServiceTypeId?: string };
+  const draft = useFormDraft<OSDraft>({ key: 'service-order-form', isOpen: open, isEditing });
+
+  // Save draft on changes
+  const watchedValues = form.watch();
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft({ ...watchedValues, _selectedCustomerId: selectedCustomerId, _selectedServiceTypeId: selectedServiceTypeId });
+    }
+  }, [watchedValues, selectedCustomerId, selectedServiceTypeId, open, isEditing, draft.showResumePrompt]);
+
   useEffect(() => {
     if (open) {
       setStep(0);
@@ -155,21 +169,25 @@ export function ServiceOrderFormDialog({
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
-      form.reset({
-        customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
-        equipment_id: serviceOrder?.equipment_id ?? '',
-        technician_id: serviceOrder?.technician_id ?? '',
-        os_type: (serviceOrder?.os_type as any) ?? 'manutencao_corretiva',
-        service_type_id: serviceOrder?.service_type_id ?? '',
-        scheduled_date: computedDate,
-        scheduled_time: computedTime,
-        duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
-        description: serviceOrder?.description ?? '',
-        notes: serviceOrder?.notes ?? '',
-        form_template_id: serviceOrder?.form_template_id ?? '',
-      });
-      setSelectedCustomerId(serviceOrder?.customer_id ?? defaultCustomerId);
-      setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
+      if (!isEditing && draft.hasDraft && draft.draftData) {
+        // Draft will be applied via DraftResumeDialog
+      } else {
+        form.reset({
+          customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
+          equipment_id: serviceOrder?.equipment_id ?? '',
+          technician_id: serviceOrder?.technician_id ?? '',
+          os_type: (serviceOrder?.os_type as any) ?? 'manutencao_corretiva',
+          service_type_id: serviceOrder?.service_type_id ?? '',
+          scheduled_date: computedDate,
+          scheduled_time: computedTime,
+          duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
+          description: serviceOrder?.description ?? '',
+          notes: serviceOrder?.notes ?? '',
+          form_template_id: serviceOrder?.form_template_id ?? '',
+        });
+        setSelectedCustomerId(serviceOrder?.customer_id ?? defaultCustomerId);
+        setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
+      }
     }
   }, [open, serviceOrder, computedDate, computedTime]);
 
@@ -225,6 +243,7 @@ export function ServiceOrderFormDialog({
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
     };
     await onSubmit(cleanedData);
+    draft.clearDraft();
     form.reset();
     onOpenChange(false);
   };
@@ -411,6 +430,27 @@ export function ServiceOrderFormDialog({
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Ordem de Serviço">
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) {
+            const { _selectedCustomerId, _selectedServiceTypeId, ...formValues } = draft.draftData;
+            form.reset(formValues);
+            if (_selectedCustomerId) setSelectedCustomerId(_selectedCustomerId);
+            if (_selectedServiceTypeId) setSelectedServiceTypeId(_selectedServiceTypeId);
+          }
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          form.reset({
+            customer_id: '', equipment_id: '', technician_id: '',
+            os_type: 'manutencao_corretiva', service_type_id: '',
+            scheduled_date: computedDate, scheduled_time: computedTime,
+            duration_minutes: 120, description: '', notes: '', form_template_id: '',
+          });
+        }}
+      />
       {/* Step indicators */}
       <div className="flex flex-col items-center mb-6">
         <div className="flex items-center justify-center gap-2">
