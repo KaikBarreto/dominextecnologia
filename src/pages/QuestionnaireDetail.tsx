@@ -218,6 +218,16 @@ export default function QuestionnaireDetail() {
     }
   };
 
+  const moveQuestion = (questionId: string, direction: 'up' | 'down') => {
+    const questions = [...(template.questions || [])].sort((a, b) => a.position - b.position);
+    const idx = questions.findIndex(q => q.id === questionId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= questions.length) return;
+    [questions[idx], questions[targetIdx]] = [questions[targetIdx], questions[idx]];
+    reorderQuestions.mutate(questions.map(q => q.id));
+  };
+
   const sortedQuestions = [...(template.questions || [])].sort((a, b) => a.position - b.position);
   const selectedAnswerTypes = qForm.answer_types || [];
 
