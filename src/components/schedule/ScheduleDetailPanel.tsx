@@ -322,7 +322,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onFinalize={onFinalize} />
       ) : (
         <>
           <div className="mb-4">
