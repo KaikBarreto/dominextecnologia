@@ -12,7 +12,7 @@ import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
 import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
