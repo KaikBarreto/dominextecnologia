@@ -478,7 +478,7 @@ export default function Schedule() {
         onNewOrder={handleNewOrder}
         technicianFilter={technicianFilter}
         onTechnicianFilterChange={setTechnicianFilter}
-        technicians={technicians}
+        technicians={allProfiles}
         customerFilter={customerFilter}
         onCustomerFilterChange={setCustomerFilter}
         customers={customers}
