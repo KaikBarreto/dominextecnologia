@@ -191,7 +191,7 @@ export function useQuotes() {
       toast({ title: 'Orçamento criado com sucesso!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao criar orçamento', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao criar orçamento', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
