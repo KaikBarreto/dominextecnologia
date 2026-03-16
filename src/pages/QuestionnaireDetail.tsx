@@ -224,7 +224,7 @@ export default function QuestionnaireDetail() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/questionarios')} className="self-start">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/servicos?tab=questionnaires')} className="self-start">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">

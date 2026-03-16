@@ -110,7 +110,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
         icon={TrendingUp}
         iconColor={conclusionColor}
         delay={1}
-        onClick={() => navigate('/os')}
+        onClick={() => navigate('/ordens-servico')}
       />
       <KPICard
         title="Faturamento"
