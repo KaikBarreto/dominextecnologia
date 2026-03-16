@@ -29,6 +29,7 @@ interface EmployeeFormDialogProps {
 export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending }: EmployeeFormDialogProps) {
   const { toast } = useToast();
   const { users } = useUsers();
+  const isEditing = !!employee;
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
@@ -46,6 +47,24 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
   const [showPasswordField, setShowPasswordField] = useState(false);
 
+  type EmployeeDraft = { name: string; cpf: string; phone: string; email: string; position: string; salary: string; hireDate: string; address: string; pixKey: string };
+  const draft = useFormDraft<EmployeeDraft>({ key: 'employee-form', isOpen: open, isEditing });
+
+  const getFormSnapshot = (): EmployeeDraft => ({ name, cpf, phone, email, position, salary, hireDate, address, pixKey });
+
+  // Save draft on field changes
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft(getFormSnapshot());
+    }
+  }, [name, cpf, phone, email, position, salary, hireDate, address, pixKey, open, isEditing, draft.showResumePrompt]);
+
+  const applyDraft = (d: EmployeeDraft) => {
+    setName(d.name || ''); setCpf(d.cpf || ''); setPhone(d.phone || '');
+    setEmail(d.email || ''); setPosition(d.position || ''); setSalary(d.salary || '');
+    setHireDate(d.hireDate || ''); setAddress(d.address || ''); setPixKey(d.pixKey || '');
+  };
+
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
     return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -53,15 +72,19 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
   useEffect(() => {
     if (open) {
-      setName(employee?.name || '');
-      setCpf(employee?.cpf || '');
-      setPhone(employee?.phone || '');
-      setEmail(employee?.email || '');
-      setPosition(employee?.position || '');
-      setSalary(employee?.salary ? currencyMask(String(Math.round(employee.salary * 100))) : '');
-      setHireDate(employee?.hire_date || '');
-      setAddress(employee?.address || '');
-      setPixKey(employee?.pix_key || '');
+      if (!isEditing && draft.hasDraft && draft.draftData) {
+        // Draft will be applied via DraftResumeDialog
+      } else {
+        setName(employee?.name || '');
+        setCpf(employee?.cpf || '');
+        setPhone(employee?.phone || '');
+        setEmail(employee?.email || '');
+        setPosition(employee?.position || '');
+        setSalary(employee?.salary ? currencyMask(String(Math.round(employee.salary * 100))) : '');
+        setHireDate(employee?.hire_date || '');
+        setAddress(employee?.address || '');
+        setPixKey(employee?.pix_key || '');
+      }
       setPhotoUrl(employee?.photo_url || '');
       setCreateAccess(false);
       setUseTemporaryPassword(false);
