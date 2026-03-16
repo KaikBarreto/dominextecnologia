@@ -309,6 +309,7 @@ export function ScheduleDetailPanel({
   onClearSelection,
   onEdit,
   onDelete,
+  onFinalize,
 }: ScheduleDetailPanelProps) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
