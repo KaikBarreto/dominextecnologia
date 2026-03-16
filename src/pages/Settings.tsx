@@ -57,6 +57,11 @@ export default function Settings() {
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
   const [wlIconUploading, setWlIconUploading] = useState(false);
+  const [showNameInDocs, setShowNameInDocs] = useState(true);
+  const [showCnpjInDocs, setShowCnpjInDocs] = useState(true);
+  const [showAddressInDocs, setShowAddressInDocs] = useState(true);
+  const [showPhoneInDocs, setShowPhoneInDocs] = useState(true);
+  const [showEmailInDocs, setShowEmailInDocs] = useState(true);
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
