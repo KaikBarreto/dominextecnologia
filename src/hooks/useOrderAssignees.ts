@@ -21,7 +21,7 @@ export interface OrderAssigneeResult {
 
 /**
  * Build a lookup function that resolves assignees for a given order
- * based on technician_id and team_id.
+ * based on technician_id, team_id, and _assignee_user_ids from junction table.
  */
 export function useOrderAssignees(
   profiles: Profile[] | undefined,
@@ -31,14 +31,27 @@ export function useOrderAssignees(
     const profileMap = new Map<string, Profile>();
     (profiles ?? []).forEach(p => profileMap.set(p.user_id, p));
 
-    return (order: { technician_id?: string | null; team_id?: string | null }): OrderAssigneeResult => {
+    return (order: { technician_id?: string | null; team_id?: string | null; _assignee_user_ids?: string[] }): OrderAssigneeResult => {
       const result: AssigneeInfo[] = [];
       let teamInfo: OrderAssigneeResult['team'];
 
-      if (order.technician_id) {
-        const p = profileMap.get(order.technician_id);
-        if (p) {
-          result.push({ id: p.user_id, name: p.full_name, avatar_url: p.avatar_url });
+      const assigneeUserIds = (order as any)._assignee_user_ids as string[] | undefined;
+
+      // If we have junction table assignees, use those
+      if (assigneeUserIds && assigneeUserIds.length > 0) {
+        assigneeUserIds.forEach(uid => {
+          const p = profileMap.get(uid);
+          if (p && !result.some(r => r.id === p.user_id)) {
+            result.push({ id: p.user_id, name: p.full_name, avatar_url: p.avatar_url });
+          }
+        });
+      } else {
+        // Fallback to legacy technician_id
+        if (order.technician_id) {
+          const p = profileMap.get(order.technician_id);
+          if (p) {
+            result.push({ id: p.user_id, name: p.full_name, avatar_url: p.avatar_url });
+          }
         }
       }
 
@@ -46,14 +59,17 @@ export function useOrderAssignees(
         const team = teamsWithMembers.find(t => t.id === order.team_id);
         if (team) {
           teamInfo = { id: team.id, name: team.name, color: team.color, photo_url: team.photo_url, icon_name: team.icon_name };
-          team.members.forEach(m => {
-            if (!result.some(r => r.id === m.user_id)) {
-              const p = profileMap.get(m.user_id);
-              if (p) {
-                result.push({ id: p.user_id, name: p.full_name, avatar_url: p.avatar_url });
+          // If using legacy mode (no junction table), add team members
+          if (!assigneeUserIds || assigneeUserIds.length === 0) {
+            team.members.forEach(m => {
+              if (!result.some(r => r.id === m.user_id)) {
+                const p = profileMap.get(m.user_id);
+                if (p) {
+                  result.push({ id: p.user_id, name: p.full_name, avatar_url: p.avatar_url });
+                }
               }
-            }
-          });
+            });
+          }
         }
       }
 

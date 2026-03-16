@@ -7,12 +7,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 
 export interface TaskFormData {
   task_title: string;
@@ -20,6 +20,8 @@ export interface TaskFormData {
   service_type_id?: string;
   technician_id?: string;
   team_id?: string;
+  assignee_user_ids?: string[];
+  assignee_team_ids?: string[];
   scheduled_date?: string;
   scheduled_time?: string;
   duration_minutes?: number;
@@ -55,7 +57,8 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   const [taskTypeId, setTaskTypeId] = useState('');
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [linkType, setLinkType] = useState<'task' | 'service'>('task');
-  const [assignee, setAssignee] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [duration, setDuration] = useState(60);
@@ -71,7 +74,8 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
       setTaskTypeId('');
       setServiceTypeId('');
       setLinkType('task');
-      setAssignee('');
+      setSelectedUserIds([]);
+      setSelectedTeamIds([]);
       setScheduledDate(defaultDate || format(new Date(), 'yyyy-MM-dd'));
       setScheduledTime(defaultTime || '08:00');
       setDuration(60);
@@ -83,25 +87,18 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
     }
   }, [open, defaultDate, defaultTime]);
 
-  const assigneeOptions = [
-    ...technicians.map(t => ({ value: `user:${t.user_id}`, label: t.full_name })),
-    ...teamsWithMembers.map(t => ({ value: `team:${t.id}`, label: `🏷 ${t.name}` })),
-  ];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-
-    const isTeam = assignee.startsWith('team:');
-    const techId = !assignee || isTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee);
-    const teamId = isTeam ? assignee.slice(5) : undefined;
 
     await onSubmit({
       task_title: title.trim(),
       task_type_id: linkType === 'task' && taskTypeId ? taskTypeId : undefined,
       service_type_id: linkType === 'service' && serviceTypeId ? serviceTypeId : undefined,
-      technician_id: techId,
-      team_id: teamId,
+      technician_id: selectedUserIds[0] || undefined,
+      team_id: selectedTeamIds[0] || undefined,
+      assignee_user_ids: selectedUserIds,
+      assignee_team_ids: selectedTeamIds,
       scheduled_date: scheduledDate || undefined,
       scheduled_time: scheduledTime || undefined,
       duration_minutes: duration,
@@ -173,16 +170,15 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Responsável</Label>
-          <SearchableSelect
-            options={assigneeOptions}
-            value={assignee}
-            onValueChange={setAssignee}
-            placeholder="Selecione..."
-            searchPlaceholder="Buscar..."
-          />
-        </div>
+        <AssigneeMultiSelect
+          technicians={technicians}
+          teams={teamsWithMembers}
+          selectedUserIds={selectedUserIds}
+          selectedTeamIds={selectedTeamIds}
+          onChangeUsers={setSelectedUserIds}
+          onChangeTeams={setSelectedTeamIds}
+          label="Responsáveis"
+        />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">

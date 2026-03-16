@@ -29,6 +29,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
 import { CepLookup } from '@/components/CepLookup';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -76,7 +77,7 @@ export function ServiceOrderFormDialog({
   const { data: technicians } = useTechnicians();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
-  const { teams } = useTeams();
+  const { teams, teamsWithMembers } = useTeams();
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
@@ -96,6 +97,8 @@ export function ServiceOrderFormDialog({
   const [adhocCity, setAdhocCity] = useState('');
   const [adhocState, setAdhocState] = useState('');
   const [adhocNeighborhood, setAdhocNeighborhood] = useState('');
+  const [selectedAssigneeUserIds, setSelectedAssigneeUserIds] = useState<string[]>([]);
+  const [selectedAssigneeTeamIds, setSelectedAssigneeTeamIds] = useState<string[]>([]);
   const { equipment } = useEquipment(selectedCustomerId);
 
   const selectedServiceType = useMemo(
@@ -169,6 +172,16 @@ export function ServiceOrderFormDialog({
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
+      // Initialize assignees from junction table data or legacy field
+      const existingAssigneeIds = (serviceOrder as any)?._assignee_user_ids as string[] | undefined;
+      if (existingAssigneeIds && existingAssigneeIds.length > 0) {
+        setSelectedAssigneeUserIds(existingAssigneeIds);
+      } else if (serviceOrder?.technician_id) {
+        setSelectedAssigneeUserIds([serviceOrder.technician_id]);
+      } else {
+        setSelectedAssigneeUserIds([]);
+      }
+      setSelectedAssigneeTeamIds(serviceOrder?.team_id ? [serviceOrder.team_id] : []);
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
@@ -213,11 +226,9 @@ export function ServiceOrderFormDialog({
     }
 
     if (!customerId) return;
-    const assignee = data.technician_id || '';
-    const isAll = assignee === 'all';
-    const isTechTeam = !isAll && assignee.startsWith('team:');
-    const techId = isAll ? undefined : (isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined);
-    const teamId = isAll ? undefined : (isTechTeam ? assignee.slice(5) : undefined);
+    // Use first selected user as legacy technician_id, first team as team_id
+    const techId = selectedAssigneeUserIds[0] || undefined;
+    const teamId = selectedAssigneeTeamIds[0] || undefined;
 
     const baseData = {
       ...data,
@@ -241,6 +252,8 @@ export function ServiceOrderFormDialog({
       require_tech_signature: requireTechSignature,
       require_client_signature: requireClientSignature,
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
+      assignee_user_ids: selectedAssigneeUserIds,
+      assignee_team_ids: selectedAssigneeTeamIds,
     };
     await onSubmit(cleanedData);
     draft.clearDraft();
@@ -249,11 +262,8 @@ export function ServiceOrderFormDialog({
   };
 
   const handleEditSubmit = async (data: ServiceOrderFormData) => {
-    const assignee = data.technician_id || '';
-    const isAll = assignee === 'all';
-    const isTechTeam = !isAll && assignee.startsWith('team:');
-    const techId = isAll ? undefined : (isTechTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee) || undefined);
-    const teamId = isAll ? undefined : (isTechTeam ? assignee.slice(5) : undefined);
+    const techId = selectedAssigneeUserIds[0] || undefined;
+    const teamId = selectedAssigneeTeamIds[0] || undefined;
 
     const cleanedData = {
       ...data,
@@ -264,6 +274,7 @@ export function ServiceOrderFormDialog({
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
+      assignee_user_ids: selectedAssigneeUserIds,
     };
     await onSubmit(cleanedData);
     form.reset();
@@ -361,34 +372,17 @@ export function ServiceOrderFormDialog({
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="technician_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Técnico / Equipe</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={[
-                        { value: 'all', label: '👥 Todos (empresa inteira)' },
-                        ...(technicians?.map((t) => ({
-                          value: `user:${t.user_id}`,
-                          label: t.full_name,
-                          icon: <img src={t.avatar_url || ''} alt="" className="h-5 w-5 rounded-full object-cover bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
-                        })) || []),
-                        ...teams.filter(t => t.is_active).map((t) => ({
-                          value: `team:${t.id}`,
-                          label: t.name,
-                          sublabel: 'Equipe',
-                          icon: <span className="h-5 w-5 rounded-full shrink-0 flex items-center justify-center text-[10px] text-white font-bold" style={{ backgroundColor: t.color || 'hsl(var(--primary))' }}>{t.name.slice(0, 1)}</span>,
-                        })),
-                      ]}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Selecione"
-                      searchPlaceholder="Buscar técnico ou equipe..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <div className="sm:col-span-2">
+                <AssigneeMultiSelect
+                  technicians={technicians || []}
+                  teams={teamsWithMembers}
+                  selectedUserIds={selectedAssigneeUserIds}
+                  selectedTeamIds={selectedAssigneeTeamIds}
+                  onChangeUsers={setSelectedAssigneeUserIds}
+                  onChangeTeams={setSelectedAssigneeTeamIds}
+                  label="Responsáveis"
+                />
+              </div>
               <FormField control={form.control} name="form_template_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Questionário</FormLabel>
@@ -604,34 +598,15 @@ export function ServiceOrderFormDialog({
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="technician_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Técnico / Equipe</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={[
-                        { value: 'all', label: '👥 Todos (empresa inteira)' },
-                        ...(technicians?.map((t) => ({
-                          value: `user:${t.user_id}`,
-                          label: t.full_name,
-                          icon: <img src={t.avatar_url || ''} alt="" className="h-5 w-5 rounded-full object-cover bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
-                        })) || []),
-                        ...teams.filter(t => t.is_active).map((t) => ({
-                          value: `team:${t.id}`,
-                          label: t.name,
-                          sublabel: 'Equipe',
-                          icon: <span className="h-5 w-5 rounded-full shrink-0 flex items-center justify-center text-[10px] text-white font-bold" style={{ backgroundColor: t.color || 'hsl(var(--primary))' }}>{t.name.slice(0, 1)}</span>,
-                        })),
-                      ]}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Selecione"
-                      searchPlaceholder="Buscar técnico ou equipe..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <AssigneeMultiSelect
+                technicians={technicians || []}
+                teams={teamsWithMembers}
+                selectedUserIds={selectedAssigneeUserIds}
+                selectedTeamIds={selectedAssigneeTeamIds}
+                onChangeUsers={setSelectedAssigneeUserIds}
+                onChangeTeams={setSelectedAssigneeTeamIds}
+                label="Responsáveis"
+              />
             </div>
           )}
 

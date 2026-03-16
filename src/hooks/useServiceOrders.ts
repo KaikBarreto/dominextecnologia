@@ -27,6 +27,8 @@ export interface ServiceOrderInput {
   require_tech_signature?: boolean;
   require_client_signature?: boolean;
   equipment_items?: ServiceOrderEquipmentItem[];
+  assignee_user_ids?: string[];
+  assignee_team_ids?: string[];
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
@@ -62,7 +64,7 @@ export function useServiceOrders() {
           .from('service_orders')
           .select(`
             *,
-            customer:customers(id, name, phone, email, document, address, complement, city, state, zip_code, company_name, customer_type),
+            customer:customers(id, name, phone, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
             equipment:equipment(id, name, brand, model),
             form_template:form_templates(id, name),
             service_type:service_types(id, name, color, number_prefix)
@@ -75,13 +77,37 @@ export function useServiceOrders() {
         if (!data || data.length < pageSize) break;
         from += pageSize;
       }
-      return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any })[];
+
+      // Fetch all assignees in one query
+      const orderIds = allData.map((o: any) => o.id);
+      let allAssignees: any[] = [];
+      if (orderIds.length > 0) {
+        const { data: assignees } = await supabase
+          .from('service_order_assignees')
+          .select('service_order_id, user_id')
+          .in('service_order_id', orderIds);
+        allAssignees = assignees || [];
+      }
+
+      // Attach assignees to each order
+      const assigneeMap = new Map<string, string[]>();
+      allAssignees.forEach((a: any) => {
+        const list = assigneeMap.get(a.service_order_id) || [];
+        list.push(a.user_id);
+        assigneeMap.set(a.service_order_id, list);
+      });
+
+      allData.forEach((order: any) => {
+        order._assignee_user_ids = assigneeMap.get(order.id) || [];
+      });
+
+      return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any; _assignee_user_ids?: string[] })[];
     },
   });
 
   const createServiceOrder = useMutation({
     mutationFn: async (input: ServiceOrderInput) => {
-      const { equipment_items, ...rest } = input;
+      const { equipment_items, assignee_user_ids, assignee_team_ids, ...rest } = input;
       const { data, error } = await supabase
         .from('service_orders')
         .insert({
@@ -106,6 +132,18 @@ export function useServiceOrders() {
         if (eqError) console.error('Error inserting equipment items:', eqError);
       }
 
+      // Insert assignees into junction table
+      if (assignee_user_ids && assignee_user_ids.length > 0) {
+        const rows = assignee_user_ids.map(uid => ({
+          service_order_id: data.id,
+          user_id: uid,
+        }));
+        const { error: aErr } = await supabase
+          .from('service_order_assignees')
+          .insert(rows);
+        if (aErr) console.error('Error inserting assignees:', aErr);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -123,7 +161,7 @@ export function useServiceOrders() {
   });
 
   const updateServiceOrder = useMutation({
-    mutationFn: async ({ id, ...input }: ServiceOrderUpdate) => {
+    mutationFn: async ({ id, assignee_user_ids, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[] }) => {
       const { data, error } = await supabase
         .from('service_orders')
         .update(input)
@@ -143,6 +181,16 @@ export function useServiceOrders() {
         // Ignore duplicate constraint error (already exists)
         if (ratingError && ratingError.code !== '23505') {
           console.error('Error creating rating token:', ratingError);
+        }
+      }
+
+      // Sync assignees if provided
+      if (assignee_user_ids !== undefined) {
+        await supabase.from('service_order_assignees').delete().eq('service_order_id', id);
+        if (assignee_user_ids.length > 0) {
+          await supabase.from('service_order_assignees').insert(
+            assignee_user_ids.map(uid => ({ service_order_id: id, user_id: uid }))
+          );
         }
       }
 

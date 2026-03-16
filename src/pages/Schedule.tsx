@@ -103,12 +103,17 @@ export default function Schedule() {
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
       if (isTechnician && user?.id) {
-        const isAssignedToMe = order.technician_id === user.id;
+        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
+        const isAssignedToMe = assigneeIds?.includes(user.id) || order.technician_id === user.id;
         const isAssignedToMyTeam = order.team_id && myTeamIds.includes(order.team_id);
         if (!isAssignedToMe && !isAssignedToMyTeam) return false;
       }
 
-      if (technicianFilter !== 'all' && order.technician_id !== technicianFilter) return false;
+      if (technicianFilter !== 'all') {
+        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
+        const matchesTech = assigneeIds?.includes(technicianFilter) || order.technician_id === technicianFilter;
+        if (!matchesTech) return false;
+      }
       if (customerFilter !== 'all' && order.customer_id !== customerFilter) return false;
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
       return true;
@@ -215,10 +220,20 @@ export default function Schedule() {
       recurrence_group_id: groupId || null,
     }));
 
-    const { error } = await supabase.from('service_orders').insert(inserts as any);
+    const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
     if (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: error.message });
     } else {
+      // Insert assignees for each created task
+      if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
+        const assigneeRows = created.flatMap((row: any) =>
+          data.assignee_user_ids!.map(uid => ({
+            service_order_id: row.id,
+            user_id: uid,
+          }))
+        );
+        await supabase.from('service_order_assignees').insert(assigneeRows);
+      }
       toast({ title: `${dates.length} tarefa(s) criada(s)!` });
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
     }
