@@ -68,7 +68,6 @@ export default function Schedule() {
   }, [teamsWithMembers, user?.id]);
 
   // Check if current user has technician role (only filter for tecnico role)
-  const { hasRole } = useAuth();
   const isTechnician = hasRole('tecnico');
 
   const { financialEvents } = useFinancialScheduleEvents();
