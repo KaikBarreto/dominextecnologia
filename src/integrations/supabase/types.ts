@@ -2735,6 +2735,35 @@ export type Database = {
           },
         ]
       }
+      service_order_assignees: {
+        Row: {
+          created_at: string
+          id: string
+          service_order_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          service_order_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          service_order_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_assignees_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_order_equipment: {
         Row: {
           created_at: string
