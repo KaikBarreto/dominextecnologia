@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Pencil, Trash2, GripVertical, X,
   CheckSquare, Type, Hash, Camera, ListChecks,
+  ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
