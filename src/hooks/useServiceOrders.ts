@@ -107,7 +107,7 @@ export function useServiceOrders() {
 
   const createServiceOrder = useMutation({
     mutationFn: async (input: ServiceOrderInput) => {
-      const { equipment_items, ...rest } = input;
+      const { equipment_items, assignee_user_ids, assignee_team_ids, ...rest } = input;
       const { data, error } = await supabase
         .from('service_orders')
         .insert({
@@ -130,6 +130,18 @@ export function useServiceOrders() {
           .from('service_order_equipment')
           .insert(rows);
         if (eqError) console.error('Error inserting equipment items:', eqError);
+      }
+
+      // Insert assignees into junction table
+      if (assignee_user_ids && assignee_user_ids.length > 0) {
+        const rows = assignee_user_ids.map(uid => ({
+          service_order_id: data.id,
+          user_id: uid,
+        }));
+        const { error: aErr } = await supabase
+          .from('service_order_assignees')
+          .insert(rows);
+        if (aErr) console.error('Error inserting assignees:', aErr);
       }
 
       return data;
