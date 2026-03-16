@@ -1,27 +1,33 @@
 
 
-## Problem
+## Plan: Módulo Contratos (ex-PMOC) — Implementado ✅
 
-On mobile, when a Drawer opens and the user taps an input, the virtual keyboard triggers `interactive-widget=resizes-content` which shrinks the viewport. The drawer content (fixed to bottom with `max-height: 90dvh`) gets squeezed, pushing the focused input out of the visible area.
+### Implementado
 
-## Solution
+1. **Banco de dados**: Tabelas `contracts`, `contract_items`, `contract_occurrences` criadas com RLS por `company_id`. Colunas `contract_id` e `origin` adicionadas a `service_orders`.
 
-Two changes:
+2. **Hooks**: `useContracts.ts` (CRUD, stats, geração de OSs em batch) e `useContractDetail.ts` (detalhe, ocorrências, progresso).
 
-1. **`DrawerContent` component (`src/components/ui/drawer.tsx`)**: Add a `focusin` event listener on the drawer content element. When an input/textarea/select receives focus, call `element.scrollIntoView({ block: 'center', behavior: 'smooth' })` on the focused element after a short delay (to let the keyboard finish appearing). This ensures the active field stays visible regardless of viewport resizing.
+3. **ContractFormDialog**: Sheet lateral com stepper de 4 etapas (Informações → Frequência → Itens → Revisão). Atalhos rápidos de frequência, prévia de datas, aviso de fins de semana, itens manuais.
 
-2. **`ResponsiveModal` drawer branch (`src/components/ui/ResponsiveModal.tsx`)**: The scrollable `div` wrapper already has `overflow-y-auto`. We just need the same scroll-into-view behavior, which will be inherited from the DrawerContent fix.
+4. **Páginas**: `/contratos` (listagem com KPIs, filtros, tabela) e `/contratos/:id` (detalhe 2 colunas com progresso e ocorrências).
 
-### Technical detail
+5. **Navegação**: PMOC → Contratos em sidebar, topbar, mobile menu. Rota `/pmoc` redireciona para `/contratos`. Permissão `screen:contracts`.
 
-In `DrawerContent`, wrap children in a container that listens for `focusin` events:
+### Tabelas PMOC antigas mantidas (sem perda de dados)
 
-```tsx
-// Inside DrawerContent's rendered content
-useEffect on the content ref:
-  - listen for 'focusin' on the container
-  - if target is input/textarea/select, setTimeout 300ms then target.scrollIntoView({ block: 'center', behavior: 'smooth' })
-```
+---
 
-This is a single-file fix in `drawer.tsx` that solves the problem globally for all drawers in the app.
+## Plan: Feriados na Agenda + Melhorias Mapa ao Vivo — Implementado ✅
 
+### Implementado
+
+1. **Feriados**: `src/utils/holidays.ts` com cálculo de feriados nacionais (fixos + móveis como Carnaval, Corpus Christi, Páscoa) e municipais (capitais e cidades maiores). Integrado em todos os calendários (Mês, Semana, Dia, Agenda Mobile).
+
+2. **Toggle Feriados**: Nova seção "Agenda" em Configurações > Usabilidade com switch `showHolidays` (padrão: ativado).
+
+3. **Base da Empresa no Mapa**: Marcador teal com ícone de casa mostrando a localização da empresa (geocodificação automática via Nominatim). Incluído nos bounds do mapa.
+
+4. **Popups Maiores + Click-to-Pin**: Tooltip pequeno no hover, popup maior e persistente no clique (fecha com X nativo do Leaflet). CSS customizado para popups com border-radius e shadow.
+
+5. **Legenda atualizada**: Adicionado item "Base da empresa" na legenda do mapa.
