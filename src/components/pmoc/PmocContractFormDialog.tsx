@@ -32,7 +32,7 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
   const { customers } = useCustomers();
   const isEditing = !!contract;
 
-  const [formData, setFormData] = useState<Partial<PmocContractInsert>>({
+  const defaultFormData: Partial<PmocContractInsert> = {
     customer_id: '',
     contract_number: '',
     start_date: format(new Date(), 'yyyy-MM-dd'),
@@ -41,7 +41,18 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
     maintenance_frequency: 'mensal',
     is_active: true,
     notes: '',
-  });
+  };
+
+  const [formData, setFormData] = useState<Partial<PmocContractInsert>>(defaultFormData);
+
+  const draft = useFormDraft<Partial<PmocContractInsert>>({ key: 'pmoc-contract-form', isOpen: open, isEditing });
+
+  // Save draft on changes
+  useEffect(() => {
+    if (open && !isEditing && !draft.showResumePrompt) {
+      draft.saveDraft(formData);
+    }
+  }, [formData, open, isEditing, draft.showResumePrompt]);
 
   useEffect(() => {
     if (contract) {
@@ -55,17 +66,10 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
         is_active: contract.is_active ?? true,
         notes: contract.notes || '',
       });
+    } else if (!isEditing && draft.hasDraft && draft.draftData) {
+      // Draft will be applied via DraftResumeDialog
     } else {
-      setFormData({
-        customer_id: '',
-        contract_number: '',
-        start_date: format(new Date(), 'yyyy-MM-dd'),
-        end_date: format(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-        monthly_value: 0,
-        maintenance_frequency: 'mensal',
-        is_active: true,
-        notes: '',
-      });
+      setFormData({ ...defaultFormData });
     }
   }, [contract, open]);
 
