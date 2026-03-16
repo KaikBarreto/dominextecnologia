@@ -136,8 +136,16 @@ export default function Schedule() {
 
   const handleToday = () => setCurrentDate(new Date());
 
+  const summaryRef = useRef<HTMLDivElement>(null);
+
   const handleOrderSelect = useCallback((order: ServiceOrder & { customer: any; equipment: any }) => {
     setSummaryOrder(order);
+    // On mobile, scroll to the summary panel after a tick
+    if (window.innerWidth < 1024) {
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   }, []);
 
   const handleClearSummary = useCallback(() => {
