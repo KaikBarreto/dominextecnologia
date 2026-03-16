@@ -57,6 +57,7 @@ export function GlobalCostsTab() {
     monthly_hours: number;
     is_active: boolean;
     notes: string;
+    photo_url?: string | null;
     items: Array<{ name: string; value: number; is_monthly: boolean; annual_value?: number | null }>;
   }) => {
     if (editingResource) {
@@ -64,6 +65,7 @@ export function GlobalCostsTab() {
         {
           id: editingResource.id,
           ...data,
+          photo_url: data.photo_url,
           items: data.items.map(i => ({
             ...i,
             annual_value: i.annual_value ?? undefined,
@@ -78,6 +80,7 @@ export function GlobalCostsTab() {
         {
           category: activeCategory,
           ...data,
+          photo_url: data.photo_url,
           items: data.items.map(i => ({
             ...i,
             annual_value: i.annual_value ?? undefined,
