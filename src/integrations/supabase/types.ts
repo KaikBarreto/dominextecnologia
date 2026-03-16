@@ -236,6 +236,11 @@ export type Database = {
           neighborhood: string | null
           phone: string | null
           proposal_customization: Json | null
+          show_address_in_documents: boolean
+          show_cnpj_in_documents: boolean
+          show_email_in_documents: boolean
+          show_name_in_documents: boolean
+          show_phone_in_documents: boolean
           state: string | null
           updated_at: string
           white_label_enabled: boolean
@@ -259,6 +264,11 @@ export type Database = {
           neighborhood?: string | null
           phone?: string | null
           proposal_customization?: Json | null
+          show_address_in_documents?: boolean
+          show_cnpj_in_documents?: boolean
+          show_email_in_documents?: boolean
+          show_name_in_documents?: boolean
+          show_phone_in_documents?: boolean
           state?: string | null
           updated_at?: string
           white_label_enabled?: boolean
@@ -282,6 +292,11 @@ export type Database = {
           neighborhood?: string | null
           phone?: string | null
           proposal_customization?: Json | null
+          show_address_in_documents?: boolean
+          show_cnpj_in_documents?: boolean
+          show_email_in_documents?: boolean
+          show_name_in_documents?: boolean
+          show_phone_in_documents?: boolean
           state?: string | null
           updated_at?: string
           white_label_enabled?: boolean
