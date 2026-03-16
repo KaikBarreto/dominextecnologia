@@ -26,6 +26,8 @@ import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const transactionSchema = z.object({
