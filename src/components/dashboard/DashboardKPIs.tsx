@@ -90,7 +90,7 @@ export function DashboardKPIs({ data, isLoading }: { data: KPIData; isLoading: b
   const conclusionColor = data.taxaConclusao < 30 ? 'text-destructive' : data.taxaConclusao < 70 ? 'text-warning' : 'text-success';
 
   return (
-    <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       <KPICard
         title="OS Abertas"
         value={data.osAbertas}
