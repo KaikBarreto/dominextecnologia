@@ -300,7 +300,7 @@ export function useQuotes() {
       toast({ title: 'Orçamento duplicado como rascunho!' });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao duplicar', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao duplicar', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 

@@ -437,6 +437,7 @@ export default function Schedule() {
             onClearSelection={handleClearSummary}
             onEdit={handleEditFromSummary}
             onDelete={handleDeleteFromSummary}
+            onFinalize={handleFinalizeFromSummary}
           />
         </div>
       </div>

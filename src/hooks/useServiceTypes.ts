@@ -92,7 +92,7 @@ export function useServiceTypes() {
       toast({ title: 'Tipo de serviço removido!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir tipo de serviço', description: getErrorMessage(error) });
     },
   });
 
