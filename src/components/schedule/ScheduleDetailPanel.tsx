@@ -51,11 +51,13 @@ function OrderDetail({
   onBack,
   onEdit,
   onDelete,
+  onFinalize,
 }: {
   order: ServiceOrder & { customer: any; equipment: any };
   onBack: () => void;
   onEdit?: () => void;
   onDelete?: (id: string) => void;
+  onFinalize?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
