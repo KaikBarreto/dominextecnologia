@@ -243,6 +243,7 @@ export function ServiceOrderFormDialog({
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
     };
     await onSubmit(cleanedData);
+    draft.clearDraft();
     form.reset();
     onOpenChange(false);
   };
