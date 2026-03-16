@@ -57,6 +57,11 @@ export default function Settings() {
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
   const [wlIconUploading, setWlIconUploading] = useState(false);
+  const [showNameInDocs, setShowNameInDocs] = useState(true);
+  const [showCnpjInDocs, setShowCnpjInDocs] = useState(true);
+  const [showAddressInDocs, setShowAddressInDocs] = useState(true);
+  const [showPhoneInDocs, setShowPhoneInDocs] = useState(true);
+  const [showEmailInDocs, setShowEmailInDocs] = useState(true);
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
@@ -90,6 +95,11 @@ export default function Settings() {
       setCompanyComplement(settings.complement || '');
       setWlEnabled(!!settings.white_label_enabled);
       setWlColor(settings.white_label_primary_color || '#00C597');
+      setShowNameInDocs(settings.show_name_in_documents ?? true);
+      setShowCnpjInDocs(settings.show_cnpj_in_documents ?? true);
+      setShowAddressInDocs(settings.show_address_in_documents ?? true);
+      setShowPhoneInDocs(settings.show_phone_in_documents ?? true);
+      setShowEmailInDocs(settings.show_email_in_documents ?? true);
     }
   }, [settings]);
 
@@ -108,6 +118,11 @@ export default function Settings() {
       zip_code: companyZip || null,
       white_label_enabled: wlEnabled,
       white_label_primary_color: wlColor || null,
+      show_name_in_documents: showNameInDocs,
+      show_cnpj_in_documents: showCnpjInDocs,
+      show_address_in_documents: showAddressInDocs,
+      show_phone_in_documents: showPhoneInDocs,
+      show_email_in_documents: showEmailInDocs,
     } as any);
   };
 
@@ -363,11 +378,23 @@ export default function Settings() {
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
                 <div className="space-y-2">
-                  <Label>Nome da Empresa</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Nome da Empresa</Label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <Switch checked={showNameInDocs} onCheckedChange={setShowNameInDocs} className="scale-75" />
+                    </div>
+                  </div>
                   <Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Nome da sua empresa" />
                 </div>
                 <div className="space-y-2">
-                  <Label>CNPJ/CPF</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>CNPJ/CPF</Label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <Switch checked={showCnpjInDocs} onCheckedChange={setShowCnpjInDocs} className="scale-75" />
+                    </div>
+                  </div>
                   <Input value={companyDoc} onChange={e => setCompanyDoc(cpfCnpjMask(e.target.value))} placeholder="00.000.000/0000-00" />
                 </div>
               </div>
@@ -385,11 +412,23 @@ export default function Settings() {
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
                 <div className="space-y-2">
-                  <Label>Telefone</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Telefone</Label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <Switch checked={showPhoneInDocs} onCheckedChange={setShowPhoneInDocs} className="scale-75" />
+                    </div>
+                  </div>
                   <Input value={companyPhone} onChange={e => setCompanyPhone(phoneMask(e.target.value))} placeholder="(00) 0000-0000" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Email</Label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                      <Switch checked={showEmailInDocs} onCheckedChange={setShowEmailInDocs} className="scale-75" />
+                    </div>
+                  </div>
                   <Input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} placeholder="contato@empresa.com" />
                 </div>
               </div>
@@ -397,12 +436,18 @@ export default function Settings() {
               <Separator className="my-6" />
 
               {/* ========== SEÇÃO: ENDEREÇO ========== */}
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  Endereço
-                </h3>
-                <p className="text-xs text-muted-foreground">Localização física da empresa</p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Endereço
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Localização física da empresa</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Exibir em documentos</span>
+                  <Switch checked={showAddressInDocs} onCheckedChange={setShowAddressInDocs} className="scale-75" />
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">

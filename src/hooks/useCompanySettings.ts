@@ -24,6 +24,11 @@ export interface CompanySettings {
   white_label_enabled?: boolean;
   white_label_logo_url?: string;
   white_label_primary_color?: string;
+  show_name_in_documents?: boolean;
+  show_cnpj_in_documents?: boolean;
+  show_address_in_documents?: boolean;
+  show_phone_in_documents?: boolean;
+  show_email_in_documents?: boolean;
   created_at: string;
   updated_at: string;
 }
