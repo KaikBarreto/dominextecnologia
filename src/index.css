@@ -287,3 +287,10 @@ html {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Prevent iOS zoom on input focus — inputs must be >= 16px */
+@media screen and (max-width: 1023px) {
+  input, select, textarea, [contenteditable] {
+    font-size: 16px !important;
+  }
+}
