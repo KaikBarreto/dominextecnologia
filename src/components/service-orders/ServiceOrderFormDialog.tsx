@@ -313,66 +313,75 @@ export function ServiceOrderFormDialog({
     [customers]
   );
 
-  // Edit mode: flat form
+  // Edit mode: same multi-step form as create
   if (serviceOrder) {
     return (
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS">
+        {/* Step indicators */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="flex items-center justify-center gap-2">
+            {activeSteps.map((s, i) => (
+              <div key={s.key} className="flex items-center gap-2">
+                <div className={cn(
+                  'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
+                  i < step ? 'bg-primary text-white' :
+                  i === step ? 'bg-primary text-white' :
+                  'bg-muted text-muted-foreground'
+                )}>
+                  {i < step ? <Check className="h-4 w-4" /> : i + 1}
+                </div>
+                <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
+                  {s.label}
+                </span>
+                {i < activeSteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm font-medium text-foreground mt-2 sm:hidden">{activeSteps[step]?.label}</p>
+        </div>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField control={form.control} name="customer_id" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Cliente *</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={customerOptions}
-                      value={field.value}
-                      onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }}
-                      placeholder="Selecione o cliente"
-                      searchPlaceholder="Buscar cliente..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="service_type_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de Serviço</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={[
-                        { value: 'none', label: 'Nenhum' },
-                        ...serviceTypes.filter(t => t.is_active).map((st) => ({
-                          value: st.id,
-                          label: st.name,
-                          icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
-                        })),
-                      ]}
-                      value={field.value || 'none'}
-                      onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                      placeholder="Selecione"
-                      searchPlaceholder="Buscar tipo de serviço..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="equipment_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Equipamento</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={equipment.map(eq => ({ value: eq.id, label: eq.name, sublabel: [eq.brand, eq.model].filter(Boolean).join(' - ') || undefined }))}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Selecione"
-                      searchPlaceholder="Buscar equipamento..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <div className="sm:col-span-2">
+          <form onSubmit={(e) => { e.preventDefault(); if (isLastStep) form.handleSubmit(handleEditSubmit)(); }} className="space-y-4">
+            {/* Step 1: Client & Service */}
+            {currentStepKey === 'client' && (
+              <div className="space-y-4">
+                <FormField control={form.control} name="customer_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cliente *</FormLabel>
+                    <FormControl>
+                      <SearchableSelect
+                        options={customerOptions}
+                        value={field.value}
+                        onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); }}
+                        placeholder="Selecione o cliente"
+                        searchPlaceholder="Buscar cliente..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="service_type_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Serviço</FormLabel>
+                    <FormControl>
+                      <SearchableSelect
+                        options={[
+                          { value: 'none', label: 'Nenhum' },
+                          ...serviceTypes.filter(t => t.is_active).map((st) => ({
+                            value: st.id,
+                            label: st.name,
+                            icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
+                          })),
+                        ]}
+                        value={field.value || 'none'}
+                        onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
+                        placeholder="Selecione"
+                        searchPlaceholder="Buscar tipo de serviço..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <AssigneeMultiSelect
                   technicians={technicians || []}
                   teams={teamsWithMembers}
@@ -383,38 +392,164 @@ export function ServiceOrderFormDialog({
                   label="Responsáveis"
                 />
               </div>
-              <FormField control={form.control} name="form_template_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Questionário</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Sem questionário</SelectItem>
-                      {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="scheduled_date" render={({ field }) => (
-                <FormItem><FormLabel>Data Agendada</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="scheduled_time" render={({ field }) => (
-                <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="description" render={({ field }) => (
-                <FormItem className="sm:col-span-2"><FormLabel>Descrição</FormLabel><FormControl><Textarea placeholder="Descreva o serviço" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem className="sm:col-span-2"><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
-              </Button>
+            )}
+
+            {/* Step 2: Equipment */}
+            {currentStepKey === 'equipment' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">Selecione o(s) equipamento(s).</p>
+                </div>
+                {equipment.map((eq) => (
+                  <label key={eq.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                    <Checkbox
+                      checked={selectedEquipmentIds.includes(eq.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedEquipmentIds(prev =>
+                          checked ? [...prev, eq.id] : prev.filter(id => id !== eq.id)
+                        );
+                      }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{eq.name}</p>
+                      {(eq.brand || eq.model) && (
+                        <p className="text-xs text-muted-foreground">{[eq.brand, eq.model].filter(Boolean).join(' - ')}</p>
+                      )}
+                    </div>
+                  </label>
+                ))}
+                {equipment.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento cadastrado para este cliente.</p>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Details */}
+            {currentStepKey === 'details' && (
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <FormField control={form.control} name="os_type" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo da OS</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="manutencao_preventiva">Preventiva</SelectItem>
+                          <SelectItem value="manutencao_corretiva">Corretiva</SelectItem>
+                          <SelectItem value="instalacao">Instalação</SelectItem>
+                          <SelectItem value="visita_tecnica">Visita Técnica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="scheduled_date" render={({ field }) => (
+                    <FormItem><FormLabel>Data Agendada</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="scheduled_time" render={({ field }) => (
+                    <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <FormField control={form.control} name="duration_minutes" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duração</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || 120)}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="15">15 min</SelectItem>
+                        <SelectItem value="30">30 min</SelectItem>
+                        <SelectItem value="45">45 min</SelectItem>
+                        <SelectItem value="60">1 hora</SelectItem>
+                        <SelectItem value="90">1h30</SelectItem>
+                        <SelectItem value="120">2 horas</SelectItem>
+                        <SelectItem value="180">3 horas</SelectItem>
+                        <SelectItem value="240">4 horas</SelectItem>
+                        <SelectItem value="300">5 horas</SelectItem>
+                        <SelectItem value="360">6 horas</SelectItem>
+                        <SelectItem value="480">8 horas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                {/* Questionnaire per equipment */}
+                {selectedEquipmentIds.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Questionário por equipamento</p>
+                    {selectedEquipmentIds.map((eqId) => {
+                      const eq = equipment.find(e => e.id === eqId);
+                      const selectedTemplateId = equipmentTemplateMap[eqId] || '';
+                      return (
+                        <div key={eqId} className="rounded-lg border p-3 space-y-2">
+                          <p className="text-sm font-medium">{eq?.name || 'Equipamento'}</p>
+                          <Select
+                            value={selectedTemplateId || 'none'}
+                            onValueChange={(v) => setEquipmentTemplateMap(prev => ({ ...prev, [eqId]: v === 'none' ? '' : v }))}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem questionário</SelectItem>
+                              {filteredTemplates.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <FormField control={form.control} name="form_template_id" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Questionário</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Sem questionário</SelectItem>
+                          {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+
+                <FormField control={form.control} name="description" render={({ field }) => (
+                  <FormItem><FormLabel>Descrição do Serviço</FormLabel><FormControl><Textarea placeholder="Descreva o serviço a ser realizado" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                  <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-4 border-t">
+              <div>
+                {step > 0 && (
+                  <Button type="button" variant="outline" onClick={goBack}>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Voltar
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </Button>
+                {isLastStep ? (
+                  <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
+                    Próximo
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </form>
         </Form>

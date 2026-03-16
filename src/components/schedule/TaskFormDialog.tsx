@@ -10,7 +10,6 @@ import { Loader2 } from 'lucide-react';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -55,13 +54,10 @@ const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime }: TaskFormDialogProps) {
   const { data: profiles = [] } = useProfiles();
   const { taskTypes } = useTaskTypes();
-  const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
 
   const [title, setTitle] = useState('');
   const [taskTypeId, setTaskTypeId] = useState('');
-  const [serviceTypeId, setServiceTypeId] = useState('');
-  const [linkType, setLinkType] = useState<'task' | 'service'>('task');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState('');
@@ -78,8 +74,6 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
     if (open) {
       setTitle('');
       setTaskTypeId('');
-      setServiceTypeId('');
-      setLinkType('task');
       setSelectedUserIds([]);
       setSelectedTeamIds([]);
       setScheduledDate(defaultDate || format(new Date(), 'yyyy-MM-dd'));
@@ -90,7 +84,6 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
       setRecurrenceType('weekly');
       setRecurrenceInterval(1);
       setRecurrenceEndDate('');
-      // Default weekday from scheduled date
       const dayOfWeek = new Date(defaultDate || new Date()).getDay();
       setRecurrenceWeekdays([dayOfWeek]);
     }
@@ -108,8 +101,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
 
     await onSubmit({
       task_title: title.trim(),
-      task_type_id: linkType === 'task' && taskTypeId ? taskTypeId : undefined,
-      service_type_id: linkType === 'service' && serviceTypeId ? serviceTypeId : undefined,
+      task_type_id: taskTypeId || undefined,
       technician_id: selectedUserIds[0] || undefined,
       team_id: selectedTeamIds[0] || undefined,
       assignee_user_ids: selectedUserIds,
@@ -126,7 +118,6 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
     onOpenChange(false);
   };
 
-  // Map profiles to the format AssigneeMultiSelect expects
   const technicianOptions = profiles.map(p => ({
     user_id: p.user_id,
     full_name: p.full_name,
@@ -146,51 +137,22 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Vincular a</Label>
-            <Select value={linkType} onValueChange={(v) => setLinkType(v as 'task' | 'service')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="task">Tipo de Tarefa</SelectItem>
-                <SelectItem value="service">Tipo de Serviço</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>{linkType === 'task' ? 'Tipo de Tarefa' : 'Tipo de Serviço'}</Label>
-            {linkType === 'task' ? (
-              <Select value={taskTypeId || '_none'} onValueChange={(v) => setTaskTypeId(v === '_none' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">Nenhum</SelectItem>
-                  {taskTypes.filter(t => t.is_active).map(tt => (
-                    <SelectItem key={tt.id} value={tt.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: tt.color }} />
-                        {tt.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select value={serviceTypeId || '_none'} onValueChange={(v) => setServiceTypeId(v === '_none' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">Nenhum</SelectItem>
-                  {serviceTypes.filter(t => t.is_active).map(st => (
-                    <SelectItem key={st.id} value={st.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
-                        {st.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label>Tipo de Tarefa</Label>
+          <Select value={taskTypeId || '_none'} onValueChange={(v) => setTaskTypeId(v === '_none' ? '' : v)}>
+            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">Nenhum</SelectItem>
+              {taskTypes.filter(t => t.is_active).map(tt => (
+                <SelectItem key={tt.id} value={tt.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: tt.color }} />
+                    {tt.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <AssigneeMultiSelect

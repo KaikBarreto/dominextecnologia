@@ -39,7 +39,7 @@ export default function Schedule() {
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { settings: companySettings } = useCompanySettings();
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -67,10 +67,8 @@ export default function Schedule() {
       .map(t => t.id);
   }, [teamsWithMembers, user?.id]);
 
-  // Check if current user is a technician
-  const isTechnician = useMemo(() => {
-    return allProfiles.some(t => t.user_id === user?.id);
-  }, [allProfiles, user?.id]);
+  // Check if current user has technician role (only filter for tecnico role)
+  const isTechnician = hasRole('tecnico');
 
   const { financialEvents } = useFinancialScheduleEvents();
 
