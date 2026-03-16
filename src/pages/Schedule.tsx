@@ -69,8 +69,8 @@ export default function Schedule() {
 
   // Check if current user is a technician
   const isTechnician = useMemo(() => {
-    return technicians.some(t => t.user_id === user?.id);
-  }, [technicians, user?.id]);
+    return allProfiles.some(t => t.user_id === user?.id);
+  }, [allProfiles, user?.id]);
 
   const { financialEvents } = useFinancialScheduleEvents();
 
