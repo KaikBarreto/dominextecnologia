@@ -211,8 +211,17 @@ function OrderDetail({
               <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
             </div>
           )}
+          {onFinalize && order.status !== 'concluida' && (
+            <Button
+              className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setShowFinalizeConfirm(true)}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Finalizar OS
+            </Button>
+          )}
           {onEdit && (
-            <Button onClick={onEdit} variant="outline" className="w-full mt-4">
+            <Button onClick={onEdit} variant="outline" className="w-full mt-2">
               Editar OS
             </Button>
           )}
