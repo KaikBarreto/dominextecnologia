@@ -172,6 +172,16 @@ export function ServiceOrderFormDialog({
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
+      // Initialize assignees from junction table data or legacy field
+      const existingAssigneeIds = (serviceOrder as any)?._assignee_user_ids as string[] | undefined;
+      if (existingAssigneeIds && existingAssigneeIds.length > 0) {
+        setSelectedAssigneeUserIds(existingAssigneeIds);
+      } else if (serviceOrder?.technician_id) {
+        setSelectedAssigneeUserIds([serviceOrder.technician_id]);
+      } else {
+        setSelectedAssigneeUserIds([]);
+      }
+      setSelectedAssigneeTeamIds(serviceOrder?.team_id ? [serviceOrder.team_id] : []);
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
