@@ -4,7 +4,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
 
 const Drawer = ({ shouldScaleBackground = true, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
+  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} repositionInputs={false} {...props} />
 );
 Drawer.displayName = "Drawer";
 
@@ -31,14 +31,16 @@ const DrawerContent = React.forwardRef<
   React.useEffect(() => {
     const el = innerRef.current;
     if (!el) return;
+
     const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.matches('input, textarea, select')) {
-        setTimeout(() => {
-          target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }, 300);
-      }
+      const target = e.target as HTMLElement | null;
+      if (!target || !target.matches('input, textarea, select')) return;
+
+      window.setTimeout(() => {
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      }, 180);
     };
+
     el.addEventListener('focusin', handleFocusIn);
     return () => el.removeEventListener('focusin', handleFocusIn);
   }, []);
