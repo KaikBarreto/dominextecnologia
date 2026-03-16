@@ -24,6 +24,7 @@ export interface CostResource {
   is_active: boolean;
   monthly_hours: number;
   notes: string | null;
+  photo_url: string | null;
   created_at: string;
   updated_at: string;
   total_monthly_cost?: number;
@@ -111,6 +112,7 @@ export function useCostResources() {
       monthly_hours?: number;
       is_active?: boolean;
       notes?: string;
+      photo_url?: string | null;
       items?: Array<{ name: string; value: number; is_monthly: boolean; annual_value?: number }>;
     }) => {
       if (!companyId) throw new Error('Empresa não encontrada');
@@ -124,7 +126,8 @@ export function useCostResources() {
           monthly_hours: input.monthly_hours ?? 176,
           is_active: input.is_active ?? true,
           notes: input.notes ?? null,
-        })
+          photo_url: input.photo_url ?? null,
+        } as any)
         .select()
         .single();
 
@@ -169,6 +172,7 @@ export function useCostResources() {
       monthly_hours?: number;
       is_active?: boolean;
       notes?: string;
+      photo_url?: string | null;
       items?: Array<{ id?: string; name: string; value: number; is_monthly: boolean; annual_value?: number }>;
     }) => {
       const { id, items, ...updates } = input;

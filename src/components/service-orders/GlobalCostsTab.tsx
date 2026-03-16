@@ -57,6 +57,7 @@ export function GlobalCostsTab() {
     monthly_hours: number;
     is_active: boolean;
     notes: string;
+    photo_url?: string | null;
     items: Array<{ name: string; value: number; is_monthly: boolean; annual_value?: number | null }>;
   }) => {
     if (editingResource) {
@@ -64,6 +65,7 @@ export function GlobalCostsTab() {
         {
           id: editingResource.id,
           ...data,
+          photo_url: data.photo_url,
           items: data.items.map(i => ({
             ...i,
             annual_value: i.annual_value ?? undefined,
@@ -78,6 +80,7 @@ export function GlobalCostsTab() {
         {
           category: activeCategory,
           ...data,
+          photo_url: data.photo_url,
           items: data.items.map(i => ({
             ...i,
             annual_value: i.annual_value ?? undefined,
@@ -225,7 +228,7 @@ export function GlobalCostsTab() {
         {CATEGORY_CONFIG.map(cat => (
           <TabsContent key={cat.value} value={cat.value} className="mt-4">
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[1, 2, 3].map(i => (
                   <Card key={i}>
                     <CardContent className="p-4 space-y-3">
@@ -251,7 +254,7 @@ export function GlobalCostsTab() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {currentResources.map(resource => (
                   <CostResourceCard
                     key={resource.id}
