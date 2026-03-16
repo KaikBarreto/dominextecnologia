@@ -118,6 +118,7 @@ export function TransactionFormDialog({
       paid_date: data.is_paid ? data.transaction_date : undefined,
     };
     await onSubmit(payload);
+    draft.clearDraft();
     form.reset();
     onOpenChange(false);
   };
