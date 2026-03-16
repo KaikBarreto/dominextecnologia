@@ -32,7 +32,16 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
 ];
 
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
-  const raw = error instanceof Error ? error.message : String(error || '');
+  let raw = '';
+  if (error instanceof Error) {
+    raw = error.message;
+  } else if (typeof error === 'string') {
+    raw = error;
+  } else if (error && typeof error === 'object' && 'message' in error) {
+    raw = String((error as any).message);
+  } else {
+    raw = '';
+  }
   const message = raw.toLowerCase();
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
   return mapped?.text || raw || fallback;

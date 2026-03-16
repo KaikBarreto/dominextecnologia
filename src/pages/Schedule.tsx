@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
@@ -136,8 +136,16 @@ export default function Schedule() {
 
   const handleToday = () => setCurrentDate(new Date());
 
+  const summaryRef = useRef<HTMLDivElement>(null);
+
   const handleOrderSelect = useCallback((order: ServiceOrder & { customer: any; equipment: any }) => {
     setSummaryOrder(order);
+    // On mobile, scroll to the summary panel after a tick
+    if (window.innerWidth < 1024) {
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   }, []);
 
   const handleClearSummary = useCallback(() => {
@@ -431,16 +439,16 @@ export default function Schedule() {
         />
 
         {summaryOrder && (
-          <div className="min-h-[200px]">
+          <div ref={summaryRef} className="min-h-[200px]">
             <ScheduleDetailPanel
               selectedDate={currentDate}
               orders={filteredOrders}
               selectedOrder={summaryOrder}
               onOrderSelect={handleOrderSelect}
               onClearSelection={handleClearSummary}
-              onEdit={handleEditFromSummary}
-              onDelete={handleDeleteFromSummary}
-              onFinalize={handleFinalizeFromSummary}
+              onEdit={(summaryOrder as any)._isFinancialEvent ? undefined : handleEditFromSummary}
+              onDelete={(summaryOrder as any)._isFinancialEvent ? undefined : handleDeleteFromSummary}
+              onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
             />
           </div>
         )}
@@ -539,9 +547,9 @@ export default function Schedule() {
             selectedOrder={summaryOrder}
             onOrderSelect={handleOrderSelect}
             onClearSelection={handleClearSummary}
-            onEdit={handleEditFromSummary}
-            onDelete={handleDeleteFromSummary}
-            onFinalize={handleFinalizeFromSummary}
+            onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleEditFromSummary}
+            onDelete={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleDeleteFromSummary}
+            onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
           />
         </div>
       </div>
