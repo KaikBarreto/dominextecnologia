@@ -47,13 +47,13 @@ function KPICard({ title, value, formattedValue, subtitle, subtitleColor, icon: 
         onClick={onClick}
       >
         <CardContent className="p-4 lg:p-5">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2 min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-2 min-w-0 flex-1 overflow-hidden">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">{title}</p>
-              <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
+              <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight truncate">
                 {formattedValue ?? animatedValue.toLocaleString('pt-BR')}
               </p>
-              <p className={`text-xs ${subtitleColor || 'text-muted-foreground'}`}>{subtitle}</p>
+              <p className={`text-xs truncate ${subtitleColor || 'text-muted-foreground'}`}>{subtitle}</p>
             </div>
             <div className="flex flex-col items-end gap-2">
               <div className={`p-2.5 rounded-xl bg-muted/50 ${pulsing ? 'relative' : ''}`}>
