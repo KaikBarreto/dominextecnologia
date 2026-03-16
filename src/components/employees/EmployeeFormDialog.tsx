@@ -143,6 +143,18 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={employee ? 'Editar Funcionário' : 'Novo Funcionário'}>
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) applyDraft(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          setName(''); setCpf(''); setPhone(''); setEmail(''); setPosition('');
+          setSalary(''); setHireDate(''); setAddress(''); setPixKey('');
+        }}
+      />
       <form onSubmit={handleSubmit} className="space-y-4 p-1">
         {/* Photo */}
         <div className="flex justify-center">
