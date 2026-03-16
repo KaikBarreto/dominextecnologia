@@ -39,7 +39,7 @@ export default function Schedule() {
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { settings: companySettings } = useCompanySettings();
 
   const [currentDate, setCurrentDate] = useState(new Date());
