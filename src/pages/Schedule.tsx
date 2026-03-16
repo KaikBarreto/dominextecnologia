@@ -98,7 +98,7 @@ export default function Schedule() {
     return buildHolidayMap([...prevYearHolidays, ...holidays, ...nextYearHolidays]);
   }, [showHolidays, companySettings?.city, companySettings?.state, currentDate]);
 
-  const getAssignees = useOrderAssignees(technicians, teamsWithMembers);
+  const getAssignees = useOrderAssignees(allProfiles, teamsWithMembers);
 
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
