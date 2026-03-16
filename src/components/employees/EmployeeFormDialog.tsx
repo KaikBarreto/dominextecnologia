@@ -121,6 +121,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     if (createAccess && !email.trim()) { toast({ variant: 'destructive', title: 'Email é obrigatório para criar acesso' }); return; }
     const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
     if (createAccess && finalPassword.length < 6) { toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return; }
+    draft.clearDraft();
     onSubmit({
       name: name.trim(),
       cpf: cpf || null,
