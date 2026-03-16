@@ -79,6 +79,7 @@ export default function ContractDetail() {
   const [recFrequency, setRecFrequency] = useState('unica');
   const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
+  const [eqPage, setEqPage] = useState(1);
 
   const sortedOccurrences = useMemo(() => 
     (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
