@@ -31,6 +31,8 @@ import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuestionnairePreviewDialog } from '@/components/service-orders/QuestionnairePreviewDialog';
 import { CepLookup } from '@/components/CepLookup';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
