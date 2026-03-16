@@ -94,7 +94,7 @@ export default function QuestionnaireDetail() {
   if (!template) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/questionarios')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
+        <Button variant="ghost" onClick={() => navigate('/servicos?tab=questionnaires')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
         <p className="text-muted-foreground">Questionário não encontrado.</p>
       </div>
     );
