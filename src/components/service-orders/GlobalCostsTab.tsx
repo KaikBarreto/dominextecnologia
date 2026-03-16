@@ -228,7 +228,7 @@ export function GlobalCostsTab() {
         {CATEGORY_CONFIG.map(cat => (
           <TabsContent key={cat.value} value={cat.value} className="mt-4">
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[1, 2, 3].map(i => (
                   <Card key={i}>
                     <CardContent className="p-4 space-y-3">
@@ -254,7 +254,7 @@ export function GlobalCostsTab() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {currentResources.map(resource => (
                   <CostResourceCard
                     key={resource.id}

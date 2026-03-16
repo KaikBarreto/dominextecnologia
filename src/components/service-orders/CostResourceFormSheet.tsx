@@ -6,10 +6,28 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Trash2, Calculator, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Calculator, Save, ChevronDown, ChevronUp, ImageIcon, X } from 'lucide-react';
 import { formatBRL } from '@/utils/currency';
 import { useCostResourceItems, type CostResource, type CostResourceCategory } from '@/hooks/useCostResources';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { supabase } from '@/integrations/supabase/client';
+import { buildStorageFilePath } from '@/utils/storagePath';
+
+// Parse Brazilian number format: 200.000,50 → 200000.50 | 200000 → 200000
+function parseBRNumber(text: string): number {
+  if (!text) return 0;
+  const trimmed = text.trim();
+  // Has comma → BR format (200.000,50)
+  if (trimmed.includes(',')) {
+    return Number(trimmed.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  // Has dots that look like thousands separators (e.g. 200.000)
+  const dotParts = trimmed.split('.');
+  if (dotParts.length > 1 && dotParts.slice(1).every(p => p.length === 3)) {
+    return Number(trimmed.replace(/\./g, '')) || 0;
+  }
+  return Number(trimmed) || 0;
+}
 
 interface CostItem {
   id?: string;
@@ -17,7 +35,6 @@ interface CostItem {
   value: number;
   is_monthly: boolean;
   annual_value: number | null;
-  // Gift-specific fields
   total_cost: number | null;
   total_units: number | null;
   qty_per_gift: number | null;
@@ -33,6 +50,7 @@ interface CostResourceFormSheetProps {
     monthly_hours: number;
     is_active: boolean;
     notes: string;
+    photo_url?: string | null;
     items: CostItem[];
   }) => void;
   isPending?: boolean;
@@ -91,10 +109,17 @@ export function CostResourceFormSheet({
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<CostItem[]>([]);
-  
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+
   const [depCalcOpen, setDepCalcOpen] = useState(false);
-  const [value0km, setValue0km] = useState(0);
-  const [value2years, setValue2years] = useState(0);
+  const [value0kmText, setValue0kmText] = useState('');
+  const [value2yearsText, setValue2yearsText] = useState('');
+
+  const value0km = parseBRNumber(value0kmText);
+  const value2years = parseBRNumber(value2yearsText);
 
   useEffect(() => {
     if (open) {
@@ -103,6 +128,8 @@ export function CostResourceFormSheet({
         setMonthlyHours(resource.monthly_hours);
         setIsActive(resource.is_active);
         setNotes(resource.notes ?? '');
+        setPhotoUrl((resource as any).photo_url ?? null);
+        setPhotoPreview((resource as any).photo_url ?? '');
         setItems(existingItems?.map(i => ({
           id: i.id,
           name: i.name,
@@ -118,16 +145,18 @@ export function CostResourceFormSheet({
         setMonthlyHours(176);
         setIsActive(true);
         setNotes('');
+        setPhotoUrl(null);
+        setPhotoPreview('');
         setItems(getDefaultItems(category));
       }
-      setValue0km(0);
-      setValue2years(0);
+      setPhotoFile(null);
+      setValue0kmText('');
+      setValue2yearsText('');
     }
   }, [open, resource, existingItems, category]);
 
   const isGift = category === 'gift';
 
-  // For gifts: value = unit_cost * qty_per_gift
   const recalcGiftItem = (item: CostItem): CostItem => {
     if (!isGift) return item;
     const tc = item.total_cost ?? 0;
@@ -159,7 +188,6 @@ export function CostResourceFormSheet({
       let updated = { ...item, [field]: value };
 
       if (isGift) {
-        // Recalculate value for gift items
         updated = recalcGiftItem(updated);
       } else {
         if (field === 'is_monthly' && !value && updated.annual_value) updated.value = updated.annual_value / 12;
@@ -175,21 +203,55 @@ export function CostResourceFormSheet({
     setDepCalcOpen(false);
   };
 
-  const handleSubmit = () => {
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview('');
+    setPhotoUrl(null);
+  };
+
+  const handleSubmit = async () => {
     if (!name.trim()) return;
+    setIsUploading(true);
+
+    let finalPhotoUrl = photoUrl;
+    if (photoFile) {
+      try {
+        const filePath = buildStorageFilePath({
+          folder: 'resources',
+          fileName: photoFile.name,
+          prefix: String(Date.now()),
+        });
+        const { error } = await supabase.storage.from('equipment-files').upload(filePath, photoFile);
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage.from('equipment-files').getPublicUrl(filePath);
+          finalPhotoUrl = publicUrl;
+        }
+      } catch { /* keep existing url */ }
+    }
+
+    setIsUploading(false);
     onSave({
       name: name.trim(),
       monthly_hours: monthlyHours,
       is_active: isActive,
       notes: notes.trim(),
+      photo_url: finalPhotoUrl,
       items: items.filter(i => i.name.trim()),
     });
   };
 
   const footer = (
-    <Button className="w-full" onClick={handleSubmit} disabled={!name.trim() || isPending}>
+    <Button className="w-full" onClick={handleSubmit} disabled={!name.trim() || isPending || isUploading}>
       <Save className="h-4 w-4 mr-2" />
-      {isPending ? 'Salvando...' : 'Salvar'}
+      {isPending || isUploading ? 'Salvando...' : 'Salvar'}
     </Button>
   );
 
@@ -217,6 +279,29 @@ export function CostResourceFormSheet({
               onChange={e => setName(e.target.value)}
               placeholder={isGift ? 'Ex: Kit de Boas-Vindas' : `Ex: ${category === 'vehicle' ? 'Spin 2024' : category === 'tool' ? 'Manômetro Testo' : 'Kit Padrão'}`}
             />
+          </div>
+
+          {/* Photo upload */}
+          <div className="space-y-2">
+            <Label>Foto (opcional)</Label>
+            {photoPreview ? (
+              <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
+                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 cursor-pointer border border-dashed border-border rounded-lg p-3 hover:bg-muted/30 transition-colors">
+                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Adicionar foto</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+              </label>
+            )}
           </div>
 
           {!isGift && (
@@ -252,11 +337,33 @@ export function CostResourceFormSheet({
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Valor 0km (R$)</Label>
-                      <Input type="number" min={0} value={value0km || ''} onChange={e => setValue0km(Number(e.target.value) || 0)} />
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="200.000 ou 200000"
+                        value={value0kmText}
+                        onChange={e => setValue0kmText(e.target.value)}
+                      />
+                      {value0kmText && (
+                        <p className="text-xs text-muted-foreground">
+                          Valor: R$ {formatBRL(value0km)}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Valor após 2 anos (R$)</Label>
-                      <Input type="number" min={0} value={value2years || ''} onChange={e => setValue2years(Number(e.target.value) || 0)} />
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="145.000 ou 145000"
+                        value={value2yearsText}
+                        onChange={e => setValue2yearsText(e.target.value)}
+                      />
+                      {value2yearsText && (
+                        <p className="text-xs text-muted-foreground">
+                          Valor: R$ {formatBRL(value2years)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   {calculatedDepreciation > 0 && (
@@ -300,7 +407,6 @@ export function CostResourceFormSheet({
                   </div>
 
                   {isGift ? (
-                    /* Gift-specific: total cost, total units, qty per gift */
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
@@ -327,7 +433,6 @@ export function CostResourceFormSheet({
                         </div>
                       </div>
 
-                      {/* Calculated unit cost */}
                       {(item.total_cost ?? 0) > 0 && (item.total_units ?? 0) > 0 && (
                         <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
                           <span className="text-muted-foreground">Custo unitário:</span>
@@ -349,7 +454,6 @@ export function CostResourceFormSheet({
                         />
                       </div>
 
-                      {/* Subtotal for this item per gift */}
                       {item.value > 0 && (
                         <div className="flex items-center justify-between p-2 bg-primary/5 rounded-md text-sm">
                           <span className="text-muted-foreground">Custo por brinde deste item:</span>
@@ -358,7 +462,6 @@ export function CostResourceFormSheet({
                       )}
                     </div>
                   ) : (
-                    /* Standard cost items */
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <Switch id={`annual-${index}`} checked={!item.is_monthly} onCheckedChange={checked => handleItemChange(index, 'is_monthly', !checked)} />

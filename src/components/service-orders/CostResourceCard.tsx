@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Pencil, Trash2, Car, Wrench, Gift, HardHat, Package } from 'lucide-react';
 import { formatBRL } from '@/utils/currency';
 import type { CostResource } from '@/hooks/useCostResources';
@@ -35,6 +36,7 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
   const { data: items = [] } = useCostResourceItems(resource.id);
   const Icon = categoryIcons[resource.category] || Package;
   const isGift = resource.category === 'gift';
+  const photoUrl = (resource as any).photo_url;
 
   const totalValue = items.reduce((sum, item) => sum + (item.value || 0), 0);
   const hourlyRate = resource.monthly_hours > 0 ? totalValue / resource.monthly_hours : 0;
@@ -45,9 +47,18 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1.5 rounded-md bg-primary/10">
-              <Icon className="h-4 w-4 text-primary" />
-            </div>
+            {photoUrl ? (
+              <Avatar className="h-10 w-10 rounded-md">
+                <AvatarImage src={photoUrl} alt={resource.name} className="object-cover" />
+                <AvatarFallback className="rounded-md bg-primary/10">
+                  <Icon className="h-4 w-4 text-primary" />
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <div className="p-1.5 rounded-md bg-primary/10">
+                <Icon className="h-4 w-4 text-primary" />
+              </div>
+            )}
             <div className="min-w-0">
               <p className="font-semibold text-foreground truncate">{resource.name}</p>
               {resource.notes && (

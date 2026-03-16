@@ -172,6 +172,7 @@ export function useCostResources() {
       monthly_hours?: number;
       is_active?: boolean;
       notes?: string;
+      photo_url?: string | null;
       items?: Array<{ id?: string; name: string; value: number; is_monthly: boolean; annual_value?: number }>;
     }) => {
       const { id, items, ...updates } = input;

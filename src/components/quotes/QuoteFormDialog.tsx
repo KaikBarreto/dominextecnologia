@@ -361,12 +361,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     const st = serviceTypes.find(s => s.id === addSvcId);
     const companyId = profile?.company_id;
     let laborCost = 0, matsCost = 0, extrasCost = 0, hourlyRate = 0, hours = 0;
+    let resourcesCost = 0, giftsCost = 0;
 
     if (companyId) {
       try {
-        const [costRes, matRes] = await Promise.all([
+        const [costRes, matRes, linkedRes, giftsRes] = await Promise.all([
           supabase.from('service_costs').select('*').eq('company_id', companyId).eq('service_id', addSvcId).maybeSingle(),
           supabase.from('service_materials').select('*').eq('company_id', companyId).eq('service_id', addSvcId).order('sort_order'),
+          supabase.from('service_cost_resources').select('resource_id, override_value').eq('service_id', addSvcId),
+          supabase.from('service_gifts').select('*').eq('service_id', addSvcId),
         ]);
         if (costRes.data) {
           hourlyRate = Number(costRes.data.hourly_rate ?? 0);
@@ -377,10 +380,33 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         if (matRes.data) {
           matsCost = matRes.data.reduce((sum, m) => sum + Number(m.subtotal ?? 0), 0);
         }
-      } catch { /* use zeros */ }
+        // Linked resource costs (vehicles, tools, EPIs, etc.)
+        if (linkedRes.data?.length) {
+          const resourceIds = linkedRes.data.map(r => r.resource_id);
+          const { data: resources } = await supabase
+            .from('cost_resources_with_rate')
+            .select('id, hourly_rate, category')
+            .in('id', resourceIds);
+
+          linkedRes.data.forEach(link => {
+            const resource = resources?.find(r => r.id === link.resource_id);
+            if (resource && (resource as any).category !== 'gift') {
+              resourcesCost += link.override_value != null
+                ? Number(link.override_value)
+                : (Number((resource as any).hourly_rate ?? 0) * hours);
+            }
+          });
+        }
+        // Gift costs
+        if (giftsRes.data) {
+          giftsCost = giftsRes.data.reduce((sum, g) => sum + Number((g as any).subtotal ?? 0), 0);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar custos do serviço:', err);
+      }
     }
 
-    const unitTotalCost = laborCost + matsCost + extrasCost;
+    const unitTotalCost = laborCost + matsCost + extrasCost + resourcesCost + giftsCost;
     const unitPrice = bdiFactor > 0.01 ? Math.round((unitTotalCost / bdiFactor) * 100) / 100 : unitTotalCost;
 
     setItems(prev => [...prev, {
@@ -396,7 +422,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       unit_hours: hours,
       unit_labor_cost: laborCost,
       unit_materials_cost: matsCost,
-      unit_extras_cost: extrasCost,
+      unit_extras_cost: extrasCost + resourcesCost + giftsCost,
       profit_rate: profitRate,
       bdi: bdiFactor,
     }]);
