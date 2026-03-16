@@ -40,6 +40,53 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.8',
+    date: '16 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalizar OS pela agenda',
+        description: 'Gestores agora podem finalizar ordens de serviço diretamente pelo resumo da OS na agenda, independentemente do status atual.',
+        category: 'recurso',
+      },
+      {
+        title: 'Selecionar todos os equipamentos',
+        description: 'Opção "Selecionar todos" adicionada nos seletores de equipamentos ao criar OS, contratos e outros formulários.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Equipamentos do Contrato com paginação',
+        description: 'A seção de itens do contrato foi renomeada para "Equipamentos do Contrato" e agora exibe os equipamentos com paginação (5 por página).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Foto nos recursos de custos globais',
+        description: 'Agora é possível adicionar uma foto opcional ao cadastrar veículos, ferramentas, EPIs e outros recursos globais.',
+        category: 'recurso',
+      },
+      {
+        title: 'Custos completos no orçamento',
+        description: 'Ao inserir um serviço no orçamento, agora são puxados também os custos de recursos vinculados (veículos, ferramentas, EPIs) e brindes configurados.',
+        category: 'correcao',
+      },
+      {
+        title: 'Calculadora de depreciação corrigida',
+        description: 'Os campos da calculadora de depreciação agora aceitam formato brasileiro (200.000) e exibem o valor interpretado para confirmação.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cards responsivos em custos',
+        description: 'Os cards de custos globais e custos dos serviços agora se ajustam melhor em telas menores, exibindo 1 ou 2 por linha conforme o espaço disponível.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mensagens de erro em português',
+        description: 'Erros do sistema como violações de chave estrangeira e campos calculados agora exibem mensagens claras em português do Brasil.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.7',
     date: '15 de março de 2026',
     type: 'patch',
