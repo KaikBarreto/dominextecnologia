@@ -92,6 +92,17 @@ export function PmocContractFormDialog({ open, onOpenChange, contract }: PmocCon
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) setFormData(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          setFormData({ ...defaultFormData });
+        }}
+      />
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">

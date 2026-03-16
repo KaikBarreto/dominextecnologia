@@ -133,6 +133,24 @@ export function TransactionFormDialog({
       title={transaction ? 'Editar Transação' : 'Nova Transação'}
       className="sm:max-w-[480px]"
     >
+      <DraftResumeDialog
+        open={draft.showResumePrompt}
+        onResume={() => {
+          if (draft.draftData) form.reset(draft.draftData);
+          draft.acceptDraft();
+        }}
+        onDiscard={() => {
+          draft.discardDraft();
+          form.reset({
+            transaction_type: defaultType,
+            category: '',
+            description: '',
+            amount: 0,
+            transaction_date: new Date().toISOString().split('T')[0],
+            is_paid: true,
+          });
+        }}
+      />
       <p className="text-sm text-muted-foreground -mt-2 mb-4">Registre uma receita ou despesa</p>
 
       <Form {...form}>
