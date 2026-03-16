@@ -34,7 +34,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
-  const { data: technicians = [] } = useTechnicians();
+  const { data: allProfiles = [] } = useProfiles();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
