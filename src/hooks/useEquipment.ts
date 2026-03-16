@@ -68,7 +68,7 @@ export function useEquipment(customerId?: string) {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao criar equipamento', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });

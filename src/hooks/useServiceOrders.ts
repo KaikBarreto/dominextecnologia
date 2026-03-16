@@ -224,7 +224,7 @@ export function useServiceOrders() {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao excluir OS', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });
