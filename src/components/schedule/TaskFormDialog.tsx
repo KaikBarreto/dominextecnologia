@@ -1,0 +1,253 @@
+import { useState, useEffect } from 'react';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Loader2 } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { useTechnicians } from '@/hooks/useProfiles';
+import { useTaskTypes } from '@/hooks/useTaskTypes';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useTeams } from '@/hooks/useTeams';
+import { format, addDays, addWeeks, addMonths } from 'date-fns';
+
+export interface TaskFormData {
+  task_title: string;
+  task_type_id?: string;
+  service_type_id?: string;
+  technician_id?: string;
+  team_id?: string;
+  scheduled_date?: string;
+  scheduled_time?: string;
+  duration_minutes?: number;
+  description?: string;
+  recurrence_type?: string;
+  recurrence_interval?: number;
+  recurrence_end_date?: string;
+}
+
+interface TaskFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: TaskFormData) => Promise<void>;
+  isLoading?: boolean;
+  defaultDate?: string;
+  defaultTime?: string;
+}
+
+const RECURRENCE_OPTIONS = [
+  { value: 'daily', label: 'Diária' },
+  { value: 'weekly', label: 'Semanal' },
+  { value: 'biweekly', label: 'Quinzenal' },
+  { value: 'monthly', label: 'Mensal' },
+];
+
+export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime }: TaskFormDialogProps) {
+  const { data: technicians = [] } = useTechnicians();
+  const { taskTypes } = useTaskTypes();
+  const { serviceTypes } = useServiceTypes();
+  const { teamsWithMembers } = useTeams();
+
+  const [title, setTitle] = useState('');
+  const [taskTypeId, setTaskTypeId] = useState('');
+  const [serviceTypeId, setServiceTypeId] = useState('');
+  const [linkType, setLinkType] = useState<'task' | 'service'>('task');
+  const [assignee, setAssignee] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [duration, setDuration] = useState(60);
+  const [description, setDescription] = useState('');
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState('weekly');
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setTitle('');
+      setTaskTypeId('');
+      setServiceTypeId('');
+      setLinkType('task');
+      setAssignee('');
+      setScheduledDate(defaultDate || format(new Date(), 'yyyy-MM-dd'));
+      setScheduledTime(defaultTime || '08:00');
+      setDuration(60);
+      setDescription('');
+      setRecurrenceEnabled(false);
+      setRecurrenceType('weekly');
+      setRecurrenceInterval(1);
+      setRecurrenceEndDate('');
+    }
+  }, [open, defaultDate, defaultTime]);
+
+  const assigneeOptions = [
+    ...technicians.map(t => ({ value: `user:${t.user_id}`, label: t.full_name })),
+    ...teamsWithMembers.map(t => ({ value: `team:${t.id}`, label: `🏷 ${t.name}` })),
+  ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    const isTeam = assignee.startsWith('team:');
+    const techId = !assignee || isTeam ? undefined : (assignee.startsWith('user:') ? assignee.slice(5) : assignee);
+    const teamId = isTeam ? assignee.slice(5) : undefined;
+
+    await onSubmit({
+      task_title: title.trim(),
+      task_type_id: linkType === 'task' && taskTypeId ? taskTypeId : undefined,
+      service_type_id: linkType === 'service' && serviceTypeId ? serviceTypeId : undefined,
+      technician_id: techId,
+      team_id: teamId,
+      scheduled_date: scheduledDate || undefined,
+      scheduled_time: scheduledTime || undefined,
+      duration_minutes: duration,
+      description: description || undefined,
+      recurrence_type: recurrenceEnabled ? recurrenceType : undefined,
+      recurrence_interval: recurrenceEnabled ? recurrenceInterval : undefined,
+      recurrence_end_date: recurrenceEnabled && recurrenceEndDate ? recurrenceEndDate : undefined,
+    });
+    onOpenChange(false);
+  };
+
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Tarefa">
+      <form onSubmit={handleSubmit} className="space-y-4 p-1">
+        <div className="space-y-2">
+          <Label>Título da Tarefa *</Label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ex: Comprar materiais, Reunião com cliente..."
+            required
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Vincular a</Label>
+            <Select value={linkType} onValueChange={(v) => setLinkType(v as 'task' | 'service')}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="task">Tipo de Tarefa</SelectItem>
+                <SelectItem value="service">Tipo de Serviço</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>{linkType === 'task' ? 'Tipo de Tarefa' : 'Tipo de Serviço'}</Label>
+            {linkType === 'task' ? (
+              <Select value={taskTypeId || '_none'} onValueChange={(v) => setTaskTypeId(v === '_none' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Nenhum</SelectItem>
+                  {taskTypes.filter(t => t.is_active).map(tt => (
+                    <SelectItem key={tt.id} value={tt.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: tt.color }} />
+                        {tt.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Select value={serviceTypeId || '_none'} onValueChange={(v) => setServiceTypeId(v === '_none' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Nenhum</SelectItem>
+                  {serviceTypes.filter(t => t.is_active).map(st => (
+                    <SelectItem key={st.id} value={st.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
+                        {st.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Responsável</Label>
+          <SearchableSelect
+            options={assigneeOptions}
+            value={assignee}
+            onValueChange={setAssignee}
+            placeholder="Selecione..."
+            searchPlaceholder="Buscar..."
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label>Data</Label>
+            <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Horário</Label>
+            <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Duração (min)</Label>
+            <Input type="number" min={15} step={15} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Descrição</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Detalhes da tarefa..."
+            rows={2}
+          />
+        </div>
+
+        {/* Recurrence */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
+            <Label className="cursor-pointer">Recorrência</Label>
+          </div>
+          {recurrenceEnabled && (
+            <div className="grid gap-3 sm:grid-cols-3 pt-1">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Frequência</Label>
+                <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RECURRENCE_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">A cada</Label>
+                <Input type="number" min={1} max={12} value={recurrenceInterval} onChange={(e) => setRecurrenceInterval(Number(e.target.value))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Até</Label>
+                <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="submit" disabled={isLoading || !title.trim()}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Criar Tarefa
+          </Button>
+        </div>
+      </form>
+    </ResponsiveModal>
+  );
+}

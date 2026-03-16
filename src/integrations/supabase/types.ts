@@ -2795,6 +2795,7 @@ export type Database = {
           description: string | null
           diagnosis: string | null
           duration_minutes: number
+          entry_type: string
           equipment_id: string | null
           form_template_id: string | null
           id: string
@@ -2806,6 +2807,10 @@ export type Database = {
           os_type: Database["public"]["Enums"]["os_type"]
           parts_used: Json | null
           parts_value: number | null
+          recurrence_end_date: string | null
+          recurrence_group_id: string | null
+          recurrence_interval: number | null
+          recurrence_type: string | null
           require_client_signature: boolean | null
           require_tech_signature: boolean | null
           scheduled_date: string | null
@@ -2813,6 +2818,8 @@ export type Database = {
           service_type_id: string | null
           solution: string | null
           status: Database["public"]["Enums"]["os_status"]
+          task_title: string | null
+          task_type_id: string | null
           team_id: string | null
           tech_signature: string | null
           technician_id: string | null
@@ -2832,6 +2839,7 @@ export type Database = {
           description?: string | null
           diagnosis?: string | null
           duration_minutes?: number
+          entry_type?: string
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string
@@ -2843,6 +2851,10 @@ export type Database = {
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
+          recurrence_end_date?: string | null
+          recurrence_group_id?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           scheduled_date?: string | null
@@ -2850,6 +2862,8 @@ export type Database = {
           service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          task_title?: string | null
+          task_type_id?: string | null
           team_id?: string | null
           tech_signature?: string | null
           technician_id?: string | null
@@ -2869,6 +2883,7 @@ export type Database = {
           description?: string | null
           diagnosis?: string | null
           duration_minutes?: number
+          entry_type?: string
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string
@@ -2880,6 +2895,10 @@ export type Database = {
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
+          recurrence_end_date?: string | null
+          recurrence_group_id?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           scheduled_date?: string | null
@@ -2887,6 +2906,8 @@ export type Database = {
           service_type_id?: string | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
+          task_title?: string | null
+          task_type_id?: string | null
           team_id?: string | null
           tech_signature?: string | null
           technician_id?: string | null
@@ -2927,6 +2948,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_task_type_id_fkey"
+            columns: ["task_type_id"]
+            isOneToOne: false
+            referencedRelation: "task_types"
             referencedColumns: ["id"]
           },
           {
@@ -3057,6 +3085,39 @@ export type Database = {
           max_users?: number | null
           name?: string
           price?: number
+        }
+        Relationships: []
+      }
+      task_types: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }

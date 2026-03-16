@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -213,37 +213,44 @@ function OrderDetail({
               <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
             </div>
           )}
+          <Button 
+            onClick={() => navigate(`/os-tecnico/${order.id}`)} 
+            className="w-full mt-4"
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
+          </Button>
           {onFinalize && order.status !== 'concluida' && (
             <Button
-              className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => setShowFinalizeConfirm(true)}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               Finalizar OS
             </Button>
           )}
-          {onEdit && (
-            <Button onClick={onEdit} variant="outline" className="w-full mt-2">
-              Editar OS
-            </Button>
-          )}
-          <Button 
-            onClick={() => navigate(`/os-tecnico/${order.id}`)} 
-            className="w-full mt-2"
-          >
-            <ClipboardList className="h-4 w-4 mr-2" />
-            {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
-          </Button>
-          {onDelete && (
-            <Button
-              variant="outline"
-              className="w-full mt-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Excluir OS
-            </Button>
-          )}
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {onEdit && (
+              <Button
+                onClick={onEdit}
+                variant="outline"
+                className="border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="outline"
+                className="border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
+            )}
+          </div>
           {order.customer_id && (
             <button
               onClick={handleCopyTrackingLink}

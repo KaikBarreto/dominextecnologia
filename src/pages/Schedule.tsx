@@ -9,6 +9,8 @@ import { MobileAgendaView } from '@/components/schedule/MobileAgendaView';
 import { ScheduleHeader, type ViewMode } from '@/components/schedule/ScheduleHeader';
 import { ScheduleDetailPanel } from '@/components/schedule/ScheduleDetailPanel';
 import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
+import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
+import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -26,6 +28,9 @@ import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
@@ -40,10 +45,14 @@ export default function Schedule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [summaryOrder, setSummaryOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | undefined>();
   const [defaultTime, setDefaultTime] = useState<string | undefined>();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Filters
   const [technicianFilter, setTechnicianFilter] = useState('all');
@@ -156,14 +165,70 @@ export default function Schedule() {
     setSelectedOrder(null);
     setDefaultDate(format(currentDate, 'yyyy-MM-dd'));
     setDefaultTime(undefined);
+    setIsTypeSelectorOpen(true);
+  };
+
+  const handleSelectOS = () => {
     setIsFormOpen(true);
+  };
+
+  const handleSelectTask = () => {
+    setIsTaskFormOpen(true);
+  };
+
+  const handleTaskSubmit = async (data: TaskFormData) => {
+    const groupId = data.recurrence_type ? crypto.randomUUID() : undefined;
+
+    // Generate dates for recurrence
+    const dates: string[] = [data.scheduled_date || format(new Date(), 'yyyy-MM-dd')];
+    if (data.recurrence_type && data.recurrence_end_date) {
+      let current = new Date(dates[0] + 'T12:00:00');
+      const endDate = new Date(data.recurrence_end_date + 'T12:00:00');
+      while (true) {
+        if (data.recurrence_type === 'daily') current = addDays(current, data.recurrence_interval || 1);
+        else if (data.recurrence_type === 'weekly') current = addWeeks(current, data.recurrence_interval || 1);
+        else if (data.recurrence_type === 'biweekly') current = addWeeks(current, 2 * (data.recurrence_interval || 1));
+        else if (data.recurrence_type === 'monthly') current = addMonths(current, data.recurrence_interval || 1);
+        else break;
+        if (current > endDate) break;
+        dates.push(format(current, 'yyyy-MM-dd'));
+      }
+    }
+
+    // Create all task entries
+    const inserts = dates.map(date => ({
+      entry_type: 'tarefa',
+      task_title: data.task_title,
+      task_type_id: data.task_type_id || null,
+      service_type_id: data.service_type_id || null,
+      technician_id: data.technician_id || null,
+      team_id: data.team_id || null,
+      scheduled_date: date,
+      scheduled_time: data.scheduled_time || null,
+      duration_minutes: data.duration_minutes || 60,
+      description: data.description || null,
+      os_type: 'visita_tecnica',
+      status: 'pendente',
+      recurrence_type: data.recurrence_type || null,
+      recurrence_interval: data.recurrence_interval || null,
+      recurrence_end_date: data.recurrence_end_date || null,
+      recurrence_group_id: groupId || null,
+    }));
+
+    const { error } = await supabase.from('service_orders').insert(inserts as any);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: error.message });
+    } else {
+      toast({ title: `${dates.length} tarefa(s) criada(s)!` });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+    }
   };
 
   const handleSlotClick = (date: string, time: string) => {
     setSelectedOrder(null);
     setDefaultDate(date);
     setDefaultTime(time);
-    setIsFormOpen(true);
+    setIsTypeSelectorOpen(true);
   };
 
   const handleDateSelect = (date: Date) => {
@@ -177,7 +242,7 @@ export default function Schedule() {
     setSelectedOrder(null);
     setDefaultDate(format(date, 'yyyy-MM-dd'));
     setDefaultTime(undefined);
-    setIsFormOpen(true);
+    setIsTypeSelectorOpen(true);
   };
 
   const handleDrop = async (orderId: string, newDate: string, newTime: string) => {
@@ -327,7 +392,7 @@ export default function Schedule() {
           </div>
           <Button size="sm" onClick={handleNewOrder}>
             <Plus className="h-4 w-4 mr-1" />
-            Nova Tarefa
+            Nova Tarefa/OS
           </Button>
         </div>
 
@@ -354,12 +419,25 @@ export default function Schedule() {
           </div>
         )}
 
+        <EntryTypeSelectorDialog
+          open={isTypeSelectorOpen}
+          onOpenChange={setIsTypeSelectorOpen}
+          onSelectOS={handleSelectOS}
+          onSelectTask={handleSelectTask}
+        />
         <ServiceOrderFormDialog
           open={isFormOpen}
           onOpenChange={handleCloseForm}
           serviceOrder={selectedOrder}
           onSubmit={handleSubmit}
           isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
+          defaultDate={defaultDate}
+          defaultTime={defaultTime}
+        />
+        <TaskFormDialog
+          open={isTaskFormOpen}
+          onOpenChange={setIsTaskFormOpen}
+          onSubmit={handleTaskSubmit}
           defaultDate={defaultDate}
           defaultTime={defaultTime}
         />
@@ -442,12 +520,25 @@ export default function Schedule() {
         </div>
       </div>
 
+      <EntryTypeSelectorDialog
+        open={isTypeSelectorOpen}
+        onOpenChange={setIsTypeSelectorOpen}
+        onSelectOS={handleSelectOS}
+        onSelectTask={handleSelectTask}
+      />
       <ServiceOrderFormDialog
         open={isFormOpen}
         onOpenChange={handleCloseForm}
         serviceOrder={selectedOrder}
         onSubmit={handleSubmit}
         isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
+        defaultDate={defaultDate}
+        defaultTime={defaultTime}
+      />
+      <TaskFormDialog
+        open={isTaskFormOpen}
+        onOpenChange={setIsTaskFormOpen}
+        onSubmit={handleTaskSubmit}
         defaultDate={defaultDate}
         defaultTime={defaultTime}
       />
