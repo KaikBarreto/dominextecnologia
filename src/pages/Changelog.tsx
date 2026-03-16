@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.9',
+    date: '16 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Dashboard otimizado com 3 KPIs',
+        description: 'Removidos os cards "Clientes Ativos" e "Em Campo Agora" para dar mais espaço aos KPIs principais (OS Abertas, Taxa de Conclusão e Faturamento).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Técnicos em campo no gráfico de equipe',
+        description: 'A informação de técnicos ativos em campo agora aparece no canto inferior do card "Desempenho da Equipe" com indicador pulsante em tempo real.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Inputs visíveis no teclado mobile',
+        description: 'Ao focar em campos dentro de drawers no mobile, o input agora rola automaticamente para o centro da tela, permanecendo sempre visível sobre o teclado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.8',
     date: '16 de março de 2026',
     type: 'patch',
