@@ -23,6 +23,8 @@ import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { Customer, CustomerType } from '@/types/database';
 
 
