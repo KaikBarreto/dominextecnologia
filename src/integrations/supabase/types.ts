@@ -560,6 +560,7 @@ export type Database = {
           monthly_hours: number | null
           name: string
           notes: string | null
+          photo_url: string | null
           updated_at: string | null
         }
         Insert: {
@@ -571,6 +572,7 @@ export type Database = {
           monthly_hours?: number | null
           name: string
           notes?: string | null
+          photo_url?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -582,6 +584,7 @@ export type Database = {
           monthly_hours?: number | null
           name?: string
           notes?: string | null
+          photo_url?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -3480,6 +3483,7 @@ export type Database = {
           monthly_hours: number | null
           name: string | null
           notes: string | null
+          photo_url: string | null
           total_monthly_cost: number | null
           updated_at: string | null
         }
