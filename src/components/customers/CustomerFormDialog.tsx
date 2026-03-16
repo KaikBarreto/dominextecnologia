@@ -141,6 +141,7 @@ export function CustomerFormDialog({
       }
       const cleanedData = { ...data, birth_date: data.birth_date || undefined, ...(photo_url ? { photo_url } : {}) };
       await onSubmit(cleanedData);
+      draft.clearDraft();
       form.reset();
       setStep(0);
       onOpenChange(false);
