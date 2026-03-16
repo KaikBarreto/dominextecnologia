@@ -158,7 +158,7 @@ export function useServiceOrders() {
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao atualizar OS', 
-        description: error.message 
+        description: getErrorMessage(error) 
       });
     },
   });
