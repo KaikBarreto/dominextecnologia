@@ -9,6 +9,8 @@ import { MobileAgendaView } from '@/components/schedule/MobileAgendaView';
 import { ScheduleHeader, type ViewMode } from '@/components/schedule/ScheduleHeader';
 import { ScheduleDetailPanel } from '@/components/schedule/ScheduleDetailPanel';
 import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
+import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
+import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -26,6 +28,9 @@ import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
