@@ -15,6 +15,8 @@ import { Employee } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
 import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 
 interface EmployeeFormDialogProps {
   open: boolean;
