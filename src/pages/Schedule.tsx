@@ -547,9 +547,9 @@ export default function Schedule() {
             selectedOrder={summaryOrder}
             onOrderSelect={handleOrderSelect}
             onClearSelection={handleClearSummary}
-            onEdit={handleEditFromSummary}
-            onDelete={handleDeleteFromSummary}
-            onFinalize={handleFinalizeFromSummary}
+            onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleEditFromSummary}
+            onDelete={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleDeleteFromSummary}
+            onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
           />
         </div>
       </div>
