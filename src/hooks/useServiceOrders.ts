@@ -64,7 +64,7 @@ export function useServiceOrders() {
           .from('service_orders')
           .select(`
             *,
-            customer:customers(id, name, phone, email, document, address, complement, city, state, zip_code, company_name, customer_type),
+            customer:customers(id, name, phone, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
             equipment:equipment(id, name, brand, model),
             form_template:form_templates(id, name),
             service_type:service_types(id, name, color, number_prefix)
@@ -77,7 +77,31 @@ export function useServiceOrders() {
         if (!data || data.length < pageSize) break;
         from += pageSize;
       }
-      return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any })[];
+
+      // Fetch all assignees in one query
+      const orderIds = allData.map((o: any) => o.id);
+      let allAssignees: any[] = [];
+      if (orderIds.length > 0) {
+        const { data: assignees } = await supabase
+          .from('service_order_assignees')
+          .select('service_order_id, user_id')
+          .in('service_order_id', orderIds);
+        allAssignees = assignees || [];
+      }
+
+      // Attach assignees to each order
+      const assigneeMap = new Map<string, string[]>();
+      allAssignees.forEach((a: any) => {
+        const list = assigneeMap.get(a.service_order_id) || [];
+        list.push(a.user_id);
+        assigneeMap.set(a.service_order_id, list);
+      });
+
+      allData.forEach((order: any) => {
+        order._assignee_user_ids = assigneeMap.get(order.id) || [];
+      });
+
+      return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any; _assignee_user_ids?: string[] })[];
     },
   });
 
