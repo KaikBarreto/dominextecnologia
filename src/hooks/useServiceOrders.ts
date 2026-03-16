@@ -27,6 +27,8 @@ export interface ServiceOrderInput {
   require_tech_signature?: boolean;
   require_client_signature?: boolean;
   equipment_items?: ServiceOrderEquipmentItem[];
+  assignee_user_ids?: string[];
+  assignee_team_ids?: string[];
 }
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
