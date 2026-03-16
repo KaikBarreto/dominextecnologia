@@ -126,7 +126,8 @@ export function useCostResources() {
           monthly_hours: input.monthly_hours ?? 176,
           is_active: input.is_active ?? true,
           notes: input.notes ?? null,
-        })
+          photo_url: input.photo_url ?? null,
+        } as any)
         .select()
         .single();
 
