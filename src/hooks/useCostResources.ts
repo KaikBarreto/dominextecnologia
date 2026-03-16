@@ -24,6 +24,7 @@ export interface CostResource {
   is_active: boolean;
   monthly_hours: number;
   notes: string | null;
+  photo_url: string | null;
   created_at: string;
   updated_at: string;
   total_monthly_cost?: number;
