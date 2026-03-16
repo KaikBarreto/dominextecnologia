@@ -95,6 +95,11 @@ export default function Settings() {
       setCompanyComplement(settings.complement || '');
       setWlEnabled(!!settings.white_label_enabled);
       setWlColor(settings.white_label_primary_color || '#00C597');
+      setShowNameInDocs(settings.show_name_in_documents ?? true);
+      setShowCnpjInDocs(settings.show_cnpj_in_documents ?? true);
+      setShowAddressInDocs(settings.show_address_in_documents ?? true);
+      setShowPhoneInDocs(settings.show_phone_in_documents ?? true);
+      setShowEmailInDocs(settings.show_email_in_documents ?? true);
     }
   }, [settings]);
 
