@@ -132,6 +132,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   const team: TeamBadgeInfo | undefined = (order as any)._team;
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const serviceTypeColor = (order as any).service_type?.color;
+  const isTask = (order as any).entry_type === 'tarefa';
+  const taskTitle = (order as any).task_title;
 
   if (compact) {
     return (
