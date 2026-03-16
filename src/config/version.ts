@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.8";
+export const APP_VERSION = "1.5.9";
 
-export const VERSION_NOTES = "Finalizar OS na agenda, foto em recursos, custos completos no orçamento, depreciação corrigida";
+export const VERSION_NOTES = "Dashboard otimizado: KPIs mais largos, técnicos em campo no gráfico de equipe";
