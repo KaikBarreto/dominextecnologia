@@ -78,6 +78,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   useEffect(() => {
     if (open) {
       setTitle('');
+      setCustomerId('');
       setTaskTypeId('');
       setSelectedUserIds([]);
       setSelectedTeamIds([]);
