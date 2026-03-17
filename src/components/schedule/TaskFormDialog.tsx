@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
 import { useTeams } from '@/hooks/useTeams';
+import { useCustomers } from '@/hooks/useCustomers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
