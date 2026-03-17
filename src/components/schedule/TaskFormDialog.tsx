@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 
 export interface TaskFormData {
   task_title: string;
+  customer_id?: string;
   task_type_id?: string;
   service_type_id?: string;
   technician_id?: string;
