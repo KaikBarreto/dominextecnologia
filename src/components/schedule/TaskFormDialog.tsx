@@ -107,6 +107,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
 
     await onSubmit({
       task_title: title.trim(),
+      customer_id: customerId || undefined,
       task_type_id: taskTypeId || undefined,
       technician_id: selectedUserIds[0] || undefined,
       team_id: selectedTeamIds[0] || undefined,
