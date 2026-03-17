@@ -145,6 +145,18 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         </div>
 
         <div className="space-y-2">
+          <Label>Cliente (opcional)</Label>
+          <SearchableSelect
+            options={customers.map(c => ({ value: c.id, label: c.name }))}
+            value={customerId}
+            onValueChange={setCustomerId}
+            placeholder="Selecione um cliente..."
+            emptyMessage="Nenhum cliente encontrado"
+            allowClear
+          />
+        </div>
+
+        <div className="space-y-2">
           <Label>Tipo de Tarefa</Label>
           <Select value={taskTypeId || '_none'} onValueChange={(v) => setTaskTypeId(v === '_none' ? '' : v)}>
             <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
