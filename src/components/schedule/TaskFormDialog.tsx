@@ -58,6 +58,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   const { data: profiles = [] } = useProfiles();
   const { taskTypes } = useTaskTypes();
   const { teamsWithMembers } = useTeams();
+  const { customers } = useCustomers();
 
   const [title, setTitle] = useState('');
   const [taskTypeId, setTaskTypeId] = useState('');
