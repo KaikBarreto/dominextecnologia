@@ -8,14 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
 import { useTeams } from '@/hooks/useTeams';
+import { useCustomers } from '@/hooks/useCustomers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 export interface TaskFormData {
   task_title: string;
+  customer_id?: string;
   task_type_id?: string;
   service_type_id?: string;
   technician_id?: string;
@@ -55,8 +58,10 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   const { data: profiles = [] } = useProfiles();
   const { taskTypes } = useTaskTypes();
   const { teamsWithMembers } = useTeams();
+  const { customers } = useCustomers();
 
   const [title, setTitle] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [taskTypeId, setTaskTypeId] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
@@ -73,6 +78,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   useEffect(() => {
     if (open) {
       setTitle('');
+      setCustomerId('');
       setTaskTypeId('');
       setSelectedUserIds([]);
       setSelectedTeamIds([]);
@@ -101,6 +107,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
 
     await onSubmit({
       task_title: title.trim(),
+      customer_id: customerId || undefined,
       task_type_id: taskTypeId || undefined,
       technician_id: selectedUserIds[0] || undefined,
       team_id: selectedTeamIds[0] || undefined,
@@ -134,6 +141,17 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Ex: Comprar materiais, Reunião com cliente..."
             required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Cliente (opcional)</Label>
+          <SearchableSelect
+            options={[{ value: '_none', label: 'Nenhum' }, ...customers.map(c => ({ value: c.id, label: c.name }))]}
+            value={customerId || '_none'}
+            onValueChange={(v) => setCustomerId(v === '_none' ? '' : v)}
+            placeholder="Selecione um cliente..."
+            emptyMessage="Nenhum cliente encontrado"
           />
         </div>
 

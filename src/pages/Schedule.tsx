@@ -225,6 +225,7 @@ export default function Schedule() {
       task_title: data.task_title,
       task_type_id: data.task_type_id || null,
       service_type_id: data.service_type_id || null,
+      customer_id: data.customer_id || null,
       technician_id: data.technician_id || null,
       team_id: data.team_id || null,
       scheduled_date: date,
