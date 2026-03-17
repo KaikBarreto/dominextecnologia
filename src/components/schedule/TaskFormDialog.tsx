@@ -147,12 +147,11 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         <div className="space-y-2">
           <Label>Cliente (opcional)</Label>
           <SearchableSelect
-            options={customers.map(c => ({ value: c.id, label: c.name }))}
-            value={customerId}
-            onValueChange={setCustomerId}
+            options={[{ value: '_none', label: 'Nenhum' }, ...customers.map(c => ({ value: c.id, label: c.name }))]}
+            value={customerId || '_none'}
+            onValueChange={(v) => setCustomerId(v === '_none' ? '' : v)}
             placeholder="Selecione um cliente..."
             emptyMessage="Nenhum cliente encontrado"
-            allowClear
           />
         </div>
 
