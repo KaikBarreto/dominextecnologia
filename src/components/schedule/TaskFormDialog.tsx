@@ -61,6 +61,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   const { customers } = useCustomers();
 
   const [title, setTitle] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [taskTypeId, setTaskTypeId] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
