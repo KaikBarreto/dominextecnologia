@@ -2835,7 +2835,7 @@ export type Database = {
           contract_id: string | null
           created_at: string
           created_by: string | null
-          customer_id: string
+          customer_id: string | null
           description: string | null
           diagnosis: string | null
           duration_minutes: number
@@ -2879,7 +2879,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
-          customer_id: string
+          customer_id?: string | null
           description?: string | null
           diagnosis?: string | null
           duration_minutes?: number
@@ -2923,7 +2923,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
-          customer_id?: string
+          customer_id?: string | null
           description?: string | null
           diagnosis?: string | null
           duration_minutes?: number
