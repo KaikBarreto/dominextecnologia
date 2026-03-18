@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type InventoryItem = Tables<'inventory'>;
 export type InventoryItemInsert = TablesInsert<'inventory'>;
