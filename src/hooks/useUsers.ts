@@ -156,11 +156,7 @@ export function useUsers() {
       toast({ title: 'Role atualizada com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar role', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar role', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
