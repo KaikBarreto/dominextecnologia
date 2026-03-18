@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 // ─── Types ───────────────────────────────────────────
 export type PunchType = 'clock_in' | 'break_start' | 'break_end' | 'clock_out';
@@ -322,7 +323,7 @@ export function useTimeRecord(userId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ['timeSheets'] });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao registrar ponto', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao registrar ponto', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -517,7 +518,7 @@ export function useTimeSettings() {
       queryClient.invalidateQueries({ queryKey: ['timeSettings'] });
       toast({ title: 'Configurações salvas!' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { settings, isLoading, upsert };
@@ -551,7 +552,7 @@ export function useTimeSchedules() {
       queryClient.invalidateQueries({ queryKey: ['timeSchedules'] });
       toast({ title: 'Jornada atualizada!' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { schedules, isLoading, upsertSchedule };

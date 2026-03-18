@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface PmocPlan {
   id: string;
@@ -106,7 +107,7 @@ export function usePmocPlans() {
       toast({ title: 'Plano PMOC criado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar plano', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar plano', description: getErrorMessage(error) });
     },
   });
 
@@ -140,7 +141,7 @@ export function usePmocPlans() {
       toast({ title: 'Plano atualizado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar plano', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar plano', description: getErrorMessage(error) });
     },
   });
 
@@ -154,7 +155,7 @@ export function usePmocPlans() {
       toast({ title: 'Plano removido com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover plano', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao remover plano', description: getErrorMessage(error) });
     },
   });
 

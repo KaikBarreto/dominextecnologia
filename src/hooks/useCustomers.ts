@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Customer, CustomerType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface CustomerInput {
   name: string;
@@ -56,11 +57,7 @@ export function useCustomers() {
       toast({ title: 'Cliente criado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao criar cliente', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao criar cliente', description: getErrorMessage(error) });
     },
   });
 
@@ -81,11 +78,7 @@ export function useCustomers() {
       toast({ title: 'Cliente atualizado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao atualizar cliente', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar cliente', description: getErrorMessage(error) });
     },
   });
 
@@ -103,11 +96,7 @@ export function useCustomers() {
       toast({ title: 'Cliente excluído com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao excluir cliente', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao excluir cliente', description: getErrorMessage(error) });
     },
   });
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -138,7 +139,7 @@ export function usePermissionPresets() {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
       toast({ title: 'Cargo criado com sucesso!' });
     },
-    onError: (e) => toast({ title: 'Erro ao criar cargo', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao criar cargo', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   const updatePreset = useMutation({
@@ -153,7 +154,7 @@ export function usePermissionPresets() {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
       toast({ title: 'Cargo atualizado com sucesso!' });
     },
-    onError: (e) => toast({ title: 'Erro ao atualizar cargo', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao atualizar cargo', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   const deletePreset = useMutation({
@@ -165,7 +166,7 @@ export function usePermissionPresets() {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
       toast({ title: 'Cargo excluído com sucesso!' });
     },
-    onError: (e) => toast({ title: 'Erro ao excluir cargo', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao excluir cargo', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { presets, isLoading, createPreset, updatePreset, deletePreset };
@@ -211,7 +212,7 @@ export function useUserPermissions() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({ title: 'Permissões atualizadas!' });
     },
-    onError: (e) => toast({ title: 'Erro ao atualizar permissões', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao atualizar permissões', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   const toggleActive = useMutation({
@@ -227,7 +228,7 @@ export function useUserPermissions() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({ title: 'Status atualizado!' });
     },
-    onError: (e) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { userPermissions, isLoading, upsertPermissions, toggleActive };

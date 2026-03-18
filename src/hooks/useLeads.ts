@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate, Enums } from '@/integrations/supabase/types';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type Lead = Tables<'leads'> & {
   customers?: Tables<'customers'> | null;
@@ -98,11 +99,7 @@ export function useLeads() {
       toast({ title: 'Lead criado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao criar lead', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao criar lead', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -124,11 +121,7 @@ export function useLeads() {
       toast({ title: 'Lead atualizado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar lead', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar lead', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -146,11 +139,7 @@ export function useLeads() {
       toast({ title: 'Lead removido com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover lead', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover lead', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -225,11 +214,7 @@ export function useLeadInteractions(leadId: string | null) {
       toast({ title: 'Interação registrada!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao registrar interação', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao registrar interação', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

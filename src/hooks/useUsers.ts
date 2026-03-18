@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, Enums } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type Profile = Tables<'profiles'>;
 export type UserRole = Tables<'user_roles'>;
@@ -155,11 +156,7 @@ export function useUsers() {
       toast({ title: 'Role atualizada com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar role', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar role', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -180,11 +177,7 @@ export function useUsers() {
       toast({ title: 'Perfil atualizado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar perfil', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar perfil', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

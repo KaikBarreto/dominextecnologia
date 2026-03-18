@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type CrmWebhook = Tables<'crm_webhooks'>;
 
@@ -75,7 +76,7 @@ export function useCrmWebhooks() {
       toast({ title: 'Webhook criado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar webhook', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar webhook', description: getErrorMessage(error) });
     },
   });
 
@@ -96,7 +97,7 @@ export function useCrmWebhooks() {
       toast({ title: 'Webhook atualizado!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar webhook', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar webhook', description: getErrorMessage(error) });
     },
   });
 
@@ -110,7 +111,7 @@ export function useCrmWebhooks() {
       toast({ title: 'Webhook removido!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover webhook', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao remover webhook', description: getErrorMessage(error) });
     },
   });
 

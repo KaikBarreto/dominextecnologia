@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, TablesUpdate } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type PricingSettings = Tables<'pricing_settings'>;
 export type PricingSettingsUpdate = Omit<
@@ -63,7 +64,7 @@ export function usePricingSettings() {
       toast({ title: 'Configurações de precificação salvas!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao salvar', description: getErrorMessage(error) });
     },
   });
 

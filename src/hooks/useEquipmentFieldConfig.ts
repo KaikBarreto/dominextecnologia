@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface EquipmentFieldConfig {
   id: string;
@@ -41,7 +42,7 @@ export function useEquipmentFieldConfig() {
       queryClient.invalidateQueries({ queryKey: ['equipment-field-config'] });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar campo', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar campo', description: getErrorMessage(error) });
     },
   });
 
@@ -56,7 +57,7 @@ export function useEquipmentFieldConfig() {
       toast({ title: 'Campo criado!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar campo', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar campo', description: getErrorMessage(error) });
     },
   });
 
@@ -70,7 +71,7 @@ export function useEquipmentFieldConfig() {
       toast({ title: 'Campo excluído!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir campo', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir campo', description: getErrorMessage(error) });
     },
   });
 

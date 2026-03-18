@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type CostResourceCategory = 'vehicle' | 'tool' | 'gift' | 'epi' | 'other';
 
@@ -160,7 +161,7 @@ export function useCostResources() {
       toast({ title: 'Recurso criado com sucesso!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar recurso', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar recurso', description: getErrorMessage(error) });
     },
   });
 
@@ -221,7 +222,7 @@ export function useCostResources() {
       toast({ title: 'Recurso atualizado!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar', description: getErrorMessage(error) });
     },
   });
 
@@ -240,7 +241,7 @@ export function useCostResources() {
       toast({ title: 'Recurso excluído!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(error) });
     },
   });
 

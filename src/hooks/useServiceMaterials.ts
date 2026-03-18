@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type ServiceMaterial = Tables<'service_materials'>;
 export type ServiceMaterialInsert = TablesInsert<'service_materials'>;
@@ -63,7 +64,7 @@ export function useServiceMaterials(serviceId?: string | null) {
       toast({ title: 'Material adicionado!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao adicionar material', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao adicionar material', description: getErrorMessage(error) });
     },
   });
 
@@ -86,7 +87,7 @@ export function useServiceMaterials(serviceId?: string | null) {
       toast({ title: 'Material atualizado!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar material', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar material', description: getErrorMessage(error) });
     },
   });
 
@@ -100,7 +101,7 @@ export function useServiceMaterials(serviceId?: string | null) {
       toast({ title: 'Material removido!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover material', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao remover material', description: getErrorMessage(error) });
     },
   });
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface Employee {
   id: string;
@@ -43,7 +44,7 @@ export function useEmployees() {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário criado!' }); },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar funcionário', description: getErrorMessage(e) }),
   });
 
   const updateEmployee = useMutation({
@@ -53,7 +54,7 @@ export function useEmployees() {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário atualizado!' }); },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao atualizar funcionário', description: getErrorMessage(e) }),
   });
 
   const deleteEmployee = useMutation({
@@ -62,7 +63,7 @@ export function useEmployees() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário excluído!' }); },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir funcionário', description: getErrorMessage(e) }),
   });
 
   return {

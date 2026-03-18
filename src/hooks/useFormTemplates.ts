@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { CheckSquare, Type, Hash, Camera, ListChecks, LucideIcon } from 'lucide-react';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface FormTemplateInsert {
   name: string;
@@ -77,11 +78,7 @@ export function useFormTemplates() {
       toast({ title: 'Template criado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao criar template', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao criar template', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -102,11 +99,7 @@ export function useFormTemplates() {
       toast({ title: 'Template atualizado!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar template', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar template', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -124,11 +117,7 @@ export function useFormTemplates() {
       toast({ title: 'Template removido!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover template', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover template', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -148,11 +137,7 @@ export function useFormTemplates() {
       toast({ title: 'Pergunta adicionada!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao adicionar pergunta', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao adicionar pergunta', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -172,11 +157,7 @@ export function useFormTemplates() {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar pergunta', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar pergunta', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -194,11 +175,7 @@ export function useFormTemplates() {
       toast({ title: 'Pergunta removida!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover pergunta', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover pergunta', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -237,11 +214,7 @@ export function useFormTemplates() {
       toast({ title: 'Serviços vinculados ao questionário!' });
     },
     onError: (error) => {
-      toast({
-        title: 'Erro ao vincular serviços',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao vincular serviços', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

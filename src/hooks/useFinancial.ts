@@ -4,6 +4,7 @@ import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface TransactionInput {
   transaction_type: TransactionType;
@@ -98,11 +99,7 @@ export function useFinancial() {
       toast({ title: 'Transação criada com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao criar transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao criar transação', description: getErrorMessage(error) });
     },
   });
 
@@ -127,11 +124,7 @@ export function useFinancial() {
       toast({ title: 'Transação atualizada com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao atualizar transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
     },
   });
 
@@ -151,11 +144,7 @@ export function useFinancial() {
       toast({ title: 'Transação excluída com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao excluir transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao excluir transação', description: getErrorMessage(error) });
     },
   });
 
@@ -177,11 +166,7 @@ export function useFinancial() {
       toast({ title: 'Transação marcada como paga!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao atualizar transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
     },
   });
 

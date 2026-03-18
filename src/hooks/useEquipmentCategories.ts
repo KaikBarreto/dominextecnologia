@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface EquipmentCategory {
   id: string;
@@ -38,7 +39,7 @@ export function useEquipmentCategories() {
       toast({ title: 'Categoria criada com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar categoria', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar categoria', description: getErrorMessage(error) });
     },
   });
 
@@ -53,7 +54,7 @@ export function useEquipmentCategories() {
       toast({ title: 'Categoria atualizada!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar categoria', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar categoria', description: getErrorMessage(error) });
     },
   });
 
@@ -67,7 +68,7 @@ export function useEquipmentCategories() {
       toast({ title: 'Categoria excluída!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir categoria', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir categoria', description: getErrorMessage(error) });
     },
   });
 

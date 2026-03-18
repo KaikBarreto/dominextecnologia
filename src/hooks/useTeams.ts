@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface Team {
   id: string;
@@ -92,7 +93,7 @@ export function useTeams() {
       toast({ title: 'Equipe criada com sucesso!' });
     },
     onError: (e: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar equipe', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar equipe', description: getErrorMessage(e) });
     },
   });
 
@@ -119,7 +120,7 @@ export function useTeams() {
       toast({ title: 'Equipe atualizada!' });
     },
     onError: (e: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar equipe', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar equipe', description: getErrorMessage(e) });
     },
   });
 
@@ -134,7 +135,7 @@ export function useTeams() {
       toast({ title: 'Equipe excluída!' });
     },
     onError: (e: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir equipe', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir equipe', description: getErrorMessage(e) });
     },
   });
 

@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Quote } from '@/hooks/useQuotes';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export function useQuoteConversion() {
   const { toast } = useToast();
@@ -90,11 +91,7 @@ export function useQuoteConversion() {
       });
     },
     onError: (error: any) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro na conversão', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro na conversão', description: getErrorMessage(error) });
     },
   });
 
@@ -119,11 +116,7 @@ export function useQuoteConversion() {
       toast({ title: 'Conta a receber gerada!' });
     },
     onError: (error: any) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao gerar financeiro', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao gerar financeiro', description: getErrorMessage(error) });
     },
   });
 

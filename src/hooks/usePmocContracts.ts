@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type PmocContract = Tables<'pmoc_contracts'> & {
   customers?: Tables<'customers'> | null;
@@ -45,11 +46,7 @@ export function usePmocContracts() {
       toast({ title: 'Contrato PMOC criado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao criar contrato', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao criar contrato', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -70,11 +67,7 @@ export function usePmocContracts() {
       toast({ title: 'Contrato atualizado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar contrato', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar contrato', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -92,11 +85,7 @@ export function usePmocContracts() {
       toast({ title: 'Contrato removido com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover contrato', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover contrato', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

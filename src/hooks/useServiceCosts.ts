@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type ServiceCost = Tables<'service_costs'>;
 export type ServiceCostInsert = TablesInsert<'service_costs'>;
@@ -93,7 +94,7 @@ export function useServiceCosts(serviceId?: string | null) {
       toast({ title: 'Custos do serviço salvos!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao salvar custos', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao salvar custos', description: getErrorMessage(error) });
     },
   });
 

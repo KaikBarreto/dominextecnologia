@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type InventoryItem = Tables<'inventory'>;
 export type InventoryItemInsert = TablesInsert<'inventory'>;
@@ -40,11 +41,7 @@ export function useInventory() {
       toast({ title: 'Item cadastrado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao cadastrar item', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao cadastrar item', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -65,11 +62,7 @@ export function useInventory() {
       toast({ title: 'Item atualizado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar item', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar item', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -105,11 +98,7 @@ export function useInventory() {
       toast({ title: 'Item removido com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover item', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover item', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

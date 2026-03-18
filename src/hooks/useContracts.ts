@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { addDays, addMonths } from 'date-fns';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface Contract {
   id: string;
@@ -186,9 +187,8 @@ export function useContracts() {
 
           const description = `${input.name} — Ocorrência ${i + 1}`;
 
-          const { data: os, error: osError } = await supabase
-            .from('service_orders')
-            .insert({
+          const osPayload = normalizeOptionalForeignKeys(
+            {
               customer_id: input.customer_id,
               equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
               technician_id: input.technician_id || null,
@@ -202,7 +202,13 @@ export function useContracts() {
               status: 'agendada' as const,
               contract_id: (contract as any).id,
               origin: 'contract',
-            })
+            } as any,
+            ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'equipment_id']
+          );
+
+          const { data: os, error: osError } = await supabase
+            .from('service_orders')
+            .insert(osPayload)
             .select('id')
             .single();
 
@@ -236,7 +242,7 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       toast({ title: 'Contrato criado com sucesso!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: getErrorMessage(e) }),
   });
 
   const updateContractStatus = useMutation({
@@ -248,7 +254,7 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       toast({ title: 'Status do contrato atualizado!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao atualizar status', description: getErrorMessage(e) }),
   });
 
   const deleteContract = useMutation({
@@ -289,7 +295,7 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       toast({ title: 'Contrato excluído!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) }),
   });
 
   // Stats

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMemo } from 'react';
+import { getErrorMessage } from '@/utils/errorMessages';
 import type { CostResource } from './useCostResources';
 
 export interface ServiceCostResource {
@@ -140,7 +141,7 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
       queryClient.invalidateQueries({ queryKey: ['service-cost-resources', serviceId] });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao vincular recurso', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao vincular recurso', description: getErrorMessage(error) });
     },
   });
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export function useEmployeeMovements(employeeId?: string) {
   const { toast } = useToast();
@@ -39,7 +40,7 @@ export function useEmployeeMovements(employeeId?: string) {
       qc.invalidateQueries({ queryKey: ['all-employee-movements'] });
       toast({ title: 'Movimentação registrada!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao registrar movimentação', description: getErrorMessage(e) }),
   });
 
   const deleteMovement = useMutation({
@@ -52,7 +53,7 @@ export function useEmployeeMovements(employeeId?: string) {
       qc.invalidateQueries({ queryKey: ['all-employee-movements'] });
       toast({ title: 'Movimentação excluída!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir movimentação', description: getErrorMessage(e) }),
   });
 
   return { movements: movementsQuery.data || [], isLoading: movementsQuery.isLoading, addMovement, deleteMovement };
