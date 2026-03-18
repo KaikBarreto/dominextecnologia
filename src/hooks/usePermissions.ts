@@ -212,7 +212,7 @@ export function useUserPermissions() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({ title: 'Permissões atualizadas!' });
     },
-    onError: (e) => toast({ title: 'Erro ao atualizar permissões', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao atualizar permissões', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   const toggleActive = useMutation({
