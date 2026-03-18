@@ -57,7 +57,7 @@ export function useEquipmentFieldConfig() {
       toast({ title: 'Campo criado!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar campo', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar campo', description: getErrorMessage(error) });
     },
   });
 
