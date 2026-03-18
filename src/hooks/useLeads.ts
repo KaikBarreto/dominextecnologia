@@ -139,11 +139,7 @@ export function useLeads() {
       toast({ title: 'Lead removido com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover lead', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover lead', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
