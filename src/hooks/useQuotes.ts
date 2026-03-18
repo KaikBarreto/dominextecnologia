@@ -125,7 +125,7 @@ const STATUS_COLORS: Record<string, string> = {
 export { STATUS_LABELS, STATUS_COLORS };
 
 function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
-  return {
+  return normalizeOptionalForeignKeys({
     quote_id: quoteId,
     position: idx,
     item_type: item.item_type,
@@ -144,7 +144,7 @@ function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
     profit_rate: item.profit_rate ?? 10,
     bdi: item.bdi ?? 0.68,
     price_override: item.price_override ?? null,
-  };
+  }, ['inventory_id', 'service_type_id']);
 }
 
 export function useQuotes() {
