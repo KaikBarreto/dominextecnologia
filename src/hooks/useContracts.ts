@@ -249,7 +249,7 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       toast({ title: 'Status do contrato atualizado!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao atualizar status', description: getErrorMessage(e) }),
   });
 
   const deleteContract = useMutation({
