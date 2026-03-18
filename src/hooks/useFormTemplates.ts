@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { CheckSquare, Type, Hash, Camera, ListChecks, LucideIcon } from 'lucide-react';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface FormTemplateInsert {
   name: string;
