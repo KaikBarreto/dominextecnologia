@@ -46,11 +46,7 @@ export function usePmocContracts() {
       toast({ title: 'Contrato PMOC criado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao criar contrato', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao criar contrato', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
