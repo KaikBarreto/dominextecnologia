@@ -67,11 +67,7 @@ export function usePmocContracts() {
       toast({ title: 'Contrato atualizado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar contrato', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar contrato', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
