@@ -99,11 +99,7 @@ export function useFinancial() {
       toast({ title: 'Transação criada com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao criar transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao criar transação', description: getErrorMessage(error) });
     },
   });
 
