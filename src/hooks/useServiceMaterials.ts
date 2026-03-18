@@ -87,7 +87,7 @@ export function useServiceMaterials(serviceId?: string | null) {
       toast({ title: 'Material atualizado!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar material', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar material', description: getErrorMessage(error) });
     },
   });
 
