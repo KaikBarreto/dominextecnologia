@@ -24,6 +24,7 @@ import { format, addDays, addMonths as addMonthsFn } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 interface PmocPlanFormDialogProps {
   open: boolean;

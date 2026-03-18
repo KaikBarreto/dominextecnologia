@@ -31,6 +31,7 @@ import { getAllHolidays, buildHolidayMap, type Holiday } from '@/utils/holidays'
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();

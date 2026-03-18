@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 interface PortalData {
   id: string;
