@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, Enums } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type Profile = Tables<'profiles'>;
 export type UserRole = Tables<'user_roles'>;
