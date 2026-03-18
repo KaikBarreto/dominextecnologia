@@ -121,11 +121,7 @@ export function useLeads() {
       toast({ title: 'Lead atualizado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar lead', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar lead', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
