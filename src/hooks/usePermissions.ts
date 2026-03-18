@@ -139,7 +139,7 @@ export function usePermissionPresets() {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
       toast({ title: 'Cargo criado com sucesso!' });
     },
-    onError: (e) => toast({ title: 'Erro ao criar cargo', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao criar cargo', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   const updatePreset = useMutation({
