@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface QuoteItem {
   id?: string;
