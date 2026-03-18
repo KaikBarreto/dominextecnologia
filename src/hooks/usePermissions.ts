@@ -166,7 +166,7 @@ export function usePermissionPresets() {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
       toast({ title: 'Cargo excluído com sucesso!' });
     },
-    onError: (e) => toast({ title: 'Erro ao excluir cargo', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao excluir cargo', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { presets, isLoading, createPreset, updatePreset, deletePreset };
