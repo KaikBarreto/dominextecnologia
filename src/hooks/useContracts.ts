@@ -237,7 +237,7 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       toast({ title: 'Contrato criado com sucesso!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: getErrorMessage(e) }),
   });
 
   const updateContractStatus = useMutation({
