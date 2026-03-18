@@ -76,7 +76,7 @@ export function useCrmWebhooks() {
       toast({ title: 'Webhook criado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar webhook', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar webhook', description: getErrorMessage(error) });
     },
   });
 
