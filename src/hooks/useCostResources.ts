@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type CostResourceCategory = 'vehicle' | 'tool' | 'gift' | 'epi' | 'other';
 
