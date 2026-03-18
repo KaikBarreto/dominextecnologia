@@ -63,7 +63,7 @@ export function useEmployees() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário excluído!' }); },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir funcionário', description: getErrorMessage(e) }),
   });
 
   return {

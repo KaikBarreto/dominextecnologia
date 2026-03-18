@@ -166,11 +166,7 @@ export function useFinancial() {
       toast({ title: 'Transação marcada como paga!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao atualizar transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
     },
   });
 

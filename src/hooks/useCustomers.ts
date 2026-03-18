@@ -96,11 +96,7 @@ export function useCustomers() {
       toast({ title: 'Cliente excluído com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao excluir cliente', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao excluir cliente', description: getErrorMessage(error) });
     },
   });
 

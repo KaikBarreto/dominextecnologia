@@ -101,7 +101,7 @@ export function useServiceMaterials(serviceId?: string | null) {
       toast({ title: 'Material removido!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover material', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao remover material', description: getErrorMessage(error) });
     },
   });
 

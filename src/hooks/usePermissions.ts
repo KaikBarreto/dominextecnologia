@@ -228,7 +228,7 @@ export function useUserPermissions() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({ title: 'Status atualizado!' });
     },
-    onError: (e) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { userPermissions, isLoading, upsertPermissions, toggleActive };

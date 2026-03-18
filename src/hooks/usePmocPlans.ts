@@ -155,7 +155,7 @@ export function usePmocPlans() {
       toast({ title: 'Plano removido com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover plano', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao remover plano', description: getErrorMessage(error) });
     },
   });
 

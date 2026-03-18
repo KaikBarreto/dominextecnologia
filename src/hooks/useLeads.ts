@@ -214,11 +214,7 @@ export function useLeadInteractions(leadId: string | null) {
       toast({ title: 'Interação registrada!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao registrar interação', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao registrar interação', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

@@ -64,7 +64,7 @@ export function usePricingSettings() {
       toast({ title: 'Configurações de precificação salvas!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao salvar', description: getErrorMessage(error) });
     },
   });
 

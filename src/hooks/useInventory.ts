@@ -98,11 +98,7 @@ export function useInventory() {
       toast({ title: 'Item removido com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover item', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover item', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 

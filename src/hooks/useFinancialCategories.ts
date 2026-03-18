@@ -88,7 +88,7 @@ export function useFinancialCategories() {
       toast({ title: 'Categoria excluída!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir categoria', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir categoria', description: getErrorMessage(error) });
     },
   });
 

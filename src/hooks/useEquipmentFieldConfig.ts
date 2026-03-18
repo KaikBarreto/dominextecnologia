@@ -71,7 +71,7 @@ export function useEquipmentFieldConfig() {
       toast({ title: 'Campo excluído!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir campo', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir campo', description: getErrorMessage(error) });
     },
   });
 

@@ -141,7 +141,7 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
       queryClient.invalidateQueries({ queryKey: ['service-cost-resources', serviceId] });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao vincular recurso', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao vincular recurso', description: getErrorMessage(error) });
     },
   });
 

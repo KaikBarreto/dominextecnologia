@@ -552,7 +552,7 @@ export function useTimeSchedules() {
       queryClient.invalidateQueries({ queryKey: ['timeSchedules'] });
       toast({ title: 'Jornada atualizada!' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { schedules, isLoading, upsertSchedule };

@@ -111,7 +111,7 @@ export function useCrmWebhooks() {
       toast({ title: 'Webhook removido!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover webhook', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao remover webhook', description: getErrorMessage(error) });
     },
   });
 

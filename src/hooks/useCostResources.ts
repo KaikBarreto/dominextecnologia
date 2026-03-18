@@ -241,7 +241,7 @@ export function useCostResources() {
       toast({ title: 'Recurso excluído!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(error) });
     },
   });
 

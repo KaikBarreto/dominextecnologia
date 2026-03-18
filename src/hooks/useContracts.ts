@@ -290,7 +290,7 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       toast({ title: 'Contrato excluído!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) }),
   });
 
   // Stats

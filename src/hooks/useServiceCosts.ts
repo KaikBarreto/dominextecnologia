@@ -94,7 +94,7 @@ export function useServiceCosts(serviceId?: string | null) {
       toast({ title: 'Custos do serviço salvos!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao salvar custos', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao salvar custos', description: getErrorMessage(error) });
     },
   });
 

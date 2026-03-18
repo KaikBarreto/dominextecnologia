@@ -135,7 +135,7 @@ export function useTeams() {
       toast({ title: 'Equipe excluída!' });
     },
     onError: (e: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao excluir equipe', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir equipe', description: getErrorMessage(e) });
     },
   });
 

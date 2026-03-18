@@ -214,11 +214,7 @@ export function useFormTemplates() {
       toast({ title: 'Serviços vinculados ao questionário!' });
     },
     onError: (error) => {
-      toast({
-        title: 'Erro ao vincular serviços',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao vincular serviços', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
