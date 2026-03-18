@@ -44,7 +44,7 @@ export function useEmployees() {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário criado!' }); },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar funcionário', description: getErrorMessage(e) }),
   });
 
   const updateEmployee = useMutation({
