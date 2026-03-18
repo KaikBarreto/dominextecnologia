@@ -40,7 +40,7 @@ export function useEmployeeMovements(employeeId?: string) {
       qc.invalidateQueries({ queryKey: ['all-employee-movements'] });
       toast({ title: 'Movimentação registrada!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao registrar movimentação', description: getErrorMessage(e) }),
   });
 
   const deleteMovement = useMutation({
