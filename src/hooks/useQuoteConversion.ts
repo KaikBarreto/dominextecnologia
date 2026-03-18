@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Quote } from '@/hooks/useQuotes';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export function useQuoteConversion() {
   const { toast } = useToast();
