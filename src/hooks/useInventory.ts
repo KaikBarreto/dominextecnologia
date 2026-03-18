@@ -41,11 +41,7 @@ export function useInventory() {
       toast({ title: 'Item cadastrado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao cadastrar item', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao cadastrar item', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
