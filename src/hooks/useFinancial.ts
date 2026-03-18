@@ -124,11 +124,7 @@ export function useFinancial() {
       toast({ title: 'Transação atualizada com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao atualizar transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
     },
   });
 
