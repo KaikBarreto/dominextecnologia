@@ -117,11 +117,7 @@ export function useFormTemplates() {
       toast({ title: 'Template removido!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover template', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover template', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
