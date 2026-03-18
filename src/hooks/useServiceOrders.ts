@@ -4,6 +4,7 @@ import type { ServiceOrder, OsStatus, OsType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id: string;
