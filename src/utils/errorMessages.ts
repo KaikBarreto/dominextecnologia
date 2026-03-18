@@ -14,6 +14,14 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'Este tipo de serviço não pode ser excluído porque já está vinculado a contratos.',
   },
   {
+    test: (message) => message.includes('violates foreign key constraint') && message.includes('service_orders_technician_id_fkey'),
+    text: 'O técnico selecionado é inválido ou foi removido. Selecione um técnico válido ou deixe o campo em branco.',
+  },
+  {
+    test: (message) => message.includes('violates foreign key constraint') && message.includes('service_orders_customer_id_fkey'),
+    text: 'O cliente selecionado é inválido ou foi removido. Selecione um cliente válido ou deixe o campo em branco quando permitido.',
+  },
+  {
     test: (message) => message.includes('cannot insert a non-default value into column') && message.includes('final_price'),
     text: 'Não foi possível salvar o orçamento porque um valor calculado foi enviado incorretamente. Tente novamente.',
   },
