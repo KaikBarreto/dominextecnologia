@@ -108,9 +108,10 @@ export function useLeads() {
 
   const updateLead = useMutation({
     mutationFn: async ({ id, ...updates }: LeadUpdate & { id: string }) => {
+      const sanitized = normalizeOptionalForeignKeys(updates, ['customer_id', 'assigned_to', 'stage_id']);
       const { data, error } = await supabase
         .from('leads')
-        .update(updates)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();

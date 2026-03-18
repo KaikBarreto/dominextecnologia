@@ -108,9 +108,11 @@ export function useFinancial() {
 
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
+      const sanitized = normalizeOptionalForeignKeys(input, ['customer_id', 'service_order_id', 'contract_id']);
+
       const { data, error } = await supabase
         .from('financial_transactions')
-        .update(input)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();

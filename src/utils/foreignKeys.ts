@@ -10,10 +10,12 @@ export function normalizeOptionalForeignKeys<T extends Record<string, any>>(
   payload: T,
   keys: Array<keyof T>
 ): T {
-  const normalized = { ...payload };
+  const normalized = { ...payload } as T;
 
   keys.forEach((key) => {
-    normalized[key] = normalizeOptionalForeignKey(normalized[key]);
+    (normalized as Record<string, any>)[key as string] = normalizeOptionalForeignKey(
+      (normalized as Record<string, any>)[key as string]
+    );
   });
 
   return normalized;
