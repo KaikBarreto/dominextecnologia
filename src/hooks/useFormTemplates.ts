@@ -78,11 +78,7 @@ export function useFormTemplates() {
       toast({ title: 'Template criado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao criar template', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao criar template', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
