@@ -221,7 +221,7 @@ export default function Schedule() {
     }
 
     // Create all task entries
-    const inserts = dates.map(date => ({
+    const inserts = dates.map(date => normalizeOptionalForeignKeys({
       entry_type: 'tarefa',
       task_title: data.task_title,
       task_type_id: data.task_type_id || null,
@@ -239,7 +239,7 @@ export default function Schedule() {
       recurrence_interval: data.recurrence_interval || null,
       recurrence_end_date: data.recurrence_end_date || null,
       recurrence_group_id: groupId || null,
-    }));
+    } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']));
 
     const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
     if (error) {

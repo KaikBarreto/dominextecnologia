@@ -178,14 +178,15 @@ export default function CustomerPortal() {
     if (!ticketDesc.trim() || !customer) return;
     setTicketSubmitting(true);
     try {
-      const { error } = await supabase.from('service_orders').insert({
+      const payload = normalizeOptionalForeignKeys({
         customer_id: customer.id,
         equipment_id: ticketEquipmentId || null,
         description: ticketDesc,
         os_type: 'corretiva',
         status: 'pendente',
         origin: 'portal',
-      } as any);
+      } as any, ['customer_id', 'equipment_id']);
+      const { error } = await supabase.from('service_orders').insert(payload);
       if (error) throw error;
       toast({ title: 'Chamado aberto com sucesso!' });
       setShowTicketForm(false);
