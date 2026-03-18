@@ -157,11 +157,7 @@ export function useFormTemplates() {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar pergunta', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar pergunta', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
