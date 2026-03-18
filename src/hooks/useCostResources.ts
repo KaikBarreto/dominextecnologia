@@ -222,7 +222,7 @@ export function useCostResources() {
       toast({ title: 'Recurso atualizado!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar', description: getErrorMessage(error) });
     },
   });
 
