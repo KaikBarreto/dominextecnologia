@@ -97,7 +97,7 @@ export function useCrmWebhooks() {
       toast({ title: 'Webhook atualizado!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar webhook', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar webhook', description: getErrorMessage(error) });
     },
   });
 
