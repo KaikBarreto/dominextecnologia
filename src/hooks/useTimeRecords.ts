@@ -323,7 +323,7 @@ export function useTimeRecord(userId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ['timeSheets'] });
     },
     onError: (err: any) => {
-      toast({ title: 'Erro ao registrar ponto', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao registrar ponto', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 
