@@ -80,9 +80,14 @@ export function usePmocPlans() {
 
   const createPlan = useMutation({
     mutationFn: async ({ equipment_ids, ...input }: PmocPlanInput) => {
+      const sanitized = normalizeOptionalForeignKeys(
+        { ...input, created_by: user?.id } as any,
+        ['contract_id', 'technician_id', 'service_type_id', 'form_template_id']
+      );
+
       const { data: plan, error } = await supabase
         .from('pmoc_plans')
-        .insert({ ...input, created_by: user?.id } as any)
+        .insert(sanitized as any)
         .select()
         .single();
 
