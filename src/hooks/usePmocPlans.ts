@@ -107,7 +107,7 @@ export function usePmocPlans() {
       toast({ title: 'Plano PMOC criado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar plano', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar plano', description: getErrorMessage(error) });
     },
   });
 
