@@ -99,11 +99,7 @@ export function useFormTemplates() {
       toast({ title: 'Template atualizado!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar template', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao atualizar template', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
