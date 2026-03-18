@@ -167,9 +167,20 @@ export function useServiceOrders() {
 
   const updateServiceOrder = useMutation({
     mutationFn: async ({ id, assignee_user_ids, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[] }) => {
+      const sanitized = normalizeOptionalForeignKeys(input, [
+        'technician_id',
+        'team_id',
+        'customer_id',
+        'equipment_id',
+        'service_type_id',
+        'form_template_id',
+        'contract_id',
+        'quote_id',
+      ] as Array<keyof typeof input>);
+
       const { data, error } = await supabase
         .from('service_orders')
-        .update(input)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();
