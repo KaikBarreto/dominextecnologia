@@ -4,6 +4,7 @@ import type { ServiceOrder, OsStatus, OsType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id: string;
@@ -108,17 +109,13 @@ export function useServiceOrders() {
   const createServiceOrder = useMutation({
     mutationFn: async (input: ServiceOrderInput) => {
       const { equipment_items, assignee_user_ids, assignee_team_ids, ...rest } = input;
-      // Sanitize optional UUID fields to avoid FK constraint violations
-      const sanitized = {
-        ...rest,
-        technician_id: rest.technician_id || null,
-        team_id: rest.team_id || null,
-        customer_id: rest.customer_id || null,
-        equipment_id: rest.equipment_id || null,
-        service_type_id: rest.service_type_id || null,
-        form_template_id: rest.form_template_id || null,
-        created_by: user?.id,
-      };
+      const sanitized = normalizeOptionalForeignKeys(
+        {
+          ...rest,
+          created_by: user?.id,
+        },
+        ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']
+      );
       const { data, error } = await supabase
         .from('service_orders')
         .insert(sanitized)
@@ -170,9 +167,20 @@ export function useServiceOrders() {
 
   const updateServiceOrder = useMutation({
     mutationFn: async ({ id, assignee_user_ids, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[] }) => {
+      const sanitized = normalizeOptionalForeignKeys(input, [
+        'technician_id',
+        'team_id',
+        'customer_id',
+        'equipment_id',
+        'service_type_id',
+        'form_template_id',
+        'contract_id',
+        'quote_id',
+      ] as Array<keyof typeof input>);
+
       const { data, error } = await supabase
         .from('service_orders')
-        .update(input)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();

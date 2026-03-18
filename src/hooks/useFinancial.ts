@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface TransactionInput {
   transaction_type: TransactionType;
@@ -75,12 +76,14 @@ export function useFinancial() {
 
   const createTransaction = useMutation({
     mutationFn: async (input: TransactionInput) => {
+      const sanitized = normalizeOptionalForeignKeys(
+        { ...input, created_by: user?.id },
+        ['customer_id', 'service_order_id', 'contract_id']
+      );
+
       const { data, error } = await supabase
         .from('financial_transactions')
-        .insert({
-          ...input,
-          created_by: user?.id,
-        })
+        .insert(sanitized)
         .select()
         .single();
       
@@ -105,9 +108,11 @@ export function useFinancial() {
 
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
+      const sanitized = normalizeOptionalForeignKeys(input, ['customer_id', 'service_order_id', 'contract_id']);
+
       const { data, error } = await supabase
         .from('financial_transactions')
-        .update(input)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();

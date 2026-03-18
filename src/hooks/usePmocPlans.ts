@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface PmocPlan {
   id: string;
@@ -79,9 +80,14 @@ export function usePmocPlans() {
 
   const createPlan = useMutation({
     mutationFn: async ({ equipment_ids, ...input }: PmocPlanInput) => {
+      const sanitized = normalizeOptionalForeignKeys(
+        { ...input, created_by: user?.id } as any,
+        ['contract_id', 'technician_id', 'service_type_id', 'form_template_id']
+      );
+
       const { data: plan, error } = await supabase
         .from('pmoc_plans')
-        .insert({ ...input, created_by: user?.id } as any)
+        .insert(sanitized as any)
         .select()
         .single();
 
@@ -106,9 +112,16 @@ export function usePmocPlans() {
 
   const updatePlan = useMutation({
     mutationFn: async ({ id, equipment_ids, ...input }: PmocPlanInput & { id: string }) => {
+      const sanitized = normalizeOptionalForeignKeys(input as any, [
+        'contract_id',
+        'technician_id',
+        'service_type_id',
+        'form_template_id',
+      ]);
+
       const { error } = await supabase
         .from('pmoc_plans')
-        .update(input as any)
+        .update(sanitized as any)
         .eq('id', id);
 
       if (error) throw error;

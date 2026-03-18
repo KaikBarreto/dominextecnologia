@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Quote } from '@/hooks/useQuotes';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export function useQuoteConversion() {
   const { toast } = useToast();
@@ -23,10 +24,8 @@ export function useQuoteConversion() {
         throw new Error('Orçamento já foi convertido');
       }
 
-      // 1. Create service order
-      const { data: serviceOrder, error: osError } = await supabase
-        .from('service_orders')
-        .insert({
+      const serviceOrderPayload = normalizeOptionalForeignKeys(
+        {
           customer_id: quote.customer_id,
           service_type_id: quote.quote_items?.[0]?.service_type_id || null,
           status: 'agendada',
@@ -36,7 +35,13 @@ export function useQuoteConversion() {
           quote_id: quote.id,
           created_by: user.id,
           company_id: profile.company_id,
-        } as any)
+        } as any,
+        ['customer_id', 'service_type_id']
+      );
+
+      const { data: serviceOrder, error: osError } = await supabase
+        .from('service_orders')
+        .insert(serviceOrderPayload)
         .select()
         .single();
 

@@ -24,6 +24,7 @@ import { format, addDays, addMonths as addMonthsFn } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 interface PmocPlanFormDialogProps {
   open: boolean;
@@ -143,12 +144,20 @@ export function PmocPlanFormDialog({ open, onOpenChange, plan }: PmocPlanFormDia
         for (const date of previewDates) {
           const equipNames = selectedEquipmentIds.map(id => equipment.find(e => e.id === id)?.name).filter(Boolean);
           const description = `PMOC automático: ${name}${equipNames.length > 0 ? ` - ${equipNames.join(', ')}` : ''}`;
-          const { data: os, error: osError } = await supabase.from('service_orders').insert({
-            customer_id: customerId, equipment_id: selectedEquipmentIds.length === 1 ? selectedEquipmentIds[0] : null,
-            technician_id: technicianId || null, os_type: 'manutencao_preventiva' as const,
-            service_type_id: serviceTypeId || null, form_template_id: formTemplateId || null,
-            scheduled_date: format(date, 'yyyy-MM-dd'), description, require_tech_signature: true, status: 'pendente' as const,
-          }).select('id').single();
+          const osPayload = normalizeOptionalForeignKeys({
+            customer_id: customerId,
+            equipment_id: selectedEquipmentIds.length === 1 ? selectedEquipmentIds[0] : null,
+            technician_id: technicianId || null,
+            os_type: 'manutencao_preventiva' as const,
+            service_type_id: serviceTypeId || null,
+            form_template_id: formTemplateId || null,
+            scheduled_date: format(date, 'yyyy-MM-dd'),
+            description,
+            require_tech_signature: true,
+            status: 'pendente' as const,
+          } as any, ['customer_id', 'equipment_id', 'technician_id', 'service_type_id', 'form_template_id']);
+          const { data: os, error: osError } = await supabase.from('service_orders').insert(osPayload)
+            .select('id').single();
           if (osError) { console.error('Error creating OS:', osError); continue; }
           if (selectedEquipmentIds.length > 0) {
             const eqLinks = selectedEquipmentIds.map(eqId => ({ service_order_id: os.id, equipment_id: eqId, form_template_id: formTemplateId || null }));

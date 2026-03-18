@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate, Enums } from '@/integrations/supabase/types';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export type Lead = Tables<'leads'> & {
   customers?: Tables<'customers'> | null;
@@ -79,9 +80,13 @@ export function useLeads() {
   const createLead = useMutation({
     mutationFn: async (lead: LeadInsert) => {
       const { data: userData } = await supabase.auth.getUser();
+      const sanitized = normalizeOptionalForeignKeys(
+        { ...lead, created_by: userData.user?.id },
+        ['customer_id', 'assigned_to', 'stage_id']
+      );
       const { data, error } = await supabase
         .from('leads')
-        .insert({ ...lead, created_by: userData.user?.id })
+        .insert(sanitized)
         .select()
         .single();
       
@@ -103,9 +108,10 @@ export function useLeads() {
 
   const updateLead = useMutation({
     mutationFn: async ({ id, ...updates }: LeadUpdate & { id: string }) => {
+      const sanitized = normalizeOptionalForeignKeys(updates, ['customer_id', 'assigned_to', 'stage_id']);
       const { data, error } = await supabase
         .from('leads')
-        .update(updates)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();

@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 interface PortalData {
   id: string;
@@ -177,14 +178,15 @@ export default function CustomerPortal() {
     if (!ticketDesc.trim() || !customer) return;
     setTicketSubmitting(true);
     try {
-      const { error } = await supabase.from('service_orders').insert({
+      const payload = normalizeOptionalForeignKeys({
         customer_id: customer.id,
         equipment_id: ticketEquipmentId || null,
         description: ticketDesc,
         os_type: 'corretiva',
         status: 'pendente',
         origin: 'portal',
-      } as any);
+      } as any, ['customer_id', 'equipment_id']);
+      const { error } = await supabase.from('service_orders').insert(payload);
       if (error) throw error;
       toast({ title: 'Chamado aberto com sucesso!' });
       setShowTicketForm(false);

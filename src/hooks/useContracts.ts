@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { addDays, addMonths } from 'date-fns';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface Contract {
   id: string;
@@ -123,16 +124,15 @@ export function useContracts() {
 
       if (!profile?.company_id) throw new Error('Empresa não encontrada');
 
-      const { data: contract, error } = await supabase
-        .from('contracts')
-        .insert({
+      const contractPayload = normalizeOptionalForeignKeys(
+        {
           company_id: profile.company_id,
           name: input.name,
           customer_id: input.customer_id,
-          technician_id: input.technician_id || null,
-          team_id: input.team_id || null,
-          service_type_id: input.service_type_id || null,
-          form_template_id: input.form_template_id || null,
+          technician_id: input.technician_id,
+          team_id: input.team_id,
+          service_type_id: input.service_type_id,
+          form_template_id: input.form_template_id,
           status: input.status,
           notes: input.notes || null,
           frequency_type: input.frequency_type,
@@ -140,7 +140,13 @@ export function useContracts() {
           start_date: input.start_date,
           horizon_months: input.horizon_months,
           created_by: user?.id || null,
-        } as any)
+        } as any,
+        ['technician_id', 'team_id', 'service_type_id', 'form_template_id']
+      );
+
+      const { data: contract, error } = await supabase
+        .from('contracts')
+        .insert(contractPayload)
         .select('id')
         .single();
 

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface QuoteItem {
   id?: string;
@@ -124,7 +125,7 @@ const STATUS_COLORS: Record<string, string> = {
 export { STATUS_LABELS, STATUS_COLORS };
 
 function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
-  return {
+  return normalizeOptionalForeignKeys({
     quote_id: quoteId,
     position: idx,
     item_type: item.item_type,
@@ -143,7 +144,7 @@ function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
     profit_rate: item.profit_rate ?? 10,
     bdi: item.bdi ?? 0.68,
     price_override: item.price_override ?? null,
-  };
+  }, ['inventory_id', 'service_type_id']);
 }
 
 export function useQuotes() {
@@ -167,10 +168,15 @@ export function useQuotes() {
   const createQuote = useMutation({
     mutationFn: async (input: QuoteInput) => {
       const { items, displacement_cost, final_price, ...quoteData } = input as any;
+      const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData, [
+        'customer_id',
+        'assigned_to',
+        'proposal_template_id',
+      ]);
 
       const { data: quote, error } = await supabase
         .from('quotes')
-        .insert({ ...quoteData, created_by: user?.id } as any)
+        .insert({ ...sanitizedQuoteData, created_by: user?.id } as any)
         .select()
         .single();
 
@@ -197,9 +203,15 @@ export function useQuotes() {
 
   const updateQuote = useMutation({
     mutationFn: async ({ id, items, displacement_cost, final_price, ...quoteData }: QuoteInput & { id: string } & { displacement_cost?: any; final_price?: any }) => {
+      const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData as any, [
+        'customer_id',
+        'assigned_to',
+        'proposal_template_id',
+      ]);
+
       const { error } = await supabase
         .from('quotes')
-        .update(quoteData as any)
+        .update(sanitizedQuoteData as any)
         .eq('id', id);
 
       if (error) throw error;
