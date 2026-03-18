@@ -518,7 +518,7 @@ export function useTimeSettings() {
       queryClient.invalidateQueries({ queryKey: ['timeSettings'] });
       toast({ title: 'Configurações salvas!' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   return { settings, isLoading, upsert };
