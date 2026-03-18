@@ -144,11 +144,7 @@ export function useFinancial() {
       toast({ title: 'Transação excluída com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao excluir transação', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao excluir transação', description: getErrorMessage(error) });
     },
   });
 
