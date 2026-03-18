@@ -99,11 +99,7 @@ export function useLeads() {
       toast({ title: 'Lead criado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao criar lead', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao criar lead', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
