@@ -80,9 +80,13 @@ export function useLeads() {
   const createLead = useMutation({
     mutationFn: async (lead: LeadInsert) => {
       const { data: userData } = await supabase.auth.getUser();
+      const sanitized = normalizeOptionalForeignKeys(
+        { ...lead, created_by: userData.user?.id },
+        ['customer_id', 'assigned_to', 'stage_id']
+      );
       const { data, error } = await supabase
         .from('leads')
-        .insert({ ...lead, created_by: userData.user?.id })
+        .insert(sanitized)
         .select()
         .single();
       
