@@ -42,7 +42,7 @@ export function useEquipmentFieldConfig() {
       queryClient.invalidateQueries({ queryKey: ['equipment-field-config'] });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar campo', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar campo', description: getErrorMessage(error) });
     },
   });
 
