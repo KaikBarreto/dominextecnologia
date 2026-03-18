@@ -54,7 +54,7 @@ export function useFinancialCategories() {
       toast({ title: 'Categoria criada com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar categoria', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar categoria', description: getErrorMessage(error) });
     },
   });
 
