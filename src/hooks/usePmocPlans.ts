@@ -141,7 +141,7 @@ export function usePmocPlans() {
       toast({ title: 'Plano atualizado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar plano', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar plano', description: getErrorMessage(error) });
     },
   });
 
