@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export type ServiceMaterial = Tables<'service_materials'>;
 export type ServiceMaterialInsert = TablesInsert<'service_materials'>;
