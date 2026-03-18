@@ -109,17 +109,13 @@ export function useServiceOrders() {
   const createServiceOrder = useMutation({
     mutationFn: async (input: ServiceOrderInput) => {
       const { equipment_items, assignee_user_ids, assignee_team_ids, ...rest } = input;
-      // Sanitize optional UUID fields to avoid FK constraint violations
-      const sanitized = {
-        ...rest,
-        technician_id: rest.technician_id || null,
-        team_id: rest.team_id || null,
-        customer_id: rest.customer_id || null,
-        equipment_id: rest.equipment_id || null,
-        service_type_id: rest.service_type_id || null,
-        form_template_id: rest.form_template_id || null,
-        created_by: user?.id,
-      };
+      const sanitized = normalizeOptionalForeignKeys(
+        {
+          ...rest,
+          created_by: user?.id,
+        },
+        ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']
+      );
       const { data, error } = await supabase
         .from('service_orders')
         .insert(sanitized)
