@@ -175,11 +175,7 @@ export function useFormTemplates() {
       toast({ title: 'Pergunta removida!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover pergunta', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover pergunta', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
