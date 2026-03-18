@@ -64,7 +64,7 @@ export function useServiceMaterials(serviceId?: string | null) {
       toast({ title: 'Material adicionado!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao adicionar material', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao adicionar material', description: getErrorMessage(error) });
     },
   });
 
