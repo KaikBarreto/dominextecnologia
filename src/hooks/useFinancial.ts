@@ -76,12 +76,14 @@ export function useFinancial() {
 
   const createTransaction = useMutation({
     mutationFn: async (input: TransactionInput) => {
+      const sanitized = normalizeOptionalForeignKeys(
+        { ...input, created_by: user?.id },
+        ['customer_id', 'service_order_id', 'contract_id']
+      );
+
       const { data, error } = await supabase
         .from('financial_transactions')
-        .insert({
-          ...input,
-          created_by: user?.id,
-        })
+        .insert(sanitized)
         .select()
         .single();
       
