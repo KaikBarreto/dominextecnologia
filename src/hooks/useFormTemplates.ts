@@ -137,11 +137,7 @@ export function useFormTemplates() {
       toast({ title: 'Pergunta adicionada!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao adicionar pergunta', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao adicionar pergunta', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
