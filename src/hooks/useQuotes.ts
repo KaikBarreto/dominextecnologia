@@ -168,10 +168,15 @@ export function useQuotes() {
   const createQuote = useMutation({
     mutationFn: async (input: QuoteInput) => {
       const { items, displacement_cost, final_price, ...quoteData } = input as any;
+      const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData, [
+        'customer_id',
+        'assigned_to',
+        'proposal_template_id',
+      ]);
 
       const { data: quote, error } = await supabase
         .from('quotes')
-        .insert({ ...quoteData, created_by: user?.id } as any)
+        .insert({ ...sanitizedQuoteData, created_by: user?.id } as any)
         .select()
         .single();
 
