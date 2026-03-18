@@ -54,7 +54,7 @@ export function useEquipmentCategories() {
       toast({ title: 'Categoria atualizada!' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar categoria', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar categoria', description: getErrorMessage(error) });
     },
   });
 
