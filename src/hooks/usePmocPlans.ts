@@ -112,9 +112,16 @@ export function usePmocPlans() {
 
   const updatePlan = useMutation({
     mutationFn: async ({ id, equipment_ids, ...input }: PmocPlanInput & { id: string }) => {
+      const sanitized = normalizeOptionalForeignKeys(input as any, [
+        'contract_id',
+        'technician_id',
+        'service_type_id',
+        'form_template_id',
+      ]);
+
       const { error } = await supabase
         .from('pmoc_plans')
-        .update(input as any)
+        .update(sanitized as any)
         .eq('id', id);
 
       if (error) throw error;
