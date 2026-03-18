@@ -120,7 +120,7 @@ export function useTeams() {
       toast({ title: 'Equipe atualizada!' });
     },
     onError: (e: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar equipe', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar equipe', description: getErrorMessage(e) });
     },
   });
 
