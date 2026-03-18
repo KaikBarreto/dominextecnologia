@@ -93,7 +93,7 @@ export function useTeams() {
       toast({ title: 'Equipe criada com sucesso!' });
     },
     onError: (e: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar equipe', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar equipe', description: getErrorMessage(e) });
     },
   });
 
