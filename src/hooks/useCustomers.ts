@@ -57,11 +57,7 @@ export function useCustomers() {
       toast({ title: 'Cliente criado com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao criar cliente', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro ao criar cliente', description: getErrorMessage(error) });
     },
   });
 
