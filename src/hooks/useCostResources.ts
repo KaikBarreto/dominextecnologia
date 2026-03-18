@@ -161,7 +161,7 @@ export function useCostResources() {
       toast({ title: 'Recurso criado com sucesso!' });
     },
     onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar recurso', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar recurso', description: getErrorMessage(error) });
     },
   });
 
