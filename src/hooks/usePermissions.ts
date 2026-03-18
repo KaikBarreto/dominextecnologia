@@ -154,7 +154,7 @@ export function usePermissionPresets() {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
       toast({ title: 'Cargo atualizado com sucesso!' });
     },
-    onError: (e) => toast({ title: 'Erro ao atualizar cargo', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Erro ao atualizar cargo', description: getErrorMessage(e), variant: 'destructive' }),
   });
 
   const deletePreset = useMutation({
