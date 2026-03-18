@@ -91,11 +91,7 @@ export function useQuoteConversion() {
       });
     },
     onError: (error: any) => {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro na conversão', 
-        description: error.message 
-      });
+      toast({ variant: 'destructive', title: 'Erro na conversão', description: getErrorMessage(error) });
     },
   });
 
