@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 
 export interface TransactionInput {
   transaction_type: TransactionType;
