@@ -99,41 +99,51 @@ import { AppLayout } from "@/components/layout/AppLayout";
 
 const queryClient = new QueryClient();
 
+// Loading spinner component
+const LoadingSpinner = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+  </div>
+);
+
+// Determine the default authenticated route based on permissions
+function useDefaultRoute() {
+  const { hasScreenAccess } = useAuth();
+  if (hasScreenAccess('screen:dashboard')) return '/dashboard';
+  if (hasScreenAccess('screen:schedule')) return '/agenda';
+  if (hasScreenAccess('screen:service_orders')) return '/ordens-servico';
+  return '/perfil';
+}
+
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   useForcedLogout();
   
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/login" replace />;
   
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
+  return <>{children}</>;
+}
+
+// Permission-gated route — redirects to default route if no access
+function PermissionRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
+  const { hasScreenAccess, loading } = useAuth();
+  const defaultRoute = useDefaultRoute();
+
+  if (loading) return <LoadingSpinner />;
+  if (!hasScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
+
   return <>{children}</>;
 }
 
 // Public Route wrapper (redirects authenticated users)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const defaultRoute = useDefaultRoute();
   
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
-  }
-  
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (loading) return <LoadingSpinner />;
+  if (user) return <Navigate to={defaultRoute} replace />;
   
   return <>{children}</>;
 }
