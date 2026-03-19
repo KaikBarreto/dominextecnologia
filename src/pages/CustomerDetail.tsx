@@ -89,6 +89,20 @@ export default function CustomerDetail() {
   const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(customerContracts);
   const contractsPagination = useDataPagination(sortedContracts);
 
+  const tabs: { key: TabKey; label: string }[] = useMemo(() => {
+    const allTabs: { key: TabKey; label: string }[] = [
+      { key: 'geral', label: 'Geral' },
+      { key: 'equipamentos', label: 'Equipamentos' },
+      { key: 'historico', label: 'Histórico de OS' },
+      { key: 'chamados', label: 'Chamados' },
+      { key: 'contratos', label: 'Contratos' },
+    ];
+    if (canViewCustomerFinancial) {
+      allTabs.push({ key: 'financeiro', label: 'Financeiro' });
+    }
+    return allTabs;
+  }, [canViewCustomerFinancial]);
+
   // Load existing portal link
   useEffect(() => {
     if (!id) return;
@@ -137,20 +151,6 @@ export default function CustomerDetail() {
       </div>
     );
   }
-
-  const tabs: { key: TabKey; label: string }[] = useMemo(() => {
-    const allTabs: { key: TabKey; label: string }[] = [
-      { key: 'geral', label: 'Geral' },
-      { key: 'equipamentos', label: 'Equipamentos' },
-      { key: 'historico', label: 'Histórico de OS' },
-      { key: 'chamados', label: 'Chamados' },
-      { key: 'contratos', label: 'Contratos' },
-    ];
-    if (canViewCustomerFinancial) {
-      allTabs.push({ key: 'financeiro', label: 'Financeiro' });
-    }
-    return allTabs;
-  }, [canViewCustomerFinancial]);
 
   return (
     <div className="space-y-6">
