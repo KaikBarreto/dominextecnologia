@@ -349,9 +349,9 @@ export default function ContractDetail() {
               ) : (
                 <div className="space-y-2">
                   {recPagination.paginatedItems.map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-3 rounded-md border text-sm">
+                    <div key={t.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border text-sm gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium">{t.description}</p>
+                        <p className="font-medium truncate">{t.description}</p>
                         <p className="text-xs text-muted-foreground">
                           {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
                         </p>
