@@ -204,7 +204,7 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
             </div>
           </div>
         )}
-      </ScrollArea>
+      </div>
     </ResponsiveModal>
   );
 }
