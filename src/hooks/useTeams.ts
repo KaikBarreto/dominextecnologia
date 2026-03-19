@@ -126,6 +126,10 @@ export function useTeams() {
 
   const deleteTeam = useMutation({
     mutationFn: async (id: string) => {
+      // Remove team references from linked records before deleting
+      await supabase.from('service_orders').update({ team_id: null } as any).eq('team_id', id);
+      await supabase.from('contracts').update({ team_id: null } as any).eq('team_id', id);
+      await supabase.from('team_members').delete().eq('team_id', id);
       const { error } = await supabase.from('teams').delete().eq('id', id);
       if (error) throw error;
     },
