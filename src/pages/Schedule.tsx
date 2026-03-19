@@ -40,8 +40,12 @@ export default function Schedule() {
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, hasPermission, isAdminOrGestor } = useAuth();
   const { settings: companySettings } = useCompanySettings();
+
+  const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
+  const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
+  const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
