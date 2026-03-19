@@ -34,6 +34,7 @@ import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getFrequencyLabel } from '@/hooks/useContracts';
+import { useAuth } from '@/contexts/AuthContext';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'financeiro' | 'chamados' | 'contratos';
 
