@@ -65,9 +65,9 @@ export function useCompanySettings() {
         .from('company_settings')
         .update(input)
         .eq('id', current.id)
-        .select()
-        .single();
+        .select();
       if (error) throw error;
+      const row = data?.[0];
 
       // Sync relevant fields to the companies table
       try {
@@ -84,7 +84,7 @@ export function useCompanySettings() {
           if (input.logo_url !== undefined) companyUpdate.logo_url = input.logo_url;
           if (input.document !== undefined) companyUpdate.cnpj = input.document;
           if (input.address !== undefined || input.city !== undefined || input.state !== undefined) {
-            const addr = [input.address || data.address, input.city || data.city, input.state || data.state].filter(Boolean).join(', ');
+            const addr = [input.address || row?.address, input.city || row?.city, input.state || row?.state].filter(Boolean).join(', ');
             companyUpdate.address = addr;
           }
           if (Object.keys(companyUpdate).length > 0) {
@@ -95,7 +95,7 @@ export function useCompanySettings() {
         console.error('Error syncing to companies table:', syncErr);
       }
 
-      return data;
+      return row;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-settings'] });

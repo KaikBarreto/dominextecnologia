@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, Loader2, FileText, Megaphone } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
@@ -34,6 +34,7 @@ import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getFrequencyLabel } from '@/hooks/useContracts';
+import { useAuth } from '@/contexts/AuthContext';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'financeiro' | 'chamados' | 'contratos';
 
@@ -45,6 +46,8 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { isAdminOrGestor, hasPermission } = useAuth();
+  const canViewCustomerFinancial = isAdminOrGestor() || hasPermission('fn:view_customer_financial');
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
   const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
@@ -85,6 +88,20 @@ export default function CustomerDetail() {
   const ticketsPagination = useDataPagination(sortedTickets);
   const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(customerContracts);
   const contractsPagination = useDataPagination(sortedContracts);
+
+  const tabs: { key: TabKey; label: string }[] = useMemo(() => {
+    const allTabs: { key: TabKey; label: string }[] = [
+      { key: 'geral', label: 'Geral' },
+      { key: 'equipamentos', label: 'Equipamentos' },
+      { key: 'historico', label: 'Histórico de OS' },
+      { key: 'chamados', label: 'Chamados' },
+      { key: 'contratos', label: 'Contratos' },
+    ];
+    if (canViewCustomerFinancial) {
+      allTabs.push({ key: 'financeiro', label: 'Financeiro' });
+    }
+    return allTabs;
+  }, [canViewCustomerFinancial]);
 
   // Load existing portal link
   useEffect(() => {
@@ -134,15 +151,6 @@ export default function CustomerDetail() {
       </div>
     );
   }
-
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'geral', label: 'Geral' },
-    { key: 'equipamentos', label: 'Equipamentos' },
-    { key: 'historico', label: 'Histórico de OS' },
-    { key: 'chamados', label: 'Chamados' },
-    { key: 'contratos', label: 'Contratos' },
-    { key: 'financeiro', label: 'Financeiro' },
-  ];
 
   return (
     <div className="space-y-6">
