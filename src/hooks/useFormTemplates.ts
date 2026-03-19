@@ -105,19 +105,22 @@ export function useFormTemplates() {
 
   const deleteTemplate = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('form_templates')
-        .delete()
-        .eq('id', id);
+        .update({ is_active: false })
+        .eq('id', id)
+        .select()
+        .single();
       
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
-      toast({ title: 'Template removido!' });
+      toast({ title: 'Questionário desativado!' });
     },
     onError: (error) => {
-      toast({ title: 'Erro ao remover template', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Erro ao desativar questionário', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
