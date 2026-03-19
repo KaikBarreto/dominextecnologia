@@ -85,7 +85,7 @@ export function PermissionPresetDialog({ open, onOpenChange, presets, onCreate, 
       title="Configurações de Cargos"
       description="Crie e edite perfis de acesso com permissões pré-definidas"
     >
-      <ScrollArea className="max-h-[70vh] pr-4">
+      <div className="space-y-0">
         {!showForm ? (
           <div className="space-y-3 pb-4">
             <Button onClick={() => setIsCreating(true)} className="w-full gap-2">
