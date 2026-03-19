@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.10";
+export const APP_VERSION = "1.5.11";
 
-export const VERSION_NOTES = "Agenda: multi-responsáveis, recorrência personalizada, diferenciação visual OS/Tarefas";
+export const VERSION_NOTES = "Blindagem de erros na exclusão de questionários e mensagens técnicas mais claras";

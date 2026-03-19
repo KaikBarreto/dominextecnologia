@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.11',
+    date: '19 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exclusão de questionários com mensagem tratada',
+        description: 'Erros de vínculo ao tentar excluir questionários agora são interpretados corretamente e exibidos com mensagem amigável em português.',
+        category: 'correcao',
+      },
+      {
+        title: 'Leitura mais robusta de erros do banco',
+        description: 'O sistema agora considera detalhes adicionais do erro técnico para mapear melhor constraints e evitar mensagens cruas na interface.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.10',
     date: '16 de março de 2026',
     type: 'patch',
