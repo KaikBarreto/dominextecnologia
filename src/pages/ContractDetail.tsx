@@ -59,6 +59,7 @@ const FREQUENCY_OPTIONS = [
 ];
 
 export default function ContractDetail() {
+  const isMobile = useIsMobile();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
