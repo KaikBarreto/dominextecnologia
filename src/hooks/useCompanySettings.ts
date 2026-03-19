@@ -84,7 +84,7 @@ export function useCompanySettings() {
           if (input.logo_url !== undefined) companyUpdate.logo_url = input.logo_url;
           if (input.document !== undefined) companyUpdate.cnpj = input.document;
           if (input.address !== undefined || input.city !== undefined || input.state !== undefined) {
-            const addr = [input.address || data.address, input.city || data.city, input.state || data.state].filter(Boolean).join(', ');
+            const addr = [input.address || row?.address, input.city || row?.city, input.state || row?.state].filter(Boolean).join(', ');
             companyUpdate.address = addr;
           }
           if (Object.keys(companyUpdate).length > 0) {
