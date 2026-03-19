@@ -31,7 +31,8 @@ export function QuestionnairesPanel() {
 
   const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
-  const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(templates);
+  const activeTemplates = templates.filter((template) => template.is_active);
+  const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(activeTemplates);
 
   const handleCreate = () => {
     if (!newName.trim()) return;
