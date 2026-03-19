@@ -193,28 +193,28 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     >
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/ordens-servico" element={<ServiceOrders />} />
-      <Route path="/servicos" element={<ServicesPage />} />
+      <Route path="/dashboard" element={<PermissionRoute screenKey="screen:dashboard"><Dashboard /></PermissionRoute>} />
+      <Route path="/ordens-servico" element={<PermissionRoute screenKey="screen:service_orders"><ServiceOrders /></PermissionRoute>} />
+      <Route path="/servicos" element={<PermissionRoute screenKey="screen:services"><ServicesPage /></PermissionRoute>} />
       <Route path="/questionarios" element={<Navigate to="/servicos" replace />} />
-      <Route path="/questionarios/:id" element={<QuestionnaireDetail />} />
-      <Route path="/agenda" element={<Schedule />} />
-      <Route path="/clientes" element={<Customers />} />
-      <Route path="/clientes/:id" element={<CustomerDetail />} />
-      <Route path="/equipamentos" element={<EquipmentPage />} />
-      <Route path="/equipamentos/:id" element={<EquipmentDetail />} />
-      <Route path="/crm" element={<CRM />} />
-      <Route path="/orcamentos" element={<Quotes />} />
-      <Route path="/estoque" element={<Inventory />} />
-      <Route path="/financeiro" element={<Finance />} />
+      <Route path="/questionarios/:id" element={<PermissionRoute screenKey="screen:services"><QuestionnaireDetail /></PermissionRoute>} />
+      <Route path="/agenda" element={<PermissionRoute screenKey="screen:schedule"><Schedule /></PermissionRoute>} />
+      <Route path="/clientes" element={<PermissionRoute screenKey="screen:customers"><Customers /></PermissionRoute>} />
+      <Route path="/clientes/:id" element={<PermissionRoute screenKey="screen:customers"><CustomerDetail /></PermissionRoute>} />
+      <Route path="/equipamentos" element={<PermissionRoute screenKey="screen:equipment"><EquipmentPage /></PermissionRoute>} />
+      <Route path="/equipamentos/:id" element={<PermissionRoute screenKey="screen:equipment"><EquipmentDetail /></PermissionRoute>} />
+      <Route path="/crm" element={<PermissionRoute screenKey="screen:crm"><CRM /></PermissionRoute>} />
+      <Route path="/orcamentos" element={<PermissionRoute screenKey="screen:crm"><Quotes /></PermissionRoute>} />
+      <Route path="/estoque" element={<PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>} />
+      <Route path="/financeiro" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/pmoc" element={<Navigate to="/contratos" replace />} />
-      <Route path="/contratos" element={<Contracts />} />
-      <Route path="/contratos/:id" element={<ContractDetail />} />
-      <Route path="/usuarios" element={<Users />} />
-      <Route path="/configuracoes" element={<Settings />} />
+      <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><Contracts /></PermissionRoute>} />
+      <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ContractDetail /></PermissionRoute>} />
+      <Route path="/usuarios" element={<PermissionRoute screenKey="screen:users"><Users /></PermissionRoute>} />
+      <Route path="/configuracoes" element={<PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>} />
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
-      <Route path="/funcionarios" element={<Employees />} />
+      <Route path="/funcionarios" element={<PermissionRoute screenKey="screen:employees"><Employees /></PermissionRoute>} />
       <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
