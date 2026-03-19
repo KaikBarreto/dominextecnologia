@@ -270,7 +270,7 @@ export default function ContractDetail() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><ScrollText className="h-5 w-5" /> Informações</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
                   <p className="font-medium mt-0.5">{(contract.customers as any)?.name || '-'}</p>
