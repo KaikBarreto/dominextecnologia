@@ -18,7 +18,7 @@ interface ScheduleHeaderProps {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
-  onNewOrder: () => void;
+  onNewOrder?: () => void;
   // Filters
   technicianFilter: string;
   onTechnicianFilterChange: (val: string) => void;
