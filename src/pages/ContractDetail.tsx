@@ -375,7 +375,51 @@ export default function ContractDetail() {
           {/* Occurrences */}
           <Card>
             <CardHeader><CardTitle>Ocorrências ({occurrences.length})</CardTitle></CardHeader>
-            <CardContent className="p-0">
+            <CardContent className={cn(isMobile ? 'p-3' : 'p-0')}>
+              {isMobile ? (
+                <div className="space-y-2">
+                  {occPagination.paginatedItems.map(occ => {
+                    const occDate = parseLocalDate(occ.scheduled_date);
+                    const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
+                    const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
+                    return (
+                      <div key={occ.id} className={cn('p-3 rounded-md border space-y-2', isPast && 'border-warning/50 bg-warning/5')}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs text-muted-foreground">#{occ.occurrence_number}</span>
+                          <Badge variant={occStatusCfg.variant}>{occStatusCfg.label}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className={cn('font-medium', isPast && 'text-warning')}>
+                            {format(occDate, 'dd/MM/yyyy')} <span className="text-muted-foreground font-normal">({format(occDate, 'EEE', { locale: ptBR })})</span>
+                          </span>
+                          {occ.service_orders ? (
+                            <Badge variant="secondary" className="text-xs">OS #{occ.service_orders.order_number}</Badge>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-1 justify-end">
+                          {occ.service_order_id && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                              <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            </Button>
+                          )}
+                          {occ.status === 'scheduled' && (
+                            <Button
+                              variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-warning"
+                              title="Pular esta ocorrência"
+                              onClick={() => updateOccurrenceStatus.mutate({ id: occ.id, status: 'skipped' })}
+                            >
+                              <SkipForward className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -437,7 +481,8 @@ export default function ContractDetail() {
                   </TableBody>
                 </Table>
               </div>
-              <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
+              )}
+              {!isMobile && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
             </CardContent>
           </Card>
         </div>
