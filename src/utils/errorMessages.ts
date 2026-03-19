@@ -1,5 +1,12 @@
 const DEFAULT_MESSAGE = 'Ocorreu um erro inesperado. Tente novamente.';
 
+type ErrorLike = {
+  code?: string;
+  details?: string;
+  hint?: string;
+  message?: string;
+};
+
 const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: string }> = [
   // ── FK: Service Types ──
   {
@@ -66,6 +73,18 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
   },
 
   // ── FK: Form Templates / Questionnaires ──
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_form_template_id_fkey'),
+    text: 'Este questionário não pode ser excluído porque está vinculado a ordens de serviço.',
+  },
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('contract_items_form_template_id_fkey'),
+    text: 'Este questionário não pode ser excluído porque está vinculado a itens de contrato.',
+  },
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('contracts_form_template_id_fkey'),
+    text: 'Este questionário não pode ser excluído porque está vinculado a contratos.',
+  },
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('_template_id_fkey'),
     text: 'Este questionário não pode ser excluído porque está vinculado a ordens de serviço ou contratos.',
@@ -166,15 +185,18 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
 
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
   let raw = '';
+
   if (error instanceof Error) {
     raw = error.message;
   } else if (typeof error === 'string') {
     raw = error;
-  } else if (error && typeof error === 'object' && 'message' in error) {
-    raw = String((error as any).message);
-  } else {
-    raw = '';
+  } else if (error && typeof error === 'object') {
+    const typedError = error as ErrorLike;
+    raw = [typedError.message, typedError.details, typedError.hint, typedError.code]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .join(' | ');
   }
+
   const message = raw.toLowerCase();
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
   return mapped?.text || raw || fallback;
