@@ -95,7 +95,7 @@ export function useCompanySettings() {
         console.error('Error syncing to companies table:', syncErr);
       }
 
-      return data;
+      return row;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-settings'] });
