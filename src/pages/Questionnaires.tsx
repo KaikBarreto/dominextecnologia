@@ -90,7 +90,7 @@ export default function QuestionnairesPage() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          {templates.length === 0 ? (
+          {activeTemplates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
               <h3 className="text-lg font-medium">Nenhum questionário criado</h3>
