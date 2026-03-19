@@ -316,8 +316,8 @@ export default function ServiceOrders() {
                             <div className="flex justify-end gap-1 pt-1 border-t">
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}><Eye className="h-3.5 w-3.5" /></Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 text-primary" /></Button>
-                              <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>
-                              <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                              {canEditOS && <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>}
+                              {canDeleteOS && <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
                             </div>
                           </CardContent>
                         </Card>
