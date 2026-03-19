@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.12',
+    date: '19 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Permissão de financeiro do cliente',
+        description: 'Nova permissão "Ver Financeiro do Cliente" controla a visibilidade da aba financeira na ficha do cliente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Correção ao salvar White Label no mobile',
+        description: 'Corrigido erro "Cannot coerce to single JSON object" ao salvar configurações de white label pelo celular.',
+        category: 'correcao',
+      },
+      {
+        title: 'Soft delete de questionários',
+        description: 'Questionários agora são desativados em vez de excluídos, preservando o histórico de OS vinculadas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Scroll no modal de cargos',
+        description: 'Corrigido o scroll vertical no modal de configuração de cargos em dispositivos móveis.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.11',
     date: '19 de março de 2026',
     type: 'patch',
