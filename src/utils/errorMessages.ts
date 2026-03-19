@@ -67,114 +67,43 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
 
   // ── FK: Form Templates / Questionnaires ──
   {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_form_template_id_fkey'),
+    text: 'Este questionário não pode ser excluído porque está vinculado a ordens de serviço.',
+  },
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('contract_items_form_template_id_fkey'),
+    text: 'Este questionário não pode ser excluído porque está vinculado a itens de contrato.',
+  },
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('contracts_form_template_id_fkey'),
+    text: 'Este questionário não pode ser excluído porque está vinculado a contratos.',
+  },
+  {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('_template_id_fkey'),
     text: 'Este questionário não pode ser excluído porque está vinculado a ordens de serviço ou contratos.',
   },
-
-  // ── FK: Inventory ──
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('inventory_movements_inventory_id_fkey'),
-    text: 'Este item de estoque não pode ser excluído porque possui movimentações registradas.',
-  },
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('_inventory_id_fkey'),
-    text: 'Este item de estoque não pode ser excluído porque está vinculado a materiais de serviço ou itens de orçamento.',
-  },
-
-  // ── FK: Teams ──
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('_team_id_fkey'),
-    text: 'Esta equipe não pode ser excluída porque está vinculada a ordens de serviço ou contratos.',
-  },
-
-  // ── FK: CRM Stages ──
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('leads_stage_id_fkey'),
-    text: 'Este estágio não pode ser excluído porque possui leads vinculados. Mova os leads para outro estágio antes.',
-  },
-
-  // ── FK: Financial Categories ──
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('financial_transactions_category'),
-    text: 'Esta categoria não pode ser excluída porque está sendo usada em transações financeiras.',
-  },
-
-  // ── FK: Equipment Categories ──
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('equipment_category_id_fkey'),
-    text: 'Esta categoria não pode ser excluída porque possui equipamentos vinculados.',
-  },
-
-  // ── FK: Cost Resources ──
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('cost_resource_items_resource_id_fkey'),
-    text: 'Este recurso não pode ser excluído porque possui itens de custo vinculados.',
-  },
-  {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('service_cost_resources'),
-    text: 'Este recurso não pode ser excluído porque está vinculado a custos de serviço.',
-  },
-
-  // ── FK: Generic catch-all ──
-  {
-    test: (m) => m.includes('violates foreign key constraint'),
-    text: 'Este registro não pode ser excluído porque possui dados vinculados. Remova os vínculos antes de excluir.',
-  },
-
-  // ── Generated columns ──
-  {
-    test: (m) => m.includes('cannot insert a non-default value into column') && m.includes('final_price'),
-    text: 'Não foi possível salvar o orçamento porque um valor calculado foi enviado incorretamente. Tente novamente.',
-  },
-  {
-    test: (m) => m.includes('cannot insert a non-default value into column') && m.includes('displacement_cost'),
-    text: 'Não foi possível salvar o orçamento porque um valor de deslocamento calculado foi enviado incorretamente. Tente novamente.',
-  },
-
-  // ── Not null violations ──
-  {
-    test: (m) => m.includes('not-null constraint') || m.includes('null value in column'),
-    text: 'Um campo obrigatório não foi preenchido. Verifique os campos e tente novamente.',
-  },
-
-  // ── Duplicate ──
-  {
-    test: (m) => m.includes('duplicate key value'),
-    text: 'Já existe um registro com esses dados.',
-  },
-
-  // ── RLS ──
-  {
-    test: (m) => m.includes('row-level security'),
-    text: 'Você não tem permissão para realizar esta ação.',
-  },
-
-  // ── Network / connectivity errors ──
-  {
-    test: (m) => m.includes('failed to fetch') || m.includes('networkerror') || m.includes('network request failed'),
-    text: 'Sem conexão com a internet. Verifique sua rede e tente novamente.',
-  },
-  {
-    test: (m) => m.includes('timeout') || m.includes('econnrefused') || m.includes('econnreset'),
-    text: 'O servidor demorou para responder. Tente novamente em alguns instantes.',
-  },
-  {
-    test: (m) => m.includes('jwt expired') || m.includes('invalid jwt'),
-    text: 'Sua sessão expirou. Faça login novamente.',
-  },
-];
+...
+type ErrorLike = {
+  code?: string;
+  details?: string;
+  hint?: string;
+  message?: string;
+};
 
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
   let raw = '';
+
   if (error instanceof Error) {
     raw = error.message;
   } else if (typeof error === 'string') {
     raw = error;
-  } else if (error && typeof error === 'object' && 'message' in error) {
-    raw = String((error as any).message);
-  } else {
-    raw = '';
+  } else if (error && typeof error === 'object') {
+    const typedError = error as ErrorLike;
+    raw = [typedError.message, typedError.details, typedError.hint, typedError.code]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .join(' | ');
   }
+
   const message = raw.toLowerCase();
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
   return mapped?.text || raw || fallback;
