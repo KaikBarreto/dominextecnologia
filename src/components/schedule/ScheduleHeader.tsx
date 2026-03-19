@@ -133,10 +133,12 @@ export function ScheduleHeader({
             </PopoverContent>
           </Popover>
 
-          <Button size="sm" onClick={onNewOrder}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Tarefa/OS
-          </Button>
+          {onNewOrder && (
+            <Button size="sm" onClick={onNewOrder}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Tarefa/OS
+            </Button>
+          )}
         </div>
       </div>
 
