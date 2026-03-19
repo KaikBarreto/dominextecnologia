@@ -36,7 +36,7 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'O cliente selecionado é inválido ou foi removido. Selecione um cliente válido ou deixe o campo em branco quando permitido.',
   },
   {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_team_id_fkey'),
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_team_id_fkey') && !m.includes('update or delete'),
     text: 'A equipe selecionada é inválida ou foi removida. Selecione uma equipe válida ou deixe o campo em branco.',
   },
   {
@@ -100,10 +100,14 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'Este item de estoque não pode ser excluído porque está vinculado a materiais de serviço ou itens de orçamento.',
   },
 
-  // ── FK: Teams ──
+  // ── FK: Teams (delete blocked) ──
+  {
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('_team_id_fkey') && (m.includes('update or delete') || m.includes('on table "teams"')),
+    text: 'Esta equipe não pode ser excluída porque está vinculada a ordens de serviço ou contratos.',
+  },
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('_team_id_fkey'),
-    text: 'Esta equipe não pode ser excluída porque está vinculada a ordens de serviço ou contratos.',
+    text: 'A equipe selecionada é inválida ou foi removida. Selecione uma equipe válida ou deixe o campo em branco.',
   },
 
   // ── FK: CRM Stages ──
