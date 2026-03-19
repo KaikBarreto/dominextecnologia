@@ -85,6 +85,10 @@ export default function ServiceOrders() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { statuses } = useOsStatuses();
 
+  const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
+  const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
+  const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
+
   const filteredOrders = useMemo(() => {
     // For kanban, don't apply date filter
     const baseOrders = viewMode === 'kanban' ? serviceOrders : filterByDate(serviceOrders, 'scheduled_date');
