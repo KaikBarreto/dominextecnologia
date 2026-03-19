@@ -138,14 +138,19 @@ export default function CustomerDetail() {
     );
   }
 
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'geral', label: 'Geral' },
-    { key: 'equipamentos', label: 'Equipamentos' },
-    { key: 'historico', label: 'Histórico de OS' },
-    { key: 'chamados', label: 'Chamados' },
-    { key: 'contratos', label: 'Contratos' },
-    { key: 'financeiro', label: 'Financeiro' },
-  ];
+  const tabs: { key: TabKey; label: string }[] = useMemo(() => {
+    const allTabs: { key: TabKey; label: string }[] = [
+      { key: 'geral', label: 'Geral' },
+      { key: 'equipamentos', label: 'Equipamentos' },
+      { key: 'historico', label: 'Histórico de OS' },
+      { key: 'chamados', label: 'Chamados' },
+      { key: 'contratos', label: 'Contratos' },
+    ];
+    if (canViewCustomerFinancial) {
+      allTabs.push({ key: 'financeiro', label: 'Financeiro' });
+    }
+    return allTabs;
+  }, [canViewCustomerFinancial]);
 
   return (
     <div className="space-y-6">
