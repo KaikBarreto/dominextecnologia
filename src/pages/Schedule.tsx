@@ -40,8 +40,12 @@ export default function Schedule() {
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, hasPermission, isAdminOrGestor } = useAuth();
   const { settings: companySettings } = useCompanySettings();
+
+  const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
+  const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
+  const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -426,10 +430,12 @@ export default function Schedule() {
               {format(currentDate, 'EEEE', { locale: ptBR })}
             </p>
           </div>
-          <Button size="sm" onClick={handleNewOrder}>
-            <Plus className="h-4 w-4 mr-1" />
-            Nova Tarefa/OS
-          </Button>
+          {canCreateOS && (
+            <Button size="sm" onClick={handleNewOrder}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nova Tarefa/OS
+            </Button>
+          )}
         </div>
 
         {/* Day orders list */}
@@ -448,8 +454,8 @@ export default function Schedule() {
               selectedOrder={summaryOrder}
               onOrderSelect={handleOrderSelect}
               onClearSelection={handleClearSummary}
-              onEdit={(summaryOrder as any)._isFinancialEvent ? undefined : handleEditFromSummary}
-              onDelete={(summaryOrder as any)._isFinancialEvent ? undefined : handleDeleteFromSummary}
+              onEdit={(summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
+              onDelete={(summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
             />
           </div>
@@ -496,7 +502,7 @@ export default function Schedule() {
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
-        onNewOrder={handleNewOrder}
+        onNewOrder={canCreateOS ? handleNewOrder : undefined}
         technicianFilter={technicianFilter}
         onTechnicianFilterChange={setTechnicianFilter}
         technicians={allProfiles}
@@ -549,8 +555,8 @@ export default function Schedule() {
             selectedOrder={summaryOrder}
             onOrderSelect={handleOrderSelect}
             onClearSelection={handleClearSummary}
-            onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleEditFromSummary}
-            onDelete={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleDeleteFromSummary}
+            onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
+            onDelete={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
           />
         </div>

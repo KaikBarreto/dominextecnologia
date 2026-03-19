@@ -54,6 +54,7 @@ import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
   agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500' },
@@ -67,6 +68,7 @@ const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { hasPermission, isAdminOrGestor } = useAuth();
   const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -82,6 +84,10 @@ export default function ServiceOrders() {
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { statuses } = useOsStatuses();
+
+  const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
+  const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
+  const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
 
   const filteredOrders = useMemo(() => {
     // For kanban, don't apply date filter
@@ -200,10 +206,12 @@ export default function ServiceOrders() {
             <Settings className="mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Configurações</span>
           </Button>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova OS
-          </Button>
+          {canCreateOS && (
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova OS
+            </Button>
+          )}
         </div>
       </div>
 
@@ -308,8 +316,8 @@ export default function ServiceOrders() {
                             <div className="flex justify-end gap-1 pt-1 border-t">
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}><Eye className="h-3.5 w-3.5" /></Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 text-primary" /></Button>
-                              <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>
-                              <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                              {canEditOS && <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>}
+                              {canDeleteOS && <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
                             </div>
                           </CardContent>
                         </Card>
@@ -406,12 +414,16 @@ export default function ServiceOrders() {
                                   <Button variant="ghost" size="icon" title="Abrir Questionário" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
                                     <ExternalLink className="h-4 w-4 text-primary" />
                                   </Button>
-                                  <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(os)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="destructive-ghost" size="icon" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  {canEditOS && (
+                                    <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(os)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {canDeleteOS && (
+                                    <Button variant="destructive-ghost" size="icon" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>

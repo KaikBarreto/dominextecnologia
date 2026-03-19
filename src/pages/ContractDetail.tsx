@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +59,7 @@ const FREQUENCY_OPTIONS = [
 ];
 
 export default function ContractDetail() {
+  const isMobile = useIsMobile();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
@@ -235,21 +237,27 @@ export default function ContractDetail() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/contratos')}>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/contratos')}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{contract.name}</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">{contract.name}</h1>
             <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
           </div>
-          <p className="text-muted-foreground">{contract.customers?.name || 'Cliente'}</p>
+          <p className="text-muted-foreground text-sm truncate">{contract.customers?.name || 'Cliente'}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="edit-ghost" size="sm" onClick={() => setShowEditForm(true)}>
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <Button variant="edit-ghost" size="icon" className="sm:hidden h-8 w-8" onClick={() => setShowEditForm(true)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="destructive-ghost" size="icon" className="sm:hidden h-8 w-8" onClick={() => setShowDeleteDialog(true)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button variant="edit-ghost" size="sm" className="hidden sm:inline-flex" onClick={() => setShowEditForm(true)}>
             <Pencil className="h-4 w-4 mr-1" /> Editar
           </Button>
-          <Button variant="destructive-ghost" size="sm" onClick={() => setShowDeleteDialog(true)}>
+          <Button variant="destructive-ghost" size="sm" className="hidden sm:inline-flex" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="h-4 w-4 mr-1" /> Excluir
           </Button>
         </div>
@@ -262,7 +270,7 @@ export default function ContractDetail() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><ScrollText className="h-5 w-5" /> Informações</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
                   <p className="font-medium mt-0.5">{(contract.customers as any)?.name || '-'}</p>
@@ -341,9 +349,9 @@ export default function ContractDetail() {
               ) : (
                 <div className="space-y-2">
                   {recPagination.paginatedItems.map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-3 rounded-md border text-sm">
+                    <div key={t.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border text-sm gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium">{t.description}</p>
+                        <p className="font-medium truncate">{t.description}</p>
                         <p className="text-xs text-muted-foreground">
                           {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
                         </p>
@@ -367,7 +375,51 @@ export default function ContractDetail() {
           {/* Occurrences */}
           <Card>
             <CardHeader><CardTitle>Ocorrências ({occurrences.length})</CardTitle></CardHeader>
-            <CardContent className="p-0">
+            <CardContent className={cn(isMobile ? 'p-3' : 'p-0')}>
+              {isMobile ? (
+                <div className="space-y-2">
+                  {occPagination.paginatedItems.map(occ => {
+                    const occDate = parseLocalDate(occ.scheduled_date);
+                    const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
+                    const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
+                    return (
+                      <div key={occ.id} className={cn('p-3 rounded-md border space-y-2', isPast && 'border-warning/50 bg-warning/5')}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs text-muted-foreground">#{occ.occurrence_number}</span>
+                          <Badge variant={occStatusCfg.variant}>{occStatusCfg.label}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className={cn('font-medium', isPast && 'text-warning')}>
+                            {format(occDate, 'dd/MM/yyyy')} <span className="text-muted-foreground font-normal">({format(occDate, 'EEE', { locale: ptBR })})</span>
+                          </span>
+                          {occ.service_orders ? (
+                            <Badge variant="secondary" className="text-xs">OS #{occ.service_orders.order_number}</Badge>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-1 justify-end">
+                          {occ.service_order_id && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                              <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            </Button>
+                          )}
+                          {occ.status === 'scheduled' && (
+                            <Button
+                              variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-warning"
+                              title="Pular esta ocorrência"
+                              onClick={() => updateOccurrenceStatus.mutate({ id: occ.id, status: 'skipped' })}
+                            >
+                              <SkipForward className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -429,7 +481,8 @@ export default function ContractDetail() {
                   </TableBody>
                 </Table>
               </div>
-              <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
+              )}
+              {!isMobile && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
             </CardContent>
           </Card>
         </div>
