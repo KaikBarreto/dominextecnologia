@@ -430,10 +430,12 @@ export default function Schedule() {
               {format(currentDate, 'EEEE', { locale: ptBR })}
             </p>
           </div>
-          <Button size="sm" onClick={handleNewOrder}>
-            <Plus className="h-4 w-4 mr-1" />
-            Nova Tarefa/OS
-          </Button>
+          {canCreateOS && (
+            <Button size="sm" onClick={handleNewOrder}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nova Tarefa/OS
+            </Button>
+          )}
         </div>
 
         {/* Day orders list */}
