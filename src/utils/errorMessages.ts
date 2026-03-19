@@ -36,7 +36,7 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
     text: 'O cliente selecionado é inválido ou foi removido. Selecione um cliente válido ou deixe o campo em branco quando permitido.',
   },
   {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_team_id_fkey'),
+    test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_team_id_fkey') && !m.includes('update or delete'),
     text: 'A equipe selecionada é inválida ou foi removida. Selecione uma equipe válida ou deixe o campo em branco.',
   },
   {
