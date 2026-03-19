@@ -67,6 +67,7 @@ const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { hasPermission, isAdminOrGestor } = useAuth();
   const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
