@@ -54,6 +54,7 @@ import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
   agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500' },
