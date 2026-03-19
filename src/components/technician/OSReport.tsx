@@ -139,10 +139,19 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const { jsPDF } = await import('jspdf');
 
       const element = reportRef.current;
-      const originalWidth = element.style.width;
-      element.style.width = '794px';
-      
-      const canvas = await html2canvas(element, {
+
+      // Clone the element off-screen at fixed desktop width so responsive
+      // styles (sm:, md:) resolve correctly regardless of the actual viewport.
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.position = 'absolute';
+      clone.style.left = '-9999px';
+      clone.style.top = '0';
+      clone.style.width = '794px';
+      clone.style.minWidth = '794px';
+      clone.style.maxWidth = '794px';
+      document.body.appendChild(clone);
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
@@ -150,8 +159,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         width: 794,
         windowWidth: 794,
       });
-      
-      element.style.width = originalWidth;
+
+      document.body.removeChild(clone);
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
