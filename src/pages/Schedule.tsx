@@ -502,7 +502,7 @@ export default function Schedule() {
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
-        onNewOrder={handleNewOrder}
+        onNewOrder={canCreateOS ? handleNewOrder : undefined}
         technicianFilter={technicianFilter}
         onTechnicianFilterChange={setTechnicianFilter}
         technicians={allProfiles}
