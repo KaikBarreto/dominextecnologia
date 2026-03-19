@@ -79,7 +79,7 @@ export function QuestionnairesPanel() {
         </Button>
       </div>
 
-      {templates.length === 0 ? (
+      {activeTemplates.length === 0 ? (
         <Card>
           <CardContent className="p-0">
             <div className="flex flex-col items-center justify-center py-12 text-center">
