@@ -278,6 +278,7 @@ export default function Schedule() {
   };
 
   const handleDateDoubleClick = (date: Date) => {
+    if (!canCreateOS) return;
     setCurrentDate(date);
     setSummaryOrder(null);
     setSelectedOrder(null);
