@@ -265,6 +265,7 @@ export default function Schedule() {
   };
 
   const handleSlotClick = (date: string, time: string) => {
+    if (!canCreateOS) return;
     setSelectedOrder(null);
     setDefaultDate(date);
     setDefaultTime(time);
@@ -277,6 +278,7 @@ export default function Schedule() {
   };
 
   const handleDateDoubleClick = (date: Date) => {
+    if (!canCreateOS) return;
     setCurrentDate(date);
     setSummaryOrder(null);
     setSelectedOrder(null);
