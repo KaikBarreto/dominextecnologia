@@ -65,9 +65,9 @@ export function useCompanySettings() {
         .from('company_settings')
         .update(input)
         .eq('id', current.id)
-        .select()
-        .single();
+        .select();
       if (error) throw error;
+      const row = data?.[0];
 
       // Sync relevant fields to the companies table
       try {

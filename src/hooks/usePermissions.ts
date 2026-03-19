@@ -66,6 +66,7 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:view_financial_schedule', label: 'Ver Contas na Agenda', description: 'Visualizar contas a pagar e receber na agenda como avisos', group: 'Financeiro', category: 'financeiro' },
   { key: 'fn:manage_employees', label: 'Gerenciar Funcionários', description: 'Criar, editar e gerenciar funcionários e movimentações', group: 'Administração', category: 'administracao' },
   { key: 'fn:manage_timeclock', label: 'Gerenciar Ponto', description: 'Visualizar e gerenciar controle de ponto de todos os funcionários', group: 'Administração', category: 'administracao' },
+  { key: 'fn:view_customer_financial', label: 'Ver Financeiro do Cliente', description: 'Visualizar aba financeira na ficha do cliente', group: 'Comercial', category: 'comercial' },
 ] as const;
 
 export const ALL_PERMISSIONS = [...SCREEN_PERMISSIONS, ...FUNCTION_PERMISSIONS];
