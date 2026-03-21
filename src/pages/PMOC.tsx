@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { FileText, Plus, Search, Calendar, DollarSign, CheckCircle, XCircle, Edit, Trash2, Pause, Play, ClipboardList, CalendarClock, ExternalLink, LayoutList, ScrollText, Clock, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,14 +51,14 @@ export default function PMOC() {
   const [postponeData, setPostponeData] = useState<{ plan: PmocPlan; os: PmocGeneratedOs } | null>(null);
 
   const filteredPlans = plans.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    fuzzyIncludes(p.name, searchQuery) ||
+    fuzzyIncludes(p.customers?.name, searchQuery)
   );
   const { sortedItems: sortedPlans, sortConfig: planSortConfig, handleSort: handlePlanSort } = useTableSort(filteredPlans);
 
   const filteredContracts = contracts.filter(c =>
-    c.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.contract_number?.toLowerCase().includes(searchQuery.toLowerCase())
+    fuzzyIncludes(c.customers?.name, searchQuery) ||
+    fuzzyIncludes(c.contract_number, searchQuery)
   );
   const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(filteredContracts);
 

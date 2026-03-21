@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Filter, LayoutList, Kanban, Trash2 } from 'lucide-react';
@@ -117,7 +118,7 @@ export default function AdminCompanies() {
   });
 
   const filtered = companies.filter((c: any) => {
-    const matchSearch = !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase()) || c.cnpj?.includes(search);
+    const matchSearch = !search || fuzzyIncludes(c.name, search) || fuzzyIncludes(c.email, search) || fuzzyIncludes(c.cnpj, search);
     const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
     const matchOrigin = originFilter === 'all' || c.origin === originFilter;
     const matchPlan = planFilter === 'all' || c.subscription_plan === planFilter;

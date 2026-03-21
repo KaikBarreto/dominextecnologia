@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ClipboardList,
@@ -99,13 +100,12 @@ export default function ServiceOrders() {
     // For kanban, don't apply date filter
     const baseOrders = viewMode === 'kanban' ? serviceOrders : filterByDate(serviceOrders, 'scheduled_date');
     return baseOrders.filter((os) => {
-      const term = searchTerm.toLowerCase();
-      const osCode = getOsCode(os).toLowerCase();
+      const osCode = getOsCode(os);
       const orderNum = String(os.order_number).padStart(6, '0');
       const matchesSearch =
-        os.customer?.name?.toLowerCase().includes(term) ||
-        osCode.includes(term) ||
-        orderNum.includes(searchTerm);
+        fuzzyIncludes(os.customer?.name, searchTerm) ||
+        fuzzyIncludes(osCode, searchTerm) ||
+        fuzzyIncludes(orderNum, searchTerm);
       const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
       return matchesSearch && matchesStatus;
     });

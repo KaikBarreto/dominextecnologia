@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Package, Plus, Search, AlertTriangle, DollarSign, Edit, Trash2, TrendingUp, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,9 +23,9 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    fuzzyIncludes(item.name, searchQuery) ||
+    fuzzyIncludes(item.sku, searchQuery) ||
+    fuzzyIncludes(item.category, searchQuery)
   );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredItems);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck } from 'lucide-react';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
@@ -34,8 +35,8 @@ export default function Users() {
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   const filteredUsers = users.filter(u =>
-    u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+    fuzzyIncludes(u.full_name, searchQuery) ||
+    fuzzyIncludes(u.phone, searchQuery)
   );
 
   const getInitials = (name: string) =>

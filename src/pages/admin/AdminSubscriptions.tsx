@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,7 +77,7 @@ export default function AdminSubscriptions() {
   const filtered = useMemo(() => {
     if (!companies) return [];
     return companies.filter((c: any) => {
-      const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = fuzzyIncludes(c.name, searchTerm);
       const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
       
       let matchExpiration = true;

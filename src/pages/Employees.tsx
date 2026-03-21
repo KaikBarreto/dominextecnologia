@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, BarChart3, Plus, Search, Clock, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -94,8 +95,8 @@ export default function Employees() {
 
   const filtered = useMemo(() => {
     let result = employees.filter(e =>
-      e.name.toLowerCase().includes(search.toLowerCase()) ||
-      (e.position || '').toLowerCase().includes(search.toLowerCase())
+      fuzzyIncludes(e.name, search) ||
+      fuzzyIncludes(e.position, search)
     );
     switch (sort) {
       case 'az': result.sort((a, b) => a.name.localeCompare(b.name)); break;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ImageIcon, Settings2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -37,10 +38,10 @@ export default function Customers() {
 
   const filteredCustomers = customers.filter(
     (customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.document?.includes(searchTerm) ||
-      (customer as any).company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      fuzzyIncludes(customer.name, searchTerm) ||
+      fuzzyIncludes(customer.email, searchTerm) ||
+      fuzzyIncludes(customer.document, searchTerm) ||
+      fuzzyIncludes((customer as any).company_name, searchTerm)
   );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);

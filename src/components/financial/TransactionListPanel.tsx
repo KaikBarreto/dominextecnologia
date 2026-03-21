@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,8 +62,8 @@ export function TransactionListPanel({
   const filtered = transactions
     .filter((t) => type === 'all' || t.transaction_type === type)
     .filter((t) =>
-      t.description.toLowerCase().includes(search.toLowerCase()) ||
-      t.category?.toLowerCase().includes(search.toLowerCase())
+      fuzzyIncludes(t.description, search) ||
+      fuzzyIncludes(t.category, search)
     );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
