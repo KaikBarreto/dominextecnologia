@@ -733,7 +733,7 @@ export default function Settings() {
       </div>
 
       <SettingsSidebarLayout
-        tabs={settingsTabs}
+        tabs={visibleTabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       >
