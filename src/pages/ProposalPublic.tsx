@@ -7,6 +7,52 @@ import { ProposalRenderer } from '@/components/quotes/ProposalRenderer';
 import type { Quote } from '@/hooks/useQuotes';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
 
+function useOgMeta(company: CompanySettings | null) {
+  useEffect(() => {
+    if (!company) return;
+    const cs = company as any;
+    const isWhiteLabel = cs.white_label_enabled;
+    const companyName = cs.name || 'Proposta';
+
+    // Update title
+    document.title = `${companyName} — Proposta Comercial`;
+
+    // Set OG meta tags
+    const setMeta = (property: string, content: string) => {
+      let el = document.querySelector(`meta[property="${property}"]`) ||
+               document.querySelector(`meta[name="${property}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        if (property.startsWith('og:')) {
+          el.setAttribute('property', property);
+        } else {
+          el.setAttribute('name', property);
+        }
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    };
+
+    setMeta('og:title', `${companyName} — Proposta Comercial`);
+    setMeta('twitter:title', `${companyName} — Proposta Comercial`);
+    setMeta('og:description', `Proposta comercial de ${companyName}`);
+    setMeta('twitter:description', `Proposta comercial de ${companyName}`);
+
+    if (isWhiteLabel) {
+      const logoUrl = cs.white_label_logo_url || cs.logo_url;
+      if (logoUrl) {
+        setMeta('og:image', logoUrl);
+        setMeta('twitter:image', logoUrl);
+        setMeta('twitter:card', 'summary');
+      }
+    }
+
+    return () => {
+      document.title = 'Dominex — Gestão de Equipes de Campo e Ordens de Serviço';
+    };
+  }, [company]);
+}
+
 export default function ProposalPublic() {
   const { token } = useParams<{ token: string }>();
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -15,6 +61,8 @@ export default function ProposalPublic() {
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
   const [done, setDone] = useState(false);
+
+  useOgMeta(company);
 
   useEffect(() => {
     if (!token) return;
@@ -35,7 +83,6 @@ export default function ProposalPublic() {
       if (quoteRes.data) {
         const q = quoteRes.data as any;
         setQuote(q);
-        // Fetch template slug if proposal_template_id exists
         if (q.proposal_template_id) {
           const { data: tpl } = await supabase
             .from('proposal_templates')
@@ -82,12 +129,10 @@ export default function ProposalPublic() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-3xl mx-auto py-8 px-4">
-        {/* Proposal content */}
         <div className="shadow-xl rounded-xl overflow-hidden">
           <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
 
-        {/* Action buttons */}
         {canRespond && !done && (
           <div className="flex gap-3 mt-6 max-w-md mx-auto">
             <Button
