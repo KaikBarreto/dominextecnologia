@@ -498,7 +498,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                         key={photo.id}
                         src={photo.photo_url}
                         alt={photo.photo_type}
-                        className="w-full aspect-square object-cover rounded-md border border-slate-200"
+                        className="w-full aspect-square object-cover rounded-md border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setPreviewImage(photo.photo_url)}
                       />
                     ))}
                   </div>
