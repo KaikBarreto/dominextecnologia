@@ -42,6 +42,7 @@ export function TrackingHistoryTab() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [addressMap, setAddressMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     supabase.from('profiles').select('user_id, full_name').then(({ data }) => {
