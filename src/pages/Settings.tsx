@@ -160,6 +160,7 @@ export default function Settings() {
       report_header_text_color: reportTextColor,
       report_header_logo_size: reportLogoSize,
       report_header_show_logo_bg: reportShowLogoBg,
+      report_header_logo_bg_color: reportLogoBgColor,
       report_status_bar_color: reportStatusBarColor,
       report_header_logo_type: reportLogoType,
     } as any);
