@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 
 interface ImagePreviewModalProps {
   src: string;
@@ -11,17 +10,44 @@ interface ImagePreviewModalProps {
 export function ImagePreviewModal({ src, alt, open, onClose }: ImagePreviewModalProps) {
   if (!open) return null;
 
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = alt || 'imagem';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(src, '_blank');
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
     >
-      <button
-        className="absolute top-4 right-4 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors z-50"
-        onClick={onClose}
-      >
-        <X className="h-6 w-6" />
-      </button>
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
+        <button
+          className="rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+          onClick={handleDownload}
+          title="Baixar imagem"
+        >
+          <Download className="h-6 w-6" />
+        </button>
+        <button
+          className="rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+          onClick={onClose}
+        >
+          <X className="h-6 w-6" />
+        </button>
+      </div>
       <img
         src={src}
         alt={alt || 'Preview'}
