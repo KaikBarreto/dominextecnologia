@@ -91,15 +91,24 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (data) {
       setCompany(data);
       const d = data as any;
-      setHeaderConfig({
-        bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
-        textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
-        logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
-        showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
-        logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
-        statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
-        logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
-      });
+      const wlEnabled = !!d.white_label_enabled;
+      setIsWhiteLabel(wlEnabled);
+
+      if (wlEnabled) {
+        // Use company's custom header config
+        setHeaderConfig({
+          bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+          textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
+          logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+          showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+          logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
+          statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+          logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
+        });
+      } else {
+        // No white label — use Dominex defaults
+        setHeaderConfig(DEFAULT_HEADER_CONFIG);
+      }
     }
   };
 
