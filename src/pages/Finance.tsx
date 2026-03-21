@@ -26,11 +26,24 @@ const allTabs = [
 ];
 
 export default function Finance() {
+  const { hasModule } = useCompanyModules();
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
+  const [gateOpen, setGateOpen] = useState(false);
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
+
+  const tabs = allTabs.filter(t => !t.module || hasModule(t.module));
+
+  const handleTabChange = (key: string) => {
+    const tab = allTabs.find(t => t.key === key);
+    if (tab?.module && !hasModule(tab.module)) {
+      setGateOpen(true);
+      return;
+    }
+    setActiveTab(key);
+  };
 
   const {
     transactions, isLoading,
