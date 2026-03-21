@@ -67,18 +67,20 @@ function HeaderContent() {
 function SidebarAppLayout() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full max-w-full">
+      <div className="flex h-[100dvh] w-full max-w-full">
         <AppSidebar />
-        <SidebarInset className="flex flex-col min-w-0 max-w-full">
+        <SidebarInset className="flex flex-col min-w-0 max-w-full overflow-hidden">
           <HeaderContent />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
             <div className="min-w-0 max-w-full">
               <Outlet />
             </div>
           </main>
-          <footer className="border-t px-4 h-[52px] flex items-center justify-center">
+          <footer className="border-t px-4 h-[52px] flex-shrink-0 flex items-center justify-center">
             <SystemFooter />
           </footer>
+          {/* Spacer for fixed MobileNav */}
+          <div className="h-[52px] flex-shrink-0 md:hidden" />
         </SidebarInset>
       </div>
     </SidebarProvider>
