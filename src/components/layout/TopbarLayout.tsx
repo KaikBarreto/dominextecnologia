@@ -199,7 +199,7 @@ export function TopbarLayout() {
               <UserCircle className="h-4 w-4 mr-2" /> Meu Perfil
             </DropdownMenuItem>
             {hasScreenAccess('screen:users') && (
-              <DropdownMenuItem onClick={() => navigate('/usuarios')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => navigate('/configuracoes?tab=usuarios')} className="cursor-pointer">
                 <Users className="h-4 w-4 mr-2" /> Usuários
               </DropdownMenuItem>
             )}
