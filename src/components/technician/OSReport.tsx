@@ -262,7 +262,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 {response.response_value === 'true' ? 'Sim' : 'Não'}
               </span>
             ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
-              <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
+              <div className="flex flex-wrap gap-2">
+                {response.response_photo_url.split(',').filter(Boolean).map((url, i) => (
+                  <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
+                ))}
+              </div>
             ) : (
               response.response_value?.includes('|||') ? (
                 <div className="flex flex-wrap gap-1.5 mt-0.5">

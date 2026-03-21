@@ -220,7 +220,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
   const title = serviceOrder ? (
     <span className="flex items-center gap-3">
       <Eye className="h-5 w-5" />
-      OS #{String(serviceOrder.order_number).padStart(4, '0')}
+      OS #{String(serviceOrder.order_number).padStart(6, '0')}
       <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border ml-auto`}>
         {osStatusLabels[serviceOrder.status]}
       </Badge>
