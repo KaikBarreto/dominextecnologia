@@ -1,10 +1,4 @@
-export function buildServiceOrderShareLink(osId: string, targetUrl?: string) {
-  const shareUrl = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/os-share`);
-  shareUrl.searchParams.set('os_id', osId);
-
-  if (targetUrl) {
-    shareUrl.searchParams.set('redirect_to', targetUrl);
-  }
-
-  return shareUrl.toString();
+export function buildServiceOrderShareLink(osId: string) {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  return `${supabaseUrl}/functions/v1/os-share?os_id=${osId}`;
 }
