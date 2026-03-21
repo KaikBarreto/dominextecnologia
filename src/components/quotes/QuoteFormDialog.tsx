@@ -484,19 +484,20 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Add material handler ──
   const handleAddMaterial = useCallback(() => {
-    if (!addMatId) return;
-    const inv = inventoryItems.find(i => i.id === addMatId);
-    if (!inv) return;
-    const unitPrice = Number(inv.sale_price ?? inv.cost_price ?? 0);
+    const isFromStock = !!addMatId;
+    const inv = isFromStock ? inventoryItems.find(i => i.id === addMatId) : null;
+    const name = isFromStock ? (inv?.name ?? '') : addMatManualName.trim();
+    if (!name) return;
+    const unitPrice = isFromStock ? Number(inv?.sale_price ?? inv?.cost_price ?? 0) : addMatManualPrice;
     setItems(prev => [...prev, {
       item_type: 'material',
-      description: inv.name,
+      description: name,
       quantity: addMatQty,
-      unit_total_cost: Number(inv.cost_price ?? 0),
+      unit_total_cost: isFromStock ? Number(inv?.cost_price ?? 0) : addMatManualPrice,
       unit_price: unitPrice,
       total_price: Math.round(unitPrice * addMatQty * 100) / 100,
       service_type_id: null,
-      inventory_id: inv.id,
+      inventory_id: isFromStock ? inv!.id : null,
       unit_hourly_rate: 0,
       unit_hours: 0,
       unit_labor_cost: 0,
@@ -506,8 +507,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       bdi: bdiFactor,
     }]);
     setAddMatId('');
+    setAddMatManualName('');
+    setAddMatManualPrice(0);
     setAddMatQty(1);
-  }, [addMatId, addMatQty, inventoryItems, profitRate, bdiFactor]);
+  }, [addMatId, addMatManualName, addMatManualPrice, addMatQty, inventoryItems, profitRate, bdiFactor]);
 
   // ── Item price update ──
   const updateItemPrice = (idx: number, newPrice: number) => {
