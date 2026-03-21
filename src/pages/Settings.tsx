@@ -257,7 +257,7 @@ export default function Settings() {
   };
 
   const handleRemoveWlIcon = () => {
-    updateSettings.mutate({ white_label_icon_url: null } as any);
+    updateSettings.mutate({ white_label_icon_url: null });
   };
 
   const handleSaveWhiteLabel = () => {
