@@ -130,6 +130,7 @@ export default function Settings() {
       setReportTextColor((settings as any).report_header_text_color || DEFAULT_HEADER_CONFIG.textColor);
       setReportLogoSize((settings as any).report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize);
       setReportShowLogoBg((settings as any).report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg);
+      setReportLogoBgColor((settings as any).report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor);
       setReportStatusBarColor((settings as any).report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor);
       setReportLogoType((settings as any).report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType);
     }
