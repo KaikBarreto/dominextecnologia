@@ -209,7 +209,7 @@ export default function Checkout() {
           planName={currentPlanInfo.name}
           planPrice={planPrice}
           finalPrice={finalPrice}
-          billingCycle={billingCycle}
+          billingCycle={effectiveCycle}
           features={currentPlanInfo.features || []}
           maxUsers={currentPlanInfo.maxUsers || 5}
           cpfCnpj={cpfCnpj}
