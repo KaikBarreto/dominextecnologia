@@ -65,6 +65,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
+  const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,10 +73,22 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     fetchAllResponses();
     fetchRating();
     fetchEquipmentItems();
+    fetchTechnician();
     if ((serviceOrder as any).contract_id) {
       fetchContract((serviceOrder as any).contract_id);
     }
   }, [serviceOrder.id]);
+
+  const fetchTechnician = async () => {
+    const techId = serviceOrder.technician_id;
+    if (!techId) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, photo_url')
+      .eq('user_id', techId)
+      .maybeSingle();
+    if (data) setTechnicianInfo(data);
+  };
 
   const fetchRating = async () => {
     const { data } = await supabase
