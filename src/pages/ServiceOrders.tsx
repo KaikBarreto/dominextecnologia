@@ -93,9 +93,13 @@ export default function ServiceOrders() {
     // For kanban, don't apply date filter
     const baseOrders = viewMode === 'kanban' ? serviceOrders : filterByDate(serviceOrders, 'scheduled_date');
     return baseOrders.filter((os) => {
+      const term = searchTerm.toLowerCase();
+      const osCode = getOsCode(os).toLowerCase();
+      const orderNum = String(os.order_number).padStart(6, '0');
       const matchesSearch =
-        os.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(os.order_number).includes(searchTerm);
+        os.customer?.name?.toLowerCase().includes(term) ||
+        osCode.includes(term) ||
+        orderNum.includes(searchTerm);
       const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -114,7 +118,7 @@ export default function ServiceOrders() {
   const getOsCode = (os: ServiceOrder) => {
     const prefix = (os as any).service_type?.number_prefix || 'OS';
     const year = os.scheduled_date ? new Date(os.scheduled_date).getFullYear() : new Date(os.created_at).getFullYear();
-    return `${prefix}-${year}-${String(os.order_number).padStart(4, '0')}`;
+    return `${prefix}-${year}-${String(os.order_number).padStart(6, '0')}`;
   };
 
   const handleSubmit = async (data: any) => {
@@ -314,8 +318,8 @@ export default function ServiceOrders() {
                               )}
                             </div>
                             <div className="flex justify-end gap-1 pt-1 border-t">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}><Eye className="h-3.5 w-3.5" /></Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 text-primary" /></Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}><Eye className="h-3.5 w-3.5" />Visualizar</Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 text-primary" />Abrir OS</Button>
                               {canEditOS && <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>}
                               {canDeleteOS && <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
                             </div>

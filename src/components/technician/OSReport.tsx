@@ -182,7 +182,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         heightLeft -= (pdfHeight - 20);
       }
 
-      pdf.save(`OS-${String(serviceOrder.order_number).padStart(4, '0')}.pdf`);
+      pdf.save(`OS-${String(serviceOrder.order_number).padStart(6, '0')}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
     } finally {
@@ -262,7 +262,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 {response.response_value === 'true' ? 'Sim' : 'Não'}
               </span>
             ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
-              <img src={response.response_photo_url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
+              <div className="flex flex-wrap gap-2">
+                {response.response_photo_url.split(',').filter(Boolean).map((url, i) => (
+                  <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
+                ))}
+              </div>
             ) : (
               response.response_value?.includes('|||') ? (
                 <div className="flex flex-wrap gap-1.5 mt-0.5">
@@ -315,7 +319,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             )}
             <div className="flex items-center justify-between sm:flex-col sm:items-end sm:ml-auto shrink-0">
               <div className="text-lg sm:text-2xl font-black tracking-tight">
-                OS #{String(serviceOrder.order_number).padStart(4, '0')}
+                OS #{String(serviceOrder.order_number).padStart(6, '0')}
               </div>
               <p className="text-xs sm:text-sm text-white/90">{osTypeLabels[serviceOrder.os_type]}</p>
             </div>
