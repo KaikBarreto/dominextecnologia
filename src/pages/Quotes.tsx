@@ -43,6 +43,8 @@ const ALL_SIDEBAR_TABS = [
 
 function QuotesList() {
   const isMobile = useIsMobile();
+  const { hasModule } = useCompanyModules();
+  const hasPricing = hasModule('pricing_advanced');
   const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
   const { convertToServiceOrder, isConverting } = useQuoteConversion();
   const { toast } = useToast();
