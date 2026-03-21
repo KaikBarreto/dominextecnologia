@@ -145,8 +145,10 @@ export default function Checkout() {
 
   const planPrice = currentPlanInfo?.price || 0;
   const yearlyPrice = calculateYearlyPrice(planPrice);
-  const finalPrice = billingCycle === 'yearly' ? yearlyPrice : planPrice;
-  const nextDueDate = addMonths(new Date(), billingCycle === 'yearly' ? 12 : 1).toISOString();
+  const finalPrice = isRenewal ? planPrice : (billingCycle === 'yearly' ? yearlyPrice : planPrice);
+  const renewalCycle = companyData?.billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+  const effectiveCycle = isRenewal ? renewalCycle as BillingCycle : billingCycle;
+  const nextDueDate = addMonths(new Date(), effectiveCycle === 'yearly' ? 12 : 1).toISOString();
 
   if (companyLoading) {
     return (
