@@ -118,7 +118,7 @@ export default function ServiceOrders() {
   const getOsCode = (os: ServiceOrder) => {
     const prefix = (os as any).service_type?.number_prefix || 'OS';
     const year = os.scheduled_date ? new Date(os.scheduled_date).getFullYear() : new Date(os.created_at).getFullYear();
-    return `${prefix}-${year}-${String(os.order_number).padStart(4, '0')}`;
+    return `${prefix}-${year}-${String(os.order_number).padStart(6, '0')}`;
   };
 
   const handleSubmit = async (data: any) => {
