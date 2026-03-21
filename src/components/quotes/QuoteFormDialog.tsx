@@ -28,9 +28,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import {
-  User, UserPlus, Palette, Wrench, MapPin,
+  User, UserPlus, Palette, Wrench, MapPin, Package,
   Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
-}from 'lucide-react';
+} from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
 interface FormQuoteItem {
