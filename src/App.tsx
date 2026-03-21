@@ -243,7 +243,7 @@ const AppRoutes = () => (
       <Route path="/configuracoes" element={<PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>} />
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
-      <Route path="/funcionarios" element={<PermissionRoute screenKey="screen:employees"><Employees /></PermissionRoute>} />
+      <Route path="/funcionarios" element={<PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>} />
       <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
