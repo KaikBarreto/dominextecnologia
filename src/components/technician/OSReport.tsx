@@ -724,6 +724,14 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             <p>Relatório gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
             {company?.name && <p className="mt-0.5">{company.name}</p>}
           </div>
+
+          {/* Dominex branding footer (only when no white label) */}
+          {!isWhiteLabel && (
+            <div data-pdf-section className="mt-6 py-4 flex flex-col items-center gap-1.5" style={{ backgroundColor: '#1e293b' }}>
+              <img src={dominexLogoWhite} alt="Dominex" className="h-6 object-contain opacity-70" />
+              <span className="text-[10px] text-white/40 tracking-wide">www.dominex.app</span>
+            </div>
+          )}
         </div>
       </div>
 
