@@ -65,6 +65,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
+  const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,10 +73,22 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     fetchAllResponses();
     fetchRating();
     fetchEquipmentItems();
+    fetchTechnician();
     if ((serviceOrder as any).contract_id) {
       fetchContract((serviceOrder as any).contract_id);
     }
   }, [serviceOrder.id]);
+
+  const fetchTechnician = async () => {
+    const techId = serviceOrder.technician_id;
+    if (!techId) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url')
+      .eq('user_id', techId)
+      .maybeSingle();
+    if (data) setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
+  };
 
   const fetchRating = async () => {
     const { data } = await supabase
@@ -428,20 +441,31 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
-              <p className="font-semibold text-slate-900">{serviceOrder.customer?.name}</p>
-              {serviceOrder.customer?.document && (
-                <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
-              )}
-              {serviceOrder.customer?.phone && (
-                <p className="text-sm text-slate-600">{serviceOrder.customer.phone}</p>
-              )}
-              {serviceOrder.customer?.address && (
-                <p className="text-sm text-slate-500 mt-1">
-                  {serviceOrder.customer.address}
-                  {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
-                  {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
-                </p>
-              )}
+              <div className="flex items-start gap-3">
+                {serviceOrder.customer?.photo_url && (
+                  <img
+                    src={serviceOrder.customer.photo_url}
+                    alt={serviceOrder.customer.name}
+                    className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
+                  />
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">{serviceOrder.customer?.name}</p>
+                  {serviceOrder.customer?.document && (
+                    <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
+                  )}
+                  {serviceOrder.customer?.phone && (
+                    <p className="text-sm text-slate-600">{serviceOrder.customer.phone}</p>
+                  )}
+                  {serviceOrder.customer?.address && (
+                    <p className="text-sm text-slate-500 mt-1">
+                      {serviceOrder.customer.address}
+                      {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
+                      {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Equipment(s) - show all from junction or fallback */}
@@ -501,31 +525,55 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {serviceOrder.check_in_time && (
-                  <div>
-                    <p className="text-xs text-slate-400 font-semibold">CHECK-IN</p>
-                    <p className="text-sm font-medium text-slate-800">
-                      {format(new Date(serviceOrder.check_in_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    {checkInLoc && (
-                      <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="break-all">{checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}</span>
-                      </p>
+                  <div className="flex items-start gap-3">
+                    {technicianInfo?.photo_url && (
+                      <img
+                        src={technicianInfo.photo_url}
+                        alt={technicianInfo.full_name}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
+                      />
                     )}
+                    <div>
+                      <p className="text-xs text-slate-400 font-semibold">CHECK-IN</p>
+                      {technicianInfo && (
+                        <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
+                      )}
+                      <p className="text-sm font-medium text-slate-800">
+                        {format(new Date(serviceOrder.check_in_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                      {checkInLoc && (
+                        <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="break-all">{checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
                 {serviceOrder.check_out_time && (
-                  <div>
-                    <p className="text-xs text-slate-400 font-semibold">CHECK-OUT</p>
-                    <p className="text-sm font-medium text-slate-800">
-                      {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    {checkOutLoc && (
-                      <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="break-all">{checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}</span>
-                      </p>
+                  <div className="flex items-start gap-3">
+                    {technicianInfo?.photo_url && (
+                      <img
+                        src={technicianInfo.photo_url}
+                        alt={technicianInfo.full_name}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
+                      />
                     )}
+                    <div>
+                      <p className="text-xs text-slate-400 font-semibold">CHECK-OUT</p>
+                      {technicianInfo && (
+                        <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
+                      )}
+                      <p className="text-sm font-medium text-slate-800">
+                        {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                      {checkOutLoc && (
+                        <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="break-all">{checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
