@@ -737,6 +737,7 @@ export default function Settings() {
                             textColor: reportTextColor,
                             logoSize: reportLogoSize,
                             showLogoBg: reportShowLogoBg,
+                            logoBgColor: reportLogoBgColor,
                             statusBarColor: reportStatusBarColor,
                             logoType: reportLogoType,
                           }}
