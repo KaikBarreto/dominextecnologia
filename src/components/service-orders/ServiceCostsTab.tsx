@@ -24,6 +24,13 @@ export function ServiceCostsTab() {
   const hasPricing = hasModule('pricing_advanced');
   const { serviceTypes } = useServiceTypes();
   const [serviceId, setServiceId] = useState<string>('');
+
+  // Auto-select first service type
+  useEffect(() => {
+    if (!serviceId && serviceTypes.length > 0) {
+      setServiceId(serviceTypes[0].id);
+    }
+  }, [serviceTypes, serviceId]);
   const { cost, saveCost } = useServiceCosts(serviceId || null);
   const { totalCost: materialsTotal } = useServiceMaterials(serviceId || null);
 
