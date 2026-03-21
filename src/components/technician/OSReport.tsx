@@ -406,7 +406,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         </div>
 
         {/* Status bar */}
-        <div className="bg-emerald-600 text-white text-center py-2 text-xs sm:text-sm font-semibold tracking-wide uppercase">
+        <div data-pdf-section className="bg-emerald-600 text-white text-center py-2 text-xs sm:text-sm font-semibold tracking-wide uppercase">
           ✓ Serviço Concluído
           {serviceOrder.check_out_time && (
             <span className="font-normal ml-2">
