@@ -28,7 +28,7 @@ const menuItems = [
   { title: 'Estoque', icon: Package, path: '/estoque' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro' },
   { title: 'Contratos', icon: FileText, path: '/contratos' },
-  { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios' },
+  { title: 'Usuários e Permissões', icon: UserCircle, path: '/configuracoes?tab=usuarios' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes' },
 ];
 

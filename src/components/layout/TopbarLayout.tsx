@@ -57,7 +57,7 @@ const menuItems: MenuItem[] = [
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
 ];
 
-const userMenuPaths = ['/usuarios', '/tutoriais', '/configuracoes'];
+const userMenuPaths = ['/tutoriais', '/configuracoes'];
 
 export function TopbarLayout() {
   const { profile, roles, hasScreenAccess, signOut } = useAuth();
@@ -199,7 +199,7 @@ export function TopbarLayout() {
               <UserCircle className="h-4 w-4 mr-2" /> Meu Perfil
             </DropdownMenuItem>
             {hasScreenAccess('screen:users') && (
-              <DropdownMenuItem onClick={() => navigate('/usuarios')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => navigate('/configuracoes?tab=usuarios')} className="cursor-pointer">
                 <Users className="h-4 w-4 mr-2" /> Usuários
               </DropdownMenuItem>
             )}

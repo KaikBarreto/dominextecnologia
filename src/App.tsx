@@ -212,7 +212,7 @@ const AppRoutes = () => (
       <Route path="/pmoc" element={<Navigate to="/contratos" replace />} />
       <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><Contracts /></PermissionRoute>} />
       <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ContractDetail /></PermissionRoute>} />
-      <Route path="/usuarios" element={<PermissionRoute screenKey="screen:users"><Users /></PermissionRoute>} />
+      <Route path="/usuarios" element={<Navigate to="/configuracoes?tab=usuarios" replace />} />
       <Route path="/configuracoes" element={<PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>} />
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />

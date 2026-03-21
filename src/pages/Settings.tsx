@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard } from 'lucide-react';
+import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle } from 'lucide-react';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,19 +20,31 @@ import { SettingsShortcutsContent } from '@/components/settings/SettingsShortcut
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import { useAuth } from '@/contexts/AuthContext';
+
+const UsersPage = lazy(() => import('@/pages/Users'));
+
+const ALL_TABS = ['empresa', 'usuarios', 'usabilidade', 'atalhos', 'aparencia'];
 
 const settingsTabs: SettingsTab[] = [
   { value: 'empresa', label: 'Empresa', icon: Building },
+  { value: 'usuarios', label: 'Usuários e Permissões', icon: UserCircle },
   { value: 'usabilidade', label: 'Usabilidade', icon: SlidersHorizontal },
   { value: 'atalhos', label: 'Atalhos', icon: Keyboard },
   { value: 'aparencia', label: 'Aparência', icon: Palette },
 ];
 
 export default function Settings() {
+  const { hasScreenAccess } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
-    return tabFromUrl && ['empresa', 'usabilidade', 'atalhos', 'aparencia'].includes(tabFromUrl) ? tabFromUrl : 'empresa';
+    return tabFromUrl && ALL_TABS.includes(tabFromUrl) ? tabFromUrl : 'empresa';
+  });
+
+  const visibleTabs = settingsTabs.filter(t => {
+    if (t.value === 'usuarios') return hasScreenAccess('screen:users');
+    return true;
   });
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
@@ -701,6 +713,13 @@ export default function Settings() {
       case 'aparencia':
         return <SettingsAppearanceContent />;
 
+      case 'usuarios':
+        return (
+          <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+            <UsersPage />
+          </Suspense>
+        );
+
       default:
         return null;
     }
@@ -714,7 +733,7 @@ export default function Settings() {
       </div>
 
       <SettingsSidebarLayout
-        tabs={settingsTabs}
+        tabs={visibleTabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       >
