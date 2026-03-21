@@ -18,7 +18,7 @@ import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
 import { useProposalTemplates } from '@/hooks/useProposalTemplates';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-// inventory import kept for potential future use
+import { useInventory } from '@/hooks/useInventory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
