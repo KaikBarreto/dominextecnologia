@@ -17,6 +17,7 @@ import { formatBRL } from '@/utils/currency';
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
 import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
 import { LinkedResourcesSection } from '@/components/service-orders/LinkedResourcesSection';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 export function ServiceCostsTab() {
   const { serviceTypes } = useServiceTypes();
