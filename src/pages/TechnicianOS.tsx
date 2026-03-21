@@ -70,6 +70,7 @@ export default function TechnicianOS() {
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkInLocation, setCheckInLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [checkOutLocation, setCheckOutLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [trackingLinkCopied, setTrackingLinkCopied] = useState(false);
   
   const [formValidations, setFormValidations] = useState<Record<string, FormValidationResult>>({});
   
