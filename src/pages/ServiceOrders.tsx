@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ClipboardList,
