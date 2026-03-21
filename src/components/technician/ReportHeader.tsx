@@ -6,6 +6,7 @@ export interface ReportHeaderConfig {
   logoSize: number;
   showLogoBg: boolean;
   statusBarColor: string;
+  logoType: 'full' | 'icon';
 }
 
 export const DEFAULT_HEADER_CONFIG: ReportHeaderConfig = {
