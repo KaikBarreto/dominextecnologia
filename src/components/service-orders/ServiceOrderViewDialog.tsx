@@ -170,9 +170,13 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
                     {response.response_value === 'true' ? 'Sim' : 'Não'}
                   </Badge>
                 ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
-                  <a href={response.response_photo_url} target="_blank" rel="noopener noreferrer">
-                    <img src={response.response_photo_url} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
-                  </a>
+                  <div className="flex flex-wrap gap-2">
+                    {response.response_photo_url.split(',').filter(Boolean).map((url, i) => (
+                      <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer">
+                        <img src={url.trim()} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
+                      </a>
+                    ))}
+                  </div>
                 ) : (<p className="mt-1">{response.response_value || '-'}</p>)}
               </div>
             ))}
