@@ -237,7 +237,7 @@ export default function Settings() {
     }
     setWlIconUploading(true);
     try {
-      const currentIcon = (settings as any)?.white_label_icon_url;
+      const currentIcon = settings?.white_label_icon_url;
       if (currentIcon) {
         try {
           const oldPath = currentIcon.split('/company-logos/')[1];
