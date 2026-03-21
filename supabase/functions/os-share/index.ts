@@ -22,15 +22,14 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const osId = url.searchParams.get("os_id");
-    const redirectTo = url.searchParams.get("redirect_to");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const fallbackTarget = redirectTo || "https://dominextecnologia.lovable.app/";
+    const APP_DOMAIN = "https://dominextecnologia.lovable.app";
 
     if (!osId) {
-      return Response.redirect(fallbackTarget, 302);
+      return Response.redirect(APP_DOMAIN, 302);
     }
 
     const { data: serviceOrder } = await supabase
@@ -51,10 +50,14 @@ Deno.serve(async (req) => {
     const description = customerName
       ? `Acompanhe a OS #${serviceOrder?.order_number ?? ""} de ${customerName}`
       : `Acompanhe a ordem de serviço de ${companyName}`;
-    const imageUrl = company?.white_label_enabled
+
+    // Use company logo for OG image
+    const logoUrl = company?.white_label_logo_url || company?.logo_url || null;
+    const imageUrl = logoUrl
       ? `${supabaseUrl}/functions/v1/og-image?os_id=${encodeURIComponent(osId)}`
-      : `${supabaseUrl}/functions/v1/og-image?os_id=${encodeURIComponent(osId)}`;
-    const finalTarget = redirectTo || `${url.origin.replace(".supabase.co", ".lovable.app")}/os-tecnico/${osId}`;
+      : "";
+
+    const finalTarget = `${APP_DOMAIN}/os-tecnico/${osId}?modo=cliente`;
 
     const html = `<!doctype html>
 <html lang="pt-BR">
@@ -66,13 +69,13 @@ Deno.serve(async (req) => {
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
-    <meta property="og:image" content="${escapeHtml(imageUrl)}" />
+    ${imageUrl ? `<meta property="og:image" content="${escapeHtml(imageUrl)}" />` : ""}
     <meta property="og:url" content="${escapeHtml(finalTarget)}" />
     <meta property="og:locale" content="pt_BR" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
-    <meta name="twitter:image" content="${escapeHtml(imageUrl)}" />
+    ${imageUrl ? `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />` : ""}
     <meta http-equiv="refresh" content="0;url=${escapeHtml(finalTarget)}" />
     <link rel="canonical" href="${escapeHtml(finalTarget)}" />
   </head>
