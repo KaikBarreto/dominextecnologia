@@ -20,6 +20,8 @@ import { LinkedResourcesSection } from '@/components/service-orders/LinkedResour
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 export function ServiceCostsTab() {
+  const { hasModule } = useCompanyModules();
+  const hasPricing = hasModule('pricing_advanced');
   const { serviceTypes } = useServiceTypes();
   const [serviceId, setServiceId] = useState<string>('');
   const { cost, saveCost } = useServiceCosts(serviceId || null);
