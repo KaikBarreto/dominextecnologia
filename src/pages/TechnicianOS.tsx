@@ -35,6 +35,7 @@ import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 
 interface OSPhoto {
   id: string;
