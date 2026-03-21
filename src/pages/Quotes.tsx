@@ -83,8 +83,7 @@ function QuotesList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
             Configurar Proposta
