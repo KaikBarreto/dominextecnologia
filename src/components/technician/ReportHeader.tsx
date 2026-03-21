@@ -60,9 +60,9 @@ export function ReportHeader({
       >
         <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
-            {company?.logo_url ? (
+            {resolvedLogo ? (
               <img
-                src={company.logo_url}
+                src={resolvedLogo}
                 alt="Logo"
                 className="object-contain rounded-lg shrink-0"
                 style={{
