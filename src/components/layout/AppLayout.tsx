@@ -67,7 +67,7 @@ function HeaderContent() {
 function SidebarAppLayout() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full max-w-full">
+      <div className="flex h-[100dvh] w-full max-w-full">
         <AppSidebar />
         <SidebarInset className="flex flex-col min-w-0 max-w-full">
           <HeaderContent />
