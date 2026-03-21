@@ -799,8 +799,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       {/* Dominex branding (only when no white label) — outside report */}
       {!isWhiteLabel && (
         <div className="flex flex-col items-center gap-1 py-3 print:hidden">
-          <img src={dominexLogoWhite} alt="Dominex" className="h-5 object-contain opacity-40 dark:opacity-30 invert dark:invert-0" />
-          <span className="text-[10px] text-muted-foreground/50 tracking-wide">www.dominex.app</span>
+          <img src={dominexLogoWhite} alt="Dominex" className="h-5 object-contain invert dark:invert-0" />
+          <span className="text-[10px] text-muted-foreground/80 tracking-wide">www.dominex.app</span>
         </div>
       )}
     </div>
