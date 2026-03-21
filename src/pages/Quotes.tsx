@@ -424,6 +424,7 @@ function QuotesList() {
 export default function Quotes() {
   const [activeTab, setActiveTab] = useState('quotes');
   const { hasModule } = useCompanyModules();
+  const hasPricing = hasModule('pricing_advanced');
 
   const sidebarTabs = ALL_SIDEBAR_TABS.filter(t => !t.module || hasModule(t.module));
 
@@ -435,18 +436,22 @@ export default function Quotes() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
-          <p className="text-sm text-muted-foreground">Gerencie orçamentos{hasModule('pricing_advanced') ? ' e configurações de precificação' : ''}</p>
+          <p className="text-sm text-muted-foreground">Gerencie orçamentos{hasPricing ? ' e configurações de precificação' : ''}</p>
         </div>
       </div>
 
-      <SettingsSidebarLayout
-        tabs={sidebarTabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      >
-        {activeTab === 'quotes' && <QuotesList />}
-        {activeTab === 'pricing' && hasModule('pricing_advanced') && <PricingTab />}
-      </SettingsSidebarLayout>
+      {hasPricing ? (
+        <SettingsSidebarLayout
+          tabs={sidebarTabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        >
+          {activeTab === 'quotes' && <QuotesList />}
+          {activeTab === 'pricing' && <PricingTab />}
+        </SettingsSidebarLayout>
+      ) : (
+        <QuotesList />
+      )}
     </div>
   );
 }
