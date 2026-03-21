@@ -42,7 +42,7 @@ export function ModuleGateModal({
           <div className="bg-muted rounded-lg px-4 py-2">
             <span className="text-sm text-muted-foreground">A partir de </span>
             <span className="text-lg font-bold text-foreground">
-              {formatCurrency(modulePrice)}
+              R$ {formatBRL(modulePrice)}
             </span>
             <span className="text-sm text-muted-foreground">/mês</span>
           </div>
