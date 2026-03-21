@@ -18,7 +18,7 @@ import { useQuotes, type QuoteInput, type Quote } from '@/hooks/useQuotes';
 import { useProposalTemplates } from '@/hooks/useProposalTemplates';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-// inventory import kept for potential future use
+import { useInventory } from '@/hooks/useInventory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { computeExtraCostsTotal } from '@/hooks/useServiceCosts';
@@ -28,9 +28,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import {
-  User, UserPlus, Palette, Wrench, MapPin,
+  User, UserPlus, Palette, Wrench, MapPin, Package,
   Calculator, Plus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
-}from 'lucide-react';
+} from 'lucide-react';
 
 // ─── Extended item type for the form ───────────────────────────────────────
 interface FormQuoteItem {
@@ -194,6 +194,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { templates } = useProposalTemplates();
   const { settings: pricing } = usePricingSettings();
   const { serviceTypes } = useServiceTypes();
+  const { items: inventoryItems } = useInventory();
   const { profile } = useAuth();
   const isEditing = !!quote;
 
@@ -236,7 +237,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [addSvcQty, setAddSvcQty] = useState(1);
   const [isFetchingSvc, setIsFetchingSvc] = useState(false);
 
-  // (material state removed — materials are now part of services)
+  // ── Add-material row state ──
+  const [addMatId, setAddMatId] = useState('');
+  const [addMatQty, setAddMatQty] = useState(1);
 
   type QuoteDraft = {
     customerMode: string; customerId: string; prospectName: string; prospectPhone: string; prospectEmail: string;
@@ -477,7 +480,32 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setIsFetchingSvc(false);
   }, [addSvcId, addSvcQty, serviceTypes, profile, bdiFactor, profitRate]);
 
-  // (material handler removed — materials are sub-items of services)
+  // ── Add material handler ──
+  const handleAddMaterial = useCallback(() => {
+    if (!addMatId) return;
+    const inv = inventoryItems.find(i => i.id === addMatId);
+    if (!inv) return;
+    const unitPrice = Number(inv.sale_price ?? inv.cost_price ?? 0);
+    setItems(prev => [...prev, {
+      item_type: 'material',
+      description: inv.name,
+      quantity: addMatQty,
+      unit_total_cost: Number(inv.cost_price ?? 0),
+      unit_price: unitPrice,
+      total_price: Math.round(unitPrice * addMatQty * 100) / 100,
+      service_type_id: null,
+      inventory_id: inv.id,
+      unit_hourly_rate: 0,
+      unit_hours: 0,
+      unit_labor_cost: 0,
+      unit_materials_cost: 0,
+      unit_extras_cost: 0,
+      profit_rate: profitRate,
+      bdi: bdiFactor,
+    }]);
+    setAddMatId('');
+    setAddMatQty(1);
+  }, [addMatId, addMatQty, inventoryItems, profitRate, bdiFactor]);
 
   // ── Item price update ──
   const updateItemPrice = (idx: number, newPrice: number) => {
@@ -566,8 +594,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({ value: s.id, label: s.name })),
     [serviceTypes]
   );
+  const inventoryOptions = useMemo(
+    () => (inventoryItems ?? []).map(i => ({
+      value: i.id,
+      label: `${i.name}${i.sku ? ` (${i.sku})` : ''}`,
+    })),
+    [inventoryItems]
+  );
 
   const serviceItems = items.filter(i => i.item_type === 'servico');
+  const materialItems = items.filter(i => i.item_type === 'material');
   const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
 
   // ── Form Content ───────────────────────────────────────────────────────────
@@ -715,6 +751,86 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         )}
       </section>
 
+      <Separator />
+
+      {/* ══ 4. MATERIAIS ══ */}
+      <section className="space-y-3">
+        <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
+
+        <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
+          <div className="flex-1 min-w-0">
+            <SearchableSelect
+              options={inventoryOptions}
+              value={addMatId}
+              onValueChange={setAddMatId}
+              placeholder="Selecionar material do estoque..."
+            />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+            <Input type="number" min={1} value={addMatQty}
+              onChange={e => setAddMatQty(Math.max(1, Number(e.target.value) || 1))}
+              className="h-9 w-16 text-sm" />
+            <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId} className="h-9 shrink-0">
+              <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
+            </Button>
+          </div>
+        </div>
+
+        {materialItems.length > 0 ? (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-2 font-medium text-muted-foreground">Material</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+                  <th className="w-8 p-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {materialItems.map((item) => {
+                  const globalIdx = items.indexOf(item);
+                  return (
+                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="p-2 font-medium">{item.description}</td>
+                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                      <td className="p-2">
+                        <Input
+                          type="number" min={0} step="0.01"
+                          value={item.unit_price || ''}
+                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
+                          className="h-7 w-24 text-xs text-right ml-auto"
+                        />
+                      </td>
+                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
+                      <td className="p-2">
+                        <Button type="button" variant="ghost" size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => removeItem(globalIdx)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-muted/30 border-t">
+                  <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
+                    Subtotal Materiais
+                  </td>
+                  <td className="p-2 text-right font-bold">
+                    {fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}
+                  </td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState>Nenhum material adicionado</EmptyState>
+        )}
+      </section>
 
       <Separator />
 
