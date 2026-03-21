@@ -17,6 +17,8 @@ import {
   Loader2,
   Navigation,
   Camera,
+  Link2,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
