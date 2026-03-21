@@ -150,7 +150,33 @@ export default function TechnicianOS() {
 
   const fetchCompany = async () => {
     const { data } = await supabase.from('company_settings').select('*').limit(1).single();
-    if (data) setCompany(data);
+    if (data) {
+      setCompany(data);
+      // Dynamic OG meta for white label social sharing
+      if (data.white_label_enabled) {
+        const companyName = data.name || 'Ordem de Serviço';
+        const logoUrl = data.white_label_logo_url || data.logo_url;
+        document.title = `${companyName} — Ordem de Serviço`;
+        const setMeta = (prop: string, content: string) => {
+          let el = document.querySelector(`meta[property="${prop}"]`) || document.querySelector(`meta[name="${prop}"]`);
+          if (!el) {
+            el = document.createElement('meta');
+            prop.startsWith('og:') ? el.setAttribute('property', prop) : el.setAttribute('name', prop);
+            document.head.appendChild(el);
+          }
+          el.setAttribute('content', content);
+        };
+        setMeta('og:title', `${companyName} — Ordem de Serviço`);
+        setMeta('twitter:title', `${companyName} — Ordem de Serviço`);
+        setMeta('og:description', `Ordem de serviço de ${companyName}`);
+        setMeta('twitter:description', `Ordem de serviço de ${companyName}`);
+        if (logoUrl) {
+          setMeta('og:image', logoUrl);
+          setMeta('twitter:image', logoUrl);
+          setMeta('twitter:card', 'summary');
+        }
+      }
+    }
   };
 
   const fetchServiceOrder = async () => {
