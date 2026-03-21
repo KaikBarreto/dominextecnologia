@@ -17,6 +17,8 @@ import {
   Loader2,
   Navigation,
   Camera,
+  Link2,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +35,7 @@ import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 
 interface OSPhoto {
   id: string;
@@ -67,6 +70,7 @@ export default function TechnicianOS() {
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkInLocation, setCheckInLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [checkOutLocation, setCheckOutLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [trackingLinkCopied, setTrackingLinkCopied] = useState(false);
   
   const [formValidations, setFormValidations] = useState<Record<string, FormValidationResult>>({});
   
@@ -689,19 +693,36 @@ export default function TechnicianOS() {
 
         {/* Check-in timestamp */}
         {isCheckedIn && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-            <div className="flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="text-xs sm:text-sm">
-                Check-in: {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-              </span>
+          <div className="space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="text-xs sm:text-sm">
+                  Check-in: {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </span>
+              </div>
+              {checkInLocation && (
+                <span className="text-xs opacity-70 sm:ml-auto flex items-center gap-0.5">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {checkInLocation.lat.toFixed(4)}, {checkInLocation.lng.toFixed(4)}
+                </span>
+              )}
             </div>
-            {checkInLocation && (
-              <span className="text-xs opacity-70 sm:ml-auto flex items-center gap-0.5">
-                <MapPin className="h-3 w-3 shrink-0" />
-                {checkInLocation.lat.toFixed(4)}, {checkInLocation.lng.toFixed(4)}
-              </span>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={async () => {
+                const link = buildServiceOrderShareLink(id!, `${window.location.origin}/os-tecnico/${id}?modo=cliente`);
+                await navigator.clipboard.writeText(link);
+                setTrackingLinkCopied(true);
+                toast({ title: 'Link copiado!' });
+                setTimeout(() => setTrackingLinkCopied(false), 2000);
+              }}
+            >
+              {trackingLinkCopied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
+              {trackingLinkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento do cliente'}
+            </Button>
           </div>
         )}
 
