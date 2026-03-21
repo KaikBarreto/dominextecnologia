@@ -342,7 +342,7 @@ export function AppSidebar() {
           {/* ── Separator + System items ── */}
           {filteredSystemMenu.length > 0 && (
             <>
-              <div className={cn("my-2 border-t border-border/50", collapsed ? "mx-1" : "mx-3")} />
+              <div className={cn("mt-6 mb-2 border-t border-border/50", collapsed ? "mx-1" : "mx-3")} />
               <nav className="space-y-0.5">
                 {filteredSystemMenu.map((item) => (
                   <NavLink
