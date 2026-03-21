@@ -145,13 +145,30 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       // Clone the element off-screen at fixed desktop width so responsive
       // styles (sm:, md:) resolve correctly regardless of the actual viewport.
       const clone = element.cloneNode(true) as HTMLElement;
-      clone.style.position = 'absolute';
+      clone.style.position = 'fixed';
       clone.style.left = '-9999px';
       clone.style.top = '0';
       clone.style.width = '794px';
       clone.style.minWidth = '794px';
       clone.style.maxWidth = '794px';
+      clone.style.overflow = 'visible';
+      clone.style.height = 'auto';
+      clone.style.zIndex = '-1';
       document.body.appendChild(clone);
+
+      // Wait for images to load in the clone
+      const images = clone.querySelectorAll('img');
+      await Promise.all(
+        Array.from(images).map(
+          img =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise(resolve => {
+                  img.onload = resolve;
+                  img.onerror = resolve;
+                })
+        )
+      );
 
       const canvas = await html2canvas(clone, {
         scale: 2,
@@ -160,6 +177,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         backgroundColor: '#ffffff',
         width: 794,
         windowWidth: 794,
+        height: clone.scrollHeight,
       });
 
       document.body.removeChild(clone);
