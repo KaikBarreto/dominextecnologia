@@ -365,7 +365,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         {/* Company header */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
+        <div data-pdf-section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
               {company?.logo_url ? (
