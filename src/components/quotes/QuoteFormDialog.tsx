@@ -624,6 +624,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         </Tabs>
       </section>
 
+      {hasPricing && (
+      <>
       <Separator />
 
       {/* ══ 2. CONFIGURAÇÕES BDI ══ */}
@@ -676,6 +678,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           </div>
         </div>
       </section>
+      </>
+      )}
 
       <Separator />
 
