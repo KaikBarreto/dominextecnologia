@@ -83,16 +83,10 @@ function QuotesList() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header — only show when inside sidebar layout (hasPricing), otherwise parent already shows it */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <FileText className="h-4.5 w-4.5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Orçamentos</h2>
-            <p className="text-xs text-muted-foreground">{quotes.length} orçamentos</p>
-          </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{quotes.length} orçamentos</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
