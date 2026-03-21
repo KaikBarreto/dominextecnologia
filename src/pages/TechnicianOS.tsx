@@ -153,23 +153,9 @@ export default function TechnicianOS() {
   };
 
   const fetchCompany = async () => {
-    // Fetch by company_id from the service order if available
-    let query = supabase.from('company_settings').select('*');
-    if (serviceOrder?.company_id) {
-      query = query.eq('company_id', serviceOrder.company_id);
-    }
-    const { data } = await query.limit(1).single();
+    const { data } = await supabase.from('company_settings').select('*').limit(1).single();
     if (data) {
       setCompany(data);
-      const d = data as any;
-      setHeaderConfig({
-        bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
-        textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
-        logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
-        showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
-        statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
-        logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
-      });
 
       // Apply white label primary color to CSS custom property for this page
       if (data.white_label_enabled && data.white_label_primary_color) {
@@ -182,12 +168,12 @@ export default function TechnicianOS() {
           const max = Math.max(r, g, b), min = Math.min(r, g, b);
           let h = 0, s = 0, l = (max + min) / 2;
           if (max !== min) {
-            const d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            const d2 = max - min;
+            s = l > 0.5 ? d2 / (2 - max - min) : d2 / (max + min);
             switch (max) {
-              case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-              case g: h = ((b - r) / d + 2) / 6; break;
-              case b: h = ((r - g) / d + 4) / 6; break;
+              case r: h = ((g - b) / d2 + (g < b ? 6 : 0)) / 6; break;
+              case g: h = ((b - r) / d2 + 2) / 6; break;
+              case b: h = ((r - g) / d2 + 4) / 6; break;
             }
           }
           const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
