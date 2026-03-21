@@ -248,7 +248,7 @@ export default function Settings() {
       const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
-      updateSettings.mutate({ white_label_icon_url: publicUrl } as any);
+      updateSettings.mutate({ white_label_icon_url: publicUrl });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao enviar ícone', description: err.message });
     } finally {
