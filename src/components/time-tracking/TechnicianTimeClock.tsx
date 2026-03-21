@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { MapPin, Camera, Check, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { processImageFile } from '@/utils/imageConvert';
+import { reverseGeocode } from '@/utils/reverseGeocode';
 
 const ACTION_CONFIG: Record<PunchType, { label: string; className: string; icon: string }> = {
   clock_in: { label: 'REGISTRAR ENTRADA', className: 'bg-success hover:bg-success/90 text-white', icon: '📍' },
@@ -61,9 +62,16 @@ export function TechnicianTimeClock() {
     // Start geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-          setAddress(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setCoords({ latitude, longitude });
+          setAddress('Obtendo endereço...');
+          try {
+            const addr = await reverseGeocode(latitude, longitude);
+            setAddress(addr);
+          } catch {
+            setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+          }
           if (settings?.require_selfie) {
             setFlowStep('selfie');
           } else {

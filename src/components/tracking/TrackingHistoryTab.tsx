@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { MapPin, ExternalLink, Navigation, Clock, ArrowDownUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { haversineDistance, formatDistance } from '@/utils/geolocation';
+import { batchReverseGeocode } from '@/utils/reverseGeocode';
 
 interface LocationRecord {
   id: string;
@@ -41,6 +42,7 @@ export function TrackingHistoryTab() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [addressMap, setAddressMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     supabase.from('profiles').select('user_id, full_name').then(({ data }) => {
@@ -81,6 +83,22 @@ export function TrackingHistoryTab() {
   );
 
   const pagination = useDataPagination(locations);
+
+  // Resolve addresses for the current page of locations
+  const resolveAddresses = useCallback(async (items: LocationRecord[]) => {
+    if (items.length === 0) return;
+    const coords = items.map(l => ({ lat: l.lat, lng: l.lng }));
+    const resolved = await batchReverseGeocode(coords, 15);
+    setAddressMap(prev => {
+      const next = new Map(prev);
+      resolved.forEach((v, k) => next.set(k, v));
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    resolveAddresses(pagination.paginatedItems);
+  }, [pagination.paginatedItems, resolveAddresses]);
 
   const stats = useMemo(() => {
     if (sortedAsc.length === 0) return { checkIns: 0, checkOuts: 0, totalDistance: 0, timeInField: 0 };
@@ -220,8 +238,9 @@ export function TrackingHistoryTab() {
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-1.5">
-                          <span className="text-[11px] text-muted-foreground font-mono">
-                            {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[260px]" title={`${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`}>
+                            <MapPin className="h-3 w-3 inline mr-0.5 -mt-0.5" />
+                            {addressMap.get(`${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`) || `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`}
                           </span>
                           <a
                             href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
