@@ -141,6 +141,31 @@ function PermissionRoute({ screenKey, children }: { screenKey: string; children:
   return <>{children}</>;
 }
 
+// Module-gated route — shows gate modal if module not available
+function ModuleRoute({ moduleKey, children }: { moduleKey: ModuleCode; children: React.ReactNode }) {
+  const { hasModule, isLoading } = useCompanyModules();
+  const [gateOpen, setGateOpen] = React.useState(false);
+  const defaultRoute = useDefaultRoute();
+  const info = MODULE_INFO[moduleKey];
+
+  if (isLoading) return <LoadingSpinner />;
+  if (!hasModule(moduleKey)) {
+    return (
+      <>
+        <Navigate to={defaultRoute} replace />
+        <ModuleGateModal
+          open={true}
+          onOpenChange={(open) => { if (!open) setGateOpen(false); }}
+          moduleName={info?.name || moduleKey}
+          moduleDescription={info?.description}
+          modulePrice={info?.price}
+        />
+      </>
+    );
+  }
+  return <>{children}</>;
+}
+
 // Public Route wrapper (redirects authenticated users)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
