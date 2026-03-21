@@ -76,9 +76,11 @@ function SidebarAppLayout() {
               <Outlet />
             </div>
           </main>
-          <footer className="border-t px-4 h-[52px] flex items-center justify-center">
+          <footer className="border-t px-4 h-[52px] flex-shrink-0 flex items-center justify-center">
             <SystemFooter />
           </footer>
+          {/* Spacer for fixed MobileNav */}
+          <div className="h-[52px] flex-shrink-0 md:hidden" />
         </SidebarInset>
       </div>
     </SidebarProvider>
