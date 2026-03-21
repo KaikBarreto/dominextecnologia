@@ -57,7 +57,7 @@ const menuItems: MenuItem[] = [
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
 ];
 
-const userMenuPaths = ['/usuarios', '/tutoriais', '/configuracoes'];
+const userMenuPaths = ['/tutoriais', '/configuracoes'];
 
 export function TopbarLayout() {
   const { profile, roles, hasScreenAccess, signOut } = useAuth();
