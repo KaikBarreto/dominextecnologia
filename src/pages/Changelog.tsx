@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.6',
+    date: '21 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checkout de renovação direto',
+        description: 'Ao clicar em "Pagar agora" com assinatura ativa, o checkout pula a seleção de plano e vai direto para o pagamento.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Busca inteligente com espaços',
+        description: 'Todos os campos de pesquisa do sistema agora tratam espaços extras e permitem buscar termos concatenados (ex: "daluz" encontra "da luz").',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.5',
     date: '21 de março de 2026',
     type: 'patch',
