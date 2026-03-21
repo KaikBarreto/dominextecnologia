@@ -418,7 +418,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Contract info */}
           {contractInfo && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-2">
+            <div data-pdf-section className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-2">
               <FileSignature className="h-4 w-4 text-blue-600 shrink-0" />
               <div>
                 <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Contrato</p>
