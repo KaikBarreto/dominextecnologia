@@ -103,6 +103,16 @@ export default function Checkout() {
 
   const isRenewal = companyData?.subscription_status === 'active';
 
+  // For renewal, build plan info from existing company data and skip to checkout
+  const renewalPlanInfo = isRenewal && companyData ? {
+    name: companyData.subscription_plan
+      ? companyData.subscription_plan.charAt(0).toUpperCase() + companyData.subscription_plan.slice(1)
+      : 'Atual',
+    price: companyData.subscription_value || 0,
+    features: [],
+    maxUsers: companyData.max_users || 5,
+  } : null;
+
   const trialDaysLeft = companyData?.subscription_expires_at
     ? differenceInDays(new Date(companyData.subscription_expires_at), new Date())
     : null;
