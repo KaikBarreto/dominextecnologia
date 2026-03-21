@@ -40,6 +40,53 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.13',
+    date: '21 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Sistema modular de assinatura',
+        description: 'Novo sistema de módulos contratáveis (Básico, RH, CRM, NF-e, Financeiro Avançado, Precificação, Portal do Cliente, White Label) com planos pré-montados e personalizado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Feature gating por módulo',
+        description: 'Telas e funcionalidades habilitadas/desabilitadas conforme módulos contratados, com modal de upsell ao acessar recurso não contratado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Checkout modular',
+        description: 'Checkout reformulado com planos pré-montados (Essencial, Avançado, Master) ou montagem personalizada com cálculo automático.',
+        category: 'recurso',
+      },
+      {
+        title: 'Gating financeiro e precificação',
+        description: 'Abas de DRE e Contas exigem Financeiro Avançado. BDI, custos globais e precificação exigem Precificação Avançada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Gating de CRM, RH e Portal do Cliente',
+        description: 'Menu, rotas e botões de CRM, Funcionários e Portal do Cliente ocultados quando o módulo não está ativo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção do PDF de relatório de OS',
+        description: 'Corrigido problema que gerava PDFs com páginas em branco ao finalizar uma OS.',
+        category: 'correcao',
+      },
+      {
+        title: 'Correção na conversão de orçamento em OS',
+        description: 'Removido campo inexistente do payload de criação de OS a partir de orçamento aprovado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Correção de títulos duplicados em Orçamentos',
+        description: 'Removida duplicação de título e ícone na tela de orçamentos sem módulo de precificação.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.12',
     date: '19 de março de 2026',
     type: 'patch',
