@@ -21,6 +21,8 @@ import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
