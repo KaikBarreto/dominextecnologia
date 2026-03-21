@@ -10,6 +10,7 @@ import type { ServiceOrder, FormQuestion } from '@/types/database';
 import { osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 
 interface OSPhoto {
   id: string;
@@ -125,7 +126,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   };
 
   const handleCopyLink = () => {
-    const url = window.location.href;
+    const url = buildServiceOrderShareLink(serviceOrder.id, window.location.href);
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: 'Link copiado!' });
     }).catch(() => {

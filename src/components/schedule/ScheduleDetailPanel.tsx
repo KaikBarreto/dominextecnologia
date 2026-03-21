@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { buildCustomerAddress } from '@/utils/geolocation';
+import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -69,7 +70,7 @@ function OrderDetail({
   const teamInfo = (order as any)._team as { id: string; name: string; color: string; photo_url?: string | null; icon_name?: string | null } | undefined;
 
   const handleCopyTrackingLink = async () => {
-    const link = `${window.location.origin}/os-tecnico/${order.id}`;
+    const link = buildServiceOrderShareLink(order.id, `${window.location.origin}/os-tecnico/${order.id}?modo=cliente`);
     await navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
