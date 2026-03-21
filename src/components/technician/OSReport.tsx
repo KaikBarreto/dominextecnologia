@@ -290,6 +290,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   };
 
   return (
+    <>
     <div className="space-y-4">
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
