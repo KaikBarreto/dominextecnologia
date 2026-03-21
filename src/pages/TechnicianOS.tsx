@@ -389,7 +389,7 @@ export default function TechnicianOS() {
   if (serviceOrder.status === 'concluida') {
     return (
       <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-3 sm:p-4 shadow-lg print:hidden">
+        <div className="z-10 bg-primary text-primary-foreground p-3 sm:p-4 shadow-lg print:hidden">
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
