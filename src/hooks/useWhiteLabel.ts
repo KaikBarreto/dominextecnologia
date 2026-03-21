@@ -31,10 +31,10 @@ export function useWhiteLabel() {
   // Super admin never gets white label
   const isSuperAdmin = hasRole('super_admin');
 
-  const enabled = !isSuperAdmin && !!(settings as any)?.white_label_enabled;
-  const primaryColor = (settings as any)?.white_label_primary_color || null;
-  const customLogoUrl = (settings as any)?.white_label_logo_url || null;
-  const customIconUrl = (settings as any)?.white_label_icon_url || null;
+  const enabled = !isSuperAdmin && !!settings?.white_label_enabled;
+  const primaryColor = settings?.white_label_primary_color || null;
+  const customLogoUrl = settings?.white_label_logo_url || null;
+  const customIconUrl = settings?.white_label_icon_url || null;
 
   const logoUrl = enabled
     ? (customLogoUrl || settings?.logo_url || null)

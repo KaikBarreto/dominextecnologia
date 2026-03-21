@@ -200,7 +200,7 @@ export default function Settings() {
     }
     setWlUploading(true);
     try {
-      const currentWlLogo = (settings as any)?.white_label_logo_url;
+      const currentWlLogo = settings?.white_label_logo_url;
       if (currentWlLogo) {
         try {
           const oldPath = currentWlLogo.split('/company-logos/')[1];
@@ -211,7 +211,7 @@ export default function Settings() {
       const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
-      updateSettings.mutate({ white_label_logo_url: publicUrl } as any);
+      updateSettings.mutate({ white_label_logo_url: publicUrl });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: err.message });
     } finally {
@@ -220,7 +220,7 @@ export default function Settings() {
   };
 
   const handleRemoveWlLogo = () => {
-    updateSettings.mutate({ white_label_logo_url: null } as any);
+    updateSettings.mutate({ white_label_logo_url: null });
   };
 
   const handleWlIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,7 +237,7 @@ export default function Settings() {
     }
     setWlIconUploading(true);
     try {
-      const currentIcon = (settings as any)?.white_label_icon_url;
+      const currentIcon = settings?.white_label_icon_url;
       if (currentIcon) {
         try {
           const oldPath = currentIcon.split('/company-logos/')[1];
@@ -248,7 +248,7 @@ export default function Settings() {
       const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
-      updateSettings.mutate({ white_label_icon_url: publicUrl } as any);
+      updateSettings.mutate({ white_label_icon_url: publicUrl });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao enviar ícone', description: err.message });
     } finally {
@@ -257,7 +257,7 @@ export default function Settings() {
   };
 
   const handleRemoveWlIcon = () => {
-    updateSettings.mutate({ white_label_icon_url: null } as any);
+    updateSettings.mutate({ white_label_icon_url: null });
   };
 
   const handleSaveWhiteLabel = () => {
@@ -581,18 +581,20 @@ export default function Settings() {
                       <div className="space-y-2">
                         <Label>Logo completo</Label>
                         <p className="text-xs text-muted-foreground">
-                          {(settings as any)?.white_label_logo_url
+                          {settings?.white_label_logo_url
                             ? 'Logo personalizado configurado'
                             : settings?.logo_url
                               ? 'Usando o logo da empresa por padrão'
                               : 'Será utilizado o logo da empresa'}
                         </p>
-                        {((settings as any)?.white_label_logo_url || settings?.logo_url) ? (
+                        {(settings?.white_label_logo_url || settings?.logo_url) ? (
                           <div className="flex items-center gap-4">
                             <img
-                              src={(settings as any)?.white_label_logo_url || settings?.logo_url}
+                              src={settings?.white_label_logo_url || settings?.logo_url}
                               alt="WL Logo"
                               className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-white p-1"
+                              crossOrigin="anonymous"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
                             <div className="flex flex-col gap-2">
                               <Button variant="outline" size="sm" asChild disabled={wlUploading}>
@@ -628,12 +630,14 @@ export default function Settings() {
                         <p className="text-xs text-muted-foreground">
                           Ícone quadrado para o menu lateral recolhido. 128×128px.
                         </p>
-                        {(settings as any)?.white_label_icon_url ? (
+                        {settings?.white_label_icon_url ? (
                           <div className="flex items-center gap-4">
                             <img
-                              src={(settings as any).white_label_icon_url}
+                              src={settings.white_label_icon_url}
                               alt="WL Icon"
                               className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
+                              crossOrigin="anonymous"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
                             <div className="flex flex-col gap-2">
                               <Button variant="outline" size="sm" asChild disabled={wlIconUploading}>
