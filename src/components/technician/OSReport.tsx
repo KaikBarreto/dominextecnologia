@@ -681,5 +681,12 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         </Button>
       </div>
     </div>
+
+      <ImagePreviewModal
+        src={previewImage || ''}
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
+    </>
   );
 }
