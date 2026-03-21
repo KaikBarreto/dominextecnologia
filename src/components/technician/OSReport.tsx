@@ -729,7 +729,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           )}
 
           {/* Footer */}
-          <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
+          <div data-pdf-section className="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
             <p>Relatório gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
             {company?.name && <p className="mt-0.5">{company.name}</p>}
           </div>
