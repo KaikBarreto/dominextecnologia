@@ -200,7 +200,7 @@ export default function Settings() {
     }
     setWlUploading(true);
     try {
-      const currentWlLogo = (settings as any)?.white_label_logo_url;
+      const currentWlLogo = settings?.white_label_logo_url;
       if (currentWlLogo) {
         try {
           const oldPath = currentWlLogo.split('/company-logos/')[1];
