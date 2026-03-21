@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.13";
+export const APP_VERSION = "1.5.4";
 
-export const VERSION_NOTES = "Sistema modular de assinatura, feature gating e correções de orçamentos";
+export const VERSION_NOTES = "Resumo do orçamento sem precificação avançada, materiais manuais e white label social image";

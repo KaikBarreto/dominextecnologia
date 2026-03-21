@@ -40,7 +40,39 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
-    version: '1.5.13',
+    version: '1.5.4',
+    date: '21 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resumo do orçamento sem módulo de precificação',
+        description: 'O resumo financeiro do orçamento agora aparece para todos os planos, exibindo subtotais de serviços, materiais, desconto e total. O detalhamento de BDI permanece exclusivo do módulo de Precificação Avançada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Materiais manuais no orçamento',
+        description: 'Agora é possível adicionar materiais digitando o nome livremente, sem necessidade de cadastrar previamente no estoque.',
+        category: 'recurso',
+      },
+      {
+        title: 'White Label — imagem social personalizada',
+        description: 'Ao compartilhar links de propostas no WhatsApp ou Instagram, a imagem de pré-visualização usa o logo da empresa ao invés do logo padrão quando White Label está ativo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Download de fotos no relatório do serviço',
+        description: 'Adicionado botão de download ao visualizar fotos no relatório de OS, disponível no desktop e mobile.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Custos dos serviços — seleção automática',
+        description: 'A aba de custos dos serviços agora abre com o primeiro tipo de serviço já selecionado automaticamente.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.5.3',
     date: '21 de março de 2026',
     type: 'patch',
     changes: [
