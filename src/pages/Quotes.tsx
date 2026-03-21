@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
@@ -43,6 +44,8 @@ const ALL_SIDEBAR_TABS = [
 
 function QuotesList() {
   const isMobile = useIsMobile();
+  const { hasModule } = useCompanyModules();
+  const hasPricing = hasModule('pricing_advanced');
   const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
   const { convertToServiceOrder, isConverting } = useQuoteConversion();
   const { toast } = useToast();
@@ -103,7 +106,7 @@ function QuotesList() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className={cn("grid gap-3", hasPricing ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6" : "grid-cols-2 md:grid-cols-4")}>
         <Card>
           <CardContent className="p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total em Aberto</p>
@@ -126,24 +129,28 @@ function QuotesList() {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />Margem Média
-            </p>
-            <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.avgMarginPct}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
-              <Calculator className="h-3 w-3" />Custo Total
-            </p>
-            <p className="text-sm sm:text-lg font-bold text-foreground truncate">
-              {kpis.totalCostSum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-          </CardContent>
-        </Card>
+        {hasPricing && (
+          <>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />Margem Média
+                </p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.avgMarginPct}%</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <Calculator className="h-3 w-3" />Custo Total
+                </p>
+                <p className="text-sm sm:text-lg font-bold text-foreground truncate">
+                  {kpis.totalCostSum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
         <Card>
           <CardContent className="p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
@@ -223,9 +230,9 @@ function QuotesList() {
                   <SortableTableHead sortKey="quote_number" sortConfig={sortConfig} onSort={handleSort}>Nº</SortableTableHead>
                   <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
                   <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Data</SortableTableHead>
-                  <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Custo</SortableTableHead>
+                  {hasPricing && <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Custo</SortableTableHead>}
                   <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
-                  <TableHead className="hidden lg:table-cell">Margem</TableHead>
+                  {hasPricing && <TableHead className="hidden lg:table-cell">Margem</TableHead>}
                   <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -247,19 +254,23 @@ function QuotesList() {
                     <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
                       {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
-                      {cost > 0 ? cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-                    </TableCell>
+                    {hasPricing && (
+                      <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+                        {cost > 0 ? cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell className="font-semibold">
                       {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {margin !== null ? (
-                        <Badge variant={margin >= 20 ? 'success' : margin >= 0 ? 'warning' : 'destructive'} className="text-[10px]">
-                          {margin}%
-                        </Badge>
-                      ) : '—'}
-                    </TableCell>
+                    {hasPricing && (
+                      <TableCell className="hidden lg:table-cell">
+                        {margin !== null ? (
+                          <Badge variant={margin >= 20 ? 'success' : margin >= 0 ? 'warning' : 'destructive'} className="text-[10px]">
+                            {margin}%
+                          </Badge>
+                        ) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge className={STATUS_COLORS[q.status] ?? ''}>
                         {STATUS_LABELS[q.status] ?? q.status}
