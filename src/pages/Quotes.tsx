@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
