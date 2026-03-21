@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { haversineDistance, formatDistance } from '@/utils/geolocation';
+import { batchReverseGeocode } from '@/utils/reverseGeocode';
 
 interface LocationRecord {
   id: string;

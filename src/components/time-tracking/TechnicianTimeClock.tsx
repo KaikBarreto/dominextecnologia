@@ -62,9 +62,16 @@ export function TechnicianTimeClock() {
     // Start geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-          setAddress(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setCoords({ latitude, longitude });
+          setAddress('Obtendo endereço...');
+          try {
+            const addr = await reverseGeocode(latitude, longitude);
+            setAddress(addr);
+          } catch {
+            setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+          }
           if (settings?.require_selfie) {
             setFlowStep('selfie');
           } else {
