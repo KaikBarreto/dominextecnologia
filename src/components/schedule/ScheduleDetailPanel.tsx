@@ -85,11 +85,11 @@ function OrderDetail({
         <h3 className="text-sm font-semibold">Resumo da OS</h3>
       </div>
       <ScrollArea className="h-[calc(100%-3rem)]">
-        <div className="space-y-4 pr-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={cn('text-xs', statusBadge.className)}>{statusBadge.label}</Badge>
-            <Badge variant="outline" className="text-xs">{osTypeLabels[order.os_type]}</Badge>
-            <Badge variant="secondary" className="text-xs">OS #{order.order_number}</Badge>
+        <div className="space-y-4 pr-3 overflow-hidden">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <Badge className={cn('text-xs shrink-0', statusBadge.className)}>{statusBadge.label}</Badge>
+            <Badge variant="outline" className="text-xs truncate max-w-[140px]">{osTypeLabels[order.os_type]}</Badge>
+            <Badge variant="secondary" className="text-xs shrink-0">OS #{order.order_number}</Badge>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
