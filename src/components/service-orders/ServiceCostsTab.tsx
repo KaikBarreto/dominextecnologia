@@ -250,13 +250,15 @@ export function ServiceCostsTab() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="recursos" className="mt-4">
-                <LinkedResourcesSection
-                  serviceId={serviceId}
-                  serviceHours={hours}
-                  onTotalChange={setLinkedResourcesTotal}
-                />
-              </TabsContent>
+              {hasPricing && (
+                <TabsContent value="recursos" className="mt-4">
+                  <LinkedResourcesSection
+                    serviceId={serviceId}
+                    serviceHours={hours}
+                    onTotalChange={setLinkedResourcesTotal}
+                  />
+                </TabsContent>
+              )}
 
               <TabsContent value="materiais" className="mt-4">
                 <ServiceMaterialsList serviceId={serviceId} />
