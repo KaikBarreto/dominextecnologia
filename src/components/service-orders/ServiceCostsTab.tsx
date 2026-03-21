@@ -156,9 +156,9 @@ export function ServiceCostsTab() {
             <Tabs defaultValue="mao_de_obra" className="w-full">
               <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
                 <TabsTrigger value="mao_de_obra">Mão de obra</TabsTrigger>
-                <TabsTrigger value="recursos">Recursos</TabsTrigger>
+                {hasPricing && <TabsTrigger value="recursos">Recursos</TabsTrigger>}
                 <TabsTrigger value="materiais">Materiais</TabsTrigger>
-                <TabsTrigger value="resumo">Resumo</TabsTrigger>
+                {hasPricing && <TabsTrigger value="resumo">Resumo</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="mao_de_obra" className="mt-4">
