@@ -175,7 +175,6 @@ export function useServiceOrders() {
         'service_type_id',
         'form_template_id',
         'contract_id',
-        'quote_id',
       ] as Array<keyof typeof input>);
 
       const { data, error } = await supabase

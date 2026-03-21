@@ -85,7 +85,7 @@ function OrderDetail({
         <h3 className="text-sm font-semibold">Resumo da OS</h3>
       </div>
       <ScrollArea className="h-[calc(100%-3rem)]">
-        <div className="space-y-4">
+        <div className="space-y-4 pr-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className={cn('text-xs', statusBadge.className)}>{statusBadge.label}</Badge>
             <Badge variant="outline" className="text-xs">{osTypeLabels[order.os_type]}</Badge>
