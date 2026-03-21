@@ -254,19 +254,23 @@ function QuotesList() {
                     <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
                       {format(new Date(q.created_at), 'dd/MM/yy', { locale: ptBR })}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
-                      {cost > 0 ? cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-                    </TableCell>
+                    {hasPricing && (
+                      <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+                        {cost > 0 ? cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell className="font-semibold">
                       {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {margin !== null ? (
-                        <Badge variant={margin >= 20 ? 'success' : margin >= 0 ? 'warning' : 'destructive'} className="text-[10px]">
-                          {margin}%
-                        </Badge>
-                      ) : '—'}
-                    </TableCell>
+                    {hasPricing && (
+                      <TableCell className="hidden lg:table-cell">
+                        {margin !== null ? (
+                          <Badge variant={margin >= 20 ? 'success' : margin >= 0 ? 'warning' : 'destructive'} className="text-[10px]">
+                            {margin}%
+                          </Badge>
+                        ) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge className={STATUS_COLORS[q.status] ?? ''}>
                         {STATUS_LABELS[q.status] ?? q.status}
