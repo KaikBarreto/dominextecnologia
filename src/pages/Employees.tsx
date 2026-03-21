@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, BarChart3, Plus, Search, Clock, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';

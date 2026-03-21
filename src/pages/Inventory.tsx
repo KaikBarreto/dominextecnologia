@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Package, Plus, Search, AlertTriangle, DollarSign, Edit, Trash2, TrendingUp, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';

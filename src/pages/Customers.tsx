@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ImageIcon, Settings2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';

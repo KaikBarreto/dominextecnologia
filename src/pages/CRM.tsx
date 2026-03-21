@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { TrendingUp, Plus, DollarSign, Filter, Search, X, Users, Target, Settings2, Webhook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

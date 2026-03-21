@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { ScrollText, Plus, Search, Calendar, CheckCircle, Clock, AlertTriangle, Edit, Pause, Play, Trash2, XCircle } from 'lucide-react';
