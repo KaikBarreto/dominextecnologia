@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getFrequencyLabel } from '@/hooks/useContracts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'financeiro' | 'chamados' | 'contratos';
 
@@ -48,6 +49,8 @@ export default function CustomerDetail() {
   const isMobile = useIsMobile();
   const { isAdminOrGestor, hasPermission } = useAuth();
   const canViewCustomerFinancial = isAdminOrGestor() || hasPermission('fn:view_customer_financial');
+  const { hasModule } = useCompanyModules();
+  const hasPortal = hasModule('customer_portal');
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
   const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
@@ -94,14 +97,16 @@ export default function CustomerDetail() {
       { key: 'geral', label: 'Geral' },
       { key: 'equipamentos', label: 'Equipamentos' },
       { key: 'historico', label: 'Histórico de OS' },
-      { key: 'chamados', label: 'Chamados' },
-      { key: 'contratos', label: 'Contratos' },
     ];
+    if (hasPortal) {
+      allTabs.push({ key: 'chamados', label: 'Chamados' });
+    }
+    allTabs.push({ key: 'contratos', label: 'Contratos' });
     if (canViewCustomerFinancial) {
       allTabs.push({ key: 'financeiro', label: 'Financeiro' });
     }
     return allTabs;
-  }, [canViewCustomerFinancial]);
+  }, [canViewCustomerFinancial, hasPortal]);
 
   // Load existing portal link
   useEffect(() => {
@@ -179,7 +184,7 @@ export default function CustomerDetail() {
           </div>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap pl-11 sm:pl-0 justify-center sm:justify-end w-full sm:w-auto">
-          {portalLink ? (
+          {hasPortal && (portalLink ? (
             <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(portalLink); toast({ title: 'Link copiado!' }); }}>
               <Copy className="h-4 w-4 mr-1" /> Portal
             </Button>
@@ -188,7 +193,7 @@ export default function CustomerDetail() {
               {generatingPortal ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
               Gerar Portal
             </Button>
-          )}
+          ))}
           <Button variant="edit-ghost" size="sm" onClick={() => setEditCustomerOpen(true)}>
             <Edit className="h-4 w-4 mr-1" /> Editar
           </Button>
