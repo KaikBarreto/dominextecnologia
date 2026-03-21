@@ -562,7 +562,7 @@ export default function Settings() {
               </>
               )}
 
-              <div className="space-y-4 pl-0 sm:pl-6">
+              {hasModule('white_label') && <div className="space-y-4 pl-0 sm:pl-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">Ativar White Label</Label>
