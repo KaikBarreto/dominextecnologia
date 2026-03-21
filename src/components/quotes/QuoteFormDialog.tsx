@@ -187,6 +187,8 @@ function ServiceItemsList({
 // ─── Main Component ─────────────────────────────────────────────────────────
 export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogProps) {
   const isMobile = useIsMobile();
+  const { hasModule } = useCompanyModules();
+  const hasPricing = hasModule('pricing_advanced');
   const { customers } = useCustomers();
   const { createQuote, updateQuote } = useQuotes();
   const { templates } = useProposalTemplates();
