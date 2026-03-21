@@ -103,6 +103,16 @@ export default function Checkout() {
 
   const isRenewal = companyData?.subscription_status === 'active';
 
+  // For renewal, build plan info from existing company data and skip to checkout
+  const renewalPlanInfo = isRenewal && companyData ? {
+    name: companyData.subscription_plan
+      ? companyData.subscription_plan.charAt(0).toUpperCase() + companyData.subscription_plan.slice(1)
+      : 'Atual',
+    price: companyData.subscription_value || 0,
+    features: [],
+    maxUsers: companyData.max_users || 5,
+  } : null;
+
   const trialDaysLeft = companyData?.subscription_expires_at
     ? differenceInDays(new Date(companyData.subscription_expires_at), new Date())
     : null;
@@ -127,14 +137,18 @@ export default function Checkout() {
   };
 
   // Get current selected plan info
-  const currentPlanInfo = mode === 'custom'
-    ? { name: 'Personalizado', price: customPlanPrice, features: selectedModules.map(code => moduleCatalog.find((m: any) => m.code === code)?.name || code), maxUsers: 5 + extraUsers }
-    : PREBUILT_PLANS.find(p => p.code === selectedPlan);
+  const currentPlanInfo = isRenewal && renewalPlanInfo
+    ? renewalPlanInfo
+    : mode === 'custom'
+      ? { name: 'Personalizado', price: customPlanPrice, features: selectedModules.map(code => moduleCatalog.find((m: any) => m.code === code)?.name || code), maxUsers: 5 + extraUsers }
+      : PREBUILT_PLANS.find(p => p.code === selectedPlan);
 
   const planPrice = currentPlanInfo?.price || 0;
   const yearlyPrice = calculateYearlyPrice(planPrice);
-  const finalPrice = billingCycle === 'yearly' ? yearlyPrice : planPrice;
-  const nextDueDate = addMonths(new Date(), billingCycle === 'yearly' ? 12 : 1).toISOString();
+  const finalPrice = isRenewal ? planPrice : (billingCycle === 'yearly' ? yearlyPrice : planPrice);
+  const renewalCycle = companyData?.billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+  const effectiveCycle = isRenewal ? renewalCycle as BillingCycle : billingCycle;
+  const nextDueDate = addMonths(new Date(), effectiveCycle === 'yearly' ? 12 : 1).toISOString();
 
   if (companyLoading) {
     return (
@@ -182,8 +196,8 @@ export default function Checkout() {
     setIsCreatingPayment(false);
   };
 
-  // Checkout payment screen
-  if (showCheckout && currentPlanInfo) {
+  // Checkout payment screen — renewal skips plan selection
+  if ((showCheckout || isRenewal) && currentPlanInfo) {
     return (
       <motion.div
         key="checkout-payment"
@@ -195,7 +209,7 @@ export default function Checkout() {
           planName={currentPlanInfo.name}
           planPrice={planPrice}
           finalPrice={finalPrice}
-          billingCycle={billingCycle}
+          billingCycle={effectiveCycle}
           features={currentPlanInfo.features || []}
           maxUsers={currentPlanInfo.maxUsers || 5}
           cpfCnpj={cpfCnpj}
