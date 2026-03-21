@@ -449,17 +449,17 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
-              <div className="flex items-stretch gap-3">
+              <div className="flex gap-3">
                 {serviceOrder.customer?.photo_url && (
                   <button
                     type="button"
-                    className="w-24 sm:w-28 min-h-[88px] sm:min-h-[104px] overflow-hidden rounded-lg border border-slate-200 shrink-0 transition-opacity hover:opacity-80"
+                    className="w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-lg border border-slate-200 shrink-0 transition-opacity hover:opacity-80"
                     onClick={() => setPreviewImage(serviceOrder.customer.photo_url)}
                   >
                     <img
                       src={serviceOrder.customer.photo_url}
                       alt={serviceOrder.customer.name}
-                      className="h-full w-full object-cover"
+                      className="w-full h-full object-cover"
                     />
                   </button>
                 )}
