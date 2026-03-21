@@ -771,7 +771,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       </div>
 
       {/* ══ RESUMO DO ORÇAMENTO ══ */}
-      {items.length > 0 && (
+      {items.length > 0 && hasPricing && (
         <>
           <Separator />
           <section className="space-y-3">
