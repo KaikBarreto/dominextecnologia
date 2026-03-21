@@ -319,7 +319,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             )}
             <div className="flex items-center justify-between sm:flex-col sm:items-end sm:ml-auto shrink-0">
               <div className="text-lg sm:text-2xl font-black tracking-tight">
-                OS #{String(serviceOrder.order_number).padStart(4, '0')}
+                OS #{String(serviceOrder.order_number).padStart(6, '0')}
               </div>
               <p className="text-xs sm:text-sm text-white/90">{osTypeLabels[serviceOrder.os_type]}</p>
             </div>
