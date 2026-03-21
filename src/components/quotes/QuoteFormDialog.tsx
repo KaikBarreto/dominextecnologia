@@ -762,21 +762,41 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       <section className="space-y-3">
         <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
 
-        <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
-          <div className="flex-1 min-w-0">
-            <SearchableSelect
-              options={inventoryOptions}
-              value={addMatId}
-              onValueChange={setAddMatId}
-              placeholder="Selecionar material do estoque..."
-            />
+        <div className="flex flex-col gap-2 p-3 bg-muted/40 rounded-lg border">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                options={inventoryOptions}
+                value={addMatId}
+                onValueChange={(v) => { setAddMatId(v); setAddMatManualName(''); }}
+                placeholder="Selecionar do estoque..."
+              />
+            </div>
+            {!addMatId && (
+              <div className="flex-1 min-w-0">
+                <Input
+                  value={addMatManualName}
+                  onChange={e => setAddMatManualName(e.target.value)}
+                  placeholder="Ou digite o nome do material..."
+                  className="h-9 text-sm"
+                />
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!addMatId && addMatManualName && (
+              <>
+                <Label className="text-xs whitespace-nowrap">Preço unit.:</Label>
+                <Input type="number" min={0} step="0.01" value={addMatManualPrice}
+                  onChange={e => setAddMatManualPrice(Number(e.target.value) || 0)}
+                  className="h-9 w-24 text-sm" />
+              </>
+            )}
             <Label className="text-xs whitespace-nowrap">Qtd:</Label>
             <Input type="number" min={1} value={addMatQty}
               onChange={e => setAddMatQty(Math.max(1, Number(e.target.value) || 1))}
               className="h-9 w-16 text-sm" />
-            <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId} className="h-9 shrink-0">
+            <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId && !addMatManualName.trim()} className="h-9 shrink-0">
               <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
             </Button>
           </div>
