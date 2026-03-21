@@ -1,10 +1,5 @@
-export function buildServiceOrderShareLink(osId: string, targetUrl?: string) {
-  const shareUrl = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/os-share`);
-  shareUrl.searchParams.set('os_id', osId);
-
-  if (targetUrl) {
-    shareUrl.searchParams.set('redirect_to', targetUrl);
-  }
-
-  return shareUrl.toString();
+export function buildServiceOrderShareLink(osId: string, _targetUrl?: string) {
+  // Use the published domain for a friendly, clean URL
+  const appDomain = 'https://dominextecnologia.lovable.app';
+  return `${appDomain}/os-tecnico/${osId}?modo=cliente`;
 }
