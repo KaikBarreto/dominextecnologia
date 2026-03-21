@@ -34,10 +34,11 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
-const SIDEBAR_TABS = [
+const ALL_SIDEBAR_TABS = [
   { value: 'quotes', label: 'Orçamentos', icon: FileText },
-  { value: 'pricing', label: 'Precificação', icon: Settings2 },
+  { value: 'pricing', label: 'Precificação', icon: Settings2, module: 'pricing_advanced' as const },
 ];
 
 function QuotesList() {
