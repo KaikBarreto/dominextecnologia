@@ -89,6 +89,12 @@ export default function ServiceOrders() {
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
 
+  const getOsCode = (os: ServiceOrder) => {
+    const prefix = (os as any).service_type?.number_prefix || 'OS';
+    const year = os.scheduled_date ? new Date(os.scheduled_date).getFullYear() : new Date(os.created_at).getFullYear();
+    return `${prefix}-${year}-${String(os.order_number).padStart(6, '0')}`;
+  };
+
   const filteredOrders = useMemo(() => {
     // For kanban, don't apply date filter
     const baseOrders = viewMode === 'kanban' ? serviceOrders : filterByDate(serviceOrders, 'scheduled_date');
@@ -114,12 +120,6 @@ export default function ServiceOrders() {
 
   const getStatusLabel = (key: string) => statusOptions.find((s) => s.key === key)?.label || osStatusLabels[key as OsStatus] || key;
   const getStatusColor = (key: string) => statusOptions.find((s) => s.key === key)?.color || '#3b82f6';
-
-  const getOsCode = (os: ServiceOrder) => {
-    const prefix = (os as any).service_type?.number_prefix || 'OS';
-    const year = os.scheduled_date ? new Date(os.scheduled_date).getFullYear() : new Date(os.created_at).getFullYear();
-    return `${prefix}-${year}-${String(os.order_number).padStart(6, '0')}`;
-  };
 
   const handleSubmit = async (data: any) => {
     if (editingOS) {
