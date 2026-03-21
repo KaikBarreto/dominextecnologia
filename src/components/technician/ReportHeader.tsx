@@ -29,6 +29,7 @@ interface ReportHeaderProps {
     state?: string;
     zip_code?: string;
     logo_url?: string;
+    icon_url?: string;
   } | null;
   orderNumber?: string;
   osType?: string;
