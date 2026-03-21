@@ -36,6 +36,7 @@ import { ROLE_LABELS } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeBranco from '@/assets/icone_branco.png';
 import iconeVerde from '@/assets/icone_verde.png';
