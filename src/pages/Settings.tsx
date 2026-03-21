@@ -85,6 +85,7 @@ export default function Settings() {
   const [reportTextColor, setReportTextColor] = useState(DEFAULT_HEADER_CONFIG.textColor);
   const [reportLogoSize, setReportLogoSize] = useState(DEFAULT_HEADER_CONFIG.logoSize);
   const [reportShowLogoBg, setReportShowLogoBg] = useState(DEFAULT_HEADER_CONFIG.showLogoBg);
+  const [reportLogoBgColor, setReportLogoBgColor] = useState(DEFAULT_HEADER_CONFIG.logoBgColor);
   const [reportStatusBarColor, setReportStatusBarColor] = useState(DEFAULT_HEADER_CONFIG.statusBarColor);
   const [reportLogoType, setReportLogoType] = useState<'full' | 'icon'>(DEFAULT_HEADER_CONFIG.logoType);
 
