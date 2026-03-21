@@ -38,6 +38,8 @@ const settingsTabs: SettingsTab[] = [
 
 export default function Settings() {
   const { hasScreenAccess } = useAuth();
+  const { hasModule } = useCompanyModules();
+  const [wlGateOpen, setWlGateOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
