@@ -11,16 +11,18 @@ import { FinanceCategorias } from '@/components/financial/FinanceCategorias';
 import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
-const tabs = [
+const allTabs = [
   { key: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
   { key: 'receitas', label: 'Receitas', icon: TrendingUp },
   { key: 'despesas', label: 'Despesas', icon: TrendingDown },
   { key: 'historico', label: 'Histórico', icon: History },
-  { key: 'contas', label: 'Contas', icon: CalendarClock },
+  { key: 'contas', label: 'Contas', icon: CalendarClock, module: 'finance_advanced' as const },
   { key: 'categorias', label: 'Categorias', icon: Tag },
-  { key: 'dre', label: 'DRE - Resultado', icon: FileBarChart },
+  { key: 'dre', label: 'DRE - Resultado', icon: FileBarChart, module: 'finance_advanced' as const },
 ];
 
 export default function Finance() {
