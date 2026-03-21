@@ -101,11 +101,7 @@ export default function Checkout() {
     },
   });
 
-  useEffect(() => {
-    if (companyData && companyData.subscription_status === 'active') {
-      navigate('/assinatura');
-    }
-  }, [companyData, navigate]);
+  const isRenewal = companyData?.subscription_status === 'active';
 
   const trialDaysLeft = companyData?.subscription_expires_at
     ? differenceInDays(new Date(companyData.subscription_expires_at), new Date())

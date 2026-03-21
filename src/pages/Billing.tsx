@@ -305,7 +305,7 @@ export default function Billing() {
                 <Button
                   className="w-full h-12 md:h-14 text-base md:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
                   size="lg"
-                  onClick={() => navigate('/checkout')}
+                  onClick={() => navigate('/checkout?mode=renewal')}
                 >
                   Pagar Agora
                   <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5 -rotate-45" />
