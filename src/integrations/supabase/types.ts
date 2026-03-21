@@ -91,6 +91,7 @@ export type Database = {
           contact_name: string | null
           created_at: string | null
           email: string | null
+          extra_users: number | null
           id: string
           logo_url: string | null
           max_users: number | null
@@ -112,6 +113,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string | null
           email?: string | null
+          extra_users?: number | null
           id?: string
           logo_url?: string | null
           max_users?: number | null
@@ -133,6 +135,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string | null
           email?: string | null
+          extra_users?: number | null
           id?: string
           logo_url?: string | null
           max_users?: number | null
@@ -148,6 +151,38 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      company_modules: {
+        Row: {
+          activated_at: string | null
+          company_id: string
+          id: string
+          module_code: string
+          quantity: number | null
+        }
+        Insert: {
+          activated_at?: string | null
+          company_id: string
+          id?: string
+          module_code: string
+          quantity?: number | null
+        }
+        Update: {
+          activated_at?: string | null
+          company_id?: string
+          id?: string
+          module_code?: string
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_modules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_origins: {
         Row: {
@@ -3096,6 +3131,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_modules: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number | null
+          sort_order: number | null
+          type: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          sort_order?: number | null
+          type?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          sort_order?: number | null
+          type?: string | null
+        }
+        Relationships: []
+      }
       subscription_plans: {
         Row: {
           code: string
@@ -3103,6 +3174,7 @@ export type Database = {
           description: string | null
           features: Json | null
           id: string
+          included_modules: Json | null
           is_active: boolean | null
           max_users: number | null
           name: string
@@ -3114,6 +3186,7 @@ export type Database = {
           description?: string | null
           features?: Json | null
           id?: string
+          included_modules?: Json | null
           is_active?: boolean | null
           max_users?: number | null
           name: string
@@ -3125,6 +3198,7 @@ export type Database = {
           description?: string | null
           features?: Json | null
           id?: string
+          included_modules?: Json | null
           is_active?: boolean | null
           max_users?: number | null
           name?: string
