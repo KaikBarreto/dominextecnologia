@@ -720,20 +720,22 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
       {/* ══ DESLOCAMENTO + DESCONTO (mesma linha) ══ */}
       <section className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
-            <div className="flex items-center gap-2 flex-wrap">
-              <Input type="number" min={0} step="1" value={distanceKm || ''}
-                onChange={e => setDistanceKm(Number(e.target.value) || 0)}
-                className="h-9 w-28" placeholder="0 km" />
-              {bdi.displacementCost > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
-                </span>
-              )}
+        <div className={`grid grid-cols-1 ${hasPricing ? 'sm:grid-cols-2' : ''} gap-4`}>
+          {hasPricing && (
+            <div className="space-y-2">
+              <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title="Deslocamento" />
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input type="number" min={0} step="1" value={distanceKm || ''}
+                  onChange={e => setDistanceKm(Number(e.target.value) || 0)}
+                  className="h-9 w-28" placeholder="0 km" />
+                {bdi.displacementCost > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           <div className="space-y-2">
             <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Desconto" />
             <div className="flex items-center gap-2">
