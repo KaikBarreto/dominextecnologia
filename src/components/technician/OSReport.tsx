@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
+import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
 interface OSPhoto {
   id: string;
@@ -63,6 +64,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
+  const [isWhiteLabel, setIsWhiteLabel] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -89,15 +91,24 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (data) {
       setCompany(data);
       const d = data as any;
-      setHeaderConfig({
-        bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
-        textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
-        logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
-        showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
-        logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
-        statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
-        logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
-      });
+      const wlEnabled = !!d.white_label_enabled;
+      setIsWhiteLabel(wlEnabled);
+
+      if (wlEnabled) {
+        // Use company's custom header config
+        setHeaderConfig({
+          bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+          textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
+          logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+          showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+          logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
+          statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+          logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
+        });
+      } else {
+        // No white label — use Dominex defaults
+        setHeaderConfig(DEFAULT_HEADER_CONFIG);
+      }
     }
   };
 
@@ -388,7 +399,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         <ReportHeader
-          company={company ? { ...company, icon_url: (company as any).white_label_icon_url } : null}
+          company={company ? {
+            ...company,
+            icon_url: isWhiteLabel ? (company as any).white_label_icon_url : undefined,
+            logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
+          } : null}
           orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
           osType={osTypeLabels[serviceOrder.os_type]}
           checkOutTime={serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
@@ -713,6 +728,14 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             <p>Relatório gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
             {company?.name && <p className="mt-0.5">{company.name}</p>}
           </div>
+
+          {/* Dominex branding footer (only when no white label) */}
+          {!isWhiteLabel && (
+            <div data-pdf-section className="mt-6 py-4 flex flex-col items-center gap-1.5" style={{ backgroundColor: '#1e293b' }}>
+              <img src={dominexLogoWhite} alt="Dominex" className="h-6 object-contain opacity-70" />
+              <span className="text-[10px] text-white/40 tracking-wide">www.dominex.app</span>
+            </div>
+          )}
         </div>
       </div>
 
