@@ -397,7 +397,7 @@ export default function TechnicianOS() {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
               <div>
-                <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
+                <h1 className="text-lg sm:text-xl font-bold">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
                 <p className="text-xs sm:text-sm opacity-80">{osTypeLabels[serviceOrder.os_type]}</p>
               </div>
               {serviceOrder.scheduled_date && (
