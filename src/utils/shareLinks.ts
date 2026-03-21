@@ -1,6 +1,6 @@
 export function buildServiceOrderShareLink(osId: string) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  // Route through edge function for proper OG meta tags (WhatsApp preview)
-  // The function redirects to the friendly dominex.app URL
-  return `${supabaseUrl}/functions/v1/os-share?os_id=${osId}`;
+  // Friendly URL that goes through Cloudflare Worker proxy
+  // The Worker forwards to the Supabase edge function for OG meta tags,
+  // then the edge function redirects to dominex.app/os-tecnico/ID?modo=cliente
+  return `https://dominex.app/acompanhamento/${osId}`;
 }
