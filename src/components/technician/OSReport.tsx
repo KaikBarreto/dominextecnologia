@@ -142,8 +142,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
       const element = reportRef.current;
 
-      // Clone the element off-screen at fixed desktop width so responsive
-      // styles (sm:, md:) resolve correctly regardless of the actual viewport.
+      // Clone the element off-screen at fixed desktop width
       const clone = element.cloneNode(true) as HTMLElement;
       clone.style.position = 'fixed';
       clone.style.left = '-9999px';
@@ -180,26 +179,79 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         height: clone.scrollHeight,
       });
 
+      // Collect section boundaries from the clone to avoid cutting content
+      const cloneRect = clone.getBoundingClientRect();
+      const sections = clone.querySelectorAll('[data-pdf-section]');
+      const sectionBottoms: number[] = [];
+      sections.forEach(sec => {
+        const r = sec.getBoundingClientRect();
+        sectionBottoms.push(r.bottom - cloneRect.top);
+      });
+      sectionBottoms.sort((a, b) => a - b);
+
       document.body.removeChild(clone);
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const margin = 10;
+      const usableHeight = pdfHeight - margin * 2;
+      const imgWidth = pdfWidth - margin * 2;
+      const scale = imgWidth / canvas.width; // mm per canvas pixel
+      const totalCanvasHeight = canvas.height;
+      const pageHeightInCanvasPx = usableHeight / scale;
 
-      let heightLeft = imgHeight;
-      let position = 10;
+      // Determine page break points — snap to section boundaries
+      const pageBreaks: number[] = [0]; // start positions in canvas pixels
+      let currentY = 0;
 
-      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-      heightLeft -= (pdfHeight - 20);
+      while (currentY + pageHeightInCanvasPx < totalCanvasHeight) {
+        let idealBreak = currentY + pageHeightInCanvasPx;
 
-      while (heightLeft > 0) {
-        position = position - pdfHeight + 10;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-        heightLeft -= (pdfHeight - 20);
+        // Find the best section boundary to break at (last one that fits)
+        let bestBreak = idealBreak;
+        for (const secBottom of sectionBottoms) {
+          const secBottomPx = secBottom * 2; // scale factor is 2
+          if (secBottomPx <= currentY) continue;
+          if (secBottomPx <= idealBreak) {
+            bestBreak = secBottomPx;
+          } else {
+            break;
+          }
+        }
+
+        // If no section boundary found (section too tall), fall back to ideal break
+        // but add a small buffer to avoid cutting text exactly at the boundary
+        if (bestBreak <= currentY + pageHeightInCanvasPx * 0.2) {
+          bestBreak = idealBreak;
+        }
+
+        pageBreaks.push(bestBreak);
+        currentY = bestBreak;
+      }
+      pageBreaks.push(totalCanvasHeight);
+
+      // Render each page by slicing the canvas
+      for (let i = 0; i < pageBreaks.length - 1; i++) {
+        if (i > 0) pdf.addPage();
+
+        const sliceY = pageBreaks[i];
+        const sliceH = pageBreaks[i + 1] - sliceY;
+        if (sliceH <= 0) continue;
+
+        // Create a slice canvas
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceH;
+        const ctx = sliceCanvas.getContext('2d')!;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, sliceY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+        const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+        const sliceImgHeight = sliceH * scale;
+
+        pdf.addImage(sliceImgData, 'JPEG', margin, margin, imgWidth, sliceImgHeight);
       }
 
       pdf.save(`OS-${String(serviceOrder.order_number).padStart(6, '0')}.pdf`);
@@ -313,7 +365,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         {/* Company header */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
+        <div data-pdf-section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4">
               {company?.logo_url ? (
@@ -354,7 +406,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         </div>
 
         {/* Status bar */}
-        <div className="bg-emerald-600 text-white text-center py-2 text-xs sm:text-sm font-semibold tracking-wide uppercase">
+        <div data-pdf-section className="bg-emerald-600 text-white text-center py-2 text-xs sm:text-sm font-semibold tracking-wide uppercase">
           ✓ Serviço Concluído
           {serviceOrder.check_out_time && (
             <span className="font-normal ml-2">
@@ -366,7 +418,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Contract info */}
           {contractInfo && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-2">
+            <div data-pdf-section className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-2">
               <FileSignature className="h-4 w-4 text-blue-600 shrink-0" />
               <div>
                 <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Contrato</p>
@@ -377,7 +429,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Client & Equipment */}
           <div className="grid grid-cols-1 gap-4 max-w-full overflow-hidden">
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
@@ -399,7 +451,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
             {/* Equipment(s) - show all from junction or fallback */}
             {equipmentItems.length > 0 ? (
-              <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+              <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
                 </h3>
@@ -415,7 +467,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 </div>
               </div>
             ) : serviceOrder.equipment && (
-              <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+              <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
                 </h3>
@@ -435,7 +487,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Description */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.description || (serviceOrder as any).service_type) && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descrição do Chamado</h3>
               {(serviceOrder as any).service_type && (
                 <p className="text-sm font-semibold text-slate-800 mb-1">{(serviceOrder as any).service_type.name}</p>
@@ -448,7 +500,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Check-in / Check-out */}
           {(serviceOrder.check_in_time || serviceOrder.check_out_time) && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5" /> Execução
               </h3>
@@ -500,7 +552,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Photos */}
           {photos.length > 0 && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Camera className="h-3.5 w-3.5" /> Registro Fotográfico ({photos.length} fotos)
               </h3>
@@ -532,7 +584,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
             if (nonEmptyResponses.length === 0) return null;
             return (
-              <div key={gi} className="border border-slate-200 rounded-lg p-3 sm:p-4">
+              <div key={gi} data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
                 </h3>
@@ -545,7 +597,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Service Details */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <FileSignature className="h-3.5 w-3.5" /> Detalhes do Serviço
               </h3>
@@ -574,7 +626,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Financial Summary */}
           {(serviceOrder.labor_value || serviceOrder.parts_value || serviceOrder.total_value) && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Resumo Financeiro</h3>
               <div className="space-y-1 text-sm">
                 {serviceOrder.labor_hours && (
@@ -602,7 +654,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* Signatures */}
           {(signatureResponses.length > 0 || (serviceOrder as any).tech_signature || (serviceOrder as any).client_signature) && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <PenTool className="h-3.5 w-3.5" /> Assinaturas
               </h3>
@@ -633,7 +685,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
           {/* NPS / Rating Section */}
           {ratingData && ratingData.rated_at && (
-            <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+            <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Star className="h-3.5 w-3.5" /> Avaliação do Cliente
               </h3>
@@ -677,7 +729,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           )}
 
           {/* Footer */}
-          <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
+          <div data-pdf-section className="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
             <p>Relatório gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
             {company?.name && <p className="mt-0.5">{company.name}</p>}
           </div>
