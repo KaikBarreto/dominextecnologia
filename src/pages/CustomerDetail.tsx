@@ -546,7 +546,7 @@ export default function CustomerDetail() {
                   <TableBody>
                     {ticketsPagination.paginatedItems.map((os) => (
                       <TableRow key={os.id}>
-                        <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span></TableCell>
+                        <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(6, '0')}</span></TableCell>
                         <TableCell><p className="text-sm truncate max-w-[200px]">{os.description || '-'}</p></TableCell>
                         <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
                         <TableCell className="hidden sm:table-cell">

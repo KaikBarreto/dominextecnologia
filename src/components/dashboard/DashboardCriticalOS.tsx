@@ -45,7 +45,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-sm font-semibold text-foreground">
-                      #{String(os.orderNumber).padStart(4, '0')}
+                      #{String(os.orderNumber).padStart(6, '0')}
                     </span>
                     <span className="text-xs text-muted-foreground">{os.osType}</span>
                   </div>

@@ -562,7 +562,7 @@ export default function EquipmentDetail() {
                       {ordersPagination.paginatedItems.map((os) => (
                         <TableRow key={os.id}>
                           <TableCell>
-                            <span className="font-mono font-medium">#{String(os.order_number).padStart(4, '0')}</span>
+                            <span className="font-mono font-medium">#{String(os.order_number).padStart(6, '0')}</span>
                             {os.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{os.description}</p>}
                           </TableCell>
                           <TableCell>
