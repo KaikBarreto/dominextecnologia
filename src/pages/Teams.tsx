@@ -20,7 +20,7 @@ export default function Teams() {
   const [editingTeam, setEditingTeam] = useState<TeamWithMembers | null>(null);
 
   const filtered = teamsWithMembers.filter(t =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
+    fuzzyIncludes(t.name, searchQuery)
   );
 
   const getInitials = (n: string) => n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);

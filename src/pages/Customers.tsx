@@ -37,10 +37,10 @@ export default function Customers() {
 
   const filteredCustomers = customers.filter(
     (customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.document?.includes(searchTerm) ||
-      (customer as any).company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      fuzzyIncludes(customer.name, searchTerm) ||
+      fuzzyIncludes(customer.email, searchTerm) ||
+      fuzzyIncludes(customer.document, searchTerm) ||
+      fuzzyIncludes((customer as any).company_name, searchTerm)
   );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);

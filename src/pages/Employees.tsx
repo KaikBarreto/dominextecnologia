@@ -94,8 +94,8 @@ export default function Employees() {
 
   const filtered = useMemo(() => {
     let result = employees.filter(e =>
-      e.name.toLowerCase().includes(search.toLowerCase()) ||
-      (e.position || '').toLowerCase().includes(search.toLowerCase())
+      fuzzyIncludes(e.name, search) ||
+      fuzzyIncludes(e.position, search)
     );
     switch (sort) {
       case 'az': result.sort((a, b) => a.name.localeCompare(b.name)); break;

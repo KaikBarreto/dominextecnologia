@@ -76,7 +76,7 @@ export default function AdminSubscriptions() {
   const filtered = useMemo(() => {
     if (!companies) return [];
     return companies.filter((c: any) => {
-      const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = fuzzyIncludes(c.name, searchTerm);
       const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
       
       let matchExpiration = true;

@@ -60,9 +60,8 @@ export default function CRM() {
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
       if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesTitle = lead.title.toLowerCase().includes(searchLower);
-        const matchesCustomer = lead.customers?.name?.toLowerCase().includes(searchLower);
+        const matchesTitle = fuzzyIncludes(lead.title, filters.search);
+        const matchesCustomer = fuzzyIncludes(lead.customers?.name, filters.search);
         if (!matchesTitle && !matchesCustomer) return false;
       }
       if (filters.source && lead.source !== filters.source) return false;

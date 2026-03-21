@@ -61,12 +61,11 @@ function QuotesList() {
     let list = quotes;
     if (statusFilter !== 'all') list = list.filter((q) => q.status === statusFilter);
     if (search) {
-      const s = search.toLowerCase();
       list = list.filter(
         (q) =>
-          q.customers?.name?.toLowerCase().includes(s) ||
-          q.prospect_name?.toLowerCase().includes(s) ||
-          String(q.quote_number).includes(s)
+          fuzzyIncludes(q.customers?.name, search) ||
+          fuzzyIncludes(q.prospect_name, search) ||
+          fuzzyIncludes(String(q.quote_number), search)
       );
     }
     return list;

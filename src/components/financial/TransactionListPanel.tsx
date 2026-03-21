@@ -61,8 +61,8 @@ export function TransactionListPanel({
   const filtered = transactions
     .filter((t) => type === 'all' || t.transaction_type === type)
     .filter((t) =>
-      t.description.toLowerCase().includes(search.toLowerCase()) ||
-      t.category?.toLowerCase().includes(search.toLowerCase())
+      fuzzyIncludes(t.description, search) ||
+      fuzzyIncludes(t.category, search)
     );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);

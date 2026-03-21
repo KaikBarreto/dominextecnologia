@@ -35,8 +35,8 @@ export default function Contracts() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const filtered = contracts.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.customers?.name?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = fuzzyIncludes(c.name, search) ||
+      fuzzyIncludes(c.customers?.name, search);
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

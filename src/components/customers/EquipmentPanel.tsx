@@ -52,11 +52,11 @@ export function EquipmentPanel() {
 
   const filteredEquipment = equipment.filter((eq) => {
     const matchesSearch =
-      eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eq.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eq.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eq.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eq.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      fuzzyIncludes(eq.name, searchTerm) ||
+      fuzzyIncludes(eq.identifier, searchTerm) ||
+      fuzzyIncludes(eq.brand, searchTerm) ||
+      fuzzyIncludes(eq.model, searchTerm) ||
+      fuzzyIncludes(eq.customer?.name, searchTerm);
     const matchesCategory = categoryFilter === 'all' || (eq as any).category_id === categoryFilter;
     const matchesCustomer = customerFilter === 'all' || eq.customer_id === customerFilter;
     return matchesSearch && matchesCategory && matchesCustomer;
