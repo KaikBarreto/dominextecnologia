@@ -29,7 +29,6 @@ const allTabs = [
     value: 'costs',
     label: 'Custos dos Serviços',
     icon: DollarSign,
-    module: 'pricing_advanced' as const,
   },
   {
     value: 'global',
