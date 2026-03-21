@@ -638,8 +638,6 @@ export default function Settings() {
                               className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
                               crossOrigin="anonymous"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                              alt="WL Icon"
-                              className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
                             />
                             <div className="flex flex-col gap-2">
                               <Button variant="outline" size="sm" asChild disabled={wlIconUploading}>
