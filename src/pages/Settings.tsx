@@ -220,7 +220,7 @@ export default function Settings() {
   };
 
   const handleRemoveWlLogo = () => {
-    updateSettings.mutate({ white_label_logo_url: null } as any);
+    updateSettings.mutate({ white_label_logo_url: null });
   };
 
   const handleWlIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
