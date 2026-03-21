@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
+import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
+import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
 
