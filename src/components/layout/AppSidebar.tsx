@@ -80,7 +80,6 @@ const menuItems: MenuItem[] = [
 ];
 
 const systemMenuItems: MenuItem[] = [
-  { title: 'Usuários e Permissões', icon: UserCircle, path: '/usuarios', screenKey: 'screen:users' },
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
   { title: 'Tutoriais', icon: GraduationCap, path: '/tutoriais' },
   { title: 'Configurações', icon: Settings, path: '/configuracoes', screenKey: 'screen:settings' },
