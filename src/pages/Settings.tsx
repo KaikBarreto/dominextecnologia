@@ -630,10 +630,14 @@ export default function Settings() {
                         <p className="text-xs text-muted-foreground">
                           Ícone quadrado para o menu lateral recolhido. 128×128px.
                         </p>
-                        {(settings as any)?.white_label_icon_url ? (
+                        {settings?.white_label_icon_url ? (
                           <div className="flex items-center gap-4">
                             <img
-                              src={(settings as any).white_label_icon_url}
+                              src={settings.white_label_icon_url}
+                              alt="WL Icon"
+                              className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
+                              crossOrigin="anonymous"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               alt="WL Icon"
                               className="h-14 w-14 rounded-lg object-contain border bg-white p-1"
                             />
