@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.4";
+export const APP_VERSION = "1.5.5";
 
-export const VERSION_NOTES = "Resumo do orçamento sem precificação avançada, materiais manuais e white label social image";
+export const VERSION_NOTES = "Branding Dominex fora do relatório, foto do cliente e técnico na OS";

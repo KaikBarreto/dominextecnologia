@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.5',
+    date: '21 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Foto do cliente e técnico na OS',
+        description: 'O relatório da OS agora exibe a foto do cliente ao lado dos dados e a foto/nome do técnico nas seções de check-in e check-out.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Branding Dominex fora do relatório',
+        description: 'O logo e site da Dominex agora aparecem abaixo dos botões de ação, fora do corpo do relatório, para uma apresentação mais limpa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cor personalizada do fundo do logo',
+        description: 'Na personalização do cabeçalho da OS, agora é possível escolher a cor de fundo atrás do logo ao invés de apenas branco.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.5.4',
     date: '21 de março de 2026',
     type: 'patch',
