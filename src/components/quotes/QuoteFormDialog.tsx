@@ -194,6 +194,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { templates } = useProposalTemplates();
   const { settings: pricing } = usePricingSettings();
   const { serviceTypes } = useServiceTypes();
+  const { items: inventoryItems } = useInventory();
   const { profile } = useAuth();
   const isEditing = !!quote;
 
