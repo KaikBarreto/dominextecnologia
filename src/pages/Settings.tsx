@@ -581,18 +581,20 @@ export default function Settings() {
                       <div className="space-y-2">
                         <Label>Logo completo</Label>
                         <p className="text-xs text-muted-foreground">
-                          {(settings as any)?.white_label_logo_url
+                          {settings?.white_label_logo_url
                             ? 'Logo personalizado configurado'
                             : settings?.logo_url
                               ? 'Usando o logo da empresa por padrão'
                               : 'Será utilizado o logo da empresa'}
                         </p>
-                        {((settings as any)?.white_label_logo_url || settings?.logo_url) ? (
+                        {(settings?.white_label_logo_url || settings?.logo_url) ? (
                           <div className="flex items-center gap-4">
                             <img
-                              src={(settings as any)?.white_label_logo_url || settings?.logo_url}
+                              src={settings?.white_label_logo_url || settings?.logo_url}
                               alt="WL Logo"
                               className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-white p-1"
+                              crossOrigin="anonymous"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
                             <div className="flex flex-col gap-2">
                               <Button variant="outline" size="sm" asChild disabled={wlUploading}>
