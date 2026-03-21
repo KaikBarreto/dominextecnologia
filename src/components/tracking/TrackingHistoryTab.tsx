@@ -84,6 +84,22 @@ export function TrackingHistoryTab() {
 
   const pagination = useDataPagination(locations);
 
+  // Resolve addresses for the current page of locations
+  const resolveAddresses = useCallback(async (items: LocationRecord[]) => {
+    if (items.length === 0) return;
+    const coords = items.map(l => ({ lat: l.lat, lng: l.lng }));
+    const resolved = await batchReverseGeocode(coords, 15);
+    setAddressMap(prev => {
+      const next = new Map(prev);
+      resolved.forEach((v, k) => next.set(k, v));
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    resolveAddresses(pagination.paginatedItems);
+  }, [pagination.paginatedItems, resolveAddresses]);
+
   const stats = useMemo(() => {
     if (sortedAsc.length === 0) return { checkIns: 0, checkOuts: 0, totalDistance: 0, timeInField: 0 };
 
