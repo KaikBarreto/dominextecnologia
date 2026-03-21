@@ -594,8 +594,16 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     () => (serviceTypes ?? []).filter(s => s.is_active).map(s => ({ value: s.id, label: s.name })),
     [serviceTypes]
   );
+  const inventoryOptions = useMemo(
+    () => (inventoryItems ?? []).map(i => ({
+      value: i.id,
+      label: `${i.name}${i.sku ? ` (${i.sku})` : ''}`,
+    })),
+    [inventoryItems]
+  );
 
   const serviceItems = items.filter(i => i.item_type === 'servico');
+  const materialItems = items.filter(i => i.item_type === 'material');
   const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
 
   // ── Form Content ───────────────────────────────────────────────────────────
