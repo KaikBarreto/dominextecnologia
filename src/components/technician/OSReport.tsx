@@ -64,6 +64,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
+  const [isWhiteLabel, setIsWhiteLabel] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
