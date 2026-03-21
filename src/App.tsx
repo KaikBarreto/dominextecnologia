@@ -128,10 +128,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 // Permission-gated route — redirects to default route if no access
 function PermissionRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
-  const { hasScreenAccess, loading } = useAuth();
+  const { hasScreenAccess, loading, user, roles, permissions } = useAuth();
   const defaultRoute = useDefaultRoute();
 
   if (loading) return <LoadingSpinner />;
+  // If user is authenticated but permissions/roles haven't loaded yet, show spinner instead of redirecting
+  if (user && roles.length === 0 && permissions.length === 0) return <LoadingSpinner />;
   if (!hasScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
 
   return <>{children}</>;
