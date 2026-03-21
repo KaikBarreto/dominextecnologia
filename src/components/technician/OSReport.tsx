@@ -441,20 +441,31 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
-              <p className="font-semibold text-slate-900">{serviceOrder.customer?.name}</p>
-              {serviceOrder.customer?.document && (
-                <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
-              )}
-              {serviceOrder.customer?.phone && (
-                <p className="text-sm text-slate-600">{serviceOrder.customer.phone}</p>
-              )}
-              {serviceOrder.customer?.address && (
-                <p className="text-sm text-slate-500 mt-1">
-                  {serviceOrder.customer.address}
-                  {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
-                  {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
-                </p>
-              )}
+              <div className="flex items-start gap-3">
+                {serviceOrder.customer?.photo_url && (
+                  <img
+                    src={serviceOrder.customer.photo_url}
+                    alt={serviceOrder.customer.name}
+                    className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
+                  />
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">{serviceOrder.customer?.name}</p>
+                  {serviceOrder.customer?.document && (
+                    <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
+                  )}
+                  {serviceOrder.customer?.phone && (
+                    <p className="text-sm text-slate-600">{serviceOrder.customer.phone}</p>
+                  )}
+                  {serviceOrder.customer?.address && (
+                    <p className="text-sm text-slate-500 mt-1">
+                      {serviceOrder.customer.address}
+                      {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
+                      {serviceOrder.customer.state && ` - ${serviceOrder.customer.state}`}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Equipment(s) - show all from junction or fallback */}
