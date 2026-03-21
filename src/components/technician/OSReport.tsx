@@ -140,7 +140,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   };
 
   const handleCopyLink = () => {
-    const url = buildServiceOrderShareLink(serviceOrder.id, window.location.href);
+    const url = buildServiceOrderShareLink(serviceOrder.id);
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: 'Link copiado!' });
     }).catch(() => {

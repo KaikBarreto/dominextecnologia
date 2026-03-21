@@ -713,7 +713,7 @@ export default function TechnicianOS() {
               size="sm"
               className="w-full"
               onClick={async () => {
-                const link = buildServiceOrderShareLink(id!, `${window.location.origin}/os-tecnico/${id}?modo=cliente`);
+                const link = buildServiceOrderShareLink(id!);
                 await navigator.clipboard.writeText(link);
                 setTrackingLinkCopied(true);
                 toast({ title: 'Link copiado!' });

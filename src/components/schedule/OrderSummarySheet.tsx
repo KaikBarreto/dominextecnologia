@@ -46,7 +46,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
   const [linkCopied, setLinkCopied] = useState(false);
 
   const handleCopyTrackingLink = async () => {
-    const link = buildServiceOrderShareLink(order.id, `${window.location.origin}/os-tecnico/${order.id}?modo=cliente`);
+    const link = buildServiceOrderShareLink(order.id);
     await navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
