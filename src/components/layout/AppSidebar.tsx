@@ -36,6 +36,7 @@ import { ROLE_LABELS } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeBranco from '@/assets/icone_branco.png';
 import iconeVerde from '@/assets/icone_verde.png';
@@ -47,7 +48,8 @@ interface MenuItem {
   icon: any;
   path?: string;
   screenKey?: string;
-  children?: { title: string; icon: any; path: string; screenKey?: string }[];
+  moduleKey?: ModuleCode;
+  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
 }
 
 const menuItems: MenuItem[] = [
@@ -59,7 +61,7 @@ const menuItems: MenuItem[] = [
       { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
       { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
-      { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto' },
+      { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
@@ -71,11 +73,11 @@ const menuItems: MenuItem[] = [
       { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
-      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees' },
+      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
     ],
   },
-  { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
+  { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
 ];
 
@@ -103,6 +105,7 @@ const WhatsAppIcon = () => (
 
 export function AppSidebar() {
   const { profile, roles, hasScreenAccess } = useAuth();
+  const { hasModule } = useCompanyModules();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
@@ -122,11 +125,20 @@ export function AppSidebar() {
 
   const isSuperAdmin = roles.includes('super_admin');
 
-  const filterByAccess = <T extends { screenKey?: string }>(items: T[]): T[] => {
-    return items.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
+  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
+    return items.filter(item => {
+      if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
+      if (item.moduleKey && !hasModule(item.moduleKey)) return false;
+      return true;
+    });
   };
 
-  const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems);
+  const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems).map(item => {
+    if (item.children) {
+      return { ...item, children: filterByAccess(item.children) };
+    }
+    return item;
+  }).filter(item => !item.children || item.children.length > 0);
   const filteredMenu = activeMenu;
   const filteredSystemMenu = isSuperAdmin ? [] : filterByAccess(systemMenuItems);
 

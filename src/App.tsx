@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
+import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
+import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -139,6 +141,31 @@ function PermissionRoute({ screenKey, children }: { screenKey: string; children:
   return <>{children}</>;
 }
 
+// Module-gated route — shows gate modal if module not available
+function ModuleRoute({ moduleKey, children }: { moduleKey: ModuleCode; children: React.ReactNode }) {
+  const { hasModule, isLoading } = useCompanyModules();
+  const [gateOpen, setGateOpen] = React.useState(false);
+  const defaultRoute = useDefaultRoute();
+  const info = MODULE_INFO[moduleKey];
+
+  if (isLoading) return <LoadingSpinner />;
+  if (!hasModule(moduleKey)) {
+    return (
+      <>
+        <Navigate to={defaultRoute} replace />
+        <ModuleGateModal
+          open={true}
+          onOpenChange={(open) => { if (!open) setGateOpen(false); }}
+          moduleName={info?.name || moduleKey}
+          moduleDescription={info?.description}
+          modulePrice={info?.price}
+        />
+      </>
+    );
+  }
+  return <>{children}</>;
+}
+
 // Public Route wrapper (redirects authenticated users)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -205,7 +232,7 @@ const AppRoutes = () => (
       <Route path="/clientes/:id" element={<PermissionRoute screenKey="screen:customers"><CustomerDetail /></PermissionRoute>} />
       <Route path="/equipamentos" element={<PermissionRoute screenKey="screen:equipment"><EquipmentPage /></PermissionRoute>} />
       <Route path="/equipamentos/:id" element={<PermissionRoute screenKey="screen:equipment"><EquipmentDetail /></PermissionRoute>} />
-      <Route path="/crm" element={<PermissionRoute screenKey="screen:crm"><CRM /></PermissionRoute>} />
+      <Route path="/crm" element={<PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>} />
       <Route path="/orcamentos" element={<PermissionRoute screenKey="screen:crm"><Quotes /></PermissionRoute>} />
       <Route path="/estoque" element={<PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>} />
       <Route path="/financeiro" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
@@ -216,7 +243,7 @@ const AppRoutes = () => (
       <Route path="/configuracoes" element={<PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>} />
       <Route path="/perfil" element={<Profile />} />
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
-      <Route path="/funcionarios" element={<PermissionRoute screenKey="screen:employees"><Employees /></PermissionRoute>} />
+      <Route path="/funcionarios" element={<PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>} />
       <Route path="/ponto" element={<TimeClock />} />
       <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />

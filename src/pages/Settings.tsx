@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle } from 'lucide-react';
@@ -21,6 +22,8 @@ import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
@@ -36,6 +39,8 @@ const settingsTabs: SettingsTab[] = [
 
 export default function Settings() {
   const { hasScreenAccess } = useAuth();
+  const { hasModule } = useCompanyModules();
+  const [wlGateOpen, setWlGateOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
@@ -518,6 +523,8 @@ export default function Settings() {
                 </div>
               </div>
 
+              {hasModule('white_label') ? (
+              <>
               <Separator className="my-6" />
 
               {/* ========== SEÇÃO: WHITE LABEL ========== */}
@@ -528,8 +535,34 @@ export default function Settings() {
                 </h3>
                 <p className="text-xs text-muted-foreground">Personalize o sistema com a identidade visual da sua marca</p>
               </div>
+              </>
+              ) : (
+              <>
+              <Separator className="my-6" />
+              <div
+                className="flex items-center justify-between p-4 rounded-lg border border-dashed border-muted-foreground/30 cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => setWlGateOpen(true)}
+              >
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Paintbrush className="h-4 w-4 text-muted-foreground" />
+                    White Label
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Módulo não disponível no seu plano atual</p>
+                </div>
+                <Badge variant="secondary">Contratar</Badge>
+              </div>
+              <ModuleGateModal
+                open={wlGateOpen}
+                onOpenChange={setWlGateOpen}
+                moduleName={MODULE_INFO.white_label.name}
+                moduleDescription={MODULE_INFO.white_label.description}
+                modulePrice={MODULE_INFO.white_label.price}
+              />
+              </>
+              )}
 
-              <div className="space-y-4 pl-0 sm:pl-6">
+              {hasModule('white_label') && <div className="space-y-4 pl-0 sm:pl-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">Ativar White Label</Label>
@@ -647,7 +680,7 @@ export default function Settings() {
                     </div>
                   </>
                 )}
-              </div>
+              </div>}
 
               <div className="flex flex-wrap gap-3 pt-4">
                 <Button onClick={handleSaveCompany} disabled={updateSettings.isPending}>
