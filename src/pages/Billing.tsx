@@ -1,18 +1,21 @@
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Clock, ArrowRight, Sparkles, Zap, Users } from 'lucide-react';
+import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Clock, ArrowRight, Sparkles, Zap, Users, Package, Lock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, differenceInDays, isPast } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format, differenceInDays } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { MODULE_INFO } from '@/components/ModuleGateModal';
+import { formatBRL } from '@/utils/currency';
 
 export default function Billing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { modules, hasModule } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
   const { data: company, isLoading } = useQuery({
@@ -32,6 +35,18 @@ export default function Billing() {
       return data;
     },
     enabled: !!user,
+  });
+
+  const { data: allModules = [] } = useQuery({
+    queryKey: ['subscription-modules'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('subscription_modules')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+      return data || [];
+    },
   });
 
   useEffect(() => {
@@ -64,7 +79,7 @@ export default function Billing() {
         <div>
           <h2 className="text-lg font-semibold">Nenhuma empresa vinculada</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Sua conta ainda não está vinculada a uma empresa. Caso tenha se cadastrado recentemente, entre em contato com o administrador.
+            Sua conta ainda não está vinculada a uma empresa.
           </p>
         </div>
       </div>
@@ -103,10 +118,14 @@ export default function Billing() {
     ? company.subscription_plan.charAt(0).toUpperCase() + company.subscription_plan.slice(1)
     : 'Starter';
 
+  const activeModuleCodes = modules.map(m => m.module_code);
+  const availableAddons = allModules.filter(
+    (m: any) => !activeModuleCodes.includes(m.code) && m.code !== 'extra_user' && m.code !== 'basic'
+  );
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto p-4 sm:p-6">
       {isTesting ? (
-        /* Trial CTA */
         <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-6 sm:p-8 md:p-12 text-primary-foreground text-center">
           <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
           <div className="absolute bottom-0 left-0 w-24 md:w-48 h-24 md:h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
@@ -114,18 +133,12 @@ export default function Billing() {
             <Sparkles className="h-10 w-10 mx-auto" />
             <h1 className="text-2xl md:text-3xl font-bold">Ative sua Assinatura</h1>
             <p className="text-primary-foreground/80 text-sm md:text-base">
-              Você está no período de teste. Escolha o plano ideal e garanta acesso completo ao Dominex.
+              Você está no período de teste. Escolha o plano ideal e garanta acesso completo.
             </p>
             {daysRemaining !== null && daysRemaining > 0 && (
               <p className="text-primary-foreground/60 text-xs">
                 <Clock className="h-3.5 w-3.5 inline mr-1" />
                 {daysRemaining} dia{daysRemaining !== 1 ? 's' : ''} restante{daysRemaining !== 1 ? 's' : ''} de teste
-              </p>
-            )}
-            {daysRemaining !== null && daysRemaining <= 0 && (
-              <p className="text-orange-200 text-xs font-medium">
-                <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
-                Seu período de teste expirou
               </p>
             )}
             <Button
@@ -140,10 +153,8 @@ export default function Billing() {
           </div>
         </div>
       ) : (
-        /* Active subscription hero */
         <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-4 sm:p-6 md:p-8 text-primary-foreground">
           <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-24 md:w-48 h-24 md:h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
           <div className="relative z-10">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
               <div className="space-y-1 md:space-y-2">
@@ -155,7 +166,7 @@ export default function Billing() {
               </div>
               <div className="flex items-center justify-between md:flex-col md:items-end gap-2">
                 {statusConfig.badge}
-                <p className="text-primary-foreground/70 text-xs md:text-sm flex items-center gap-1.5 md:gap-2">
+                <p className="text-primary-foreground/70 text-xs md:text-sm flex items-center gap-1.5">
                   <StatusIcon className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   {statusConfig.message}
                 </p>
@@ -171,7 +182,7 @@ export default function Billing() {
                   <div className="min-w-0">
                     <p className="text-xs md:text-sm text-primary-foreground/70">Valor mensal</p>
                     <p className="text-lg md:text-2xl font-bold truncate">
-                      {effectiveValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      R$ {formatBRL(effectiveValue)}
                     </p>
                   </div>
                 </div>
@@ -196,6 +207,62 @@ export default function Billing() {
         </div>
       )}
 
+      {/* Active Modules */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Módulos Ativos
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {modules.map((m) => {
+            const info = MODULE_INFO[m.module_code];
+            if (!info) return null;
+            return (
+              <Card key={m.module_code} className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{info.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{info.description}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Available Addons */}
+      {availableAddons.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-amber-500" />
+            Módulos Disponíveis
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {availableAddons.map((m: any) => {
+              const info = MODULE_INFO[m.code];
+              return (
+                <Card key={m.code} className="border-dashed hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => navigate('/checkout')}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                      <Lock className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{info?.name || m.name}</p>
+                      <p className="text-xs text-muted-foreground">R$ {formatBRL(m.price)}/mês</p>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 text-xs">Contratar</Badge>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {!isTesting && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Payment Card */}
@@ -208,30 +275,21 @@ export default function Billing() {
                   </div>
                   <span>Pagamento</span>
                 </CardTitle>
-                {daysRemaining !== null && daysRemaining <= 7 && (
-                  <Badge variant="outline" className="animate-glow-pulse bg-orange-500/10 text-orange-600 border-orange-300 text-xs shrink-0">
-                    Vence em breve
-                  </Badge>
-                )}
               </div>
               <CardDescription className="mt-2 text-xs md:text-sm">
                 {daysRemaining !== null && daysRemaining < 0
                   ? 'Sua assinatura está vencida. Renove agora.'
-                  : daysRemaining !== null && daysRemaining <= 7
-                  ? 'Sua assinatura vence em breve.'
                   : 'Mantenha sua assinatura em dia.'}
               </CardDescription>
             </CardHeader>
             <CardContent className="relative p-4 md:p-6 pt-0">
               <div className="space-y-4 md:space-y-5">
-                {/* Price Display */}
                 <div className="relative overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-background to-muted/50 border p-4 md:p-6">
-                  <div className="absolute top-0 right-0 w-16 md:w-20 h-16 md:h-20 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
                   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                     <div>
                       <p className="text-xs md:text-sm text-muted-foreground font-medium">Valor a pagar</p>
                       <p className="text-2xl md:text-4xl font-bold tracking-tight mt-1">
-                        {effectiveValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        R$ {formatBRL(effectiveValue)}
                       </p>
                     </div>
                     <div className="text-left sm:text-right">
@@ -244,30 +302,14 @@ export default function Billing() {
                     </div>
                   </div>
                 </div>
-
                 <Button
-                  className="w-full h-12 md:h-14 text-base md:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full h-12 md:h-14 text-base md:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
                   size="lg"
                   onClick={() => navigate('/checkout')}
                 >
                   Pagar Agora
                   <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5 -rotate-45" />
                 </Button>
-
-                <div className="flex items-center justify-center gap-3 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1 md:gap-1.5">
-                    <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-emerald-500" />
-                    <span>PIX</span>
-                  </div>
-                  <div className="flex items-center gap-1 md:gap-1.5">
-                    <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-muted-foreground" />
-                    <span>Boleto</span>
-                  </div>
-                  <div className="flex items-center gap-1 md:gap-1.5">
-                    <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-primary" />
-                    <span>Cartão</span>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -286,6 +328,10 @@ export default function Billing() {
               <div className="flex justify-between text-sm py-2 border-b border-border">
                 <span className="text-muted-foreground">Plano</span>
                 <span className="font-semibold capitalize">{planDisplayName}</span>
+              </div>
+              <div className="flex justify-between text-sm py-2 border-b border-border">
+                <span className="text-muted-foreground">Módulos ativos</span>
+                <span className="font-semibold">{modules.length}</span>
               </div>
               <div className="flex justify-between text-sm py-2 border-b border-border">
                 <span className="text-muted-foreground">Máx. Usuários</span>
