@@ -105,7 +105,7 @@ function QuotesList() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className={cn("grid gap-3", hasPricing ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6" : "grid-cols-2 md:grid-cols-4")}>
         <Card>
           <CardContent className="p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total em Aberto</p>
@@ -128,24 +128,28 @@ function QuotesList() {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />Margem Média
-            </p>
-            <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.avgMarginPct}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
-              <Calculator className="h-3 w-3" />Custo Total
-            </p>
-            <p className="text-sm sm:text-lg font-bold text-foreground truncate">
-              {kpis.totalCostSum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-          </CardContent>
-        </Card>
+        {hasPricing && (
+          <>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />Margem Média
+                </p>
+                <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.avgMarginPct}%</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <Calculator className="h-3 w-3" />Custo Total
+                </p>
+                <p className="text-sm sm:text-lg font-bold text-foreground truncate">
+                  {kpis.totalCostSum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
         <Card>
           <CardContent className="p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
