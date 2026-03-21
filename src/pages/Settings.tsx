@@ -522,6 +522,8 @@ export default function Settings() {
                 </div>
               </div>
 
+              {hasModule('white_label') ? (
+              <>
               <Separator className="my-6" />
 
               {/* ========== SEÇÃO: WHITE LABEL ========== */}
@@ -532,6 +534,32 @@ export default function Settings() {
                 </h3>
                 <p className="text-xs text-muted-foreground">Personalize o sistema com a identidade visual da sua marca</p>
               </div>
+              </>
+              ) : (
+              <>
+              <Separator className="my-6" />
+              <div
+                className="flex items-center justify-between p-4 rounded-lg border border-dashed border-muted-foreground/30 cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => setWlGateOpen(true)}
+              >
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Paintbrush className="h-4 w-4 text-muted-foreground" />
+                    White Label
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Módulo não disponível no seu plano atual</p>
+                </div>
+                <Badge variant="secondary">Contratar</Badge>
+              </div>
+              <ModuleGateModal
+                open={wlGateOpen}
+                onOpenChange={setWlGateOpen}
+                moduleName={MODULE_INFO.white_label.name}
+                moduleDescription={MODULE_INFO.white_label.description}
+                modulePrice={MODULE_INFO.white_label.price}
+              />
+              </>
+              )}
 
               <div className="space-y-4 pl-0 sm:pl-6">
                 <div className="flex items-center justify-between">
