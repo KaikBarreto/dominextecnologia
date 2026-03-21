@@ -23,6 +23,7 @@ export interface CompanySettings {
   };
   white_label_enabled?: boolean;
   white_label_logo_url?: string;
+  white_label_icon_url?: string;
   white_label_primary_color?: string;
   show_name_in_documents?: boolean;
   show_cnpj_in_documents?: boolean;
