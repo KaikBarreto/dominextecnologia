@@ -751,6 +751,86 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         )}
       </section>
 
+      <Separator />
+
+      {/* ══ 4. MATERIAIS ══ */}
+      <section className="space-y-3">
+        <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Materiais" />
+
+        <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
+          <div className="flex-1 min-w-0">
+            <SearchableSelect
+              options={inventoryOptions}
+              value={addMatId}
+              onValueChange={setAddMatId}
+              placeholder="Selecionar material do estoque..."
+            />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label className="text-xs whitespace-nowrap">Qtd:</Label>
+            <Input type="number" min={1} value={addMatQty}
+              onChange={e => setAddMatQty(Math.max(1, Number(e.target.value) || 1))}
+              className="h-9 w-16 text-sm" />
+            <Button size="sm" onClick={handleAddMaterial} disabled={!addMatId} className="h-9 shrink-0">
+              <Plus className="h-3.5 w-3.5 mr-1" />Adicionar
+            </Button>
+          </div>
+        </div>
+
+        {materialItems.length > 0 ? (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-2 font-medium text-muted-foreground">Material</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground w-12">Qtd</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-28">Preço unit.</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground w-24">Total</th>
+                  <th className="w-8 p-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {materialItems.map((item) => {
+                  const globalIdx = items.indexOf(item);
+                  return (
+                    <tr key={globalIdx} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="p-2 font-medium">{item.description}</td>
+                      <td className="p-2 text-center text-muted-foreground">{item.quantity}</td>
+                      <td className="p-2">
+                        <Input
+                          type="number" min={0} step="0.01"
+                          value={item.unit_price || ''}
+                          onChange={e => updateItemPrice(globalIdx, parseFloat(e.target.value) || 0)}
+                          className="h-7 w-24 text-xs text-right ml-auto"
+                        />
+                      </td>
+                      <td className="p-2 text-right font-semibold">{fmt(item.total_price)}</td>
+                      <td className="p-2">
+                        <Button type="button" variant="ghost" size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => removeItem(globalIdx)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-muted/30 border-t">
+                  <td colSpan={3} className="p-2 text-right text-xs font-medium text-muted-foreground">
+                    Subtotal Materiais
+                  </td>
+                  <td className="p-2 text-right font-bold">
+                    {fmt(materialItems.reduce((s, i) => s + i.total_price, 0))}
+                  </td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState>Nenhum material adicionado</EmptyState>
+        )}
+      </section>
 
       <Separator />
 
