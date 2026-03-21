@@ -5,6 +5,7 @@ export interface ReportHeaderConfig {
   textColor: string;
   logoSize: number;
   showLogoBg: boolean;
+  logoBgColor: string;
   statusBarColor: string;
   logoType: 'full' | 'icon';
 }
@@ -14,6 +15,7 @@ export const DEFAULT_HEADER_CONFIG: ReportHeaderConfig = {
   textColor: '#ffffff',
   logoSize: 80,
   showLogoBg: true,
+  logoBgColor: '#ffffff',
   statusBarColor: '#16a34a',
   logoType: 'full',
 };
@@ -69,7 +71,7 @@ export function ReportHeader({
                   height: `${logoPx}px`,
                   width: `${logoPx}px`,
                   ...(cfg.showLogoBg
-                    ? { backgroundColor: 'rgba(255,255,255,0.95)', padding: '6px' }
+                    ? { backgroundColor: cfg.logoBgColor || 'rgba(255,255,255,0.95)', padding: '6px' }
                     : {}),
                 }}
               />

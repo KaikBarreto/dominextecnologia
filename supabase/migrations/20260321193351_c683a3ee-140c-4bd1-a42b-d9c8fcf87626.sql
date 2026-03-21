@@ -1,0 +1,1 @@
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS report_header_logo_bg_color text DEFAULT '#ffffff';

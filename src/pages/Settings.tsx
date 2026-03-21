@@ -85,6 +85,7 @@ export default function Settings() {
   const [reportTextColor, setReportTextColor] = useState(DEFAULT_HEADER_CONFIG.textColor);
   const [reportLogoSize, setReportLogoSize] = useState(DEFAULT_HEADER_CONFIG.logoSize);
   const [reportShowLogoBg, setReportShowLogoBg] = useState(DEFAULT_HEADER_CONFIG.showLogoBg);
+  const [reportLogoBgColor, setReportLogoBgColor] = useState(DEFAULT_HEADER_CONFIG.logoBgColor);
   const [reportStatusBarColor, setReportStatusBarColor] = useState(DEFAULT_HEADER_CONFIG.statusBarColor);
   const [reportLogoType, setReportLogoType] = useState<'full' | 'icon'>(DEFAULT_HEADER_CONFIG.logoType);
 
@@ -129,6 +130,7 @@ export default function Settings() {
       setReportTextColor((settings as any).report_header_text_color || DEFAULT_HEADER_CONFIG.textColor);
       setReportLogoSize((settings as any).report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize);
       setReportShowLogoBg((settings as any).report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg);
+      setReportLogoBgColor((settings as any).report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor);
       setReportStatusBarColor((settings as any).report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor);
       setReportLogoType((settings as any).report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType);
     }
@@ -158,6 +160,7 @@ export default function Settings() {
       report_header_text_color: reportTextColor,
       report_header_logo_size: reportLogoSize,
       report_header_show_logo_bg: reportShowLogoBg,
+      report_header_logo_bg_color: reportLogoBgColor,
       report_status_bar_color: reportStatusBarColor,
       report_header_logo_type: reportLogoType,
     } as any);
@@ -734,6 +737,7 @@ export default function Settings() {
                             textColor: reportTextColor,
                             logoSize: reportLogoSize,
                             showLogoBg: reportShowLogoBg,
+                            logoBgColor: reportLogoBgColor,
                             statusBarColor: reportStatusBarColor,
                             logoType: reportLogoType,
                           }}
@@ -777,12 +781,20 @@ export default function Settings() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-xs">Fundo branco atrás do logo</Label>
-                          <p className="text-[11px] text-muted-foreground">Remove o fundo quando desativado</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-xs">Fundo atrás do logo</Label>
+                            <p className="text-[11px] text-muted-foreground">Remove o fundo quando desativado</p>
+                          </div>
+                          <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
                         </div>
-                        <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
+                        {reportShowLogoBg && (
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs whitespace-nowrap">Cor do fundo</Label>
+                            <ColorPicker value={reportLogoBgColor} onChange={setReportLogoBgColor} />
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">
