@@ -480,7 +480,32 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setIsFetchingSvc(false);
   }, [addSvcId, addSvcQty, serviceTypes, profile, bdiFactor, profitRate]);
 
-  // (material handler removed — materials are sub-items of services)
+  // ── Add material handler ──
+  const handleAddMaterial = useCallback(() => {
+    if (!addMatId) return;
+    const inv = inventoryItems.find(i => i.id === addMatId);
+    if (!inv) return;
+    const unitPrice = Number(inv.sale_price ?? inv.cost_price ?? 0);
+    setItems(prev => [...prev, {
+      item_type: 'material',
+      description: inv.name,
+      quantity: addMatQty,
+      unit_total_cost: Number(inv.cost_price ?? 0),
+      unit_price: unitPrice,
+      total_price: Math.round(unitPrice * addMatQty * 100) / 100,
+      service_type_id: null,
+      inventory_id: inv.id,
+      unit_hourly_rate: 0,
+      unit_hours: 0,
+      unit_labor_cost: 0,
+      unit_materials_cost: 0,
+      unit_extras_cost: 0,
+      profit_rate: profitRate,
+      bdi: bdiFactor,
+    }]);
+    setAddMatId('');
+    setAddMatQty(1);
+  }, [addMatId, addMatQty, inventoryItems, profitRate, bdiFactor]);
 
   // ── Item price update ──
   const updateItemPrice = (idx: number, newPrice: number) => {
