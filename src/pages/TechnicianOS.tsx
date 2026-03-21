@@ -359,7 +359,7 @@ export default function TechnicianOS() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base sm:text-lg font-bold truncate">OS #{String(serviceOrder.order_number).padStart(4, '0')}</h1>
+              <h1 className="text-base sm:text-lg font-bold truncate">OS #{String(serviceOrder.order_number).padStart(6, '0')}</h1>
               <p className="text-xs sm:text-sm opacity-90">Relatório de Serviço</p>
             </div>
             <Badge variant={statusBadgeVariant[serviceOrder.status]}>
