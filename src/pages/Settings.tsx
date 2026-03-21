@@ -727,6 +727,7 @@ export default function Settings() {
                             state: companyState || 'UF',
                             zip_code: companyZip || '00000-000',
                             logo_url: settings?.white_label_logo_url || settings?.logo_url || undefined,
+                            icon_url: settings?.white_label_icon_url || undefined,
                           }}
                           config={{
                             bgColor: reportBgColor,
@@ -734,6 +735,7 @@ export default function Settings() {
                             logoSize: reportLogoSize,
                             showLogoBg: reportShowLogoBg,
                             statusBarColor: reportStatusBarColor,
+                            logoType: reportLogoType,
                           }}
                           isPreview
                         />
