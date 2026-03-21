@@ -15,6 +15,7 @@ export const DEFAULT_HEADER_CONFIG: ReportHeaderConfig = {
   logoSize: 80,
   showLogoBg: true,
   statusBarColor: '#16a34a',
+  logoType: 'full',
 };
 
 interface ReportHeaderProps {
