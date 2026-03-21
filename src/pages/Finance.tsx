@@ -193,6 +193,14 @@ export default function Finance() {
         </div>
       </div>
 
+      <ModuleGateModal
+        open={gateOpen}
+        onOpenChange={setGateOpen}
+        moduleName={MODULE_INFO.finance_advanced.name}
+        moduleDescription={MODULE_INFO.finance_advanced.description}
+        modulePrice={MODULE_INFO.finance_advanced.price}
+      />
+
       <TransactionFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
