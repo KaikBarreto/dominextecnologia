@@ -86,6 +86,7 @@ export default function Settings() {
   const [reportLogoSize, setReportLogoSize] = useState(DEFAULT_HEADER_CONFIG.logoSize);
   const [reportShowLogoBg, setReportShowLogoBg] = useState(DEFAULT_HEADER_CONFIG.showLogoBg);
   const [reportStatusBarColor, setReportStatusBarColor] = useState(DEFAULT_HEADER_CONFIG.statusBarColor);
+  const [reportLogoType, setReportLogoType] = useState<'full' | 'icon'>(DEFAULT_HEADER_CONFIG.logoType);
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
@@ -129,6 +130,7 @@ export default function Settings() {
       setReportLogoSize((settings as any).report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize);
       setReportShowLogoBg((settings as any).report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg);
       setReportStatusBarColor((settings as any).report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor);
+      setReportLogoType((settings as any).report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType);
     }
   }, [settings]);
 
@@ -157,6 +159,7 @@ export default function Settings() {
       report_header_logo_size: reportLogoSize,
       report_header_show_logo_bg: reportShowLogoBg,
       report_status_bar_color: reportStatusBarColor,
+      report_header_logo_type: reportLogoType,
     } as any);
   };
 
@@ -724,6 +727,7 @@ export default function Settings() {
                             state: companyState || 'UF',
                             zip_code: companyZip || '00000-000',
                             logo_url: settings?.white_label_logo_url || settings?.logo_url || undefined,
+                            icon_url: settings?.white_label_icon_url || undefined,
                           }}
                           config={{
                             bgColor: reportBgColor,
@@ -731,6 +735,7 @@ export default function Settings() {
                             logoSize: reportLogoSize,
                             showLogoBg: reportShowLogoBg,
                             statusBarColor: reportStatusBarColor,
+                            logoType: reportLogoType,
                           }}
                           isPreview
                         />
@@ -778,6 +783,33 @@ export default function Settings() {
                           <p className="text-[11px] text-muted-foreground">Remove o fundo quando desativado</p>
                         </div>
                         <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs">Tipo de logo no relatório</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={reportLogoType === 'full' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setReportLogoType('full')}
+                            className="flex-1"
+                          >
+                            Logo Completo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={reportLogoType === 'icon' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setReportLogoType('icon')}
+                            className="flex-1"
+                          >
+                            Ícone
+                          </Button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {reportLogoType === 'icon' ? 'Usa o ícone configurado no White Label' : 'Usa o logo completo da empresa'}
+                        </p>
                       </div>
                     </div>
                   </>

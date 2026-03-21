@@ -6,6 +6,7 @@ export interface ReportHeaderConfig {
   logoSize: number;
   showLogoBg: boolean;
   statusBarColor: string;
+  logoType: 'full' | 'icon';
 }
 
 export const DEFAULT_HEADER_CONFIG: ReportHeaderConfig = {
@@ -14,6 +15,7 @@ export const DEFAULT_HEADER_CONFIG: ReportHeaderConfig = {
   logoSize: 80,
   showLogoBg: true,
   statusBarColor: '#16a34a',
+  logoType: 'full',
 };
 
 interface ReportHeaderProps {
@@ -27,6 +29,7 @@ interface ReportHeaderProps {
     state?: string;
     zip_code?: string;
     logo_url?: string;
+    icon_url?: string;
   } | null;
   orderNumber?: string;
   osType?: string;
@@ -45,6 +48,7 @@ export function ReportHeader({
 }: ReportHeaderProps) {
   const cfg: ReportHeaderConfig = { ...DEFAULT_HEADER_CONFIG, ...configOverride };
   const logoPx = cfg.logoSize;
+  const resolvedLogo = cfg.logoType === 'icon' ? (company?.icon_url || company?.logo_url) : company?.logo_url;
 
   return (
     <>
@@ -56,9 +60,9 @@ export function ReportHeader({
       >
         <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
-            {company?.logo_url ? (
+            {resolvedLogo ? (
               <img
-                src={company.logo_url}
+                src={resolvedLogo}
                 alt="Logo"
                 className="object-contain rounded-lg shrink-0"
                 style={{

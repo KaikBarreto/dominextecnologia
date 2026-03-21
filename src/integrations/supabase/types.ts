@@ -273,6 +273,7 @@ export type Database = {
           proposal_customization: Json | null
           report_header_bg_color: string | null
           report_header_logo_size: number | null
+          report_header_logo_type: string | null
           report_header_show_logo_bg: boolean | null
           report_header_text_color: string | null
           report_status_bar_color: string | null
@@ -306,6 +307,7 @@ export type Database = {
           proposal_customization?: Json | null
           report_header_bg_color?: string | null
           report_header_logo_size?: number | null
+          report_header_logo_type?: string | null
           report_header_show_logo_bg?: boolean | null
           report_header_text_color?: string | null
           report_status_bar_color?: string | null
@@ -339,6 +341,7 @@ export type Database = {
           proposal_customization?: Json | null
           report_header_bg_color?: string | null
           report_header_logo_size?: number | null
+          report_header_logo_type?: string | null
           report_header_show_logo_bg?: boolean | null
           report_header_text_color?: string | null
           report_status_bar_color?: string | null

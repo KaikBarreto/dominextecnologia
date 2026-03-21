@@ -95,6 +95,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
         showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
         statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+        logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
       });
     }
   };
@@ -386,7 +387,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         <ReportHeader
-          company={company}
+          company={company ? { ...company, icon_url: (company as any).white_label_icon_url } : null}
           orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
           osType={osTypeLabels[serviceOrder.os_type]}
           checkOutTime={serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
