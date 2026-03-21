@@ -84,10 +84,10 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     if (!techId) return;
     const { data } = await supabase
       .from('profiles')
-      .select('full_name, photo_url')
+      .select('full_name, avatar_url')
       .eq('user_id', techId)
       .maybeSingle();
-    if (data) setTechnicianInfo(data);
+    if (data) setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
   };
 
   const fetchRating = async () => {
