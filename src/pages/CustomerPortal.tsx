@@ -280,7 +280,7 @@ export default function CustomerPortal() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(4, '0')}</span>
+                          <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(6, '0')}</span>
                           <Badge className={cn('text-xs', statusCfg.badgeClass)}>
                             {statusCfg.label}
                           </Badge>
@@ -339,7 +339,7 @@ export default function CustomerPortal() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(4, '0')}</span>
+                                <span className="font-mono text-sm font-bold">#{String(os.order_number).padStart(6, '0')}</span>
                               <Badge className={cn('text-xs', statusCfg.badgeClass)}>
                                   {statusCfg.label}
                                 </Badge>
@@ -444,7 +444,7 @@ export default function CustomerPortal() {
                           return (
                             <div key={os.id} className="flex items-center justify-between p-3 rounded-md border text-sm">
                               <div>
-                                <span className="font-mono font-bold">#{String(os.order_number).padStart(4, '0')}</span>
+                                <span className="font-mono font-bold">#{String(os.order_number).padStart(6, '0')}</span>
                                 {os.description && <span className="text-muted-foreground ml-2">{os.description}</span>}
                               </div>
                               <div className="flex items-center gap-2">
