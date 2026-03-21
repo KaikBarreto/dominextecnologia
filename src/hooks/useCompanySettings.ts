@@ -35,6 +35,7 @@ export interface CompanySettings {
   report_header_logo_size?: number;
   report_header_show_logo_bg?: boolean;
   report_status_bar_color?: string;
+  report_header_logo_type?: string;
   created_at: string;
   updated_at: string;
 }
