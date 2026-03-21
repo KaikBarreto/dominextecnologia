@@ -195,7 +195,7 @@ export default function TechnicianOS() {
         .from('service_orders')
         .select(`
           *,
-          customer:customers(id, name, phone, address, city, state, document),
+          customer:customers(id, name, phone, address, city, state, document, photo_url),
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name),
           service_type:service_types(id, name, color)
