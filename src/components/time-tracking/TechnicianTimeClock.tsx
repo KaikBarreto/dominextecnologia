@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { MapPin, Camera, Check, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { processImageFile } from '@/utils/imageConvert';
+import { reverseGeocode } from '@/utils/reverseGeocode';
 
 const ACTION_CONFIG: Record<PunchType, { label: string; className: string; icon: string }> = {
   clock_in: { label: 'REGISTRAR ENTRADA', className: 'bg-success hover:bg-success/90 text-white', icon: '📍' },
