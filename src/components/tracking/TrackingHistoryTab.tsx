@@ -238,8 +238,9 @@ export function TrackingHistoryTab() {
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-1.5">
-                          <span className="text-[11px] text-muted-foreground font-mono">
-                            {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[260px]" title={`${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`}>
+                            <MapPin className="h-3 w-3 inline mr-0.5 -mt-0.5" />
+                            {addressMap.get(`${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`) || `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`}
                           </span>
                           <a
                             href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
