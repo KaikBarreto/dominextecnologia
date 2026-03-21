@@ -35,7 +35,6 @@ export function useQuoteConversion() {
           notes: quote.notes,
           quote_id: quote.id,
           created_by: user.id,
-          company_id: profile.company_id,
         } as any,
         ['customer_id', 'service_type_id']
       );
