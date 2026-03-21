@@ -755,7 +755,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
       {/* ══ 4. MATERIAIS ══ */}
       <section className="space-y-3">
-        <SectionHeader icon={<Tag className="h-4 w-4 text-primary" />} title="Materiais" />
+        <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title="Materiais" />
 
         <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/40 rounded-lg border">
           <div className="flex-1 min-w-0">
