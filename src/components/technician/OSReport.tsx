@@ -525,31 +525,55 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {serviceOrder.check_in_time && (
-                  <div>
-                    <p className="text-xs text-slate-400 font-semibold">CHECK-IN</p>
-                    <p className="text-sm font-medium text-slate-800">
-                      {format(new Date(serviceOrder.check_in_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    {checkInLoc && (
-                      <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="break-all">{checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}</span>
-                      </p>
+                  <div className="flex items-start gap-3">
+                    {technicianInfo?.photo_url && (
+                      <img
+                        src={technicianInfo.photo_url}
+                        alt={technicianInfo.full_name}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
+                      />
                     )}
+                    <div>
+                      <p className="text-xs text-slate-400 font-semibold">CHECK-IN</p>
+                      {technicianInfo && (
+                        <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
+                      )}
+                      <p className="text-sm font-medium text-slate-800">
+                        {format(new Date(serviceOrder.check_in_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                      {checkInLoc && (
+                        <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="break-all">{checkInLoc.lat.toFixed(6)}, {checkInLoc.lng.toFixed(6)}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
                 {serviceOrder.check_out_time && (
-                  <div>
-                    <p className="text-xs text-slate-400 font-semibold">CHECK-OUT</p>
-                    <p className="text-sm font-medium text-slate-800">
-                      {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    {checkOutLoc && (
-                      <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="break-all">{checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}</span>
-                      </p>
+                  <div className="flex items-start gap-3">
+                    {technicianInfo?.photo_url && (
+                      <img
+                        src={technicianInfo.photo_url}
+                        alt={technicianInfo.full_name}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
+                      />
                     )}
+                    <div>
+                      <p className="text-xs text-slate-400 font-semibold">CHECK-OUT</p>
+                      {technicianInfo && (
+                        <p className="text-sm font-semibold text-slate-700">{technicianInfo.full_name}</p>
+                      )}
+                      <p className="text-sm font-medium text-slate-800">
+                        {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                      {checkOutLoc && (
+                        <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="break-all">{checkOutLoc.lat.toFixed(6)}, {checkOutLoc.lng.toFixed(6)}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
