@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const APP_DOMAIN = "https://dominextecnologia.lovable.app";
+    const APP_DOMAIN = "https://dominex.app";
 
     if (!osId) {
       return Response.redirect(APP_DOMAIN, 302);

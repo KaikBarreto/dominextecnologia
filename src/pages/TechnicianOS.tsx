@@ -96,6 +96,11 @@ export default function TechnicianOS() {
       fetchEquipmentItems();
       fetchFormResponses();
     }
+    return () => {
+      // Restore original primary color on unmount
+      document.documentElement.style.removeProperty('--primary');
+      document.documentElement.style.removeProperty('--ring');
+    };
   }, [id]);
 
   const fetchFormResponses = async () => {
@@ -156,28 +161,29 @@ export default function TechnicianOS() {
     const { data } = await supabase.from('company_settings').select('*').limit(1).single();
     if (data) {
       setCompany(data);
-      // Dynamic OG meta for white label social sharing
-      if (data.white_label_enabled) {
-        const companyName = data.name || 'Ordem de Serviço';
-        const logoUrl = data.white_label_logo_url || data.logo_url;
-        document.title = `${companyName} — Ordem de Serviço`;
-        const setMeta = (prop: string, content: string) => {
-          let el = document.querySelector(`meta[property="${prop}"]`) || document.querySelector(`meta[name="${prop}"]`);
-          if (!el) {
-            el = document.createElement('meta');
-            prop.startsWith('og:') ? el.setAttribute('property', prop) : el.setAttribute('name', prop);
-            document.head.appendChild(el);
+
+      // Apply white label primary color to CSS custom property for this page
+      if (data.white_label_enabled && data.white_label_primary_color) {
+        const hex = data.white_label_primary_color;
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (result) {
+          let r = parseInt(result[1], 16) / 255;
+          let g = parseInt(result[2], 16) / 255;
+          let b = parseInt(result[3], 16) / 255;
+          const max = Math.max(r, g, b), min = Math.min(r, g, b);
+          let h = 0, s = 0, l = (max + min) / 2;
+          if (max !== min) {
+            const d2 = max - min;
+            s = l > 0.5 ? d2 / (2 - max - min) : d2 / (max + min);
+            switch (max) {
+              case r: h = ((g - b) / d2 + (g < b ? 6 : 0)) / 6; break;
+              case g: h = ((b - r) / d2 + 2) / 6; break;
+              case b: h = ((r - g) / d2 + 4) / 6; break;
+            }
           }
-          el.setAttribute('content', content);
-        };
-        setMeta('og:title', `${companyName} — Ordem de Serviço`);
-        setMeta('twitter:title', `${companyName} — Ordem de Serviço`);
-        setMeta('og:description', `Ordem de serviço de ${companyName}`);
-        setMeta('twitter:description', `Ordem de serviço de ${companyName}`);
-        if (logoUrl) {
-          setMeta('og:image', logoUrl);
-          setMeta('twitter:image', logoUrl);
-          setMeta('twitter:card', 'summary');
+          const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+          document.documentElement.style.setProperty('--primary', hsl);
+          document.documentElement.style.setProperty('--ring', hsl);
         }
       }
     }
