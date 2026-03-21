@@ -765,12 +765,12 @@ export default function Settings() {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Tamanho do logo ({reportLogoSize}px)</Label>
+                           <Label className="text-xs">Tamanho do logo ({reportLogoSize}px)</Label>
                           <Slider
                             value={[reportLogoSize]}
                             onValueChange={([v]) => setReportLogoSize(v)}
                             min={40}
-                            max={140}
+                            max={reportLogoType === 'full' ? 300 : 140}
                             step={4}
                             className="mt-2"
                           />
