@@ -67,7 +67,7 @@ export default function ServicesPage() {
         {activeTab === 'types' && <ServiceTypesPanel />}
         {activeTab === 'task-types' && <TaskTypesPanel />}
         {activeTab === 'questionnaires' && <QuestionnairesPanel />}
-        {activeTab === 'costs' && hasModule('pricing_advanced') && <ServiceCostsTab />}
+        {activeTab === 'costs' && <ServiceCostsTab />}
         {activeTab === 'global' && hasModule('pricing_advanced') && <GlobalCostsTab />}
       </SettingsSidebarLayout>
     </div>
