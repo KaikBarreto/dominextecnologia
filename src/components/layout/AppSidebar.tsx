@@ -105,6 +105,7 @@ const WhatsAppIcon = () => (
 
 export function AppSidebar() {
   const { profile, roles, hasScreenAccess } = useAuth();
+  const { hasModule } = useCompanyModules();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
@@ -124,11 +125,20 @@ export function AppSidebar() {
 
   const isSuperAdmin = roles.includes('super_admin');
 
-  const filterByAccess = <T extends { screenKey?: string }>(items: T[]): T[] => {
-    return items.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
+  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
+    return items.filter(item => {
+      if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
+      if (item.moduleKey && !hasModule(item.moduleKey)) return false;
+      return true;
+    });
   };
 
-  const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems);
+  const activeMenu = isSuperAdmin ? adminMenuItems : filterByAccess(menuItems).map(item => {
+    if (item.children) {
+      return { ...item, children: filterByAccess(item.children) };
+    }
+    return item;
+  }).filter(item => !item.children || item.children.length > 0);
   const filteredMenu = activeMenu;
   const filteredSystemMenu = isSuperAdmin ? [] : filterByAccess(systemMenuItems);
 
