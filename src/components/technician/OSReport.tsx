@@ -145,7 +145,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
       // Clone the element off-screen at fixed desktop width
       const clone = element.cloneNode(true) as HTMLElement;
-      clone.style.position = 'fixed';
+      clone.style.position = 'absolute';
       clone.style.left = '-9999px';
       clone.style.top = '0';
       clone.style.width = '794px';
@@ -154,6 +154,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       clone.style.overflow = 'visible';
       clone.style.height = 'auto';
       clone.style.zIndex = '-1';
+      clone.style.opacity = '0';
+      clone.style.pointerEvents = 'none';
       document.body.appendChild(clone);
 
       // Wait for images to load in the clone
@@ -170,6 +172,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         )
       );
 
+      // Force layout recalculation
+      void clone.offsetHeight;
+
+      const cloneFullHeight = clone.scrollHeight;
+
       const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
@@ -177,7 +184,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         backgroundColor: '#ffffff',
         width: 794,
         windowWidth: 794,
-        height: clone.scrollHeight,
+        height: cloneFullHeight,
       });
 
       // Collect section boundaries from the clone to avoid cutting content
@@ -201,6 +208,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const scale = imgWidth / canvas.width; // mm per canvas pixel
       const totalCanvasHeight = canvas.height;
       const pageHeightInCanvasPx = usableHeight / scale;
+      const canvasScale = canvas.width / 794; // html2canvas scale (2)
 
       // Determine page break points — snap to section boundaries
       const pageBreaks: number[] = [0]; // start positions in canvas pixels
@@ -212,7 +220,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         // Find the best section boundary to break at (last one that fits)
         let bestBreak = idealBreak;
         for (const secBottom of sectionBottoms) {
-          const secBottomPx = secBottom * 2; // scale factor is 2
+          const secBottomPx = secBottom * canvasScale;
           if (secBottomPx <= currentY) continue;
           if (secBottomPx <= idealBreak) {
             bestBreak = secBottomPx;
@@ -221,9 +229,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           }
         }
 
-        // If no section boundary found (section too tall), fall back to ideal break
-        // but add a small buffer to avoid cutting text exactly at the boundary
-        if (bestBreak <= currentY + pageHeightInCanvasPx * 0.2) {
+        // If bestBreak didn't advance enough (section too tall), fall back to ideal break
+        if (bestBreak <= currentY + 10) {
           bestBreak = idealBreak;
         }
 
