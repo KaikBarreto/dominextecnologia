@@ -101,11 +101,7 @@ export default function Checkout() {
     },
   });
 
-  useEffect(() => {
-    if (companyData && companyData.subscription_status === 'active') {
-      navigate('/assinatura');
-    }
-  }, [companyData, navigate]);
+  const isRenewal = companyData?.subscription_status === 'active';
 
   const trialDaysLeft = companyData?.subscription_expires_at
     ? differenceInDays(new Date(companyData.subscription_expires_at), new Date())
@@ -243,7 +239,7 @@ export default function Checkout() {
             alt="Dominex"
             className="h-10 mx-auto"
           />
-          <h1 className="text-2xl font-bold">Ative sua Assinatura</h1>
+          <h1 className="text-2xl font-bold">{isRenewal ? 'Renovar Assinatura' : 'Ative sua Assinatura'}</h1>
 
           {trialExpired ? (
             <div className="inline-flex items-center gap-2 bg-destructive/10 text-destructive px-4 py-2 rounded-lg">
