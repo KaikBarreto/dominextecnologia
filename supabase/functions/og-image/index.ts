@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     let logoUrl: string | null = null;
+    let companyName = "";
     let resolvedCompanyId = companyId;
 
-    // If os_id provided, look up the company from the service order
     if (osId && !resolvedCompanyId) {
       const { data: os } = await supabase
         .from("service_orders")
@@ -38,35 +38,51 @@ Deno.serve(async (req) => {
     if (resolvedCompanyId) {
       const { data } = await supabase
         .from("company_settings")
-        .select("white_label_enabled, white_label_logo_url, logo_url")
+        .select("name, white_label_enabled, white_label_logo_url, logo_url")
         .eq("company_id", resolvedCompanyId)
-        .single();
-
-      if (data?.white_label_enabled) {
-        logoUrl = data.white_label_logo_url || data.logo_url || null;
-      }
-    } else {
-      // Fallback: first company with white label enabled
-      const { data } = await supabase
-        .from("company_settings")
-        .select("white_label_enabled, white_label_logo_url, logo_url")
-        .eq("white_label_enabled", true)
-        .limit(1)
         .single();
 
       if (data) {
         logoUrl = data.white_label_logo_url || data.logo_url || null;
+        companyName = data.name || "";
       }
     }
 
     if (!logoUrl) {
-      // Return default favicon
-      const defaultUrl = supabaseUrl.replace('.supabase.co', '.lovable.app') + '/favicon.png';
-      return Response.redirect(defaultUrl, 302);
+      // Generate a simple white SVG with company name as fallback
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+        <rect width="1200" height="630" fill="white"/>
+        <text x="600" y="315" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="48" fill="#1e293b">${companyName || "Ordem de Serviço"}</text>
+      </svg>`;
+      return new Response(svg, {
+        headers: { ...corsHeaders, "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=3600" },
+      });
     }
 
-    // Redirect to the actual logo image so crawlers get a real image file
-    return Response.redirect(logoUrl, 302);
+    // Fetch the logo and generate an OG image with logo centered on white background
+    try {
+      const logoResponse = await fetch(logoUrl);
+      if (!logoResponse.ok) throw new Error("Failed to fetch logo");
+      const logoBase64 = btoa(String.fromCharCode(...new Uint8Array(await logoResponse.arrayBuffer())));
+      const logoMime = logoResponse.headers.get("content-type") || "image/png";
+
+      // Generate an SVG with the logo centered on white background
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630">
+        <rect width="1200" height="630" fill="white"/>
+        <image x="300" y="115" width="600" height="400" preserveAspectRatio="xMidYMid meet" href="data:${logoMime};base64,${logoBase64}"/>
+      </svg>`;
+
+      return new Response(svg, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "image/svg+xml",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
+    } catch {
+      // If logo fetch fails, redirect to the logo URL directly
+      return Response.redirect(logoUrl, 302);
+    }
   } catch (error) {
     console.error("Error generating OG image:", error);
     return new Response("Error", { status: 500, headers: corsHeaders });
