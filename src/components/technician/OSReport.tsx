@@ -399,7 +399,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         <ReportHeader
-          company={company ? { ...company, icon_url: (company as any).white_label_icon_url } : null}
+          company={company ? {
+            ...company,
+            icon_url: isWhiteLabel ? (company as any).white_label_icon_url : undefined,
+            logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
+          } : null}
           orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
           osType={osTypeLabels[serviceOrder.os_type]}
           checkOutTime={serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
