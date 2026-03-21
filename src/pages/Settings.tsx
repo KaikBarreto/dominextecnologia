@@ -680,7 +680,7 @@ export default function Settings() {
                     </div>
                   </>
                 )}
-              </div>
+              </div>}
 
               <div className="flex flex-wrap gap-3 pt-4">
                 <Button onClick={handleSaveCompany} disabled={updateSettings.isPending}>
