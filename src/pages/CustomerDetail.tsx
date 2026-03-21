@@ -97,14 +97,16 @@ export default function CustomerDetail() {
       { key: 'geral', label: 'Geral' },
       { key: 'equipamentos', label: 'Equipamentos' },
       { key: 'historico', label: 'Histórico de OS' },
-      { key: 'chamados', label: 'Chamados' },
-      { key: 'contratos', label: 'Contratos' },
     ];
+    if (hasPortal) {
+      allTabs.push({ key: 'chamados', label: 'Chamados' });
+    }
+    allTabs.push({ key: 'contratos', label: 'Contratos' });
     if (canViewCustomerFinancial) {
       allTabs.push({ key: 'financeiro', label: 'Financeiro' });
     }
     return allTabs;
-  }, [canViewCustomerFinancial]);
+  }, [canViewCustomerFinancial, hasPortal]);
 
   // Load existing portal link
   useEffect(() => {
