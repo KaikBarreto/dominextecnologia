@@ -56,6 +56,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [ratingData, setRatingData] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const { toast } = useToast();
