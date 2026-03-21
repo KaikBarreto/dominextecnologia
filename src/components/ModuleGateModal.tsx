@@ -2,7 +2,7 @@ import { Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/utils/currency';
+import { formatBRL } from '@/utils/currency';
 
 interface ModuleGateModalProps {
   open: boolean;
