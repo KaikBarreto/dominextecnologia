@@ -194,8 +194,8 @@ export default function Checkout() {
     setIsCreatingPayment(false);
   };
 
-  // Checkout payment screen
-  if (showCheckout && currentPlanInfo) {
+  // Checkout payment screen — renewal skips plan selection
+  if ((showCheckout || isRenewal) && currentPlanInfo) {
     return (
       <motion.div
         key="checkout-payment"
