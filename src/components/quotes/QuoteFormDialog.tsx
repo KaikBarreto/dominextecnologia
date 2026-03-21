@@ -239,6 +239,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Add-material row state ──
   const [addMatId, setAddMatId] = useState('');
+  const [addMatManualName, setAddMatManualName] = useState('');
+  const [addMatManualPrice, setAddMatManualPrice] = useState(0);
   const [addMatQty, setAddMatQty] = useState(1);
 
   type QuoteDraft = {
