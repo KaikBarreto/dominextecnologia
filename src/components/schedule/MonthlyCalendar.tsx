@@ -242,18 +242,25 @@ export function MonthlyCalendar({
 
               <div className="space-y-1 overflow-hidden">
                 {dayOrders.slice(0, dayHolidays.length > 0 ? 2 : 3).map((order) => (
-                  <EventCard
+                  <div
                     key={order.id}
-                    order={order}
-                    compact
-                    onClick={() => onOrderSelect?.(order)}
-                    draggable
-                    onDragStart={(e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      e.dataTransfer.setData('orderId', order.id);
-                      e.dataTransfer.setData('orderTime', order.scheduled_time || '08:00');
+                      onOrderSelect?.(order);
                     }}
-                  />
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  >
+                    <EventCard
+                      order={order}
+                      compact
+                      draggable
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        e.dataTransfer.setData('orderId', order.id);
+                        e.dataTransfer.setData('orderTime', order.scheduled_time || '08:00');
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
