@@ -137,9 +137,11 @@ export default function Checkout() {
   };
 
   // Get current selected plan info
-  const currentPlanInfo = mode === 'custom'
-    ? { name: 'Personalizado', price: customPlanPrice, features: selectedModules.map(code => moduleCatalog.find((m: any) => m.code === code)?.name || code), maxUsers: 5 + extraUsers }
-    : PREBUILT_PLANS.find(p => p.code === selectedPlan);
+  const currentPlanInfo = isRenewal && renewalPlanInfo
+    ? renewalPlanInfo
+    : mode === 'custom'
+      ? { name: 'Personalizado', price: customPlanPrice, features: selectedModules.map(code => moduleCatalog.find((m: any) => m.code === code)?.name || code), maxUsers: 5 + extraUsers }
+      : PREBUILT_PLANS.find(p => p.code === selectedPlan);
 
   const planPrice = currentPlanInfo?.price || 0;
   const yearlyPrice = calculateYearlyPrice(planPrice);
