@@ -914,11 +914,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       </div>
 
       {/* ══ RESUMO DO ORÇAMENTO ══ */}
-      {items.length > 0 && hasPricing && (
+      {items.length > 0 && (
         <>
           <Separator />
           <section className="space-y-3">
-            {bdiDanger && (
+            {hasPricing && bdiDanger && (
               <Alert variant="destructive" className="border-destructive/50">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
@@ -926,7 +926,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </AlertDescription>
               </Alert>
             )}
-            {bdiWarning && !bdiDanger && (
+            {hasPricing && bdiWarning && !bdiDanger && (
               <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700 dark:text-amber-400">
@@ -934,7 +934,40 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </AlertDescription>
               </Alert>
             )}
-            <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
+            {hasPricing ? (
+              <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
+            ) : (
+              <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700">
+                <CardContent className="p-4 space-y-3">
+                  <p className="text-sm font-medium text-white flex items-center gap-2">
+                    <Calculator className="h-4 w-4 text-emerald-400" /> Resumo do Orçamento
+                  </p>
+                  <Separator className="bg-slate-700" />
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">Subtotal Serviços</span>
+                      <span className="text-sm text-white">{fmt(serviceItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">Subtotal Materiais</span>
+                      <span className="text-sm text-white">{fmt(materialItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-400">Desconto</span>
+                        <span className="text-sm text-destructive">− {fmt(discountAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+                      <span className="text-sm font-medium text-white">Total</span>
+                      <span className="text-sm font-bold text-emerald-400">
+                        {fmt(items.reduce((s, i) => s + (i.total_price || 0), 0) - discountAmount)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </section>
         </>
       )}
