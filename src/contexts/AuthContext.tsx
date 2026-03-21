@@ -39,7 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTimeout(() => {
             fetchUserData(session.user.id);
           }, 0);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
+          // Only clear state on explicit sign-out, not on transient token refresh events
           setProfile(null);
           setRoles([]);
           setPermissions([]);
