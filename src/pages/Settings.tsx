@@ -784,6 +784,33 @@ export default function Settings() {
                         </div>
                         <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
                       </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs">Tipo de logo no relatório</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={reportLogoType === 'full' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setReportLogoType('full')}
+                            className="flex-1"
+                          >
+                            Logo Completo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={reportLogoType === 'icon' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setReportLogoType('icon')}
+                            className="flex-1"
+                          >
+                            Ícone
+                          </Button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {reportLogoType === 'icon' ? 'Usa o ícone configurado no White Label' : 'Usa o logo completo da empresa'}
+                        </p>
+                      </div>
                     </div>
                   </>
                 )}
