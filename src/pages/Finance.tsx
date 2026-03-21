@@ -112,7 +112,7 @@ export default function Finance() {
               return (
                 <button
                   key={item.key}
-                  onClick={() => setActiveTab(item.key)}
+                  onClick={() => handleTabChange(item.key)}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-left whitespace-nowrap lg:whitespace-normal w-full',
                     isActive
