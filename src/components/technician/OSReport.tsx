@@ -777,13 +777,6 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             {company?.name && <p className="mt-0.5">{company.name}</p>}
           </div>
 
-          {/* Dominex branding footer (only when no white label) */}
-          {!isWhiteLabel && (
-            <div data-pdf-section className="mt-6 py-4 flex flex-col items-center gap-1.5" style={{ backgroundColor: '#1e293b' }}>
-              <img src={dominexLogoWhite} alt="Dominex" className="h-6 object-contain opacity-70" />
-              <span className="text-[10px] text-white/40 tracking-wide">www.dominex.app</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -802,6 +795,14 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           Copiar Link
         </Button>
       </div>
+
+      {/* Dominex branding (only when no white label) — outside report */}
+      {!isWhiteLabel && (
+        <div className="flex flex-col items-center gap-1 py-3 print:hidden">
+          <img src={dominexLogoWhite} alt="Dominex" className="h-5 object-contain opacity-40 dark:opacity-30 invert dark:invert-0" />
+          <span className="text-[10px] text-muted-foreground/50 tracking-wide">www.dominex.app</span>
+        </div>
+      )}
     </div>
 
       <ImagePreviewModal
