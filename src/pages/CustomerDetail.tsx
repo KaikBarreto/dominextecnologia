@@ -49,6 +49,8 @@ export default function CustomerDetail() {
   const isMobile = useIsMobile();
   const { isAdminOrGestor, hasPermission } = useAuth();
   const canViewCustomerFinancial = isAdminOrGestor() || hasPermission('fn:view_customer_financial');
+  const { hasModule } = useCompanyModules();
+  const hasPortal = hasModule('customer_portal');
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
   const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
