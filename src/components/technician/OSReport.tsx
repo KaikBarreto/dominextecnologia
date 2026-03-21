@@ -176,6 +176,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
+    let clone: HTMLElement | null = null;
     try {
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
@@ -183,7 +184,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const element = reportRef.current;
 
       // Clone the element off-screen at fixed desktop width
-      const clone = element.cloneNode(true) as HTMLElement;
+      clone = element.cloneNode(true) as HTMLElement;
       clone.style.position = 'absolute';
       clone.style.left = '-9999px';
       clone.style.top = '0';
@@ -192,9 +193,9 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       clone.style.maxWidth = '794px';
       clone.style.overflow = 'visible';
       clone.style.height = 'auto';
-      clone.style.zIndex = '-1';
-      clone.style.opacity = '0';
+      clone.style.opacity = '1';
       clone.style.pointerEvents = 'none';
+      clone.style.backgroundColor = '#ffffff';
       document.body.appendChild(clone);
 
       // Wait for images to load in the clone
@@ -236,7 +237,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       });
       sectionBottoms.sort((a, b) => a - b);
 
-      document.body.removeChild(clone);
+      clone.remove();
+      clone = null;
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -304,7 +306,13 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       pdf.save(`OS-${String(serviceOrder.order_number).padStart(6, '0')}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao gerar PDF',
+        description: 'Não foi possível montar o relatório em PDF. Tente novamente.',
+      });
     } finally {
+      clone?.remove();
       setGenerating(false);
     }
   };
@@ -441,15 +449,21 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" /> Cliente
               </h3>
-              <div className="flex items-start gap-3">
+              <div className="flex items-stretch gap-3">
                 {serviceOrder.customer?.photo_url && (
-                  <img
-                    src={serviceOrder.customer.photo_url}
-                    alt={serviceOrder.customer.name}
-                    className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
-                  />
+                  <button
+                    type="button"
+                    className="w-24 sm:w-28 min-h-[88px] sm:min-h-[104px] overflow-hidden rounded-lg border border-slate-200 shrink-0 transition-opacity hover:opacity-80"
+                    onClick={() => setPreviewImage(serviceOrder.customer.photo_url)}
+                  >
+                    <img
+                      src={serviceOrder.customer.photo_url}
+                      alt={serviceOrder.customer.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-semibold text-slate-900">{serviceOrder.customer?.name}</p>
                   {serviceOrder.customer?.document && (
                     <p className="text-xs text-slate-500">{serviceOrder.customer.document}</p>
@@ -527,11 +541,17 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 {serviceOrder.check_in_time && (
                   <div className="flex items-start gap-3">
                     {technicianInfo?.photo_url && (
-                      <img
-                        src={technicianInfo.photo_url}
-                        alt={technicianInfo.full_name}
-                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
-                      />
+                      <button
+                        type="button"
+                        className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 shrink-0 mt-0.5 transition-opacity hover:opacity-80"
+                        onClick={() => setPreviewImage(technicianInfo.photo_url!)}
+                      >
+                        <img
+                          src={technicianInfo.photo_url}
+                          alt={technicianInfo.full_name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      </button>
                     )}
                     <div>
                       <p className="text-xs text-slate-400 font-semibold">CHECK-IN</p>
@@ -553,11 +573,17 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 {serviceOrder.check_out_time && (
                   <div className="flex items-start gap-3">
                     {technicianInfo?.photo_url && (
-                      <img
-                        src={technicianInfo.photo_url}
-                        alt={technicianInfo.full_name}
-                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
-                      />
+                      <button
+                        type="button"
+                        className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 shrink-0 mt-0.5 transition-opacity hover:opacity-80"
+                        onClick={() => setPreviewImage(technicianInfo.photo_url!)}
+                      >
+                        <img
+                          src={technicianInfo.photo_url}
+                          alt={technicianInfo.full_name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      </button>
                     )}
                     <div>
                       <p className="text-xs text-slate-400 font-semibold">CHECK-OUT</p>
