@@ -48,6 +48,7 @@ export function ReportHeader({
 }: ReportHeaderProps) {
   const cfg: ReportHeaderConfig = { ...DEFAULT_HEADER_CONFIG, ...configOverride };
   const logoPx = cfg.logoSize;
+  const resolvedLogo = cfg.logoType === 'icon' ? (company?.icon_url || company?.logo_url) : company?.logo_url;
 
   return (
     <>
