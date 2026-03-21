@@ -11,6 +11,8 @@ import { osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
+import type { ReportHeaderConfig } from './ReportHeader';
 
 interface OSPhoto {
   id: string;
@@ -60,6 +62,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
+  const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -83,7 +86,17 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
   const fetchCompany = async () => {
     const { data } = await supabase.from('company_settings').select('*').limit(1).single();
-    if (data) setCompany(data);
+    if (data) {
+      setCompany(data);
+      const d = data as any;
+      setHeaderConfig({
+        bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+        textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
+        logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+        showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+        statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+      });
+    }
   };
 
   const fetchContract = async (contractId: string) => {
@@ -372,56 +385,13 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     <div className="space-y-4">
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-        {/* Company header */}
-        <div data-pdf-section className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              {company?.logo_url ? (
-                <img src={company.logo_url} alt="Logo" className="h-14 w-14 sm:h-20 sm:w-20 object-contain rounded-lg bg-white p-1.5 shrink-0" />
-              ) : (
-                <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                  <Building2 className="h-7 w-7 text-white/70" />
-                </div>
-              )}
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-xl font-bold leading-tight">{company?.name || 'Empresa'}</h1>
-                {company?.document && <p className="text-xs sm:text-sm text-white/90">CNPJ: {company.document}</p>}
-                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs text-white/80 mt-0.5">
-                  {company?.phone && <span>{company.phone}</span>}
-                  {company?.email && <span className="break-all">{company.email}</span>}
-                </div>
-              </div>
-            </div>
-            {company?.address && (
-              <p className="text-xs text-white/75 sm:hidden">
-                {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
-                {company.zip_code && ` | CEP: ${company.zip_code}`}
-              </p>
-            )}
-            <div className="flex items-center justify-between sm:flex-col sm:items-end sm:ml-auto shrink-0">
-              <div className="text-lg sm:text-2xl font-black tracking-tight">
-                OS #{String(serviceOrder.order_number).padStart(6, '0')}
-              </div>
-              <p className="text-xs sm:text-sm text-white/90">{osTypeLabels[serviceOrder.os_type]}</p>
-            </div>
-          </div>
-          {company?.address && (
-            <p className="text-xs text-white/75 mt-2 hidden sm:block">
-              {company.address}{company.city && `, ${company.city}`}{company.state && ` - ${company.state}`}
-              {company.zip_code && ` | CEP: ${company.zip_code}`}
-            </p>
-          )}
-        </div>
-
-        {/* Status bar */}
-        <div data-pdf-section className="bg-emerald-600 text-white text-center py-2 text-xs sm:text-sm font-semibold tracking-wide uppercase">
-          ✓ Serviço Concluído
-          {serviceOrder.check_out_time && (
-            <span className="font-normal ml-2">
-              — {format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-            </span>
-          )}
-        </div>
+        <ReportHeader
+          company={company}
+          orderNumber={String(serviceOrder.order_number).padStart(6, '0')}
+          osType={osTypeLabels[serviceOrder.os_type]}
+          checkOutTime={serviceOrder.check_out_time ? format(new Date(serviceOrder.check_out_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null}
+          config={headerConfig}
+        />
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Contract info */}

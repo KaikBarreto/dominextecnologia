@@ -24,6 +24,8 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
+import { ReportHeader, DEFAULT_HEADER_CONFIG } from '@/components/technician/ReportHeader';
+import { Slider } from '@/components/ui/slider';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
@@ -79,6 +81,11 @@ export default function Settings() {
   const [showAddressInDocs, setShowAddressInDocs] = useState(true);
   const [showPhoneInDocs, setShowPhoneInDocs] = useState(true);
   const [showEmailInDocs, setShowEmailInDocs] = useState(true);
+  const [reportBgColor, setReportBgColor] = useState(DEFAULT_HEADER_CONFIG.bgColor);
+  const [reportTextColor, setReportTextColor] = useState(DEFAULT_HEADER_CONFIG.textColor);
+  const [reportLogoSize, setReportLogoSize] = useState(DEFAULT_HEADER_CONFIG.logoSize);
+  const [reportShowLogoBg, setReportShowLogoBg] = useState(DEFAULT_HEADER_CONFIG.showLogoBg);
+  const [reportStatusBarColor, setReportStatusBarColor] = useState(DEFAULT_HEADER_CONFIG.statusBarColor);
 
   const [usabilitySettings, setUsabilitySettings] = useState(() => {
     try {
@@ -117,6 +124,11 @@ export default function Settings() {
       setShowAddressInDocs(settings.show_address_in_documents ?? true);
       setShowPhoneInDocs(settings.show_phone_in_documents ?? true);
       setShowEmailInDocs(settings.show_email_in_documents ?? true);
+      setReportBgColor((settings as any).report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor);
+      setReportTextColor((settings as any).report_header_text_color || DEFAULT_HEADER_CONFIG.textColor);
+      setReportLogoSize((settings as any).report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize);
+      setReportShowLogoBg((settings as any).report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg);
+      setReportStatusBarColor((settings as any).report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor);
     }
   }, [settings]);
 
@@ -140,6 +152,11 @@ export default function Settings() {
       show_address_in_documents: showAddressInDocs,
       show_phone_in_documents: showPhoneInDocs,
       show_email_in_documents: showEmailInDocs,
+      report_header_bg_color: reportBgColor,
+      report_header_text_color: reportTextColor,
+      report_header_logo_size: reportLogoSize,
+      report_header_show_logo_bg: reportShowLogoBg,
+      report_status_bar_color: reportStatusBarColor,
     } as any);
   };
 
@@ -680,6 +697,87 @@ export default function Settings() {
                           className="h-10 flex-1 rounded-md border"
                           style={{ backgroundColor: wlColor }}
                         />
+                      </div>
+                    </div>
+
+                    <Separator className="opacity-50" />
+
+                    {/* Report Header Customization */}
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium">Cabeçalho do Relatório de Serviço</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Personalize o visual do cabeçalho que aparece no relatório da OS concluída
+                        </p>
+                      </div>
+
+                      {/* Live Preview */}
+                      <div className="rounded-lg border overflow-hidden shadow-sm">
+                        <ReportHeader
+                          company={{
+                            name: companyName || 'Nome da Empresa',
+                            document: companyDoc || '00.000.000/0001-00',
+                            phone: companyPhone || '(00) 00000-0000',
+                            email: companyEmail || 'contato@empresa.com',
+                            address: companyAddress || 'Rua Exemplo',
+                            city: companyCity || 'Cidade',
+                            state: companyState || 'UF',
+                            zip_code: companyZip || '00000-000',
+                            logo_url: settings?.white_label_logo_url || settings?.logo_url || undefined,
+                          }}
+                          config={{
+                            bgColor: reportBgColor,
+                            textColor: reportTextColor,
+                            logoSize: reportLogoSize,
+                            showLogoBg: reportShowLogoBg,
+                            statusBarColor: reportStatusBarColor,
+                          }}
+                          isPreview
+                        />
+                      </div>
+
+                      {/* Controls */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Cor de fundo do cabeçalho</Label>
+                          <div className="flex items-center gap-3">
+                            <ColorPicker value={reportBgColor} onChange={setReportBgColor} />
+                            <div className="h-8 flex-1 rounded-md border" style={{ backgroundColor: reportBgColor }} />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Cor do texto</Label>
+                          <div className="flex items-center gap-3">
+                            <ColorPicker value={reportTextColor} onChange={setReportTextColor} />
+                            <div className="h-8 flex-1 rounded-md border" style={{ backgroundColor: reportTextColor }} />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Cor da barra de status</Label>
+                          <div className="flex items-center gap-3">
+                            <ColorPicker value={reportStatusBarColor} onChange={setReportStatusBarColor} />
+                            <div className="h-8 flex-1 rounded-md border" style={{ backgroundColor: reportStatusBarColor }} />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Tamanho do logo ({reportLogoSize}px)</Label>
+                          <Slider
+                            value={[reportLogoSize]}
+                            onValueChange={([v]) => setReportLogoSize(v)}
+                            min={40}
+                            max={140}
+                            step={4}
+                            className="mt-2"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-xs">Fundo branco atrás do logo</Label>
+                          <p className="text-[11px] text-muted-foreground">Remove o fundo quando desativado</p>
+                        </div>
+                        <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
                       </div>
                     </div>
                   </>

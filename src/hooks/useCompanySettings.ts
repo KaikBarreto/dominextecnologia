@@ -30,6 +30,11 @@ export interface CompanySettings {
   show_address_in_documents?: boolean;
   show_phone_in_documents?: boolean;
   show_email_in_documents?: boolean;
+  report_header_bg_color?: string;
+  report_header_text_color?: string;
+  report_header_logo_size?: number;
+  report_header_show_logo_bg?: boolean;
+  report_status_bar_color?: string;
   created_at: string;
   updated_at: string;
 }
