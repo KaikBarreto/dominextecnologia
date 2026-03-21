@@ -48,7 +48,8 @@ interface MenuItem {
   icon: any;
   path?: string;
   screenKey?: string;
-  children?: { title: string; icon: any; path: string; screenKey?: string }[];
+  moduleKey?: ModuleCode;
+  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
 }
 
 const menuItems: MenuItem[] = [
@@ -60,7 +61,7 @@ const menuItems: MenuItem[] = [
       { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
       { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
-      { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto' },
+      { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
@@ -72,11 +73,11 @@ const menuItems: MenuItem[] = [
       { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
-      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees' },
+      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
     ],
   },
-  { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm' },
+  { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
 ];
 
