@@ -7,8 +7,9 @@ import { GlobalCostsTab } from '@/components/service-orders/GlobalCostsTab';
 import { QuestionnairesPanel } from '@/components/service-orders/QuestionnairesPanel';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
 import { Settings, DollarSign, Boxes, FileText, CheckSquare } from 'lucide-react';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
-const tabs = [
+const allTabs = [
   {
     value: 'types',
     label: 'Tipos de Serviços',
@@ -28,11 +29,13 @@ const tabs = [
     value: 'costs',
     label: 'Custos dos Serviços',
     icon: DollarSign,
+    module: 'pricing_advanced' as const,
   },
   {
     value: 'global',
     label: 'Custos Globais',
     icon: Boxes,
+    module: 'pricing_advanced' as const,
   },
 ];
 
