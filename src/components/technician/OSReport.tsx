@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
+import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
 interface OSPhoto {
   id: string;
