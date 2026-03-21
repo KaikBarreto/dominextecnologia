@@ -267,13 +267,15 @@ function OrderDetail({
             )}
           </div>
           {order.customer_id && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
               onClick={handleCopyTrackingLink}
-              className="w-full mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5"
             >
-              {linkCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+              {linkCopied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
               {linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento do cliente'}
-            </button>
+            </Button>
           )}
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
             <AlertDialogContent>
