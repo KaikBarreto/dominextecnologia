@@ -273,8 +273,8 @@ function OrderDetail({
               className="w-full mt-2"
               onClick={handleCopyTrackingLink}
             >
-              {linkCopied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
-              {linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento do cliente'}
+              {linkCopied ? <Check className="h-3.5 w-3.5 mr-1.5 shrink-0" /> : <Link2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />}
+              <span className="truncate">{linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento'}</span>
             </Button>
           )}
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
