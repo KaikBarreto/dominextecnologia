@@ -781,12 +781,20 @@ export default function Settings() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-xs">Fundo branco atrás do logo</Label>
-                          <p className="text-[11px] text-muted-foreground">Remove o fundo quando desativado</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-xs">Fundo atrás do logo</Label>
+                            <p className="text-[11px] text-muted-foreground">Remove o fundo quando desativado</p>
+                          </div>
+                          <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
                         </div>
-                        <Switch checked={reportShowLogoBg} onCheckedChange={setReportShowLogoBg} />
+                        {reportShowLogoBg && (
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs whitespace-nowrap">Cor do fundo</Label>
+                            <ColorPicker value={reportLogoBgColor} onChange={setReportLogoBgColor} />
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">

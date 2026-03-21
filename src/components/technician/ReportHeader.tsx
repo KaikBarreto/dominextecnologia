@@ -71,7 +71,7 @@ export function ReportHeader({
                   height: `${logoPx}px`,
                   width: `${logoPx}px`,
                   ...(cfg.showLogoBg
-                    ? { backgroundColor: 'rgba(255,255,255,0.95)', padding: '6px' }
+                    ? { backgroundColor: cfg.logoBgColor || 'rgba(255,255,255,0.95)', padding: '6px' }
                     : {}),
                 }}
               />
