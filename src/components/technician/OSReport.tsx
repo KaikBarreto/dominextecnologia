@@ -95,6 +95,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
         showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
         statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+        logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
       });
     }
   };
