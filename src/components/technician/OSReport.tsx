@@ -266,7 +266,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
               <div className="flex flex-wrap gap-2">
                 {response.response_photo_url.split(',').filter(Boolean).map((url, i) => (
-                  <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
+                  <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(url.trim())} />
                 ))}
               </div>
             ) : (
