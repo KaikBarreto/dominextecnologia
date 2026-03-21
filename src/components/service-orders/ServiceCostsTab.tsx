@@ -264,49 +264,51 @@ export function ServiceCostsTab() {
                 <ServiceMaterialsList serviceId={serviceId} />
               </TabsContent>
 
-              <TabsContent value="resumo" className="mt-4">
-                <Card>
-                  <CardContent className="p-4 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Calculator className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-semibold text-foreground">Resumo e preço sugerido (BDI)</p>
-                    </div>
+              {hasPricing && (
+                <TabsContent value="resumo" className="mt-4">
+                  <Card>
+                    <CardContent className="p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Calculator className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-semibold text-foreground">Resumo e preço sugerido (BDI)</p>
+                      </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="rounded-lg border border-border p-3">
-                        <p className="text-xs text-muted-foreground">Mão de obra</p>
-                        <p className="text-sm font-semibold text-foreground">R$ {formatBRL(laborCost)}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="rounded-lg border border-border p-3">
+                          <p className="text-xs text-muted-foreground">Mão de obra</p>
+                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(laborCost)}</p>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <p className="text-xs text-muted-foreground">Materiais</p>
+                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(materialsTotal || 0)}</p>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <p className="text-xs text-muted-foreground">Recursos</p>
+                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(linkedResourcesTotal)}</p>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <p className="text-xs text-muted-foreground">Extras manuais</p>
+                          <p className="text-sm font-semibold text-foreground">R$ {formatBRL(extrasTotal)}</p>
+                        </div>
                       </div>
-                      <div className="rounded-lg border border-border p-3">
-                        <p className="text-xs text-muted-foreground">Materiais</p>
-                        <p className="text-sm font-semibold text-foreground">R$ {formatBRL(materialsTotal || 0)}</p>
-                      </div>
-                      <div className="rounded-lg border border-border p-3">
-                        <p className="text-xs text-muted-foreground">Recursos</p>
-                        <p className="text-sm font-semibold text-foreground">R$ {formatBRL(linkedResourcesTotal)}</p>
-                      </div>
-                      <div className="rounded-lg border border-border p-3">
-                        <p className="text-xs text-muted-foreground">Extras manuais</p>
-                        <p className="text-sm font-semibold text-foreground">R$ {formatBRL(extrasTotal)}</p>
-                      </div>
-                    </div>
 
-                    <div className="rounded-xl border border-border p-4 bg-muted/30">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-foreground">Custo total</p>
-                        <p className="text-lg font-bold text-foreground">R$ {formatBRL(totalServiceCost)}</p>
+                      <div className="rounded-xl border border-border p-4 bg-muted/30">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-foreground">Custo total</p>
+                          <p className="text-lg font-bold text-foreground">R$ {formatBRL(totalServiceCost)}</p>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">Preço sugerido (BDI)</p>
+                          <p className="text-lg font-bold text-foreground">R$ {formatBRL(bdi.finalPrice)}</p>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          BDI: {bdi.bdiFactor.toFixed(4)} | Lucro padrão: {profitRate.toFixed(2)}%
+                        </p>
                       </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">Preço sugerido (BDI)</p>
-                        <p className="text-lg font-bold text-foreground">R$ {formatBRL(bdi.finalPrice)}</p>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        BDI: {bdi.bdiFactor.toFixed(4)} | Lucro padrão: {profitRate.toFixed(2)}%
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
             </Tabs>
           )}
         </CardContent>
