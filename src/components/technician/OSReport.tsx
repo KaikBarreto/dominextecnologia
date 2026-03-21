@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { Download, Printer, Building2, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2, Star } from 'lucide-react';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -55,6 +56,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [ratingData, setRatingData] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const { toast } = useToast();
@@ -264,7 +266,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
               <div className="flex flex-wrap gap-2">
                 {response.response_photo_url.split(',').filter(Boolean).map((url, i) => (
-                  <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border" />
+                  <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(url.trim())} />
                 ))}
               </div>
             ) : (
@@ -288,6 +290,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   };
 
   return (
+    <>
     <div className="space-y-4">
       {/* Report content */}
       <div ref={reportRef} className="bg-white text-black rounded-lg overflow-hidden print-report" style={{ fontFamily: "'Montserrat', sans-serif" }}>
@@ -496,7 +499,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                         key={photo.id}
                         src={photo.photo_url}
                         alt={photo.photo_type}
-                        className="w-full aspect-square object-cover rounded-md border border-slate-200"
+                        className="w-full aspect-square object-cover rounded-md border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setPreviewImage(photo.photo_url)}
                       />
                     ))}
                   </div>
@@ -678,5 +682,12 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         </Button>
       </div>
     </div>
+
+      <ImagePreviewModal
+        src={previewImage || ''}
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
+    </>
   );
 }
