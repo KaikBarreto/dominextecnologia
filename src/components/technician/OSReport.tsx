@@ -182,7 +182,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         heightLeft -= (pdfHeight - 20);
       }
 
-      pdf.save(`OS-${String(serviceOrder.order_number).padStart(4, '0')}.pdf`);
+      pdf.save(`OS-${String(serviceOrder.order_number).padStart(6, '0')}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
     } finally {
