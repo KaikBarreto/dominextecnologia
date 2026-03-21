@@ -236,7 +236,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [addSvcQty, setAddSvcQty] = useState(1);
   const [isFetchingSvc, setIsFetchingSvc] = useState(false);
 
-  // (material state removed — materials are now part of services)
+  // ── Add-material row state ──
+  const [addMatId, setAddMatId] = useState('');
+  const [addMatQty, setAddMatQty] = useState(1);
 
   type QuoteDraft = {
     customerMode: string; customerId: string; prospectName: string; prospectPhone: string; prospectEmail: string;
