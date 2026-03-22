@@ -45,7 +45,7 @@ export function EquipmentPanel() {
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
 
-  const { equipment, isLoading, createEquipment } = useEquipment();
+  const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
   const queryClient = useQueryClient();
