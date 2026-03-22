@@ -19,11 +19,13 @@ import {
   Camera,
   Link2,
   Check,
+  MapPinned,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
@@ -36,6 +38,7 @@ import { osStatusLabels, osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 interface OSPhoto {
   id: string;
