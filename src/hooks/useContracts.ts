@@ -225,6 +225,14 @@ export function useContracts() {
             );
           }
 
+          // Create assignees from technician_id so technicians see the OS
+          if (input.technician_id) {
+            await supabase.from('service_order_assignees').insert({
+              service_order_id: os.id,
+              user_id: input.technician_id,
+            });
+          }
+
           await supabase.from('contract_occurrences').insert({
             contract_id: (contract as any).id,
             scheduled_date: dateStr,

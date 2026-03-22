@@ -73,6 +73,14 @@ Deno.serve(async (req) => {
           continue
         }
 
+        // Create assignee so the technician can see the OS
+        if (plan.technician_id) {
+          await supabase.from('service_order_assignees').insert({
+            service_order_id: os.id,
+            user_id: plan.technician_id,
+          })
+        }
+
         // Record in history
         await supabase.from('pmoc_generated_os').insert({
           plan_id: plan.id,
