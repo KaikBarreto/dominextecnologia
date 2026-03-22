@@ -18,7 +18,8 @@ export function normalizeSearch(str: string): string {
  * Also matches when spaces are removed (e.g. "daluz" matches "da luz").
  */
 export function fuzzyIncludes(haystack: string | null | undefined, needle: string): boolean {
-  if (!haystack || !needle) return false;
+  if (!needle || !needle.trim()) return true;
+  if (!haystack) return false;
   const h = normalizeSearch(haystack);
   const n = normalizeSearch(needle);
   if (!n) return true;
