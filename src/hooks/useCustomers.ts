@@ -103,7 +103,9 @@ export function useCustomers() {
   return {
     customers: customersQuery.data ?? [],
     isLoading: customersQuery.isLoading,
+    isError: customersQuery.isError,
     error: customersQuery.error,
+    refetch: customersQuery.refetch,
     createCustomer,
     updateCustomer,
     deleteCustomer,
