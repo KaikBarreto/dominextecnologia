@@ -34,7 +34,7 @@ export default function Customers() {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [originConfigOpen, setOriginConfigOpen] = useState(false);
 
-  const { customers, isLoading, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const { customers, isLoading, isError, refetch, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
 
   const filteredCustomers = customers.filter(
     (customer) =>
