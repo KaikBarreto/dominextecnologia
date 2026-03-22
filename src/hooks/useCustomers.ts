@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Customer, CustomerType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface CustomerInput {
   name: string;
@@ -26,9 +27,10 @@ export interface CustomerInput {
 export function useCustomers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, loading } = useAuth();
 
   const customersQuery = useQuery({
-    queryKey: ['customers'],
+    queryKey: ['customers', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('customers')
@@ -39,6 +41,7 @@ export function useCustomers() {
       if (error) throw error;
       return data as Customer[];
     },
+    enabled: !!user && !loading,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
