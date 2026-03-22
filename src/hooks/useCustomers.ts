@@ -30,7 +30,7 @@ export function useCustomers() {
   const { user, loading } = useAuth();
 
   const customersQuery = useQuery({
-    queryKey: ['customers', user?.id],
+    queryKey: ['customers', user?.id ?? 'anon'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('customers')
@@ -41,7 +41,7 @@ export function useCustomers() {
       if (error) throw error;
       return data as Customer[];
     },
-    enabled: !!user && !loading,
+    enabled: !loading,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
