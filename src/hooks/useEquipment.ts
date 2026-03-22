@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Equipment } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface EquipmentInput {
   customer_id: string;
@@ -25,9 +26,10 @@ export interface EquipmentInput {
 export function useEquipment(customerId?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, loading } = useAuth();
 
   const equipmentQuery = useQuery({
-    queryKey: ['equipment', customerId],
+    queryKey: ['equipment', user?.id, customerId],
     queryFn: async () => {
       let query = supabase
         .from('equipment')
@@ -46,7 +48,7 @@ export function useEquipment(customerId?: string) {
       if (error) throw error;
       return data as (Equipment & { customer: any })[];
     },
-    enabled: customerId !== undefined || customerId === undefined,
+    enabled: !!user && !loading,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
