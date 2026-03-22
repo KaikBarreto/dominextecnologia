@@ -590,7 +590,7 @@ export default function TechnicianOS() {
 
   // AUTHENTICATED MODE - full interactive
   const isCheckedIn = !!checkInTime;
-  const isPending = serviceOrder.status === 'pendente';
+  const isPending = serviceOrder.status === 'pendente' || serviceOrder.status === 'agendada';
   const isACaminho = serviceOrder.status === 'a_caminho';
 
   const handleEnRoute = async () => {
