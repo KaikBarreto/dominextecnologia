@@ -784,34 +784,76 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Questionnaires - Multi equipment from junction table */}
-        {isCheckedIn && equipmentItems.length > 0 && equipmentItems.map((item) => (
-          item.form_template_id && (
-            <Card key={item.equipment_id}>
-              <CardHeader className="pb-3 px-3 sm:px-6">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
-                  <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
-                  <span className="break-words">
-                    {item.equipment?.name || 'Equipamento'}
-                    {item.equipment?.brand && ` — ${item.equipment.brand} ${item.equipment.model || ''}`}
-                  </span>
-                  {formValidations[item.equipment_id] && !formValidations[item.equipment_id].isValid && (
-                    <Badge variant="destructive" className="text-xs">
-                      {formValidations[item.equipment_id].missingQuestions.length} pendente{formValidations[item.equipment_id].missingQuestions.length > 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-3 sm:px-6">
-                <DynamicFormQuestions 
-                  serviceOrderId={id!}
-                  templateId={item.form_template_id}
-                  onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [item.equipment_id]: result }))}
-                />
-              </CardContent>
-            </Card>
-          )
-        ))}
+        {/* Questionnaires - Multi equipment from junction table (accordion) */}
+        {isCheckedIn && equipmentItems.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                Questionários
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6 pb-3">
+              <Accordion type="multiple" className="w-full">
+                {equipmentItems.map((item) => {
+                  if (!item.form_template_id) return null;
+                  const validation = formValidations[item.equipment_id];
+                  const isComplete = validation && validation.isValid;
+                  const pendingCount = validation ? validation.missingQuestions.length : 0;
+                  return (
+                    <AccordionItem key={item.equipment_id} value={item.equipment_id} className="border-b last:border-0">
+                      <AccordionTrigger className="hover:no-underline py-3 gap-2">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                          {/* Equipment photo or fallback icon */}
+                          {item.equipment?.photo_url ? (
+                            <img
+                              src={item.equipment.photo_url}
+                              alt={item.equipment.name}
+                              className="h-10 w-10 rounded-md object-cover shrink-0 cursor-pointer border"
+                              onClick={(e) => { e.stopPropagation(); setPreviewPhoto(item.equipment!.photo_url); }}
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
+                              <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {item.equipment?.name || 'Equipamento'}
+                            </p>
+                            {item.equipment?.location && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <MapPinned className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{item.equipment.location}</span>
+                              </p>
+                            )}
+                          </div>
+                          {/* Completion indicator */}
+                          {isComplete ? (
+                            <Badge variant="success" className="gap-1 shrink-0">
+                              <Check className="h-3 w-3" /> Concluído
+                            </Badge>
+                          ) : pendingCount > 0 ? (
+                            <Badge variant="destructive" className="text-xs shrink-0">
+                              {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <DynamicFormQuestions
+                          serviceOrderId={id!}
+                          templateId={item.form_template_id!}
+                          onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [item.equipment_id]: result }))}
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Fallback: single questionnaire from OS (legacy / no junction data) */}
         {isCheckedIn && equipmentItems.length === 0 && serviceOrder.form_template_id && (
