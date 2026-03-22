@@ -145,7 +145,7 @@ export default function TechnicianOS() {
         .select(`
           equipment_id,
           form_template_id,
-          equipment:equipment(id, name, brand, model),
+          equipment:equipment(id, name, brand, model, location, photo_url),
           form_template:form_templates(id, name)
         `)
         .eq('service_order_id', id);
