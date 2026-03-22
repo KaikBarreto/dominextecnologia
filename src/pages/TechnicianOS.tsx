@@ -933,6 +933,14 @@ export default function TechnicianOS() {
           </div>
         </div>
       )}
+
+      {/* Equipment photo preview */}
+      <ImagePreviewModal
+        src={previewPhoto || ''}
+        alt="Equipamento"
+        open={!!previewPhoto}
+        onClose={() => setPreviewPhoto(null)}
+      />
     </div>
   );
 }
