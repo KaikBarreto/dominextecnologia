@@ -83,6 +83,7 @@ export default function TechnicianOS() {
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   // Check if user is authenticated
   useEffect(() => {
