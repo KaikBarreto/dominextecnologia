@@ -48,7 +48,7 @@ interface OSPhoto {
 interface EquipmentItem {
   equipment_id: string;
   form_template_id: string | null;
-  equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null } | null;
   form_template: { id: string; name: string } | null;
 }
 
