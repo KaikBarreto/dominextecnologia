@@ -39,6 +39,8 @@ export function useCustomers() {
       if (error) throw error;
       return data as Customer[];
     },
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   const createCustomer = useMutation({
@@ -103,7 +105,9 @@ export function useCustomers() {
   return {
     customers: customersQuery.data ?? [],
     isLoading: customersQuery.isLoading,
+    isError: customersQuery.isError,
     error: customersQuery.error,
+    refetch: customersQuery.refetch,
     createCustomer,
     updateCustomer,
     deleteCustomer,

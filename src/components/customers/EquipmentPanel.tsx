@@ -45,7 +45,7 @@ export function EquipmentPanel() {
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
 
-  const { equipment, isLoading, createEquipment } = useEquipment();
+  const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
   const queryClient = useQueryClient();
@@ -175,6 +175,15 @@ export function EquipmentPanel() {
                 {[...Array(5)].map((_, i) => (
                   <Skeleton key={i} className="h-16 w-full" />
                 ))}
+              </div>
+            ) : isError ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Package className="mb-4 h-12 w-12 text-destructive" />
+                <h3 className="text-lg font-medium">Erro ao carregar equipamentos</h3>
+                <p className="text-muted-foreground mb-4">
+                  Não foi possível conectar ao servidor. Tente novamente.
+                </p>
+                <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
               </div>
             ) : filteredEquipment.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">

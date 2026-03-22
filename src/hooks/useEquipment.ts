@@ -47,6 +47,8 @@ export function useEquipment(customerId?: string) {
       return data as (Equipment & { customer: any })[];
     },
     enabled: customerId !== undefined || customerId === undefined,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   const createEquipment = useMutation({
@@ -76,7 +78,9 @@ export function useEquipment(customerId?: string) {
   return {
     equipment: equipmentQuery.data ?? [],
     isLoading: equipmentQuery.isLoading,
+    isError: equipmentQuery.isError,
     error: equipmentQuery.error,
+    refetch: equipmentQuery.refetch,
     createEquipment,
   };
 }

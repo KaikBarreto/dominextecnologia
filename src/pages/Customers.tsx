@@ -34,7 +34,7 @@ export default function Customers() {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [originConfigOpen, setOriginConfigOpen] = useState(false);
 
-  const { customers, isLoading, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const { customers, isLoading, isError, refetch, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
 
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -110,6 +110,15 @@ export default function Customers() {
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="mb-4 h-12 w-12 text-destructive" />
+              <h3 className="text-lg font-medium">Erro ao carregar clientes</h3>
+              <p className="text-muted-foreground mb-4">
+                Não foi possível conectar ao servidor. Tente novamente.
+              </p>
+              <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
             </div>
           ) : filteredCustomers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
