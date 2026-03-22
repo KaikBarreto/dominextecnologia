@@ -76,7 +76,9 @@ export function useEquipment(customerId?: string) {
   return {
     equipment: equipmentQuery.data ?? [],
     isLoading: equipmentQuery.isLoading,
+    isError: equipmentQuery.isError,
     error: equipmentQuery.error,
+    refetch: equipmentQuery.refetch,
     createEquipment,
   };
 }
