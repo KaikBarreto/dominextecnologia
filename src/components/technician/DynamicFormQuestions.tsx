@@ -351,11 +351,11 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
             {photoUrls.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 {photoUrls.map((url, idx) => (
-                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-muted group">
+                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-muted">
                     <img src={url} alt={`Resposta ${idx + 1}`} className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      className="absolute top-1 right-1 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"
                       onClick={() => removePhoto(idx)}
                       title="Remover foto"
                     >
