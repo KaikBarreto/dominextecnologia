@@ -90,10 +90,20 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
 
   const fetchResponses = async () => {
     try {
+      // First get question IDs for THIS template to avoid cross-equipment contamination
+      const { data: templateQuestions } = await supabase
+        .from('form_questions')
+        .select('id')
+        .eq('template_id', templateId);
+      
+      const questionIds = (templateQuestions || []).map(q => q.id);
+      if (questionIds.length === 0) { setResponses({}); return; }
+
       const { data, error } = await supabase
         .from('form_responses')
         .select('*')
-        .eq('service_order_id', serviceOrderId);
+        .eq('service_order_id', serviceOrderId)
+        .in('question_id', questionIds);
 
       if (error) throw error;
 
