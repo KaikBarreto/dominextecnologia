@@ -67,6 +67,7 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:manage_employees', label: 'Gerenciar Funcionários', description: 'Criar, editar e gerenciar funcionários e movimentações', group: 'Administração', category: 'administracao' },
   { key: 'fn:manage_timeclock', label: 'Gerenciar Ponto', description: 'Visualizar e gerenciar controle de ponto de todos os funcionários', group: 'Administração', category: 'administracao' },
   { key: 'fn:view_customer_financial', label: 'Ver Financeiro do Cliente', description: 'Visualizar aba financeira na ficha do cliente', group: 'Comercial', category: 'comercial' },
+  { key: 'fn:reopen_os', label: 'Reabrir OS', description: 'Reabrir ordens de serviço concluídas para edição', group: 'Serviços', category: 'servicos' },
 ] as const;
 
 export const ALL_PERMISSIONS = [...SCREEN_PERMISSIONS, ...FUNCTION_PERMISSIONS];
