@@ -68,6 +68,7 @@ export default function TechnicianOS() {
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
+  const [technicianProfile, setTechnicianProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
@@ -84,6 +85,9 @@ export default function TechnicianOS() {
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+
+  // Helper to safely extract joined object (Supabase may return array for some joins)
+  const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
 
   // Check if user is authenticated
   useEffect(() => {
