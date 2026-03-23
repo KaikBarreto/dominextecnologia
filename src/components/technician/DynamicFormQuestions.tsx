@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Camera, Upload, Check, X } from 'lucide-react';
+import { Camera, Upload, Check, X, Pencil, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
