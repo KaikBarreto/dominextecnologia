@@ -77,6 +77,7 @@ export default function ServiceOrders() {
   const [editingOS, setEditingOS] = useState<ServiceOrder | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [osToDelete, setOsToDelete] = useState<ServiceOrder | null>(null);
+  const [deleteMode, setDeleteMode] = useState<'single' | 'group' | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
