@@ -4,7 +4,7 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, addDays, addWeeks, addMonths } from 'date-fns';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus, MapPin } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus, MapPin, Repeat } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -39,6 +39,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { useAuth } from '@/contexts/AuthContext';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -106,6 +109,27 @@ export function ServiceOrderFormDialog({
   const { toast: editToast } = useToast();
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Recurrence state (create mode only)
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState('weekly');
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([]);
+
+  const RECURRENCE_OPTIONS = [
+    { value: 'daily', label: 'Diária' },
+    { value: 'weekly', label: 'Semanal' },
+    { value: 'biweekly', label: 'Quinzenal' },
+    { value: 'monthly', label: 'Mensal' },
+    { value: 'custom', label: 'Personalizado' },
+  ];
+  const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const toggleWeekday = (day: number) => {
+    setRecurrenceWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
 
   const selectedServiceType = useMemo(
     () => serviceTypes.find(st => st.id === selectedServiceTypeId),
@@ -188,6 +212,12 @@ export function ServiceOrderFormDialog({
         setSelectedAssigneeUserIds([]);
       }
       setSelectedAssigneeTeamIds(serviceOrder?.team_id ? [serviceOrder.team_id] : []);
+      setRecurrenceEnabled(false);
+      setRecurrenceType('weekly');
+      setRecurrenceInterval(1);
+      setRecurrenceEndDate('');
+      const dayOfWeek = new Date(defaultDate || new Date()).getDay();
+      setRecurrenceWeekdays([dayOfWeek]);
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
@@ -232,11 +262,105 @@ export function ServiceOrderFormDialog({
     }
 
     if (!customerId) return;
-    // Use first selected user as legacy technician_id, first team as team_id
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
 
-    const baseData = {
+    const equipment_items = selectedEquipmentIds.map(eqId => ({
+      equipment_id: eqId,
+      form_template_id: equipmentTemplateMap[eqId] || undefined,
+    }));
+
+    const formTemplateId = equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined);
+
+    // If recurrence is enabled, generate multiple OS entries
+    if (recurrenceEnabled && recurrenceEndDate) {
+      const startDate = data.scheduled_date || format(new Date(), 'yyyy-MM-dd');
+      const dates: string[] = [startDate];
+      const endDate = new Date(recurrenceEndDate + 'T12:00:00');
+
+      if (recurrenceType === 'custom' && recurrenceWeekdays.length > 0) {
+        let current = addDays(new Date(startDate + 'T12:00:00'), 1);
+        while (current <= endDate) {
+          if (recurrenceWeekdays.includes(current.getDay())) {
+            dates.push(format(current, 'yyyy-MM-dd'));
+          }
+          current = addDays(current, 1);
+        }
+      } else {
+        let current = new Date(startDate + 'T12:00:00');
+        const interval = recurrenceInterval || 1;
+        while (true) {
+          if (recurrenceType === 'daily') current = addDays(current, interval);
+          else if (recurrenceType === 'weekly') current = addWeeks(current, interval);
+          else if (recurrenceType === 'biweekly') current = addWeeks(current, 2 * interval);
+          else if (recurrenceType === 'monthly') current = addMonths(current, interval);
+          else break;
+          if (current > endDate) break;
+          dates.push(format(current, 'yyyy-MM-dd'));
+        }
+      }
+
+      const groupId = crypto.randomUUID();
+      const inserts = dates.map(date => normalizeOptionalForeignKeys({
+        customer_id: customerId,
+        technician_id: techId || null,
+        team_id: teamId || null,
+        os_type: data.os_type,
+        service_type_id: data.service_type_id === 'none' ? null : (data.service_type_id || null),
+        scheduled_date: date,
+        scheduled_time: data.scheduled_time || null,
+        duration_minutes: data.duration_minutes || 120,
+        description: data.description || null,
+        notes: data.notes || null,
+        equipment_id: selectedEquipmentIds[0] || null,
+        form_template_id: formTemplateId || null,
+        require_tech_signature: requireTechSignature,
+        require_client_signature: requireClientSignature,
+        status: 'pendente',
+        created_by: user?.id,
+        recurrence_type: recurrenceType,
+        recurrence_interval: recurrenceInterval,
+        recurrence_end_date: recurrenceEndDate,
+        recurrence_group_id: groupId,
+      } as any, ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']));
+
+      const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
+      if (error) {
+        editToast({ variant: 'destructive', title: 'Erro ao criar OSs recorrentes', description: error.message });
+        return;
+      }
+
+      // Insert assignees and equipment items for each created OS
+      if (created) {
+        if (selectedAssigneeUserIds.length > 0) {
+          const assigneeRows = created.flatMap((row: any) =>
+            selectedAssigneeUserIds.map(uid => ({ service_order_id: row.id, user_id: uid }))
+          );
+          await supabase.from('service_order_assignees').insert(assigneeRows);
+        }
+        if (equipment_items.length > 0) {
+          const eqRows = created.flatMap((row: any) =>
+            equipment_items.map(item => ({
+              service_order_id: row.id,
+              equipment_id: item.equipment_id,
+              form_template_id: item.form_template_id || null,
+            }))
+          );
+          await supabase.from('service_order_equipment').insert(eqRows);
+        }
+      }
+
+      editToast({ title: `${dates.length} OS(s) criada(s) com recorrência!` });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      draft.clearDraft();
+      form.reset();
+      onOpenChange(false);
+      return;
+    }
+
+    // Normal single OS creation
+    const cleanedData = {
       ...data,
       customer_id: customerId,
       technician_id: techId,
@@ -244,17 +368,8 @@ export function ServiceOrderFormDialog({
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
-    };
-
-    const equipment_items = selectedEquipmentIds.map(eqId => ({
-      equipment_id: eqId,
-      form_template_id: equipmentTemplateMap[eqId] || undefined,
-    }));
-
-    const cleanedData = {
-      ...baseData,
       equipment_id: selectedEquipmentIds[0] || undefined,
-      form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined),
+      form_template_id: formTemplateId,
       require_tech_signature: requireTechSignature,
       require_client_signature: requireClientSignature,
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
@@ -1031,6 +1146,71 @@ export function ServiceOrderFormDialog({
                 <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
 
+              {/* Recurrence */}
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
+                  <Label className="cursor-pointer flex items-center gap-1.5">
+                    <Repeat className="h-4 w-4" />
+                    Recorrência
+                  </Label>
+                </div>
+                {recurrenceEnabled && (
+                  <div className="space-y-3 pt-1">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Frequência</Label>
+                        <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {RECURRENCE_OPTIONS.map(o => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">A cada</Label>
+                        <div className="flex items-center gap-1.5">
+                          <Input type="number" min={1} max={12} value={recurrenceInterval} onChange={(e) => setRecurrenceInterval(Number(e.target.value))} />
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {recurrenceType === 'daily' ? 'dia(s)' :
+                             recurrenceType === 'monthly' ? 'mês(es)' :
+                             'semana(s)'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Até</Label>
+                        <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
+                      </div>
+                    </div>
+                    {(recurrenceType === 'custom' || recurrenceType === 'weekly') && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Repetir em:</Label>
+                        <div className="flex gap-1">
+                          {WEEKDAY_LABELS.map((label, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => toggleWeekday(idx)}
+                              className={cn(
+                                'h-8 w-8 rounded-md text-xs font-medium transition-colors border',
+                                recurrenceWeekdays.includes(idx)
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Signature toggles removed - use questionnaire signature questions instead */}
             </div>
           )}
@@ -1052,7 +1232,7 @@ export function ServiceOrderFormDialog({
               {isLastStep ? (
                 <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar OS
+                  {recurrenceEnabled ? 'Criar OS Recorrentes' : 'Criar OS'}
                 </Button>
               ) : (
                 <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
