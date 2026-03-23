@@ -103,9 +103,9 @@ export default function TechnicianOS() {
       fetchCompany();
       fetchEquipmentItems();
       fetchFormResponses();
+      fetchTechnicianProfile();
     }
     return () => {
-      // Restore original primary color on unmount
       document.documentElement.style.removeProperty('--primary');
       document.documentElement.style.removeProperty('--ring');
     };
