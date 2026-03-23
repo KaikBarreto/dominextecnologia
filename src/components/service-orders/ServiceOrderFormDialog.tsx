@@ -644,7 +644,7 @@ export function ServiceOrderFormDialog({
             <AlertDialogCancel onClick={() => { setPendingEditData(null); }}>
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction variant="outline" onClick={() => handleContractDateChoice(false)}>
+            <AlertDialogAction className="bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => handleContractDateChoice(false)}>
               Apenas esta
             </AlertDialogAction>
             <AlertDialogAction onClick={() => handleContractDateChoice(true)}>
