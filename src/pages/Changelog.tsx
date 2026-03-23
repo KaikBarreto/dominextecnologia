@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.7',
+    date: '23 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Sincronização de equipes com OSs',
+        description: 'Ao adicionar ou remover membros de uma equipe, todas as OSs vinculadas à equipe são atualizadas automaticamente, garantindo que apenas membros ativos vejam as ordens de serviço.',
+        category: 'recurso',
+      },
+      {
+        title: 'Visibilidade de OS para técnicos em contratos',
+        description: 'OSs geradas por contratos agora criam assignees automaticamente, permitindo que técnicos e equipes vejam as OS mesmo sem perfil "interno".',
+        category: 'correcao',
+      },
+      {
+        title: 'Check-in em OS agendadas',
+        description: 'Técnicos agora podem fazer check-in e iniciar deslocamento em ordens de serviço com status "Agendada".',
+        category: 'correcao',
+      },
+      {
+        title: 'Questionários em accordion na OS do técnico',
+        description: 'O preenchimento da OS exibe questionários por equipamento em formato de accordion com indicador visual de conclusão, foto e local do equipamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.6',
     date: '21 de março de 2026',
     type: 'patch',
