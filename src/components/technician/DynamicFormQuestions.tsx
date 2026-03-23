@@ -34,10 +34,11 @@ export interface FormValidationResult {
 interface DynamicFormQuestionsProps {
   serviceOrderId: string;
   templateId: string;
+  equipmentId?: string;
   onValidationChange?: (result: FormValidationResult) => void;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationChange }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
