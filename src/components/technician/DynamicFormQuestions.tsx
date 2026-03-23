@@ -101,11 +101,18 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       const questionIds = (templateQuestions || []).map(q => q.id);
       if (questionIds.length === 0) { setResponses({}); return; }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('form_responses')
         .select('*')
         .eq('service_order_id', serviceOrderId)
         .in('question_id', questionIds);
+
+      // Filter by equipment_id to isolate responses per equipment
+      if (equipmentId) {
+        query = query.eq('equipment_id', equipmentId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
