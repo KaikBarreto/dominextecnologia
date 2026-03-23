@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.9',
+    date: '23 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção de erro ao abrir OS pelo técnico',
+        description: 'Corrigido erro "a is not a function" que impedia a abertura da OS em alguns cenários, causado por dados de questionário retornados em formato inesperado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Correção de respostas duplicadas entre equipamentos',
+        description: 'Respostas de questionário agora são filtradas corretamente por template, evitando que respostas de um equipamento apareçam em outro.',
+        category: 'correcao',
+      },
+      {
+        title: 'Fotos clicáveis em tela cheia no link público',
+        description: 'Fotos de respostas de questionários e fotos da OS no link de acompanhamento do cliente agora podem ser ampliadas ao clicar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Foto e dados do cliente no link público',
+        description: 'O card de cliente no link de acompanhamento agora exibe a foto do cliente (clicável para ampliar) ao lado do nome.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Técnico identificado no check-in público',
+        description: 'A seção de check-in no link de acompanhamento do cliente agora mostra nome e foto do técnico responsável.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Edição e remoção de respostas e fotos',
+        description: 'Técnicos agora podem editar respostas já dadas (ícone de lápis) e remover fotos adicionadas a perguntas do questionário.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.5.8',
     date: '23 de março de 2026',
     type: 'patch',
