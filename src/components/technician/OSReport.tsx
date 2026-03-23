@@ -150,7 +150,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const fetchAllResponses = async () => {
     const { data } = await supabase
       .from('form_responses')
-      .select('id, question_id, response_value, response_photo_url, question:form_questions(*)')
+      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
       .eq('service_order_id', serviceOrder.id);
     if (data) setFormResponses(data as any);
   };
@@ -327,7 +327,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const signatureResponses = formResponses.filter(r => r.question?.question_type === 'signature');
   const otherResponses = formResponses.filter(r => r.question?.question_type !== 'signature');
 
-  // Group responses by template_id for multi-equipment OS
+  // Group responses by equipment_id for multi-equipment OS
   const responsesByTemplate = (() => {
     if (equipmentItems.length <= 1) {
       // Single equipment or legacy: show flat
@@ -336,16 +336,22 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         responses: otherResponses 
       }];
     }
-    // Group by template_id
+    // Group by equipment_id (or fallback to template_id for legacy data)
     const groups: { label: string; responses: FormResponseData[] }[] = [];
     for (const item of equipmentItems) {
       if (!item.form_template_id) continue;
-      const templateResponses = otherResponses.filter(r => r.question?.template_id === item.form_template_id);
-      if (templateResponses.length > 0) {
+      const eqResponses = otherResponses.filter(r => {
+        if ((r as any).equipment_id) {
+          return (r as any).equipment_id === item.equipment_id;
+        }
+        // Legacy fallback: match by template_id
+        return r.question?.template_id === item.form_template_id;
+      });
+      if (eqResponses.length > 0) {
         const label = item.equipment?.name 
           ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
           : (item.form_template?.name || 'Checklist');
-        groups.push({ label, responses: templateResponses });
+        groups.push({ label, responses: eqResponses });
       }
     }
     // Any remaining responses not matched to a template

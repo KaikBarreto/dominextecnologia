@@ -34,10 +34,11 @@ export interface FormValidationResult {
 interface DynamicFormQuestionsProps {
   serviceOrderId: string;
   templateId: string;
+  equipmentId?: string;
   onValidationChange?: (result: FormValidationResult) => void;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationChange }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
@@ -70,7 +71,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   useEffect(() => {
     fetchQuestions();
     fetchResponses();
-  }, [templateId, serviceOrderId]);
+  }, [templateId, serviceOrderId, equipmentId]);
 
   const fetchQuestions = async () => {
     try {
@@ -100,11 +101,18 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
       const questionIds = (templateQuestions || []).map(q => q.id);
       if (questionIds.length === 0) { setResponses({}); return; }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('form_responses')
         .select('*')
         .eq('service_order_id', serviceOrderId)
         .in('question_id', questionIds);
+
+      // Filter by equipment_id to isolate responses per equipment
+      if (equipmentId) {
+        query = query.eq('equipment_id', equipmentId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -125,12 +133,20 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   const saveResponse = async (questionId: string, value: string | null, photoUrl?: string | null) => {
     setSaving(questionId);
     try {
-      const { data: existing } = await supabase
+      // Build query to find existing response scoped to this equipment
+      let existingQuery = supabase
         .from('form_responses')
         .select('id')
         .eq('service_order_id', serviceOrderId)
-        .eq('question_id', questionId)
-        .single();
+        .eq('question_id', questionId);
+      
+      if (equipmentId) {
+        existingQuery = existingQuery.eq('equipment_id', equipmentId);
+      } else {
+        existingQuery = existingQuery.is('equipment_id', null);
+      }
+
+      const { data: existing } = await existingQuery.single();
 
       if (existing) {
         const { error } = await supabase
@@ -150,7 +166,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
             question_id: questionId,
             response_value: value,
             response_photo_url: photoUrl || null,
-          });
+            equipment_id: equipmentId || null,
+          } as any);
         if (error) throw error;
       }
 
