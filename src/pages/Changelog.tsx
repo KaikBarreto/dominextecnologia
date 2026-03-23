@@ -40,6 +40,48 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.8',
+    date: '23 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exclusão de OS recorrentes',
+        description: 'Ao excluir uma OS que pertence a um grupo de recorrência, o sistema pergunta se deseja excluir apenas aquela ou todas as OS da recorrência.',
+        category: 'recurso',
+      },
+      {
+        title: 'Permissão para reabrir OS',
+        description: 'Nova permissão "Reabrir OS" (fn:reopen_os) na categoria Serviços. Usuários com essa permissão podem reabrir OS concluídas para edição dos campos preenchidos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Botão de reabrir na agenda',
+        description: 'No resumo lateral da agenda, OS concluídas exibem o botão "Reabrir OS" para usuários com a permissão correspondente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Assinatura com fundo branco no tema escuro',
+        description: 'O campo de assinatura agora mantém fundo branco e traço preto independentemente do tema do usuário, garantindo legibilidade.',
+        category: 'correcao',
+      },
+      {
+        title: 'Botão finalizar OS reposicionado',
+        description: 'O botão "Finalizar OS" agora aparece ao final do formulário, após as assinaturas obrigatórias, em vez de ficar fixo no rodapé.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Recorrência ao criar OS e tarefas',
+        description: 'Ao criar uma nova OS ou tarefa, é possível ativar recorrência (diária, semanal, quinzenal, mensal ou personalizada) para gerar automaticamente eventos futuros.',
+        category: 'recurso',
+      },
+      {
+        title: 'Propagação de datas em contratos',
+        description: 'Ao editar a data de uma OS de contrato, o sistema pergunta se deseja alterar apenas aquela ou todas as ocorrências futuras da recorrência.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.7',
     date: '23 de março de 2026',
     type: 'patch',

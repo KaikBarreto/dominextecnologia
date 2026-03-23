@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.7";
+export const APP_VERSION = "1.5.8";
 
-export const VERSION_NOTES = "Sincronização de equipes com OSs, visibilidade de técnicos em contratos";
+export const VERSION_NOTES = "Exclusão de recorrência, permissão de reabrir OS, assinatura com fundo branco";
