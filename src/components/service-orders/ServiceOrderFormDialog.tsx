@@ -629,6 +629,29 @@ export function ServiceOrderFormDialog({
           </form>
         </Form>
       </ResponsiveModal>
+
+      {/* Contract date propagation dialog */}
+      <AlertDialog open={contractDateDialogOpen} onOpenChange={setContractDateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterar data da recorrência?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta OS pertence a um contrato recorrente. Deseja ajustar apenas esta data ou todas as ocorrências futuras?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => { setPendingEditData(null); }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction variant="outline" onClick={() => handleContractDateChoice(false)}>
+              Apenas esta
+            </AlertDialogAction>
+            <AlertDialogAction onClick={() => handleContractDateChoice(true)}>
+              Esta e futuras
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     );
   }
 
