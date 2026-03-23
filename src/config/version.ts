@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.8";
+export const APP_VERSION = "1.5.9";
 
-export const VERSION_NOTES = "Exclusão de recorrência, permissão de reabrir OS, assinatura com fundo branco";
+export const VERSION_NOTES = "Correção de erro em questionários, fotos clicáveis, técnico no check-in público";
