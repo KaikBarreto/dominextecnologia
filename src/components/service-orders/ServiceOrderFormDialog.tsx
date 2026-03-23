@@ -267,11 +267,10 @@ export function ServiceOrderFormDialog({
     onOpenChange(false);
   };
 
-  const handleEditSubmit = async (data: ServiceOrderFormData) => {
+  const buildEditPayload = (data: ServiceOrderFormData) => {
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
-
-    const cleanedData = {
+    return {
       ...data,
       equipment_id: data.equipment_id || undefined,
       technician_id: techId,
@@ -282,7 +281,77 @@ export function ServiceOrderFormDialog({
       form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
       assignee_user_ids: selectedAssigneeUserIds,
     };
+  };
+
+  const handleEditSubmit = async (data: ServiceOrderFormData) => {
+    // Check if this is a contract OS and date changed
+    const isContractOS = !!(serviceOrder as any)?.contract_id;
+    const dateChanged = data.scheduled_date !== serviceOrder?.scheduled_date;
+
+    if (isContractOS && dateChanged) {
+      setPendingEditData(data);
+      setContractDateDialogOpen(true);
+      return;
+    }
+
+    const cleanedData = buildEditPayload(data);
     await onSubmit(cleanedData);
+    form.reset();
+    onOpenChange(false);
+  };
+
+  const handleContractDateChoice = async (applyToFuture: boolean) => {
+    if (!pendingEditData || !serviceOrder) return;
+    setContractDateDialogOpen(false);
+    
+    const cleanedData = buildEditPayload(pendingEditData);
+    await onSubmit(cleanedData);
+
+    if (applyToFuture) {
+      try {
+        const contractId = (serviceOrder as any).contract_id;
+        const oldDate = serviceOrder.scheduled_date;
+        const newDate = pendingEditData.scheduled_date;
+        if (contractId && oldDate && newDate) {
+          const diffMs = new Date(newDate + 'T12:00:00').getTime() - new Date(oldDate + 'T12:00:00').getTime();
+          const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+          // Get all future occurrences from the same contract
+          const { data: futureOccurrences } = await supabase
+            .from('contract_occurrences')
+            .select('id, scheduled_date, service_order_id')
+            .eq('contract_id', contractId)
+            .gt('scheduled_date', oldDate)
+            .order('scheduled_date', { ascending: true });
+
+          if (futureOccurrences && futureOccurrences.length > 0) {
+            for (const occ of futureOccurrences) {
+              const newOccDate = new Date(new Date(occ.scheduled_date + 'T12:00:00').getTime() + diffDays * 24 * 60 * 60 * 1000);
+              const formattedDate = newOccDate.toISOString().split('T')[0];
+
+              // Update occurrence
+              await supabase
+                .from('contract_occurrences')
+                .update({ scheduled_date: formattedDate })
+                .eq('id', occ.id);
+
+              // Update linked service order if exists
+              if (occ.service_order_id) {
+                await supabase
+                  .from('service_orders')
+                  .update({ scheduled_date: formattedDate })
+                  .eq('id', occ.service_order_id);
+              }
+            }
+            editToast({ title: `${futureOccurrences.length} ocorrência(s) futura(s) ajustada(s)` });
+          }
+        }
+      } catch (err: any) {
+        editToast({ variant: 'destructive', title: 'Erro ao ajustar datas futuras', description: err.message });
+      }
+    }
+
+    setPendingEditData(null);
     form.reset();
     onOpenChange(false);
   };
