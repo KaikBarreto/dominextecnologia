@@ -39,6 +39,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { useAuth } from '@/contexts/AuthContext';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
