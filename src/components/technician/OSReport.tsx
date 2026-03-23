@@ -80,12 +80,21 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   }, [serviceOrder.id]);
 
   const fetchTechnician = async () => {
-    const techId = serviceOrder.technician_id;
-    if (!techId) return;
+    let userId = serviceOrder.technician_id;
+    // Fallback to first assignee if no technician_id
+    if (!userId) {
+      const { data: assignees } = await supabase
+        .from('service_order_assignees')
+        .select('user_id')
+        .eq('service_order_id', serviceOrder.id)
+        .limit(1);
+      userId = (assignees as any)?.[0]?.user_id;
+    }
+    if (!userId) return;
     const { data } = await supabase
       .from('profiles')
       .select('full_name, avatar_url')
-      .eq('user_id', techId)
+      .eq('user_id', userId)
       .maybeSingle();
     if (data) setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
   };

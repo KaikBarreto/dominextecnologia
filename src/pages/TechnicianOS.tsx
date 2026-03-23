@@ -550,15 +550,7 @@ export default function TechnicianOS() {
             </CardContent>
           </Card>
 
-          {/* Description */}
-          {serviceOrder.description && (
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Serviço</p>
-                <p className="text-sm break-words">{serviceOrder.description}</p>
-              </CardContent>
-            </Card>
-          )}
+          {/* Description hidden from public view - only visible to technician */}
 
           {/* Equipment list - read only */}
           {equipmentItems.length > 0 && (
@@ -567,9 +559,19 @@ export default function TechnicianOS() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Equipamentos</p>
                 <div className="space-y-2">
                   {equipmentItems.map(item => item.equipment && (
-                    <div key={item.equipment_id} className="text-sm">
-                      <p className="font-medium">{item.equipment.name}</p>
-                      {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
+                    <div key={item.equipment_id} className="flex items-center gap-3 text-sm">
+                      {item.equipment.photo_url ? (
+                        <img
+                          src={item.equipment.photo_url}
+                          alt={item.equipment.name}
+                          className="h-12 w-12 rounded-lg object-cover border cursor-pointer shrink-0"
+                          onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
+                        />
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="font-medium">{item.equipment.name}</p>
+                        {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
+                      </div>
                     </div>
                   ))}
                 </div>
