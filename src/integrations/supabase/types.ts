@@ -1435,6 +1435,7 @@ export type Database = {
       }
       form_responses: {
         Row: {
+          equipment_id: string | null
           id: string
           question_id: string
           responded_at: string
@@ -1444,6 +1445,7 @@ export type Database = {
           service_order_id: string
         }
         Insert: {
+          equipment_id?: string | null
           id?: string
           question_id: string
           responded_at?: string
@@ -1453,6 +1455,7 @@ export type Database = {
           service_order_id: string
         }
         Update: {
+          equipment_id?: string | null
           id?: string
           question_id?: string
           responded_at?: string
@@ -1462,6 +1465,13 @@ export type Database = {
           service_order_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "form_responses_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "form_responses_question_id_fkey"
             columns: ["question_id"]
