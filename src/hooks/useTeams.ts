@@ -107,16 +107,64 @@ export function useTeams() {
 
       // Sync members
       if (member_ids !== undefined) {
+        // Get old members before deleting
+        const { data: oldMembers } = await supabase
+          .from('team_members')
+          .select('user_id')
+          .eq('team_id', id);
+        const oldMemberIds = (oldMembers || []).map(m => m.user_id);
+
         await supabase.from('team_members').delete().eq('team_id', id);
         if (member_ids.length > 0) {
           const rows = member_ids.map(uid => ({ team_id: id, user_id: uid }));
           await supabase.from('team_members').insert(rows as any);
+        }
+
+        // Sync assignees on all OSs that reference this team
+        const { data: teamOrders } = await supabase
+          .from('service_orders')
+          .select('id')
+          .eq('team_id', id);
+
+        if (teamOrders && teamOrders.length > 0) {
+          const orderIds = teamOrders.map(o => o.id);
+
+          // Remove assignees that were old team members but are no longer in the team
+          const removedMembers = oldMemberIds.filter(uid => !member_ids.includes(uid));
+          if (removedMembers.length > 0) {
+            for (const orderId of orderIds) {
+              await supabase
+                .from('service_order_assignees')
+                .delete()
+                .eq('service_order_id', orderId)
+                .in('user_id', removedMembers);
+            }
+          }
+
+          // Add assignees for new team members
+          const addedMembers = member_ids.filter(uid => !oldMemberIds.includes(uid));
+          if (addedMembers.length > 0) {
+            const newAssignees: { service_order_id: string; user_id: string }[] = [];
+            for (const orderId of orderIds) {
+              for (const uid of addedMembers) {
+                newAssignees.push({ service_order_id: orderId, user_id: uid });
+              }
+            }
+            // Insert in batches to avoid payload limits
+            const batchSize = 500;
+            for (let i = 0; i < newAssignees.length; i += batchSize) {
+              await supabase
+                .from('service_order_assignees')
+                .upsert(newAssignees.slice(i, i + batchSize), { onConflict: 'service_order_id,user_id', ignoreDuplicates: true });
+            }
+          }
         }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       toast({ title: 'Equipe atualizada!' });
     },
     onError: (e: Error) => {
