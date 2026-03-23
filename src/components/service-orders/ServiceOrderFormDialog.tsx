@@ -212,6 +212,12 @@ export function ServiceOrderFormDialog({
         setSelectedAssigneeUserIds([]);
       }
       setSelectedAssigneeTeamIds(serviceOrder?.team_id ? [serviceOrder.team_id] : []);
+      setRecurrenceEnabled(false);
+      setRecurrenceType('weekly');
+      setRecurrenceInterval(1);
+      setRecurrenceEndDate('');
+      const dayOfWeek = new Date(defaultDate || new Date()).getDay();
+      setRecurrenceWeekdays([dayOfWeek]);
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
