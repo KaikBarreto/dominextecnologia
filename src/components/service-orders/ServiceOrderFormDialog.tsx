@@ -619,26 +619,24 @@ export function ServiceOrderFormDialog({
             {currentStepKey === 'details' && (
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <FormField control={form.control} name="os_type" render={({ field }) => (
+                  <FormField control={form.control} name="service_type_id" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo da OS</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {serviceTypes.filter(st => st.is_active).length > 0 ? (
-                            serviceTypes.filter(st => st.is_active).map(st => (
-                              <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="manutencao_preventiva">Preventiva</SelectItem>
-                              <SelectItem value="manutencao_corretiva">Corretiva</SelectItem>
-                              <SelectItem value="instalacao">Instalação</SelectItem>
-                              <SelectItem value="visita_tecnica">Visita Técnica</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <SearchableSelect
+                          value={field.value || 'none'}
+                          options={[
+                            { value: 'none', label: 'Sem tipo' },
+                            ...serviceTypes.filter(st => st.is_active).map(st => ({
+                              value: st.id,
+                              label: st.name,
+                            })),
+                          ]}
+                          onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
+                          placeholder="Selecione"
+                          searchPlaceholder="Buscar tipo de serviço..."
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
