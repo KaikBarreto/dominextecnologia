@@ -662,26 +662,34 @@ export default function TechnicianOS() {
                             <AccordionContent>
                               <div className="space-y-3 pt-1">
                                 {group.responses
-                                  .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
-                                  .map(r => (
-                                    <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                                      <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
-                                      {r.response_value ? (
-                                        <p className="text-sm mt-0.5">
-                                          {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
-                                            r.response_value.split('|||').map((v: string, i: number) => (
-                                              <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
-                                            ))
-                                          ) : r.response_value}
-                                        </p>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
-                                      )}
-                                      {r.response_photo_url && (
-                                        <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
-                                      )}
-                                    </div>
-                                  ))}
+                                  .sort((a: any, b: any) => (a.question?.position || 0) - (b.question?.position || 0))
+                                  .map((r: any) => {
+                                    const val = typeof r.response_value === 'string' ? r.response_value : null;
+                                    return (
+                                      <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                                        {val ? (
+                                          <p className="text-sm mt-0.5">
+                                            {val === 'true' ? '✅ Sim' : val === 'false' ? '❌ Não' : val.includes('|||') ? (
+                                              val.split('|||').map((v: string, i: number) => (
+                                                <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
+                                              ))
+                                            ) : val}
+                                          </p>
+                                        ) : (
+                                          <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                                        )}
+                                        {r.response_photo_url && (
+                                          <img
+                                            src={r.response_photo_url}
+                                            alt=""
+                                            className="mt-1 rounded max-h-32 object-cover cursor-pointer"
+                                            onClick={() => setPreviewPhoto(r.response_photo_url)}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                               </div>
                             </AccordionContent>
                           </AccordionItem>
@@ -713,25 +721,33 @@ export default function TechnicianOS() {
                   <div className="space-y-3">
                     {publicFormResponses
                       .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
-                      .map(r => (
-                        <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                          <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
-                          {r.response_value ? (
-                            <p className="text-sm mt-0.5">
-                              {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
-                                r.response_value.split('|||').map((v: string, i: number) => (
-                                  <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
-                                ))
-                              ) : r.response_value}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
-                          )}
-                          {r.response_photo_url && (
-                            <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
-                          )}
-                        </div>
-                      ))}
+                      .map(r => {
+                        const val = typeof r.response_value === 'string' ? r.response_value : null;
+                        return (
+                          <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                            <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                            {val ? (
+                              <p className="text-sm mt-0.5">
+                                {val === 'true' ? '✅ Sim' : val === 'false' ? '❌ Não' : val.includes('|||') ? (
+                                  val.split('|||').map((v: string, i: number) => (
+                                    <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
+                                  ))
+                                ) : val}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                            )}
+                            {r.response_photo_url && (
+                              <img
+                                src={r.response_photo_url}
+                                alt=""
+                                className="mt-1 rounded max-h-32 object-cover cursor-pointer"
+                                onClick={() => setPreviewPhoto(r.response_photo_url)}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </CardContent>
               </Card>
@@ -748,7 +764,13 @@ export default function TechnicianOS() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {photos.map(photo => (
-                    <img key={photo.id} src={photo.photo_url} alt={photo.description || ''} className="rounded-lg object-cover aspect-square w-full" />
+                    <img
+                      key={photo.id}
+                      src={photo.photo_url}
+                      alt={photo.description || ''}
+                      className="rounded-lg object-cover aspect-square w-full cursor-pointer"
+                      onClick={() => setPreviewPhoto(photo.photo_url)}
+                    />
                   ))}
                 </div>
               </CardContent>
