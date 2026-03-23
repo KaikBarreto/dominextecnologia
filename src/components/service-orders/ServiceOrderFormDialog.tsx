@@ -625,10 +625,18 @@ export function ServiceOrderFormDialog({
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                         <SelectContent>
-                          <SelectItem value="manutencao_preventiva">Preventiva</SelectItem>
-                          <SelectItem value="manutencao_corretiva">Corretiva</SelectItem>
-                          <SelectItem value="instalacao">Instalação</SelectItem>
-                          <SelectItem value="visita_tecnica">Visita Técnica</SelectItem>
+                          {serviceTypes.filter(st => st.is_active).length > 0 ? (
+                            serviceTypes.filter(st => st.is_active).map(st => (
+                              <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="manutencao_preventiva">Preventiva</SelectItem>
+                              <SelectItem value="manutencao_corretiva">Corretiva</SelectItem>
+                              <SelectItem value="instalacao">Instalação</SelectItem>
+                              <SelectItem value="visita_tecnica">Visita Técnica</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
