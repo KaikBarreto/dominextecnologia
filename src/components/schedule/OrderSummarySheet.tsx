@@ -273,7 +273,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen 
             <DrawerTitle>Resumo da OS</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6">
-            <OrderContent order={order} onEdit={onEdit} />
+            <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} />
           </div>
         </DrawerContent>
       </Drawer>
