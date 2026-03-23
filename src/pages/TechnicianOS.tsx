@@ -666,7 +666,7 @@ export default function TechnicianOS() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-32">
+      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
         {/* Step 1: En Route or Check-in */}
         {(isPending || isACaminho) && (
           <Card className="border-primary/30">
