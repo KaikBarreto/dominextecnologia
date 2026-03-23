@@ -491,23 +491,68 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
 
   return (
     <div className="space-y-4">
-      {questions.map((question, index) => (
-        <div key={question.id} className="space-y-2 p-3 rounded-lg bg-muted/30">
-          <Label className="flex items-start gap-2">
-            <span className="font-bold text-muted-foreground">{index + 1}.</span>
-            <span className="flex-1">
-              {question.question}
-              {question.is_required && <span className="text-destructive ml-1">*</span>}
-            </span>
-          </Label>
-          {question.description && (
-            <p className="text-xs text-muted-foreground ml-5">{question.description}</p>
-          )}
-          <div className="ml-5">
-            {renderQuestionInput(question)}
+      {questions.map((question, index) => {
+        const response = responses[question.id];
+        const hasAnswer = !!(response?.response_value?.trim() || response?.response_photo_url);
+        const isEditing = editingQuestion === question.id;
+        const showReadOnly = hasAnswer && !isEditing && question.question_type !== 'photo';
+        
+        return (
+          <div key={question.id} className="space-y-2 p-3 rounded-lg bg-muted/30">
+            <Label className="flex items-start gap-2">
+              <span className="font-bold text-muted-foreground">{index + 1}.</span>
+              <span className="flex-1">
+                {question.question}
+                {question.is_required && <span className="text-destructive ml-1">*</span>}
+              </span>
+              {hasAnswer && !isEditing && (
+                <button
+                  type="button"
+                  className="p-1 rounded hover:bg-muted transition-colors shrink-0"
+                  onClick={() => setEditingQuestion(question.id)}
+                  title="Editar resposta"
+                >
+                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              )}
+              {isEditing && (
+                <button
+                  type="button"
+                  className="p-1 rounded hover:bg-muted transition-colors shrink-0"
+                  onClick={() => setEditingQuestion(null)}
+                  title="Fechar edição"
+                >
+                  <Check className="h-3.5 w-3.5 text-primary" />
+                </button>
+              )}
+            </Label>
+            {question.description && (
+              <p className="text-xs text-muted-foreground ml-5">{question.description}</p>
+            )}
+            <div className="ml-5">
+              {showReadOnly ? (
+                <div className="text-sm py-1">
+                  {response.response_value === 'true' ? (
+                    <Badge variant="success" className="gap-1"><Check className="h-3 w-3" /> Sim</Badge>
+                  ) : response.response_value === 'false' ? (
+                    <Badge variant="destructive" className="gap-1"><X className="h-3 w-3" /> Não</Badge>
+                  ) : response.response_value?.includes('|||') ? (
+                    <div className="flex flex-wrap gap-1">
+                      {response.response_value.split('|||').map((v, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">{v}</Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-foreground">{response.response_value}</p>
+                  )}
+                </div>
+              ) : (
+                renderQuestionInput(question)
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
