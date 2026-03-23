@@ -172,6 +172,15 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
+  const handleDeleteGroupFromSummary = async (groupId: string) => {
+    // Delete all OS in the recurrence group
+    const groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === groupId);
+    for (const o of groupOrders) {
+      await deleteServiceOrder.mutateAsync(o.id);
+    }
+    setSummaryOrder(null);
+  };
+
   const handleFinalizeFromSummary = (id: string) => {
     updateServiceOrder.mutate({ id, status: 'concluida' as any });
     setSummaryOrder(null);
