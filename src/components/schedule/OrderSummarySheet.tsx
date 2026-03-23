@@ -236,6 +236,16 @@ function OrderContent({ order, onEdit, onReopen }: { order: ServiceOrder & { cus
             Editar OS
           </Button>
         )}
+        {onReopen && order.status === 'concluida' && (
+          <Button
+            variant="outline"
+            className="w-full mt-2 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
+            onClick={() => onReopen(order.id)}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reabrir OS
+          </Button>
+        )}
         {order.customer_id && (
           <button
             onClick={handleCopyTrackingLink}
