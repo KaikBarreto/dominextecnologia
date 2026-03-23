@@ -1054,6 +1054,7 @@ export default function TechnicianOS() {
                         <DynamicFormQuestions
                           serviceOrderId={id!}
                           templateId={item.form_template_id!}
+                          equipmentId={item.equipment_id}
                           onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [item.equipment_id]: result }))}
                         />
                       </AccordionContent>
