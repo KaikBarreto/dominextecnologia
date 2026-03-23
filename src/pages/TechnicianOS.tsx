@@ -68,6 +68,7 @@ export default function TechnicianOS() {
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
+  const [technicianProfile, setTechnicianProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
 
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
@@ -85,6 +86,9 @@ export default function TechnicianOS() {
   const [finishing, setFinishing] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
+  // Helper to safely extract joined object (Supabase may return array for some joins)
+  const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
+
   // Check if user is authenticated
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -99,9 +103,9 @@ export default function TechnicianOS() {
       fetchCompany();
       fetchEquipmentItems();
       fetchFormResponses();
+      fetchTechnicianProfile();
     }
     return () => {
-      // Restore original primary color on unmount
       document.documentElement.style.removeProperty('--primary');
       document.documentElement.style.removeProperty('--ring');
     };
@@ -113,10 +117,24 @@ export default function TechnicianOS() {
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, question:form_questions(id, question, question_type, options, description, position, template_id)')
       .eq('service_order_id', id);
-    if (data) setPublicFormResponses(data as any[]);
+    if (data) {
+      // Normalize: unwrap question join (may be array in some PostgREST versions)
+      const normalized = (data as any[]).map(r => ({
+        ...r,
+        question: unwrapJoin(r.question),
+      }));
+      setPublicFormResponses(normalized);
+    }
   };
 
-  // Realtime subscription for public (non-authenticated) viewers
+  const fetchTechnicianProfile = async () => {
+    if (!id) return;
+    const { data: so } = await supabase.from('service_orders').select('technician_id').eq('id', id).single();
+    if ((so as any)?.technician_id) {
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', (so as any).technician_id).single();
+      if (profile) setTechnicianProfile(profile);
+    }
+  };
   useEffect(() => {
     if (!id || isAuthenticated !== false) return;
 
@@ -464,9 +482,26 @@ export default function TechnicianOS() {
             </span>
           </div>
 
-          {/* Check-in timestamp */}
+          {/* Check-in timestamp with technician info */}
           {checkInTime && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <div className="flex flex-col gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              {technicianProfile && (
+                <div className="flex items-center gap-2">
+                  {technicianProfile.avatar_url ? (
+                    <img
+                      src={technicianProfile.avatar_url}
+                      alt={technicianProfile.full_name}
+                      className="h-8 w-8 rounded-full object-cover border cursor-pointer"
+                      onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-foreground">{technicianProfile.full_name}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="text-xs sm:text-sm">
@@ -476,17 +511,29 @@ export default function TechnicianOS() {
             </div>
           )}
 
-          {/* Client Info */}
+          {/* Client Info with photo */}
           <Card>
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <User className="h-4 w-4 text-primary" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
               </div>
-              <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
-              {serviceOrder.customer?.phone && (
-                <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone}</p>
-              )}
+              <div className="flex items-start gap-3">
+                {serviceOrder.customer?.photo_url && (
+                  <img
+                    src={serviceOrder.customer.photo_url}
+                    alt={serviceOrder.customer.name}
+                    className="h-12 w-12 rounded-full object-cover border cursor-pointer shrink-0"
+                    onClick={() => setPreviewPhoto(serviceOrder.customer.photo_url)}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
+                  {serviceOrder.customer?.phone && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone}</p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -615,26 +662,34 @@ export default function TechnicianOS() {
                             <AccordionContent>
                               <div className="space-y-3 pt-1">
                                 {group.responses
-                                  .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
-                                  .map(r => (
-                                    <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                                      <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
-                                      {r.response_value ? (
-                                        <p className="text-sm mt-0.5">
-                                          {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
-                                            r.response_value.split('|||').map((v: string, i: number) => (
-                                              <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
-                                            ))
-                                          ) : r.response_value}
-                                        </p>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
-                                      )}
-                                      {r.response_photo_url && (
-                                        <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
-                                      )}
-                                    </div>
-                                  ))}
+                                  .sort((a: any, b: any) => (a.question?.position || 0) - (b.question?.position || 0))
+                                  .map((r: any) => {
+                                    const val = typeof r.response_value === 'string' ? r.response_value : null;
+                                    return (
+                                      <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                                        {val ? (
+                                          <p className="text-sm mt-0.5">
+                                            {val === 'true' ? '✅ Sim' : val === 'false' ? '❌ Não' : val.includes('|||') ? (
+                                              val.split('|||').map((v: string, i: number) => (
+                                                <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
+                                              ))
+                                            ) : val}
+                                          </p>
+                                        ) : (
+                                          <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                                        )}
+                                        {r.response_photo_url && (
+                                          <img
+                                            src={r.response_photo_url}
+                                            alt=""
+                                            className="mt-1 rounded max-h-32 object-cover cursor-pointer"
+                                            onClick={() => setPreviewPhoto(r.response_photo_url)}
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                               </div>
                             </AccordionContent>
                           </AccordionItem>
@@ -666,25 +721,33 @@ export default function TechnicianOS() {
                   <div className="space-y-3">
                     {publicFormResponses
                       .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
-                      .map(r => (
-                        <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                          <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
-                          {r.response_value ? (
-                            <p className="text-sm mt-0.5">
-                              {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
-                                r.response_value.split('|||').map((v: string, i: number) => (
-                                  <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
-                                ))
-                              ) : r.response_value}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
-                          )}
-                          {r.response_photo_url && (
-                            <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
-                          )}
-                        </div>
-                      ))}
+                      .map(r => {
+                        const val = typeof r.response_value === 'string' ? r.response_value : null;
+                        return (
+                          <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                            <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                            {val ? (
+                              <p className="text-sm mt-0.5">
+                                {val === 'true' ? '✅ Sim' : val === 'false' ? '❌ Não' : val.includes('|||') ? (
+                                  val.split('|||').map((v: string, i: number) => (
+                                    <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
+                                  ))
+                                ) : val}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                            )}
+                            {r.response_photo_url && (
+                              <img
+                                src={r.response_photo_url}
+                                alt=""
+                                className="mt-1 rounded max-h-32 object-cover cursor-pointer"
+                                onClick={() => setPreviewPhoto(r.response_photo_url)}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </CardContent>
               </Card>
@@ -701,13 +764,27 @@ export default function TechnicianOS() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {photos.map(photo => (
-                    <img key={photo.id} src={photo.photo_url} alt={photo.description || ''} className="rounded-lg object-cover aspect-square w-full" />
+                    <img
+                      key={photo.id}
+                      src={photo.photo_url}
+                      alt={photo.description || ''}
+                      className="rounded-lg object-cover aspect-square w-full cursor-pointer"
+                      onClick={() => setPreviewPhoto(photo.photo_url)}
+                    />
                   ))}
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
+
+        {/* Photo preview modal */}
+        <ImagePreviewModal
+          src={previewPhoto || ''}
+          alt="Foto"
+          open={!!previewPhoto}
+          onClose={() => setPreviewPhoto(null)}
+        />
       </div>
     );
   }
