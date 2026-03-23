@@ -77,6 +77,7 @@ export default function ServiceOrders() {
   const [editingOS, setEditingOS] = useState<ServiceOrder | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [osToDelete, setOsToDelete] = useState<ServiceOrder | null>(null);
+  const [deleteMode, setDeleteMode] = useState<'single' | 'group' | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
@@ -137,10 +138,24 @@ export default function ServiceOrders() {
 
   const handleDelete = async () => {
     if (osToDelete) {
-      await deleteServiceOrder.mutateAsync(osToDelete.id);
+      if (deleteMode === 'group' && (osToDelete as any).recurrence_group_id) {
+        const groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === (osToDelete as any).recurrence_group_id);
+        for (const o of groupOrders) {
+          await deleteServiceOrder.mutateAsync(o.id);
+        }
+      } else {
+        await deleteServiceOrder.mutateAsync(osToDelete.id);
+      }
       setOsToDelete(null);
       setDeleteDialogOpen(false);
+      setDeleteMode(null);
     }
+  };
+
+  const handleDeleteClick = (os: ServiceOrder) => {
+    setOsToDelete(os);
+    setDeleteMode((os as any).recurrence_group_id ? null : 'single');
+    setDeleteDialogOpen(true);
   };
 
   const handleStatusChange = async (os: ServiceOrder, newStatus: OsStatus) => {
@@ -321,7 +336,7 @@ export default function ServiceOrders() {
                               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}><Eye className="h-3.5 w-3.5" />Visualizar</Button>
                               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 text-primary" />Abrir OS</Button>
                               {canEditOS && <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>}
-                              {canDeleteOS && <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                              {canDeleteOS && <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteClick(os)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                             </div>
                           </CardContent>
                         </Card>
@@ -424,7 +439,7 @@ export default function ServiceOrders() {
                                     </Button>
                                   )}
                                   {canDeleteOS && (
-                                    <Button variant="destructive-ghost" size="icon" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}>
+                                    <Button variant="destructive-ghost" size="icon" onClick={() => handleDeleteClick(os)}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   )}
@@ -550,19 +565,35 @@ export default function ServiceOrders() {
         isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
       />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteMode(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir OS</AlertDialogTitle>
+            <AlertDialogTitle>Excluir OS #{osToDelete?.order_number}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a OS #{osToDelete?.order_number}? Esta ação não pode ser desfeita.
+              {(osToDelete as any)?.recurrence_group_id && !deleteMode
+                ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
+                : 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
+          <AlertDialogFooter className={(osToDelete as any)?.recurrence_group_id && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
+            {(osToDelete as any)?.recurrence_group_id && !deleteMode ? (
+              <>
+                <Button variant="destructive" onClick={() => setDeleteMode('single')} className="w-full">
+                  Excluir apenas esta
+                </Button>
+                <Button variant="destructive" onClick={() => setDeleteMode('group')} className="w-full">
+                  Excluir todas da recorrência
+                </Button>
+                <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel onClick={() => setDeleteMode(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Excluir
+                </AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

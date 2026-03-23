@@ -172,8 +172,24 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
+  const handleDeleteGroupFromSummary = async (groupId: string) => {
+    // Delete all OS in the recurrence group
+    const groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === groupId);
+    for (const o of groupOrders) {
+      await deleteServiceOrder.mutateAsync(o.id);
+    }
+    setSummaryOrder(null);
+  };
+
   const handleFinalizeFromSummary = (id: string) => {
     updateServiceOrder.mutate({ id, status: 'concluida' as any });
+    setSummaryOrder(null);
+  };
+
+  const canReopenOS = isAdminOrGestor() || hasPermission('fn:reopen_os');
+
+  const handleReopenFromSummary = (id: string) => {
+    updateServiceOrder.mutate({ id, status: 'em_andamento' as any });
     setSummaryOrder(null);
   };
 
@@ -458,7 +474,9 @@ export default function Schedule() {
               onClearSelection={handleClearSummary}
               onEdit={(summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
               onDelete={(summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
+              onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
+              onReopen={(summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
             />
           </div>
         )}
@@ -559,7 +577,9 @@ export default function Schedule() {
             onClearSelection={handleClearSummary}
             onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
             onDelete={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
+            onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
+            onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,7 +40,9 @@ interface ScheduleDetailPanelProps {
   onClearSelection: () => void;
   onEdit?: () => void;
   onDelete?: (id: string) => void;
+  onDeleteGroup?: (groupId: string) => void;
   onFinalize?: (id: string) => void;
+  onReopen?: (id: string) => void;
 }
 
 function getInitials(name: string) {
@@ -52,19 +54,27 @@ function OrderDetail({
   onBack,
   onEdit,
   onDelete,
+  onDeleteGroup,
   onFinalize,
+  onReopen,
 }: {
   order: ServiceOrder & { customer: any; equipment: any };
   onBack: () => void;
   onEdit?: () => void;
   onDelete?: (id: string) => void;
+  onDeleteGroup?: (groupId: string) => void;
   onFinalize?: (id: string) => void;
+  onReopen?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [showReopenConfirm, setShowReopenConfirm] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'single' | 'group' | null>(null);
+
+  const hasRecurrenceGroup = !!(order as any).recurrence_group_id;
 
   const assignees: AssigneeInfo[] = (order as any)._assignees ?? [];
   const teamInfo = (order as any)._team as { id: string; name: string; color: string; photo_url?: string | null; icon_name?: string | null } | undefined;
@@ -74,6 +84,26 @@ function OrderDetail({
     await navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleDeleteClick = () => {
+    if (hasRecurrenceGroup) {
+      setDeleteMode(null);
+      setShowDeleteConfirm(true);
+    } else {
+      setDeleteMode('single');
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteMode === 'group' && (order as any).recurrence_group_id) {
+      onDeleteGroup?.((order as any).recurrence_group_id);
+    } else {
+      onDelete?.(order.id);
+    }
+    setShowDeleteConfirm(false);
+    setDeleteMode(null);
   };
 
   return (
@@ -244,6 +274,16 @@ function OrderDetail({
               Finalizar OS
             </Button>
           )}
+          {onReopen && order.status === 'concluida' && (
+            <Button
+              variant="outline"
+              className="w-full mt-2 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
+              onClick={() => setShowReopenConfirm(true)}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reabrir OS
+            </Button>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-2">
             {onEdit && (
               <Button
@@ -259,7 +299,7 @@ function OrderDetail({
               <Button
                 variant="outline"
                 className="border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={handleDeleteClick}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Excluir
@@ -277,28 +317,53 @@ function OrderDetail({
               <span className="truncate">{linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento'}</span>
             </Button>
           )}
+
+          {/* Delete confirmation - with recurrence options */}
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir OS #{order.order_number}?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta ação não pode ser desfeita. A ordem de serviço será excluída permanentemente.
+                  {hasRecurrenceGroup && !deleteMode
+                    ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
+                    : 'Esta ação não pode ser desfeita. A ordem de serviço será excluída permanentemente.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => {
-                    onDelete?.(order.id);
-                    setShowDeleteConfirm(false);
-                  }}
-                >
-                  Excluir
-                </AlertDialogAction>
+              <AlertDialogFooter className={hasRecurrenceGroup && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
+                {hasRecurrenceGroup && !deleteMode ? (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { setDeleteMode('single'); }}
+                      className="w-full"
+                    >
+                      Excluir apenas esta
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { setDeleteMode('group'); }}
+                      className="w-full"
+                    >
+                      Excluir todas da recorrência
+                    </Button>
+                    <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                  </>
+                ) : (
+                  <>
+                    <AlertDialogCancel onClick={() => setDeleteMode(null)}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleConfirmDelete}
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </>
+                )}
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Finalize confirmation */}
           <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -321,6 +386,30 @@ function OrderDetail({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Reopen confirmation */}
+          <AlertDialog open={showReopenConfirm} onOpenChange={setShowReopenConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reabrir OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A ordem de serviço será reaberta e voltará ao status "Em andamento", permitindo edição dos campos preenchidos.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-amber-500 hover:bg-amber-600 text-white"
+                  onClick={() => {
+                    onReopen?.(order.id);
+                    setShowReopenConfirm(false);
+                  }}
+                >
+                  Reabrir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </ScrollArea>
     </>
@@ -335,7 +424,9 @@ export function ScheduleDetailPanel({
   onClearSelection,
   onEdit,
   onDelete,
+  onDeleteGroup,
   onFinalize,
+  onReopen,
 }: ScheduleDetailPanelProps) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -348,7 +439,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onFinalize={onFinalize} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onFinalize={onFinalize} onReopen={onReopen} />
       ) : (
         <>
           <div className="mb-4">

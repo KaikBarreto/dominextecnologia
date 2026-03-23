@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, MapPin, User, Wrench, Phone, Mail, FileText, ExternalLink, Building2, Link2, Check } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, Mail, FileText, ExternalLink, Building2, Link2, Check, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +21,7 @@ interface OrderSummarySheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: () => void;
+  onReopen?: (id: string) => void;
 }
 
 const osTypeLabels: Record<OsType, string> = {
@@ -40,7 +41,7 @@ function buildGoogleMapsUrl(customer: any): string | null {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
 }
 
-function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void }) {
+function OrderContent({ order, onEdit, onReopen }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void; onReopen?: (id: string) => void }) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -235,6 +236,16 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
             Editar OS
           </Button>
         )}
+        {onReopen && order.status === 'concluida' && (
+          <Button
+            variant="outline"
+            className="w-full mt-2 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
+            onClick={() => onReopen(order.id)}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reabrir OS
+          </Button>
+        )}
         {order.customer_id && (
           <button
             onClick={handleCopyTrackingLink}
@@ -249,7 +260,7 @@ function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any
   );
 }
 
-export function OrderSummarySheet({ order, open, onOpenChange, onEdit }: OrderSummarySheetProps) {
+export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen }: OrderSummarySheetProps) {
   const isMobile = useIsMobile();
 
   if (!order) return null;
@@ -262,7 +273,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit }: OrderSu
             <DrawerTitle>Resumo da OS</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6">
-            <OrderContent order={order} onEdit={onEdit} />
+            <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} />
           </div>
         </DrawerContent>
       </Drawer>
@@ -276,7 +287,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit }: OrderSu
           <SheetTitle>Resumo da OS</SheetTitle>
         </SheetHeader>
         <div className="mt-4 h-[calc(100%-3rem)]">
-          <OrderContent order={order} onEdit={onEdit} />
+          <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} />
         </div>
       </SheetContent>
     </Sheet>
