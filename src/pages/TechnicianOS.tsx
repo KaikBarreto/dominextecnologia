@@ -482,9 +482,26 @@ export default function TechnicianOS() {
             </span>
           </div>
 
-          {/* Check-in timestamp */}
+          {/* Check-in timestamp with technician info */}
           {checkInTime && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            <div className="flex flex-col gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              {technicianProfile && (
+                <div className="flex items-center gap-2">
+                  {technicianProfile.avatar_url ? (
+                    <img
+                      src={technicianProfile.avatar_url}
+                      alt={technicianProfile.full_name}
+                      className="h-8 w-8 rounded-full object-cover border cursor-pointer"
+                      onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-foreground">{technicianProfile.full_name}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="text-xs sm:text-sm">
@@ -494,17 +511,29 @@ export default function TechnicianOS() {
             </div>
           )}
 
-          {/* Client Info */}
+          {/* Client Info with photo */}
           <Card>
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <User className="h-4 w-4 text-primary" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</span>
               </div>
-              <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
-              {serviceOrder.customer?.phone && (
-                <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone}</p>
-              )}
+              <div className="flex items-start gap-3">
+                {serviceOrder.customer?.photo_url && (
+                  <img
+                    src={serviceOrder.customer.photo_url}
+                    alt={serviceOrder.customer.name}
+                    className="h-12 w-12 rounded-full object-cover border cursor-pointer shrink-0"
+                    onClick={() => setPreviewPhoto(serviceOrder.customer.photo_url)}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
+                  {serviceOrder.customer?.phone && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone}</p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
