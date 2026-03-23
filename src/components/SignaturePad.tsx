@@ -28,7 +28,7 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'hsl(var(--foreground))';
+    ctx.strokeStyle = '#000000';
 
     // If there's a saved value, draw it
     if (value) {
