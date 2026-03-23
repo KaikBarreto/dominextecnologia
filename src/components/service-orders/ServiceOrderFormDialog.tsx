@@ -34,6 +34,9 @@ import { QuestionnairePreviewDialog } from '@/components/service-orders/Question
 import { CepLookup } from '@/components/CepLookup';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import type { ServiceOrder } from '@/types/database';
 import { cn } from '@/lib/utils';
 
