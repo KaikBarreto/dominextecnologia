@@ -186,6 +186,13 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
+  const canReopenOS = isAdminOrGestor() || hasPermission('fn:reopen_os');
+
+  const handleReopenFromSummary = (id: string) => {
+    updateServiceOrder.mutate({ id, status: 'em_andamento' as any });
+    setSummaryOrder(null);
+  };
+
   const handleNewOrder = () => {
     setSelectedOrder(null);
     setDefaultDate(format(currentDate, 'yyyy-MM-dd'));
