@@ -41,7 +41,7 @@ function buildGoogleMapsUrl(customer: any): string | null {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
 }
 
-function OrderContent({ order, onEdit }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void }) {
+function OrderContent({ order, onEdit, onReopen }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void; onReopen?: (id: string) => void }) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
