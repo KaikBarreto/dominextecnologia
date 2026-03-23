@@ -103,6 +103,9 @@ export function ServiceOrderFormDialog({
   const [selectedAssigneeUserIds, setSelectedAssigneeUserIds] = useState<string[]>([]);
   const [selectedAssigneeTeamIds, setSelectedAssigneeTeamIds] = useState<string[]>([]);
   const { equipment } = useEquipment(selectedCustomerId);
+  const { toast: editToast } = useToast();
+  const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
+  const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
 
   const selectedServiceType = useMemo(
     () => serviceTypes.find(st => st.id === selectedServiceTypeId),
