@@ -391,6 +391,7 @@ export function ServiceOrderFormDialog({
   // Edit mode: same multi-step form as create
   if (serviceOrder) {
     return (
+      <>
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Editar OS">
         {/* Step indicators */}
         <div className="flex flex-col items-center mb-6">
