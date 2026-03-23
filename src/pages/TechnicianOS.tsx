@@ -550,15 +550,7 @@ export default function TechnicianOS() {
             </CardContent>
           </Card>
 
-          {/* Description */}
-          {serviceOrder.description && (
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Descrição do Serviço</p>
-                <p className="text-sm break-words">{serviceOrder.description}</p>
-              </CardContent>
-            </Card>
-          )}
+          {/* Description hidden from public view - only visible to technician */}
 
           {/* Equipment list - read only */}
           {equipmentItems.length > 0 && (
