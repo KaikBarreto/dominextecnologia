@@ -133,12 +133,20 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const saveResponse = async (questionId: string, value: string | null, photoUrl?: string | null) => {
     setSaving(questionId);
     try {
-      const { data: existing } = await supabase
+      // Build query to find existing response scoped to this equipment
+      let existingQuery = supabase
         .from('form_responses')
         .select('id')
         .eq('service_order_id', serviceOrderId)
-        .eq('question_id', questionId)
-        .single();
+        .eq('question_id', questionId);
+      
+      if (equipmentId) {
+        existingQuery = existingQuery.eq('equipment_id', equipmentId);
+      } else {
+        existingQuery = existingQuery.is('equipment_id', null);
+      }
+
+      const { data: existing } = await existingQuery.single();
 
       if (existing) {
         const { error } = await supabase
@@ -158,7 +166,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             question_id: questionId,
             response_value: value,
             response_photo_url: photoUrl || null,
-          });
+            equipment_id: equipmentId || null,
+          } as any);
         if (error) throw error;
       }
 
