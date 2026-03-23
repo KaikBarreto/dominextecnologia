@@ -653,6 +653,7 @@ export function ServiceOrderFormDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>
     );
   }
 
