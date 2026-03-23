@@ -777,6 +777,14 @@ export default function TechnicianOS() {
             </Card>
           )}
         </div>
+
+        {/* Photo preview modal */}
+        <ImagePreviewModal
+          src={previewPhoto || ''}
+          alt="Foto"
+          open={!!previewPhoto}
+          onClose={() => setPreviewPhoto(null)}
+        />
       </div>
     );
   }
