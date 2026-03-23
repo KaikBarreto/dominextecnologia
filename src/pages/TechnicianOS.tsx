@@ -599,35 +599,48 @@ export default function TechnicianOS() {
 
           {/* Real-time questionnaire responses grouped by equipment */}
           {publicFormResponses.length > 0 && (() => {
-            // Group responses by equipment using template_id mapping
-            const templateToEquipment = new Map<string, EquipmentItem>();
+            // Group responses by equipment_id (or fallback to template_id for legacy data)
+            const equipmentMap = new Map<string, EquipmentItem>();
             equipmentItems.forEach(item => {
-              if (item.form_template_id) {
-                templateToEquipment.set(item.form_template_id, item);
-              }
+              equipmentMap.set(item.equipment_id, item);
             });
 
-            // Group responses by template_id
-            const groupedByTemplate = new Map<string, { equipment: EquipmentItem | null; responses: typeof publicFormResponses; totalQuestions: number }>();
+            // Group responses by equipment_id
+            const groupedByEquipment = new Map<string, { equipment: EquipmentItem | null; responses: typeof publicFormResponses; totalQuestions: number }>();
             
             publicFormResponses.forEach(r => {
+              // Use equipment_id if available, fallback to template_id-based grouping for legacy responses
+              const eqId = r.equipment_id;
               const templateId = r.question?.template_id || 'unknown';
-              if (!groupedByTemplate.has(templateId)) {
-                groupedByTemplate.set(templateId, {
-                  equipment: templateToEquipment.get(templateId) || null,
+              
+              let groupKey: string;
+              let equipmentItem: EquipmentItem | null = null;
+              
+              if (eqId) {
+                groupKey = eqId;
+                equipmentItem = equipmentMap.get(eqId) || null;
+              } else {
+                // Legacy: group by template_id, find first matching equipment
+                groupKey = `template-${templateId}`;
+                equipmentItem = equipmentItems.find(item => item.form_template_id === templateId) || null;
+              }
+
+              if (!groupedByEquipment.has(groupKey)) {
+                groupedByEquipment.set(groupKey, {
+                  equipment: equipmentItem,
                   responses: [],
                   totalQuestions: 0,
                 });
               }
-              groupedByTemplate.get(templateId)!.responses.push(r);
+              groupedByEquipment.get(groupKey)!.responses.push(r);
             });
 
-            // Count total questions per template and answered
-            groupedByTemplate.forEach((group) => {
+            // Count total questions per group
+            groupedByEquipment.forEach((group) => {
               group.totalQuestions = group.responses.length;
             });
 
-            const groups = Array.from(groupedByTemplate.entries());
+            const groups = Array.from(groupedByEquipment.entries());
             const hasMultipleGroups = groups.length > 1 && groups.some(([, g]) => g.equipment);
 
             if (hasMultipleGroups) {
