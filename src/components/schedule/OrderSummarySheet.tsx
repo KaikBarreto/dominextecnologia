@@ -287,7 +287,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen 
           <SheetTitle>Resumo da OS</SheetTitle>
         </SheetHeader>
         <div className="mt-4 h-[calc(100%-3rem)]">
-          <OrderContent order={order} onEdit={onEdit} />
+          <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} />
         </div>
       </SheetContent>
     </Sheet>
