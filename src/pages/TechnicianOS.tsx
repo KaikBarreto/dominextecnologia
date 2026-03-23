@@ -537,39 +537,159 @@ export default function TechnicianOS() {
             <PublicTrackingMap serviceOrderId={serviceOrder.id} />
           )}
 
-          {/* Real-time questionnaire responses */}
-          {publicFormResponses.length > 0 && (
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <ClipboardCheck className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Questionário</span>
-                </div>
-                <div className="space-y-3">
-                  {publicFormResponses
-                    .filter(r => r.response_value || r.response_photo_url)
-                    .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
-                    .map(r => (
-                      <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                        <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
-                        {r.response_value && (
-                          <p className="text-sm mt-0.5">
-                            {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
-                              r.response_value.split('|||').map((v: string, i: number) => (
-                                <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
-                              ))
-                            ) : r.response_value}
-                          </p>
-                        )}
-                        {r.response_photo_url && (
-                          <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Real-time questionnaire responses grouped by equipment */}
+          {publicFormResponses.length > 0 && (() => {
+            // Group responses by equipment using template_id mapping
+            const templateToEquipment = new Map<string, EquipmentItem>();
+            equipmentItems.forEach(item => {
+              if (item.form_template_id) {
+                templateToEquipment.set(item.form_template_id, item);
+              }
+            });
+
+            // Group responses by template_id
+            const groupedByTemplate = new Map<string, { equipment: EquipmentItem | null; responses: typeof publicFormResponses; totalQuestions: number }>();
+            
+            publicFormResponses.forEach(r => {
+              const templateId = r.question?.template_id || 'unknown';
+              if (!groupedByTemplate.has(templateId)) {
+                groupedByTemplate.set(templateId, {
+                  equipment: templateToEquipment.get(templateId) || null,
+                  responses: [],
+                  totalQuestions: 0,
+                });
+              }
+              groupedByTemplate.get(templateId)!.responses.push(r);
+            });
+
+            // Count total questions per template and answered
+            groupedByTemplate.forEach((group) => {
+              group.totalQuestions = group.responses.length;
+            });
+
+            const groups = Array.from(groupedByTemplate.entries());
+            const hasMultipleGroups = groups.length > 1 && groups.some(([, g]) => g.equipment);
+
+            if (hasMultipleGroups) {
+              return (
+                <Card>
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ClipboardCheck className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Questionários</span>
+                    </div>
+                    <Accordion type="multiple" className="w-full">
+                      {groups.map(([templateId, group]) => {
+                        const answered = group.responses.filter(r => r.response_value || r.response_photo_url).length;
+                        const total = group.totalQuestions;
+                        const isComplete = answered === total && total > 0;
+                        const pending = total - answered;
+                        return (
+                          <AccordionItem key={templateId} value={templateId} className="border-b last:border-0">
+                            <AccordionTrigger className="hover:no-underline py-3 gap-2">
+                              <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                                <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">
+                                    {group.equipment?.equipment?.name || 'Questionário'}
+                                  </p>
+                                  {group.equipment?.equipment?.brand && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {group.equipment.equipment.brand} {group.equipment.equipment.model}
+                                    </p>
+                                  )}
+                                </div>
+                                {isComplete ? (
+                                  <Badge variant="success" className="gap-1 shrink-0 text-xs">
+                                    <Check className="h-3 w-3" /> {answered}/{total}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant={pending === total ? 'secondary' : 'warning'} className="text-xs shrink-0">
+                                    {answered}/{total}
+                                  </Badge>
+                                )}
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-3 pt-1">
+                                {group.responses
+                                  .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
+                                  .map(r => (
+                                    <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                      <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                                      {r.response_value ? (
+                                        <p className="text-sm mt-0.5">
+                                          {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
+                                            r.response_value.split('|||').map((v: string, i: number) => (
+                                              <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
+                                            ))
+                                          ) : r.response_value}
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                                      )}
+                                      {r.response_photo_url && (
+                                        <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
+                                      )}
+                                    </div>
+                                  ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            // Single template / no equipment grouping - flat view
+            return (
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ClipboardCheck className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Questionário</span>
+                    {(() => {
+                      const answered = publicFormResponses.filter(r => r.response_value || r.response_photo_url).length;
+                      const total = publicFormResponses.length;
+                      return (
+                        <Badge variant={answered === total ? 'success' : 'secondary'} className="text-xs ml-auto">
+                          {answered}/{total}
+                        </Badge>
+                      );
+                    })()}
+                  </div>
+                  <div className="space-y-3">
+                    {publicFormResponses
+                      .sort((a, b) => (a.question?.position || 0) - (b.question?.position || 0))
+                      .map(r => (
+                        <div key={r.id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                          <p className="text-xs font-medium text-muted-foreground">{r.question?.question || 'Pergunta'}</p>
+                          {r.response_value ? (
+                            <p className="text-sm mt-0.5">
+                              {r.response_value === 'true' ? '✅ Sim' : r.response_value === 'false' ? '❌ Não' : r.response_value.includes('|||') ? (
+                                r.response_value.split('|||').map((v: string, i: number) => (
+                                  <Badge key={i} variant="secondary" className="mr-1 mt-1 text-xs">{v}</Badge>
+                                ))
+                              ) : r.response_value}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
+                          )}
+                          {r.response_photo_url && (
+                            <img src={r.response_photo_url} alt="" className="mt-1 rounded max-h-32 object-cover" />
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Photos */}
           {photos.length > 0 && (
