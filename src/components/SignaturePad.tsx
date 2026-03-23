@@ -28,7 +28,7 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'hsl(var(--foreground))';
+    ctx.strokeStyle = '#000000';
 
     // If there's a saved value, draw it
     if (value) {
@@ -101,7 +101,7 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
   return (
     <div className="space-y-2">
       {label && <p className="text-sm font-medium">{label}</p>}
-      <div className="relative rounded-lg border-2 border-dashed border-muted-foreground/30 bg-background">
+      <div className="relative rounded-lg border-2 border-dashed border-muted-foreground/30 bg-white">
         <canvas
           ref={canvasRef}
           className="w-full h-32 touch-none cursor-crosshair"
