@@ -21,6 +21,7 @@ interface OrderSummarySheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: () => void;
+  onReopen?: (id: string) => void;
 }
 
 const osTypeLabels: Record<OsType, string> = {
