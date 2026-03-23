@@ -71,7 +71,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   useEffect(() => {
     fetchQuestions();
     fetchResponses();
-  }, [templateId, serviceOrderId]);
+  }, [templateId, serviceOrderId, equipmentId]);
 
   const fetchQuestions = async () => {
     try {
