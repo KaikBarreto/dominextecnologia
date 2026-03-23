@@ -129,9 +129,19 @@ export default function TechnicianOS() {
 
   const fetchTechnicianProfile = async () => {
     if (!id) return;
+    // Try technician_id first, then fall back to first assignee
     const { data: so } = await supabase.from('service_orders').select('technician_id').eq('id', id).single();
-    if ((so as any)?.technician_id) {
-      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', (so as any).technician_id).single();
+    let userId = (so as any)?.technician_id;
+    if (!userId) {
+      const { data: assignees } = await supabase
+        .from('service_order_assignees')
+        .select('user_id')
+        .eq('service_order_id', id)
+        .limit(1);
+      userId = (assignees as any)?.[0]?.user_id;
+    }
+    if (userId) {
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).single();
       if (profile) setTechnicianProfile(profile);
     }
   };
@@ -143,7 +153,7 @@ export default function TechnicianOS() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_orders', filter: `id=eq.${id}` },
-        () => { fetchServiceOrder(); }
+        () => { fetchServiceOrder(); fetchTechnicianProfile(); }
       )
       .on(
         'postgres_changes',
@@ -482,32 +492,35 @@ export default function TechnicianOS() {
             </span>
           </div>
 
-          {/* Check-in timestamp with technician info */}
-          {checkInTime && (
-            <div className="flex flex-col gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-              {technicianProfile && (
-                <div className="flex items-center gap-2">
-                  {technicianProfile.avatar_url ? (
-                    <img
-                      src={technicianProfile.avatar_url}
-                      alt={technicianProfile.full_name}
-                      className="h-8 w-8 rounded-full object-cover border cursor-pointer"
-                      onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                  <span className="text-sm font-medium text-foreground">{technicianProfile.full_name}</span>
+          {/* Technician info - show from a_caminho onwards */}
+          {technicianProfile && (serviceOrder.status === 'a_caminho' || serviceOrder.status === 'em_andamento') && (
+            <div className="flex items-center gap-3 text-sm bg-muted/50 rounded-lg px-3 py-2">
+              {technicianProfile.avatar_url ? (
+                <img
+                  src={technicianProfile.avatar_url}
+                  alt={technicianProfile.full_name}
+                  className="h-10 w-10 rounded-full object-cover border cursor-pointer"
+                  onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <User className="h-5 w-5 text-primary" />
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="text-xs sm:text-sm">
-                  Check-in: {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </span>
+              <div>
+                <p className="text-xs text-muted-foreground">Técnico responsável</p>
+                <p className="font-medium text-foreground">{technicianProfile.full_name}</p>
               </div>
+            </div>
+          )}
+
+          {/* Check-in timestamp */}
+          {checkInTime && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="text-xs sm:text-sm">
+                Check-in: {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </span>
             </div>
           )}
 
