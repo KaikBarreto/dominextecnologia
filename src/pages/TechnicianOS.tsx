@@ -117,10 +117,24 @@ export default function TechnicianOS() {
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, question:form_questions(id, question, question_type, options, description, position, template_id)')
       .eq('service_order_id', id);
-    if (data) setPublicFormResponses(data as any[]);
+    if (data) {
+      // Normalize: unwrap question join (may be array in some PostgREST versions)
+      const normalized = (data as any[]).map(r => ({
+        ...r,
+        question: unwrapJoin(r.question),
+      }));
+      setPublicFormResponses(normalized);
+    }
   };
 
-  // Realtime subscription for public (non-authenticated) viewers
+  const fetchTechnicianProfile = async () => {
+    if (!id) return;
+    const { data: so } = await supabase.from('service_orders').select('assigned_to').eq('id', id).single();
+    if (so?.assigned_to) {
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', so.assigned_to).single();
+      if (profile) setTechnicianProfile(profile);
+    }
+  };
   useEffect(() => {
     if (!id || isAuthenticated !== false) return;
 
