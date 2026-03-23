@@ -138,10 +138,24 @@ export default function ServiceOrders() {
 
   const handleDelete = async () => {
     if (osToDelete) {
-      await deleteServiceOrder.mutateAsync(osToDelete.id);
+      if (deleteMode === 'group' && (osToDelete as any).recurrence_group_id) {
+        const groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === (osToDelete as any).recurrence_group_id);
+        for (const o of groupOrders) {
+          await deleteServiceOrder.mutateAsync(o.id);
+        }
+      } else {
+        await deleteServiceOrder.mutateAsync(osToDelete.id);
+      }
       setOsToDelete(null);
       setDeleteDialogOpen(false);
+      setDeleteMode(null);
     }
+  };
+
+  const handleDeleteClick = (os: ServiceOrder) => {
+    setOsToDelete(os);
+    setDeleteMode((os as any).recurrence_group_id ? null : 'single');
+    setDeleteDialogOpen(true);
   };
 
   const handleStatusChange = async (os: ServiceOrder, newStatus: OsStatus) => {
