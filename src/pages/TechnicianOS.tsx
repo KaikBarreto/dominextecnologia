@@ -930,6 +930,7 @@ export default function TechnicianOS() {
             </Button>
           </div>
         )}
+      </div>
 
       {/* Equipment photo preview */}
       <ImagePreviewModal
