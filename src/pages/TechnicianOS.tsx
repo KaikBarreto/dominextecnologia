@@ -129,9 +129,19 @@ export default function TechnicianOS() {
 
   const fetchTechnicianProfile = async () => {
     if (!id) return;
+    // Try technician_id first, then fall back to first assignee
     const { data: so } = await supabase.from('service_orders').select('technician_id').eq('id', id).single();
-    if ((so as any)?.technician_id) {
-      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', (so as any).technician_id).single();
+    let userId = (so as any)?.technician_id;
+    if (!userId) {
+      const { data: assignees } = await supabase
+        .from('service_order_assignees')
+        .select('user_id')
+        .eq('service_order_id', id)
+        .limit(1);
+      userId = (assignees as any)?.[0]?.user_id;
+    }
+    if (userId) {
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).single();
       if (profile) setTechnicianProfile(profile);
     }
   };
