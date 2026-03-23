@@ -153,7 +153,7 @@ export default function TechnicianOS() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_orders', filter: `id=eq.${id}` },
-        () => { fetchServiceOrder(); }
+        () => { fetchServiceOrder(); fetchTechnicianProfile(); }
       )
       .on(
         'postgres_changes',
