@@ -260,7 +260,7 @@ function OrderContent({ order, onEdit, onReopen }: { order: ServiceOrder & { cus
   );
 }
 
-export function OrderSummarySheet({ order, open, onOpenChange, onEdit }: OrderSummarySheetProps) {
+export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen }: OrderSummarySheetProps) {
   const isMobile = useIsMobile();
 
   if (!order) return null;
