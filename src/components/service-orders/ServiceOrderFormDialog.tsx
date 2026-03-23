@@ -1146,6 +1146,71 @@ export function ServiceOrderFormDialog({
                 <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
 
+              {/* Recurrence */}
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
+                  <Label className="cursor-pointer flex items-center gap-1.5">
+                    <Repeat className="h-4 w-4" />
+                    Recorrência
+                  </Label>
+                </div>
+                {recurrenceEnabled && (
+                  <div className="space-y-3 pt-1">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Frequência</Label>
+                        <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {RECURRENCE_OPTIONS.map(o => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">A cada</Label>
+                        <div className="flex items-center gap-1.5">
+                          <Input type="number" min={1} max={12} value={recurrenceInterval} onChange={(e) => setRecurrenceInterval(Number(e.target.value))} />
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {recurrenceType === 'daily' ? 'dia(s)' :
+                             recurrenceType === 'monthly' ? 'mês(es)' :
+                             'semana(s)'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Até</Label>
+                        <Input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} />
+                      </div>
+                    </div>
+                    {(recurrenceType === 'custom' || recurrenceType === 'weekly') && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Repetir em:</Label>
+                        <div className="flex gap-1">
+                          {WEEKDAY_LABELS.map((label, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => toggleWeekday(idx)}
+                              className={cn(
+                                'h-8 w-8 rounded-md text-xs font-medium transition-colors border',
+                                recurrenceWeekdays.includes(idx)
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Signature toggles removed - use questionnaire signature questions instead */}
             </div>
           )}
