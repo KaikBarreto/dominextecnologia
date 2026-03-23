@@ -150,7 +150,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const fetchAllResponses = async () => {
     const { data } = await supabase
       .from('form_responses')
-      .select('id, question_id, response_value, response_photo_url, question:form_questions(*)')
+      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
       .eq('service_order_id', serviceOrder.id);
     if (data) setFormResponses(data as any);
   };
