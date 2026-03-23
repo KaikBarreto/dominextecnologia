@@ -44,6 +44,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
 
   // Validation effect
   useEffect(() => {
