@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.6";
+export const APP_VERSION = "1.5.7";
 
-export const VERSION_NOTES = "Checkout renovação, busca inteligente com espaços";
+export const VERSION_NOTES = "Sincronização de equipes com OSs, visibilidade de técnicos em contratos";
