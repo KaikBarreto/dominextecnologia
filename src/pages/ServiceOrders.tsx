@@ -439,7 +439,7 @@ export default function ServiceOrders() {
                                     </Button>
                                   )}
                                   {canDeleteOS && (
-                                    <Button variant="destructive-ghost" size="icon" onClick={() => { setOsToDelete(os); setDeleteDialogOpen(true); }}>
+                                    <Button variant="destructive-ghost" size="icon" onClick={() => handleDeleteClick(os)}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   )}
