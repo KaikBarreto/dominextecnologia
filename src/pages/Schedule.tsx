@@ -474,7 +474,9 @@ export default function Schedule() {
               onClearSelection={handleClearSummary}
               onEdit={(summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
               onDelete={(summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
+              onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
+              onReopen={(summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
             />
           </div>
         )}
