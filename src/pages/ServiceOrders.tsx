@@ -565,19 +565,35 @@ export default function ServiceOrders() {
         isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
       />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteMode(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir OS</AlertDialogTitle>
+            <AlertDialogTitle>Excluir OS #{osToDelete?.order_number}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a OS #{osToDelete?.order_number}? Esta ação não pode ser desfeita.
+              {(osToDelete as any)?.recurrence_group_id && !deleteMode
+                ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
+                : 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
+          <AlertDialogFooter className={(osToDelete as any)?.recurrence_group_id && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
+            {(osToDelete as any)?.recurrence_group_id && !deleteMode ? (
+              <>
+                <Button variant="destructive" onClick={() => setDeleteMode('single')} className="w-full">
+                  Excluir apenas esta
+                </Button>
+                <Button variant="destructive" onClick={() => setDeleteMode('group')} className="w-full">
+                  Excluir todas da recorrência
+                </Button>
+                <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel onClick={() => setDeleteMode(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Excluir
+                </AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
