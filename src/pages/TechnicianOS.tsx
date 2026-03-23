@@ -129,9 +129,9 @@ export default function TechnicianOS() {
 
   const fetchTechnicianProfile = async () => {
     if (!id) return;
-    const { data: so } = await supabase.from('service_orders').select('assigned_to').eq('id', id).single();
-    if (so?.assigned_to) {
-      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', so.assigned_to).single();
+    const { data: so } = await supabase.from('service_orders').select('technician_id').eq('id', id).single();
+    if ((so as any)?.technician_id) {
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', (so as any).technician_id).single();
       if (profile) setTechnicianProfile(profile);
     }
   };
