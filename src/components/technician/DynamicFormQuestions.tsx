@@ -338,13 +338,28 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, onValidationC
         const photoUrlRaw = response?.response_photo_url;
         const photoUrls = photoUrlRaw ? photoUrlRaw.split(',').filter(Boolean) : [];
         const cameraOnly = !!(question as any).require_camera;
+        
+        const removePhoto = (indexToRemove: number) => {
+          const remaining = photoUrls.filter((_, i) => i !== indexToRemove);
+          const newUrl = remaining.length > 0 ? remaining.join(',') : null;
+          saveResponse(question.id, responses[question.id]?.response_value || null, newUrl);
+        };
+        
         return (
           <div className="space-y-2">
             {photoUrls.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 {photoUrls.map((url, idx) => (
-                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-muted group">
                     <img src={url} alt={`Resposta ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      onClick={() => removePhoto(idx)}
+                      title="Remover foto"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
               </div>
