@@ -915,12 +915,10 @@ export default function TechnicianOS() {
             </CardContent>
           </Card>
         )}
-      </div>
 
-      {/* Fixed bottom button */}
-      {isCheckedIn && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 sm:p-4 z-10">
-          <div className="max-w-2xl mx-auto">
+        {/* Finish OS button - inline after signatures */}
+        {isCheckedIn && (
+          <div className="pb-6">
             <Button 
               className="w-full bg-success hover:bg-success/90 text-success-foreground" 
               size="lg"
@@ -931,8 +929,7 @@ export default function TechnicianOS() {
               {finishing ? 'Finalizando...' : 'Finalizar OS'}
             </Button>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Equipment photo preview */}
       <ImagePreviewModal
