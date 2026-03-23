@@ -1232,7 +1232,7 @@ export function ServiceOrderFormDialog({
               {isLastStep ? (
                 <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar OS
+                  {recurrenceEnabled ? 'Criar OS Recorrentes' : 'Criar OS'}
                 </Button>
               ) : (
                 <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
