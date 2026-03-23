@@ -109,6 +109,27 @@ export function ServiceOrderFormDialog({
   const { toast: editToast } = useToast();
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Recurrence state (create mode only)
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState('weekly');
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([]);
+
+  const RECURRENCE_OPTIONS = [
+    { value: 'daily', label: 'Diária' },
+    { value: 'weekly', label: 'Semanal' },
+    { value: 'biweekly', label: 'Quinzenal' },
+    { value: 'monthly', label: 'Mensal' },
+    { value: 'custom', label: 'Personalizado' },
+  ];
+  const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const toggleWeekday = (day: number) => {
+    setRecurrenceWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
 
   const selectedServiceType = useMemo(
     () => serviceTypes.find(st => st.id === selectedServiceTypeId),
