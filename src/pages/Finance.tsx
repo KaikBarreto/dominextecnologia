@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  LayoutDashboard, TrendingUp, TrendingDown, Tag, FileBarChart, History, CalendarClock,
+  LayoutDashboard, TrendingUp, TrendingDown, Tag, FileBarChart, History, CalendarClock, Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFinancial } from '@/hooks/useFinancial';
@@ -10,6 +10,7 @@ import { TransactionListPanel } from '@/components/financial/TransactionListPane
 import { FinanceCategorias } from '@/components/financial/FinanceCategorias';
 import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
+import { FinanceBanks } from '@/components/financial/FinanceBanks';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
@@ -21,6 +22,7 @@ const allTabs = [
   { key: 'despesas', label: 'Despesas', icon: TrendingDown },
   { key: 'historico', label: 'Histórico', icon: History },
   { key: 'contas', label: 'Contas', icon: CalendarClock, module: 'finance_advanced' as const },
+  { key: 'bancos', label: 'Caixas e Bancos', icon: Landmark, module: 'finance_advanced' as const },
   { key: 'categorias', label: 'Categorias', icon: Tag },
   { key: 'dre', label: 'DRE - Resultado', icon: FileBarChart, module: 'finance_advanced' as const },
 ];
@@ -186,6 +188,8 @@ export default function Finance() {
               onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
             />
           )}
+
+          {activeTab === 'bancos' && <FinanceBanks />}
 
           {activeTab === 'categorias' && <FinanceCategorias />}
 

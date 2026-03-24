@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useToast } from '@/hooks/use-toast';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const PAYMENT_METHODS = [
@@ -43,6 +44,7 @@ const transactionSchema = z.object({
   notes: z.string().optional(),
   payment_method: z.string().optional(),
   installment_count: z.coerce.number().min(1).default(1),
+  account_id: z.string().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -65,6 +67,7 @@ export function TransactionFormDialog({
   open, onOpenChange, transaction, onSubmit, isLoading, defaultType = 'entrada',
 }: TransactionFormDialogProps) {
   const { categories: dbCategories } = useFinancialCategories();
+  const { accounts } = useFinancialAccounts();
   const { toast } = useToast();
   const isEditing = !!transaction;
   const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
@@ -88,6 +91,7 @@ export function TransactionFormDialog({
     notes: (transaction as any)?.notes ?? '',
     payment_method: (transaction as any)?.payment_method ?? '',
     installment_count: 1,
+    account_id: (transaction as any)?.account_id ?? '',
   };
 
   const form = useForm<TransactionFormData>({
@@ -140,6 +144,7 @@ export function TransactionFormDialog({
       paid_date: data.is_paid ? data.transaction_date : undefined,
       receipt_url: receiptUrl,
       payment_method: data.payment_method || null,
+      account_id: data.account_id || null,
     };
     await onSubmit(payload);
     draft.clearDraft();
