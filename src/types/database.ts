@@ -183,6 +183,10 @@ export interface FinancialTransaction {
   contract_id?: string;
   receipt_url?: string;
   notes?: string;
+  payment_method?: string;
+  installment_group_id?: string;
+  installment_number?: number;
+  installment_total?: number;
   created_by?: string;
   created_at: string;
   updated_at: string;
