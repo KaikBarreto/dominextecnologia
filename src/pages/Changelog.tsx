@@ -40,6 +40,70 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.11',
+    date: '24 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Parcelamento de transações',
+        description: 'Ao criar uma receita ou despesa, agora é possível parcelar em N vezes. O sistema gera automaticamente as parcelas com vencimentos mensais e indicação visual (ex: 2/6).',
+        category: 'recurso',
+      },
+      {
+        title: 'Upload de comprovantes',
+        description: 'Transações financeiras agora permitem anexar comprovantes e notas fiscais (imagens ou PDF). Comprovantes ficam visíveis na listagem com ícone clicável.',
+        category: 'recurso',
+      },
+      {
+        title: 'Método de pagamento',
+        description: 'Novo campo para registrar a forma de pagamento (PIX, boleto, cartão de crédito/débito, dinheiro, transferência) com filtro na listagem.',
+        category: 'recurso',
+      },
+      {
+        title: 'Exportação CSV com filtros',
+        description: 'Transações financeiras agora podem ser exportadas em CSV respeitando os filtros ativos (busca, categoria, status, método de pagamento).',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.5.10',
+    date: '24 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Gráfico de fluxo de caixa mensal',
+        description: 'A visão geral do financeiro agora inclui um gráfico de barras com entradas vs saídas por mês, facilitando a análise de tendências.',
+        category: 'recurso',
+      },
+      {
+        title: 'Máscara monetária no valor',
+        description: 'O campo de valor nas transações financeiras agora usa máscara automática no formato R$ (ex: 1.234,56) ao invés de input numérico simples.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Campo de observações nas transações',
+        description: 'Adicionado campo de notas/observações no formulário de criação e edição de transações financeiras.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Filtros avançados na listagem',
+        description: 'Listagem de transações agora conta com filtros por categoria e status (pago/pendente) além da busca textual.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cards clicáveis A Pagar / A Receber',
+        description: 'Cards de resumo "A Pagar" e "A Receber" na visão geral agora são clicáveis e direcionam para a aba de contas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Categorias financeiras padrão por empresa',
+        description: 'Toda nova empresa já recebe categorias financeiras padrão personalizáveis, com "Impostos e Taxas" fixa e integrada ao DRE como deduções.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.5.9',
     date: '23 de março de 2026',
     type: 'patch',
