@@ -24,15 +24,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
-const PAYMENT_METHODS = [
-  { value: 'pix', label: 'PIX' },
-  { value: 'boleto', label: 'Boleto' },
-  { value: 'cartao_credito', label: 'Cartão de Crédito' },
-  { value: 'cartao_debito', label: 'Cartão de Débito' },
-  { value: 'dinheiro', label: 'Dinheiro' },
-  { value: 'transferencia', label: 'Transferência' },
-  { value: 'cheque', label: 'Cheque' },
-];
 
 const transactionSchema = z.object({
   transaction_type: z.enum(['entrada', 'saida']),
@@ -240,46 +231,31 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Amount + Payment Method row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField control={form.control} name="amount" render={({ field }) => {
-              const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                const raw = e.target.value.replace(/\D/g, '');
-                field.onChange(parseInt(raw || '0', 10) / 100);
-              };
-              const displayValue = field.value
-                ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                : '';
-              return (
-                <FormItem>
-                  <FormLabel>Valor (R$)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="0,00" value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              );
-            }} />
-
-            <FormField control={form.control} name="payment_method" render={({ field }) => (
+          {/* Amount */}
+          <FormField control={form.control} name="amount" render={({ field }) => {
+            const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+              const raw = e.target.value.replace(/\D/g, '');
+              field.onChange(parseInt(raw || '0', 10) / 100);
+            };
+            const displayValue = field.value
+              ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : '';
+            return (
               <FormItem>
-                <FormLabel>Forma de Pagamento</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ''}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <FormLabel>Valor (R$)</FormLabel>
+                <FormControl>
+                  <Input placeholder="0,00" value={displayValue} onChange={handleCurrencyChange} inputMode="numeric" />
+                </FormControl>
                 <FormMessage />
               </FormItem>
-            )} />
-          </div>
+            );
+          }} />
 
           {/* Account */}
           {accounts.length > 0 && (
             <FormField control={form.control} name="account_id" render={({ field }) => (
               <FormItem>
-                <FormLabel>Conta / Caixa</FormLabel>
+                <FormLabel>Conta Bancária / Caixa</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || ''}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecione uma conta (opcional)" /></SelectTrigger></FormControl>
                   <SelectContent>
@@ -287,7 +263,7 @@ export function TransactionFormDialog({
                       <SelectItem key={a.id} value={a.id}>
                         <span className="flex items-center gap-2">
                           <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
-                          {a.name}
+                          {a.type === 'caixa' ? `${a.name} (em dinheiro)` : a.name}
                         </span>
                       </SelectItem>
                     ))}
