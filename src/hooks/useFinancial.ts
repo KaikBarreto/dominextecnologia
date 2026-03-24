@@ -117,7 +117,7 @@ export function useFinancial() {
               installment_number: i + 1,
               installment_total: n,
             },
-            ['customer_id', 'service_order_id', 'contract_id']
+            ['customer_id', 'service_order_id', 'contract_id', 'account_id']
           );
           rows.push(sanitized);
         }
@@ -129,7 +129,7 @@ export function useFinancial() {
 
       const sanitized = normalizeOptionalForeignKeys(
         { ...rest, created_by: user?.id },
-        ['customer_id', 'service_order_id', 'contract_id']
+        ['customer_id', 'service_order_id', 'contract_id', 'account_id']
       );
 
       const { data, error } = await supabase
@@ -153,7 +153,7 @@ export function useFinancial() {
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
       const { installment_count, ...rest } = input;
-      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id']);
+      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id', 'account_id']);
 
       const { data, error } = await supabase
         .from('financial_transactions')
