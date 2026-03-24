@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.12',
+    date: '24 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contas bancárias e centros de custo',
+        description: 'Nova aba "Caixas e Bancos" no financeiro para cadastrar contas (caixa, banco, cartão), acompanhar saldo individual por conta e realizar transferências internas entre contas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Categorias com drag & drop',
+        description: 'As categorias financeiras agora podem ser reordenadas via arrastar e soltar, com ícones de editar/excluir visíveis apenas ao passar o mouse.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Preferências do formulário financeiro',
+        description: 'O formulário de nova transação agora lembra automaticamente a última forma de pagamento e a última conta utilizada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Centralização de movimentações',
+        description: 'As abas separadas de Receitas e Despesas foram unificadas na aba Movimentações com filtro integrado por tipo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.11',
     date: '24 de março de 2026',
     type: 'patch',
