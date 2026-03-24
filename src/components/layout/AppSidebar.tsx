@@ -78,7 +78,19 @@ const menuItems: MenuItem[] = [
     ],
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
-  { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
+  {
+    title: 'Financeiro',
+    icon: DollarSign,
+    screenKey: 'screen:finance',
+    children: [
+      { title: 'Visão Geral', icon: LayoutDashboard, path: '/financeiro', screenKey: 'screen:finance' },
+      { title: 'Movimentações', icon: History, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
+      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Caixas e Bancos', icon: Landmark, path: '/financeiro/caixas-bancos', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Categorias', icon: Tag, path: '/financeiro/categorias', screenKey: 'screen:finance' },
+      { title: 'DRE - Resultado', icon: FileBarChart, path: '/financeiro/dre', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+    ],
+  },
 ];
 
 const systemMenuItems: MenuItem[] = [
