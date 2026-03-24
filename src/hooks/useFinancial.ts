@@ -22,6 +22,7 @@ export interface TransactionInput {
   payment_method?: string;
   receipt_url?: string;
   installment_count?: number;
+  account_id?: string | null;
 }
 
 export function useFinancial() {
@@ -34,6 +35,7 @@ export function useFinancial() {
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
   };
 
   const transactionsQuery = useQuery({

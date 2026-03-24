@@ -270,6 +270,29 @@ export function TransactionFormDialog({
             )} />
           </div>
 
+          {/* Account */}
+          {accounts.length > 0 && (
+            <FormField control={form.control} name="account_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Conta / Caixa</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione uma conta (opcional)" /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    {accounts.filter(a => a.is_active).map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                          {a.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
+
           {/* Description */}
           <FormField control={form.control} name="description" render={({ field }) => (
             <FormItem>

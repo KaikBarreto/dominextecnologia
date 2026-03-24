@@ -187,6 +187,8 @@ export interface FinancialTransaction {
   installment_group_id?: string;
   installment_number?: number;
   installment_total?: number;
+  account_id?: string | null;
+  transfer_pair_id?: string | null;
   created_by?: string;
   created_at: string;
   updated_at: string;
