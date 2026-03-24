@@ -279,7 +279,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               Últimas Movimentações
             </CardTitle>
             <button
-              onClick={() => onNavigate('receitas')}
+              onClick={() => onNavigate('historico')}
               className="text-xs text-primary hover:underline font-medium"
             >
               Ver todas →
