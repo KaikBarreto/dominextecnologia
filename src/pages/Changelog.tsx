@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.13',
+    date: '24 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Financeiro como seção no menu',
+        description: 'O módulo financeiro agora é uma seção expansível no menu lateral (como Operacional e Gestão), com cada sub-área (Visão Geral, Movimentações, Contas, Caixas e Bancos, Categorias, DRE) acessível por rota própria.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Títulos individuais por página financeira',
+        description: 'Cada sub-página do financeiro agora exibe título e descrição próprios no cabeçalho e na aba do navegador, facilitando a identificação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Remoção da forma de pagamento',
+        description: 'Campo "Forma de Pagamento" removido do formulário de transação. A informação relevante agora é apenas a conta bancária/caixa utilizada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Coluna "Conta" nas movimentações',
+        description: 'A listagem de transações agora exibe a conta bancária/caixa associada com cor e ícone, substituindo a antiga coluna de pagamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.12',
     date: '24 de março de 2026',
     type: 'patch',
