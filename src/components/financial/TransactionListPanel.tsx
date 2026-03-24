@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -57,10 +60,20 @@ export function TransactionListPanel({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const isMobile = useIsMobile();
+
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    transactions.forEach((t) => { if (t.category) cats.add(t.category); });
+    return Array.from(cats).sort();
+  }, [transactions]);
 
   const filtered = transactions
     .filter((t) => type === 'all' || t.transaction_type === type)
+    .filter((t) => categoryFilter === 'all' || t.category === categoryFilter)
+    .filter((t) => statusFilter === 'all' || (statusFilter === 'paid' ? t.is_paid : !t.is_paid))
     .filter((t) =>
       fuzzyIncludes(t.description, search) ||
       fuzzyIncludes(t.category, search)
@@ -128,9 +141,30 @@ export function TransactionListPanel({
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas categorias</SelectItem>
+            {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[140px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="paid">Pago</SelectItem>
+            <SelectItem value="pending">Pendente</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
