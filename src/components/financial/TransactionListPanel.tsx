@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Landmark, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,11 +23,6 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  pix: 'PIX', boleto: 'Boleto', cartao_credito: 'Cartão Créd.', cartao_debito: 'Cartão Déb.',
-  dinheiro: 'Dinheiro', transferencia: 'Transf.', cheque: 'Cheque',
-};
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);

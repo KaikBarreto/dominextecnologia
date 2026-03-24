@@ -45,12 +45,13 @@ export function useFinancial() {
         .from('financial_transactions')
         .select(`
           *,
-          customer:customers(id, name)
+          customer:customers(id, name),
+          account:financial_accounts(id, name, type, color)
         `)
         .order('transaction_date', { ascending: false });
       
       if (error) throw error;
-      return data as (FinancialTransaction & { customer: any })[];
+      return data as (FinancialTransaction & { customer: any; account: any })[];
     },
   });
 
