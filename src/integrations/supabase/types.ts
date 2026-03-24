@@ -1262,6 +1262,59 @@ export type Database = {
           },
         ]
       }
+      financial_accounts: {
+        Row: {
+          bank_name: string | null
+          color: string
+          company_id: string
+          created_at: string
+          icon: string | null
+          id: string
+          initial_balance: number
+          is_active: boolean
+          name: string
+          sort_order: number | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          bank_name?: string | null
+          color?: string
+          company_id: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          initial_balance?: number
+          is_active?: boolean
+          name: string
+          sort_order?: number | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          bank_name?: string | null
+          color?: string
+          company_id?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          initial_balance?: number
+          is_active?: boolean
+          name?: string
+          sort_order?: number | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_categories: {
         Row: {
           color: string
@@ -1314,6 +1367,7 @@ export type Database = {
       }
       financial_transactions: {
         Row: {
+          account_id: string | null
           amount: number
           category: string | null
           contract_id: string | null
@@ -1334,9 +1388,11 @@ export type Database = {
           service_order_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_pair_id: string | null
           updated_at: string
         }
         Insert: {
+          account_id?: string | null
           amount: number
           category?: string | null
           contract_id?: string | null
@@ -1357,9 +1413,11 @@ export type Database = {
           service_order_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_pair_id?: string | null
           updated_at?: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           category?: string | null
           contract_id?: string | null
@@ -1380,9 +1438,17 @@ export type Database = {
           service_order_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          transfer_pair_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "financial_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "financial_transactions_contract_id_fkey"
             columns: ["contract_id"]
