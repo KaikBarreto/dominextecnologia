@@ -65,6 +65,7 @@ export function TransactionListPanel({
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
   const isMobile = useIsMobile();
 
   const categories = useMemo(() => {
@@ -73,8 +74,10 @@ export function TransactionListPanel({
     return Array.from(cats).sort();
   }, [transactions]);
 
+  const effectiveType = type === 'all' ? typeFilter : type;
+
   const filtered = transactions
-    .filter((t) => type === 'all' || t.transaction_type === type)
+    .filter((t) => effectiveType === 'all' || t.transaction_type === effectiveType)
     .filter((t) => categoryFilter === 'all' || t.category === categoryFilter)
     .filter((t) => statusFilter === 'all' || (statusFilter === 'paid' ? t.is_paid : !t.is_paid))
     .filter((t) => paymentFilter === 'all' || (t as any).payment_method === paymentFilter)
