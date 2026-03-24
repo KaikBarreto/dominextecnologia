@@ -81,6 +81,9 @@ export function TransactionFormDialog({
     return fromDb.length > 0 ? fromDb : null;
   };
 
+  const lastPaymentMethod = localStorage.getItem('fin_last_payment_method') || '';
+  const lastAccountId = localStorage.getItem('fin_last_account_id') || '';
+
   const defaults: TransactionFormData = {
     transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
     category: transaction?.category ?? '',
@@ -89,9 +92,9 @@ export function TransactionFormDialog({
     transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
     is_paid: transaction?.is_paid ?? true,
     notes: (transaction as any)?.notes ?? '',
-    payment_method: (transaction as any)?.payment_method ?? '',
+    payment_method: (transaction as any)?.payment_method ?? lastPaymentMethod,
     installment_count: 1,
-    account_id: (transaction as any)?.account_id ?? '',
+    account_id: (transaction as any)?.account_id ?? lastAccountId,
   };
 
   const form = useForm<TransactionFormData>({
