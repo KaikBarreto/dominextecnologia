@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, Filter } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,21 +23,23 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
-import { ptBR } from 'date-fns/locale';
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  pix: 'PIX', boleto: 'Boleto', cartao_credito: 'Cartão Créd.', cartao_debito: 'Cartão Déb.',
+  dinheiro: 'Dinheiro', transferencia: 'Transf.', cheque: 'Cheque',
+};
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-/** Parse a date string like "2026-03-25" without timezone shift */
 function parseLocalDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
 
 function formatDate(dateStr: string) {
-  const date = parseLocalDate(dateStr);
-  return date.toLocaleDateString('pt-BR');
+  return parseLocalDate(dateStr).toLocaleDateString('pt-BR');
 }
 
 interface TransactionListPanelProps {
@@ -62,6 +64,7 @@ export function TransactionListPanel({
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const isMobile = useIsMobile();
 
   const categories = useMemo(() => {
@@ -74,49 +77,62 @@ export function TransactionListPanel({
     .filter((t) => type === 'all' || t.transaction_type === type)
     .filter((t) => categoryFilter === 'all' || t.category === categoryFilter)
     .filter((t) => statusFilter === 'all' || (statusFilter === 'paid' ? t.is_paid : !t.is_paid))
-    .filter((t) =>
-      fuzzyIncludes(t.description, search) ||
-      fuzzyIncludes(t.category, search)
-    );
+    .filter((t) => paymentFilter === 'all' || (t as any).payment_method === paymentFilter)
+    .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
   const pagination = useDataPagination(sortedItems);
 
   const handleDelete = async () => {
-    if (deleteId) {
-      await onDelete(deleteId);
-      setDeleteId(null);
-      selectedIds.delete(deleteId);
-      setSelectedIds(new Set(selectedIds));
-    }
+    if (deleteId) { await onDelete(deleteId); setDeleteId(null); selectedIds.delete(deleteId); setSelectedIds(new Set(selectedIds)); }
   };
-
   const handleBulkDelete = async () => {
-    for (const id of selectedIds) {
-      await onDelete(id);
-    }
-    setSelectedIds(new Set());
-    setBulkDeleteOpen(false);
+    for (const id of selectedIds) await onDelete(id);
+    setSelectedIds(new Set()); setBulkDeleteOpen(false);
   };
-
   const toggleSelect = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedIds(next);
+    const next = new Set(selectedIds); if (next.has(id)) next.delete(id); else next.add(id); setSelectedIds(next);
+  };
+  const toggleSelectAll = () => {
+    setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map((t) => t.id)));
   };
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filtered.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filtered.map((t) => t.id)));
-    }
+  const handleExportCSV = () => {
+    const headers = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Valor', 'Status', 'Forma de Pagamento', 'Parcela'];
+    const rows = filtered.map((t) => [
+      t.transaction_date,
+      t.transaction_type === 'entrada' ? 'Receita' : 'Despesa',
+      `"${(t.description || '').replace(/"/g, '""')}"`,
+      t.category || '',
+      Number(t.amount).toFixed(2).replace('.', ','),
+      t.is_paid ? 'Pago' : 'Pendente',
+      PAYMENT_METHOD_LABELS[(t as any).payment_method] || '',
+      (t as any).installment_number ? `${(t as any).installment_number}/${(t as any).installment_total}` : '',
+    ]);
+    const csv = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${title.toLowerCase()}.csv`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
   const someSelected = selectedIds.size > 0;
   const showTypeColumn = type === 'all';
+
+  const renderInstallmentBadge = (t: any) => {
+    if (!t.installment_number) return null;
+    return <Badge variant="outline" className="text-[10px] ml-1">{t.installment_number}/{t.installment_total}</Badge>;
+  };
+
+  const renderReceiptLink = (t: any) => {
+    if (!t.receipt_url) return null;
+    return (
+      <a href={t.receipt_url} target="_blank" rel="noopener" className="text-primary hover:text-primary/80" title="Ver comprovante">
+        <Paperclip className="h-3.5 w-3.5" />
+      </a>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -128,10 +144,12 @@ export function TransactionListPanel({
         <div className="flex items-center gap-2">
           {someSelected && (
             <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir {selectedIds.size}
+              <Trash2 className="mr-2 h-4 w-4" /> Excluir {selectedIds.size}
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1">
+            <FileDown className="h-4 w-4" /> CSV
+          </Button>
           {onNew && (
             <Button onClick={onNew} className={buttonColor}>
               <Plus className="mr-2 h-4 w-4" />
@@ -147,30 +165,31 @@ export function TransactionListPanel({
           <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas categorias</SelectItem>
             {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="paid">Pago</SelectItem>
             <SelectItem value="pending">Pendente</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+          <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Pagamento" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas formas</SelectItem>
+            {Object.entries(PAYMENT_METHOD_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
-        </div>
+        <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
@@ -190,27 +209,26 @@ export function TransactionListPanel({
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 min-w-0 flex-1">
-                    {type !== 'all' && (
-                      <Checkbox
-                        checked={selectedIds.has(t.id)}
-                        onCheckedChange={() => toggleSelect(t.id)}
-                        className="mt-0.5"
-                      />
-                    )}
+                    {type !== 'all' && <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} className="mt-0.5" />}
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm truncate">{t.description}</p>
+                      <p className="font-medium text-sm truncate">
+                        {t.description}
+                        {renderInstallmentBadge(t)}
+                      </p>
                       {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {(t as any).payment_method && (
+                          <Badge variant="outline" className="text-[10px]">{PAYMENT_METHOD_LABELS[(t as any).payment_method] || (t as any).payment_method}</Badge>
+                        )}
+                        {renderReceiptLink(t)}
+                      </div>
                     </div>
                   </div>
-                  <Badge variant={t.is_paid ? 'default' : 'secondary'} className="shrink-0 text-[10px]">
-                    {t.is_paid ? 'Pago' : 'Pendente'}
-                  </Badge>
+                  <Badge variant={t.is_paid ? 'default' : 'secondary'} className="shrink-0 text-[10px]">{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(t.transaction_date)}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{formatDate(t.transaction_date)}</span>
                     {showTypeColumn && (
                       <Badge className={`text-[10px] ${t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}`}>
                         {t.transaction_type === 'entrada' ? 'Receita' : 'Despesa'}
@@ -222,17 +240,9 @@ export function TransactionListPanel({
                   </span>
                 </div>
                 <div className="flex items-center gap-1 justify-end pt-1 border-t">
-                  {!t.is_paid && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => onMarkAsPaid(t.id)}>
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                  <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(t)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(t.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {!t.is_paid && <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => onMarkAsPaid(t.id)}><Check className="h-3.5 w-3.5" /></Button>}
+                  <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
+                  <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </CardContent>
             </Card>
@@ -258,23 +268,18 @@ export function TransactionListPanel({
                     <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
                     {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
-                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Categoria</SortableTableHead>
+                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Categoria</SortableTableHead>
+                    <SortableTableHead sortKey="payment_method" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Pagamento</SortableTableHead>
                     <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
                     <SortableTableHead sortKey="is_paid" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[120px]">Ações</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">Ações</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pagination.paginatedItems.map((t) => (
                     <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
-                      {type !== 'all' && (
-                        <TableCell>
-                          <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} />
-                        </TableCell>
-                      )}
-                      <TableCell className="text-sm">
-                        {formatDate(t.transaction_date)}
-                      </TableCell>
+                      {type !== 'all' && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
+                      <TableCell className="text-sm">{formatDate(t.transaction_date)}</TableCell>
                       {showTypeColumn && (
                         <TableCell>
                           <Badge className={t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}>
@@ -287,36 +292,35 @@ export function TransactionListPanel({
                       )}
                       <TableCell>
                         <div>
-                          <p className="font-medium">{t.description}</p>
+                          <p className="font-medium flex items-center gap-1">
+                            {t.description}
+                            {renderInstallmentBadge(t)}
+                            {renderReceiptLink(t)}
+                          </p>
                           {t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="hidden md:table-cell">
                         {t.category && <Badge variant="outline">{t.category}</Badge>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {(t as any).payment_method && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {PAYMENT_METHOD_LABELS[(t as any).payment_method] || (t as any).payment_method}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <span className={`font-medium ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                           {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={t.is_paid ? 'default' : 'secondary'}>
-                          {t.is_paid ? 'Pago' : 'Pendente'}
-                        </Badge>
-                      </TableCell>
+                      <TableCell><Badge variant={t.is_paid ? 'default' : 'secondary'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {!t.is_paid && (
-                            <Button variant="ghost" size="icon" className="text-success" onClick={() => onMarkAsPaid(t.id)} title="Marcar como pago">
-                              <Check className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button variant="edit-ghost" size="icon" onClick={() => onEdit(t)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(t.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!t.is_paid && <Button variant="ghost" size="icon" className="text-success" onClick={() => onMarkAsPaid(t.id)} title="Marcar como pago"><Check className="h-4 w-4" /></Button>}
+                          <Button variant="edit-ghost" size="icon" onClick={() => onEdit(t)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(t.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -335,7 +339,6 @@ export function TransactionListPanel({
         </Card>
       )}
 
-      {/* Single delete */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -344,25 +347,20 @@ export function TransactionListPanel({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk delete */}
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir {selectedIds.size} transações</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir {selectedIds.size} transações selecionadas? Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogDescription>Tem certeza que deseja excluir {selectedIds.size} transações selecionadas?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir {selectedIds.size}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir {selectedIds.size}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

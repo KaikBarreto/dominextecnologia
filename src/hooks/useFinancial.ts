@@ -19,12 +19,22 @@ export interface TransactionInput {
   service_order_id?: string;
   contract_id?: string;
   notes?: string;
+  payment_method?: string;
+  receipt_url?: string;
+  installment_count?: number;
 }
 
 export function useFinancial() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+  };
 
   const transactionsQuery = useQuery({
     queryKey: ['financial-transactions'],
@@ -77,8 +87,46 @@ export function useFinancial() {
 
   const createTransaction = useMutation({
     mutationFn: async (input: TransactionInput) => {
+      const { installment_count, ...rest } = input;
+      const n = installment_count && installment_count > 1 ? installment_count : 0;
+
+      if (n > 1) {
+        const groupId = crypto.randomUUID();
+        const perInstallment = Math.round((rest.amount / n) * 100) / 100;
+        const baseDate = new Date(rest.transaction_date + 'T12:00:00');
+        const rows = [];
+
+        for (let i = 0; i < n; i++) {
+          const dueDate = new Date(baseDate);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          const dueDateStr = dueDate.toISOString().split('T')[0];
+
+          const sanitized = normalizeOptionalForeignKeys(
+            {
+              ...rest,
+              amount: i === n - 1 ? Math.round((rest.amount - perInstallment * (n - 1)) * 100) / 100 : perInstallment,
+              description: `${rest.description} (${i + 1}/${n})`,
+              transaction_date: dueDateStr,
+              due_date: dueDateStr,
+              is_paid: i === 0 ? rest.is_paid : false,
+              paid_date: i === 0 && rest.is_paid ? dueDateStr : undefined,
+              created_by: user?.id,
+              installment_group_id: groupId,
+              installment_number: i + 1,
+              installment_total: n,
+            },
+            ['customer_id', 'service_order_id', 'contract_id']
+          );
+          rows.push(sanitized);
+        }
+
+        const { error } = await supabase.from('financial_transactions').insert(rows);
+        if (error) throw error;
+        return null;
+      }
+
       const sanitized = normalizeOptionalForeignKeys(
-        { ...input, created_by: user?.id },
+        { ...rest, created_by: user?.id },
         ['customer_id', 'service_order_id', 'contract_id']
       );
 
@@ -92,10 +140,7 @@ export function useFinancial() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+      invalidateAll();
       toast({ title: 'Transação criada com sucesso!' });
     },
     onError: (error: Error) => {
@@ -105,7 +150,8 @@ export function useFinancial() {
 
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...input }: TransactionInput & { id: string }) => {
-      const sanitized = normalizeOptionalForeignKeys(input, ['customer_id', 'service_order_id', 'contract_id']);
+      const { installment_count, ...rest } = input;
+      const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id']);
 
       const { data, error } = await supabase
         .from('financial_transactions')
@@ -118,9 +164,7 @@ export function useFinancial() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      invalidateAll();
       toast({ title: 'Transação atualizada com sucesso!' });
     },
     onError: (error: Error) => {
@@ -138,9 +182,7 @@ export function useFinancial() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      invalidateAll();
       toast({ title: 'Transação excluída com sucesso!' });
     },
     onError: (error: Error) => {
@@ -161,8 +203,7 @@ export function useFinancial() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      invalidateAll();
       toast({ title: 'Transação marcada como paga!' });
     },
     onError: (error: Error) => {
