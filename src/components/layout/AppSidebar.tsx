@@ -24,6 +24,11 @@ import {
   Boxes,
   ScrollText,
   Clock,
+  History,
+  CalendarClock,
+  Landmark,
+  Tag,
+  FileBarChart,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
