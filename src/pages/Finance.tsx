@@ -1,8 +1,5 @@
-import { useState, useMemo } from 'react';
-import {
-  LayoutDashboard, Tag, FileBarChart, History, CalendarClock, Landmark,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useFinancial } from '@/hooks/useFinancial';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { FinanceOverview } from '@/components/financial/FinanceOverview';
@@ -12,38 +9,30 @@ import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { FinanceBanks } from '@/components/financial/FinanceBanks';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
-import { useCompanyModules } from '@/hooks/useCompanyModules';
-import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
-const allTabs = [
-  { key: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
-  { key: 'historico', label: 'Movimentações', icon: History },
-  { key: 'contas', label: 'Contas', icon: CalendarClock, module: 'finance_advanced' as const },
-  { key: 'bancos', label: 'Caixas e Bancos', icon: Landmark, module: 'finance_advanced' as const },
-  { key: 'categorias', label: 'Categorias', icon: Tag },
-  { key: 'dre', label: 'DRE - Resultado', icon: FileBarChart, module: 'finance_advanced' as const },
-];
+const ROUTE_TAB_MAP: Record<string, string> = {
+  '/financeiro': 'visao-geral',
+  '/financeiro/movimentacoes': 'historico',
+  '/financeiro/contas': 'contas',
+  '/financeiro/caixas-bancos': 'bancos',
+  '/financeiro/categorias': 'categorias',
+  '/financeiro/dre': 'dre',
+};
+
+const TAB_ROUTE_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(ROUTE_TAB_MAP).map(([k, v]) => [v, k])
+);
 
 export default function Finance() {
-  const { hasModule } = useCompanyModules();
-  const [activeTab, setActiveTab] = useState('visao-geral');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = ROUTE_TAB_MAP[location.pathname] || 'visao-geral';
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
-  const [gateOpen, setGateOpen] = useState(false);
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
-
-  const tabs = allTabs.filter(t => !t.module || hasModule(t.module));
-
-  const handleTabChange = (key: string) => {
-    const tab = allTabs.find(t => t.key === key);
-    if (tab?.module && !hasModule(tab.module)) {
-      setGateOpen(true);
-      return;
-    }
-    setActiveTab(key);
-  };
 
   const {
     transactions, isLoading,
@@ -52,7 +41,6 @@ export default function Finance() {
 
   const filteredTransactions = filterByDate(transactions, 'transaction_date');
 
-  // Compute summary from filtered transactions
   const summary = useMemo(() => {
     const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
     filteredTransactions.forEach((t) => {
@@ -68,6 +56,10 @@ export default function Finance() {
     return s;
   }, [filteredTransactions]);
 
+  const handleNavigate = (tab: string) => {
+    const route = TAB_ROUTE_MAP[tab];
+    if (route) navigate(route);
+  };
 
   const handleSubmit = async (data: any) => {
     if (editingTransaction) {
@@ -104,77 +96,44 @@ export default function Finance() {
         onRangeChange={setRange}
       />
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <nav className="lg:w-52 shrink-0">
-          <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0">
-            {tabs.map((item) => {
-              const isActive = activeTab === item.key;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => handleTabChange(item.key)}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-left whitespace-nowrap lg:whitespace-normal w-full',
-                    isActive
-                      ? 'bg-primary text-white'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+      <div className="flex-1 min-w-0">
+        {activeTab === 'visao-geral' && (
+          <FinanceOverview
+            transactions={filteredTransactions}
+            summary={summary}
+            onNavigate={handleNavigate}
+            onNewReceita={() => handleNew('entrada')}
+            onNewDespesa={() => handleNew('saida')}
+          />
+        )}
 
-        <div className="flex-1 min-w-0">
-          {activeTab === 'visao-geral' && (
-            <FinanceOverview
-              transactions={filteredTransactions}
-              summary={summary}
-              onNavigate={setActiveTab}
-              onNewReceita={() => handleNew('entrada')}
-              onNewDespesa={() => handleNew('saida')}
-            />
-          )}
+        {activeTab === 'historico' && (
+          <TransactionListPanel
+            title="Movimentações"
+            type="all"
+            transactions={filteredTransactions}
+            isLoading={isLoading}
+            onNew={() => handleNew('entrada')}
+            onEdit={handleEdit}
+            onDelete={(id) => deleteTransaction.mutateAsync(id)}
+            onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
+          />
+        )}
 
-          {activeTab === 'historico' && (
-            <TransactionListPanel
-              title="Movimentações"
-              type="all"
-              transactions={filteredTransactions}
-              isLoading={isLoading}
-              onNew={() => handleNew('entrada')}
-              onEdit={handleEdit}
-              onDelete={(id) => deleteTransaction.mutateAsync(id)}
-              onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
-            />
-          )}
+        {activeTab === 'contas' && (
+          <FinanceContas
+            transactions={filteredTransactions}
+            isLoading={isLoading}
+            onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
+          />
+        )}
 
-          {activeTab === 'contas' && (
-            <FinanceContas
-              transactions={filteredTransactions}
-              isLoading={isLoading}
-              onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
-            />
-          )}
+        {activeTab === 'bancos' && <FinanceBanks />}
 
-          {activeTab === 'bancos' && <FinanceBanks />}
+        {activeTab === 'categorias' && <FinanceCategorias />}
 
-          {activeTab === 'categorias' && <FinanceCategorias />}
-
-          {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
-        </div>
+        {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
       </div>
-
-      <ModuleGateModal
-        open={gateOpen}
-        onOpenChange={setGateOpen}
-        moduleName={MODULE_INFO.finance_advanced.name}
-        moduleDescription={MODULE_INFO.finance_advanced.description}
-        modulePrice={MODULE_INFO.finance_advanced.price}
-      />
 
       <TransactionFormDialog
         open={formOpen}

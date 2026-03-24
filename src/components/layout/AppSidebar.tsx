@@ -24,6 +24,11 @@ import {
   Boxes,
   ScrollText,
   Clock,
+  History,
+  CalendarClock,
+  Landmark,
+  Tag,
+  FileBarChart,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -78,7 +83,19 @@ const menuItems: MenuItem[] = [
     ],
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
-  { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
+  {
+    title: 'Financeiro',
+    icon: DollarSign,
+    screenKey: 'screen:finance',
+    children: [
+      { title: 'Visão Geral', icon: LayoutDashboard, path: '/financeiro', screenKey: 'screen:finance' },
+      { title: 'Movimentações', icon: History, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
+      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Caixas e Bancos', icon: Landmark, path: '/financeiro/caixas-bancos', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Categorias', icon: Tag, path: '/financeiro/categorias', screenKey: 'screen:finance' },
+      { title: 'DRE - Resultado', icon: FileBarChart, path: '/financeiro/dre', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+    ],
+  },
 ];
 
 const systemMenuItems: MenuItem[] = [
@@ -112,7 +129,7 @@ export function AppSidebar() {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>(() => {
     return menuItems
-      .filter(item => item.children?.some(c => location.pathname === c.path))
+      .filter(item => item.children?.some(c => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))))
       .map(item => item.title);
   });
   const menuScrollRef = useRef<HTMLDivElement>(null);
@@ -143,7 +160,7 @@ export function AppSidebar() {
   const filteredSystemMenu = isSuperAdmin ? [] : filterByAccess(systemMenuItems);
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
-    children?.some((c) => location.pathname === c.path) ?? false;
+    children?.some((c) => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))) ?? false;
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) =>
