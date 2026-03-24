@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface FinancialCategory {
@@ -11,6 +12,8 @@ export interface FinancialCategory {
   icon: string | null;
   is_active: boolean;
   dre_group: string | null;
+  is_system: boolean;
+  company_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,21 +24,24 @@ export interface CategoryInput {
   color: string;
   icon?: string;
   is_active?: boolean;
+  dre_group?: string;
 }
 
 export function useFinancialCategories() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
 
   const categoriesQuery = useQuery({
-    queryKey: ['financial-categories'],
+    queryKey: ['financial-categories', companyId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('financial_categories')
         .select('*')
         .order('name');
       if (error) throw error;
-      return data as FinancialCategory[];
+      return (data as any[]) as FinancialCategory[];
     },
   });
 
@@ -43,7 +49,7 @@ export function useFinancialCategories() {
     mutationFn: async (input: CategoryInput) => {
       const { data, error } = await supabase
         .from('financial_categories')
-        .insert(input)
+        .insert({ ...input, company_id: companyId } as any)
         .select()
         .single();
       if (error) throw error;
@@ -62,7 +68,7 @@ export function useFinancialCategories() {
     mutationFn: async ({ id, ...input }: CategoryInput & { id: string }) => {
       const { data, error } = await supabase
         .from('financial_categories')
-        .update(input)
+        .update(input as any)
         .eq('id', id)
         .select()
         .single();

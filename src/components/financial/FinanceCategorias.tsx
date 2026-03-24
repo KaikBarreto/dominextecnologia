@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { getCategoryIcon } from './categoryIcons';
@@ -33,6 +32,7 @@ export function FinanceCategorias() {
   };
 
   const handleEdit = (cat: FinancialCategory) => {
+    if (cat.is_system) return;
     setEditing(cat);
     setFormOpen(true);
   };
@@ -54,22 +54,35 @@ export function FinanceCategorias() {
     <div className="space-y-2">
       {items.map((cat) => {
         const Icon = getCategoryIcon(cat.icon);
+        const isSystem = cat.is_system;
         return (
           <div key={cat.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: cat.color }}>
                 <Icon className="h-4 w-4 text-white" />
               </div>
-              <span className="font-medium">{cat.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{cat.name}</span>
+                {isSystem && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>Categoria do sistema (não pode ser editada ou excluída)</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
-            <div className="flex gap-1">
-              <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(cat)}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(cat.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {!isSystem && (
+              <div className="flex gap-1">
+                <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(cat)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(cat.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         );
       })}
@@ -78,7 +91,6 @@ export function FinanceCategorias() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex items-center gap-3 rounded-xl bg-muted p-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
           <SettingsIcon className="h-5 w-5 text-white" />
@@ -95,7 +107,6 @@ export function FinanceCategorias() {
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Receitas */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -117,7 +128,6 @@ export function FinanceCategorias() {
             ) : renderCategoryList(receitas)}
           </div>
 
-          {/* Despesas */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
