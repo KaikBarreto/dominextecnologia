@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.12";
+export const APP_VERSION = "1.5.13";
 
-export const VERSION_NOTES = "Contas bancárias, transferências, categorias com drag & drop e melhorias UI";
+export const VERSION_NOTES = "Financeiro com navegação por rotas, títulos individuais por seção e melhorias de organização";
