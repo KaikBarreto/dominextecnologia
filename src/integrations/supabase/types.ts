@@ -1265,38 +1265,52 @@ export type Database = {
       financial_categories: {
         Row: {
           color: string
+          company_id: string | null
           created_at: string
           dre_group: string | null
           icon: string | null
           id: string
           is_active: boolean
+          is_system: boolean
           name: string
           type: string
           updated_at: string
         }
         Insert: {
           color?: string
+          company_id?: string | null
           created_at?: string
           dre_group?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
+          is_system?: boolean
           name: string
           type?: string
           updated_at?: string
         }
         Update: {
           color?: string
+          company_id?: string | null
           created_at?: string
           dre_group?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
+          is_system?: boolean
           name?: string
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "financial_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financial_transactions: {
         Row: {
