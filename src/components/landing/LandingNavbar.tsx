@@ -49,7 +49,7 @@ export default function LandingNavbar() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" className="text-white border border-white/20 hover:bg-white/10" asChild>
+            <Button variant="ghost" className="text-white border border-white/20 hover:bg-white/10 hover:text-white" asChild>
               <Link to="/login">Entrar</Link>
             </Button>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90" asChild>
@@ -81,7 +81,7 @@ export default function LandingNavbar() {
             </a>
           ))}
           <div className="mt-4 flex flex-col gap-3">
-            <Button variant="ghost" className="w-full text-white border border-white/20" asChild>
+            <Button variant="ghost" className="w-full text-white border border-white/20 hover:bg-white/10 hover:text-white" asChild>
               <Link to="/login">Entrar</Link>
             </Button>
             <Button className="w-full bg-primary text-primary-foreground" asChild>
