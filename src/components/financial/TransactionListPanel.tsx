@@ -65,6 +65,7 @@ export function TransactionListPanel({
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
   const isMobile = useIsMobile();
 
   const categories = useMemo(() => {
@@ -73,8 +74,10 @@ export function TransactionListPanel({
     return Array.from(cats).sort();
   }, [transactions]);
 
+  const effectiveType = type === 'all' ? typeFilter : type;
+
   const filtered = transactions
-    .filter((t) => type === 'all' || t.transaction_type === type)
+    .filter((t) => effectiveType === 'all' || t.transaction_type === effectiveType)
     .filter((t) => categoryFilter === 'all' || t.category === categoryFilter)
     .filter((t) => statusFilter === 'all' || (statusFilter === 'paid' ? t.is_paid : !t.is_paid))
     .filter((t) => paymentFilter === 'all' || (t as any).payment_method === paymentFilter)
@@ -164,6 +167,16 @@ export function TransactionListPanel({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        {type === 'all' && (
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+            <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="entrada">Receitas</SelectItem>
+              <SelectItem value="saida">Despesas</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>

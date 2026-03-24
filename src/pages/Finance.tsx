@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  LayoutDashboard, TrendingUp, TrendingDown, Tag, FileBarChart, History, CalendarClock, Landmark,
+  LayoutDashboard, Tag, FileBarChart, History, CalendarClock, Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFinancial } from '@/hooks/useFinancial';
@@ -18,9 +18,7 @@ import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const allTabs = [
   { key: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
-  { key: 'receitas', label: 'Receitas', icon: TrendingUp },
-  { key: 'despesas', label: 'Despesas', icon: TrendingDown },
-  { key: 'historico', label: 'Histórico', icon: History },
+  { key: 'historico', label: 'Movimentações', icon: History },
   { key: 'contas', label: 'Contas', icon: CalendarClock, module: 'finance_advanced' as const },
   { key: 'bancos', label: 'Caixas e Bancos', icon: Landmark, module: 'finance_advanced' as const },
   { key: 'categorias', label: 'Categorias', icon: Tag },
@@ -141,40 +139,13 @@ export default function Finance() {
             />
           )}
 
-          {activeTab === 'receitas' && (
-            <TransactionListPanel
-              title="Receitas"
-              type="entrada"
-              transactions={filteredTransactions}
-              isLoading={isLoading}
-              onNew={() => handleNew('entrada')}
-              onEdit={handleEdit}
-              onDelete={(id) => deleteTransaction.mutateAsync(id)}
-              onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
-              buttonColor="bg-success hover:bg-success/90 text-white"
-            />
-          )}
-
-          {activeTab === 'despesas' && (
-            <TransactionListPanel
-              title="Despesas"
-              type="saida"
-              transactions={filteredTransactions}
-              isLoading={isLoading}
-              onNew={() => handleNew('saida')}
-              onEdit={handleEdit}
-              onDelete={(id) => deleteTransaction.mutateAsync(id)}
-              onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
-              buttonColor="bg-destructive hover:bg-destructive/90 text-white"
-            />
-          )}
-
           {activeTab === 'historico' && (
             <TransactionListPanel
-              title="Histórico"
+              title="Movimentações"
               type="all"
               transactions={filteredTransactions}
               isLoading={isLoading}
+              onNew={() => handleNew('entrada')}
               onEdit={handleEdit}
               onDelete={(id) => deleteTransaction.mutateAsync(id)}
               onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
