@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown, Landmark, CreditCard } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -32,6 +33,14 @@ const CHART_COLORS = [
 ];
 
 export function FinanceOverview({ transactions, summary, onNavigate, onNewReceita, onNewDespesa }: FinanceOverviewProps) {
+  const { accounts, balances } = useFinancialAccounts();
+  const activeAccounts = accounts.filter(a => a.is_active);
+
+  const getTypeIcon = (type: string) => {
+    if (type === 'caixa') return Wallet;
+    if (type === 'cartao') return CreditCard;
+    return Landmark;
+  };
   // Category breakdown for chart
   const categoryMap = new Map<string, number>();
   transactions.forEach((t) => {
@@ -150,6 +159,34 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           </CardContent>
         </Card>
       </div>
+
+      {/* Account balances */}
+      {activeAccounts.length > 0 && (
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70 mb-3">Saldo por Conta</h3>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {activeAccounts.map(a => {
+              const Icon = getTypeIcon(a.type);
+              const balance = balances[a.id] ?? a.initial_balance;
+              return (
+                <Card key={a.id} className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('bancos')}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="rounded-full p-2 shrink-0" style={{ backgroundColor: a.color }}>
+                      <Icon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground truncate">{a.name}</p>
+                      <p className={`text-sm font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(balance)}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
