@@ -59,7 +59,7 @@ export function TransactionListPanel({
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [accountFilter, setAccountFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
   const isMobile = useIsMobile();
 
@@ -69,13 +69,22 @@ export function TransactionListPanel({
     return Array.from(cats).sort();
   }, [transactions]);
 
+  const accountNames = useMemo(() => {
+    const map = new Map<string, { name: string; type: string; color: string }>();
+    transactions.forEach((t) => {
+      const acc = (t as any).account;
+      if (acc) map.set(acc.id, { name: acc.name, type: acc.type, color: acc.color });
+    });
+    return map;
+  }, [transactions]);
+
   const effectiveType = type === 'all' ? typeFilter : type;
 
   const filtered = transactions
     .filter((t) => effectiveType === 'all' || t.transaction_type === effectiveType)
     .filter((t) => categoryFilter === 'all' || t.category === categoryFilter)
     .filter((t) => statusFilter === 'all' || (statusFilter === 'paid' ? t.is_paid : !t.is_paid))
-    .filter((t) => paymentFilter === 'all' || (t as any).payment_method === paymentFilter)
+    .filter((t) => accountFilter === 'all' || (t as any).account_id === accountFilter)
     .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
@@ -96,7 +105,7 @@ export function TransactionListPanel({
   };
 
   const handleExportCSV = () => {
-    const headers = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Valor', 'Status', 'Forma de Pagamento', 'Parcela'];
+    const headers = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Valor', 'Status', 'Conta', 'Parcela'];
     const rows = filtered.map((t) => [
       t.transaction_date,
       t.transaction_type === 'entrada' ? 'Receita' : 'Despesa',
@@ -104,7 +113,7 @@ export function TransactionListPanel({
       t.category || '',
       Number(t.amount).toFixed(2).replace('.', ','),
       t.is_paid ? 'Pago' : 'Pendente',
-      PAYMENT_METHOD_LABELS[(t as any).payment_method] || '',
+      (t as any).account?.name || '',
       (t as any).installment_number ? `${(t as any).installment_number}/${(t as any).installment_total}` : '',
     ]);
     const csv = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
@@ -187,11 +196,18 @@ export function TransactionListPanel({
             <SelectItem value="pending">Pendente</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-          <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Pagamento" /></SelectTrigger>
+        <Select value={accountFilter} onValueChange={setAccountFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Conta" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas formas</SelectItem>
-            {Object.entries(PAYMENT_METHOD_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            <SelectItem value="all">Todas contas</SelectItem>
+            {Array.from(accountNames.entries()).map(([id, acc]) => (
+              <SelectItem key={id} value={id}>
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: acc.color }} />
+                  {acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name}
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -225,8 +241,11 @@ export function TransactionListPanel({
                       </p>
                       {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
                       <div className="flex items-center gap-1 mt-0.5">
-                        {(t as any).payment_method && (
-                          <Badge variant="outline" className="text-[10px]">{PAYMENT_METHOD_LABELS[(t as any).payment_method] || (t as any).payment_method}</Badge>
+                        {(t as any).account && (
+                          <Badge variant="outline" className="text-[10px] flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
+                            {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
+                          </Badge>
                         )}
                         {renderReceiptLink(t)}
                       </div>
@@ -277,7 +296,7 @@ export function TransactionListPanel({
                     {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
                     <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Categoria</SortableTableHead>
-                    <SortableTableHead sortKey="payment_method" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Pagamento</SortableTableHead>
+                    <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Conta</SortableTableHead>
                     <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
                     <SortableTableHead sortKey="is_paid" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                     <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">Ações</SortableTableHead>
@@ -312,9 +331,10 @@ export function TransactionListPanel({
                         {t.category && <Badge variant="outline">{t.category}</Badge>}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        {(t as any).payment_method && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            {PAYMENT_METHOD_LABELS[(t as any).payment_method] || (t as any).payment_method}
+                        {(t as any).account && (
+                          <Badge variant="secondary" className="text-[10px] flex items-center gap-1 w-fit">
+                            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
+                            {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
                           </Badge>
                         )}
                       </TableCell>
