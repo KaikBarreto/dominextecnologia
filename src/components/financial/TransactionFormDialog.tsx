@@ -149,6 +149,8 @@ export function TransactionFormDialog({
       payment_method: data.payment_method || null,
       account_id: data.account_id || null,
     };
+    if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
+    if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
     await onSubmit(payload);
     draft.clearDraft();
     form.reset();
