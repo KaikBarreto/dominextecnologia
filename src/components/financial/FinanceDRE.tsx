@@ -25,9 +25,12 @@ interface CategoryBreakdown {
   color: string;
 }
 
-export function FinanceDRE({ transactions }: FinanceDREProps) {
+export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
+
+  // Filter out inter-account transfers from DRE
+  const transactions = useMemo(() => rawTransactions.filter(t => !t.transfer_pair_id), [rawTransactions]);
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
   const [showOpex, setShowOpex] = useState(false);

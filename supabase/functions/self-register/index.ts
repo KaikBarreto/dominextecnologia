@@ -137,6 +137,14 @@ Deno.serve(async (req) => {
       .from('financial_categories')
       .insert(defaultCategories.map(c => ({ ...c, company_id: company.id })));
 
+    // Seed default financial accounts
+    await supabaseAdmin
+      .from('financial_accounts')
+      .insert([
+        { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
+        { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
+      ]);
+
     return new Response(
       JSON.stringify({
         success: true,
