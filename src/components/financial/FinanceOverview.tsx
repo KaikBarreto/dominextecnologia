@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Wallet, Plus } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { TrendingUp, TrendingDown, Wallet, Plus, Clock, FileDown } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,7 +43,44 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
 
+  // Cash flow bar chart data (monthly)
+  const cashFlowMap = new Map<string, { month: string; entradas: number; saidas: number }>();
+  transactions.forEach((t) => {
+    const d = t.transaction_date;
+    const key = d.substring(0, 7); // "2026-03"
+    if (!cashFlowMap.has(key)) {
+      const [y, m] = key.split('-');
+      cashFlowMap.set(key, { month: `${m}/${y.slice(2)}`, entradas: 0, saidas: 0 });
+    }
+    const entry = cashFlowMap.get(key)!;
+    if (t.transaction_type === 'entrada') entry.entradas += Number(t.amount);
+    else entry.saidas += Number(t.amount);
+  });
+  const cashFlowData = Array.from(cashFlowMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, v]) => v);
+
   const recentTransactions = transactions.slice(0, 8);
+
+  const handleExportCSV = () => {
+    const headers = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Valor', 'Status'];
+    const rows = transactions.map((t) => [
+      t.transaction_date,
+      t.transaction_type === 'entrada' ? 'Receita' : 'Despesa',
+      `"${(t.description || '').replace(/"/g, '""')}"`,
+      t.category || '',
+      Number(t.amount).toFixed(2).replace('.', ','),
+      t.is_paid ? 'Pago' : 'Pendente',
+    ]);
+    const csv = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'transacoes.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
@@ -92,6 +129,28 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
         </Card>
       </div>
 
+      {/* Pending Cards */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+        <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
+          <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
+              <p className="text-lg font-bold text-success">{formatCurrency(summary.aReceber)}</p>
+            </div>
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
+          <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Pagar</p>
+              <p className="text-lg font-bold text-destructive">{formatCurrency(summary.aPagar)}</p>
+            </div>
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
         <Button size="sm" className="bg-success hover:bg-success/90 text-white gap-2" onClick={onNewReceita}>
@@ -102,7 +161,35 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Nova</span> Despesa
         </Button>
+        <Button size="sm" variant="outline" className="gap-2" onClick={handleExportCSV}>
+          <FileDown className="h-4 w-4" />
+          Exportar CSV
+        </Button>
       </div>
+
+      {/* Cash Flow Bar Chart */}
+      {cashFlowData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
+              Fluxo de Caixa
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={cashFlowData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Legend />
+                <Bar dataKey="entradas" name="Receitas" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="saidas" name="Despesas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Category Chart */}
