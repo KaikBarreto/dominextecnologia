@@ -82,11 +82,22 @@ export default function Finance() {
     setFormOpen(true);
   };
 
+  const PAGE_META: Record<string, { title: string; description: string }> = {
+    'visao-geral': { title: 'Visão Geral', description: 'Resumo financeiro da sua empresa' },
+    'historico': { title: 'Movimentações', description: 'Histórico completo de receitas e despesas' },
+    'contas': { title: 'Contas a Pagar / Receber', description: 'Gerencie vencimentos e cobranças' },
+    'bancos': { title: 'Caixas e Bancos', description: 'Gerencie suas contas bancárias e saldos' },
+    'categorias': { title: 'Categorias', description: 'Organize suas receitas e despesas por categoria' },
+    'dre': { title: 'DRE — Demonstrativo de Resultado', description: 'Análise de resultado do exercício' },
+  };
+
+  const meta = PAGE_META[activeTab] || PAGE_META['visao-geral'];
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Financeiro</h1>
-        <p className="text-muted-foreground">Controle completo de receitas, despesas e resultados</p>
+        <h1 className="text-2xl font-bold">{meta.title}</h1>
+        <p className="text-muted-foreground">{meta.description}</p>
       </div>
 
       <DateRangeFilter
