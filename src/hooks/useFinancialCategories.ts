@@ -39,9 +39,25 @@ export function useFinancialCategories() {
       const { data, error } = await supabase
         .from('financial_categories')
         .select('*')
+        .order('sort_order', { ascending: true })
         .order('name');
       if (error) throw error;
       return (data as any[]) as FinancialCategory[];
+    },
+  });
+
+  const reorderCategories = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from('financial_categories')
+          .update({ sort_order: u.sort_order } as any)
+          .eq('id', u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['financial-categories'] });
     },
   });
 
@@ -104,5 +120,6 @@ export function useFinancialCategories() {
     createCategory,
     updateCategory,
     deleteCategory,
+    reorderCategories,
   };
 }

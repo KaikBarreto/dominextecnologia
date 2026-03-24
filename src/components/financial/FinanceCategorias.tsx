@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -10,13 +10,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { getCategoryIcon } from './categoryIcons';
+import { cn } from '@/lib/utils';
 
 export function FinanceCategorias() {
-  const { categories, isLoading, createCategory, updateCategory, deleteCategory } = useFinancialCategories();
+  const { categories, isLoading, createCategory, updateCategory, deleteCategory, reorderCategories } = useFinancialCategories();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialCategory | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [defaultType, setDefaultType] = useState<string>('entrada');
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   const receitas = categories.filter((c) => c.type === 'entrada' || c.type === 'ambos');
   const despesas = categories.filter((c) => c.type === 'saida' || c.type === 'ambos');
@@ -50,36 +53,87 @@ export function FinanceCategorias() {
     }
   };
 
+  const handleDragStart = useCallback((idx: number) => {
+    setDragIdx(idx);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setDragOverIdx(idx);
+  }, []);
+
+  const handleDrop = useCallback((items: FinancialCategory[], idx: number) => {
+    if (dragIdx === null || dragIdx === idx) {
+      setDragIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const reordered = [...items];
+    const [moved] = reordered.splice(dragIdx, 1);
+    reordered.splice(idx, 0, moved);
+    const updates = reordered.map((c, i) => ({ id: c.id, sort_order: i }));
+    reorderCategories.mutate(updates);
+    setDragIdx(null);
+    setDragOverIdx(null);
+  }, [dragIdx, reorderCategories]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragIdx(null);
+    setDragOverIdx(null);
+  }, []);
+
   const renderCategoryList = (items: FinancialCategory[]) => (
-    <div className="space-y-2">
-      {items.map((cat) => {
+    <div className="space-y-1.5">
+      {items.map((cat, idx) => {
         const Icon = getCategoryIcon(cat.icon);
         const isSystem = cat.is_system;
+        const isDragging = dragIdx === idx;
+        const isDragOver = dragOverIdx === idx;
         return (
-          <div key={cat.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+          <div
+            key={cat.id}
+            draggable={!isSystem}
+            onDragStart={() => handleDragStart(idx)}
+            onDragOver={(e) => handleDragOver(e, idx)}
+            onDrop={() => handleDrop(items, idx)}
+            onDragEnd={handleDragEnd}
+            className={cn(
+              'group flex items-center justify-between rounded-xl border border-border px-4 py-3 transition-all duration-200',
+              'hover:shadow-md hover:border-primary/20 hover:bg-accent/30',
+              isDragging && 'opacity-40 scale-95',
+              isDragOver && 'border-primary border-dashed bg-primary/5',
+              !isSystem && 'cursor-grab active:cursor-grabbing',
+            )}
+          >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: cat.color }}>
+              {!isSystem && (
+                <GripVertical className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
+              )}
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0 shadow-sm"
+                style={{ backgroundColor: cat.color }}
+              >
                 <Icon className="h-4 w-4 text-white" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-medium">{cat.name}</span>
+                <span className="font-medium text-sm">{cat.name}</span>
                 {isSystem && (
                   <Tooltip>
                     <TooltipTrigger>
-                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Lock className="h-3 w-3 text-muted-foreground" />
                     </TooltipTrigger>
-                    <TooltipContent>Categoria do sistema (não pode ser editada ou excluída)</TooltipContent>
+                    <TooltipContent>Categoria do sistema</TooltipContent>
                   </Tooltip>
                 )}
               </div>
             </div>
             {!isSystem && (
-              <div className="flex gap-1">
-                <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(cat)}>
-                  <Pencil className="h-4 w-4" />
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEdit(cat)}>
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(cat.id)}>
-                  <Trash2 className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleteId(cat.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
@@ -115,7 +169,7 @@ export function FinanceCategorias() {
                 </div>
                 <div>
                   <h3 className="font-bold">Categorias de Receita</h3>
-                  <p className="text-xs text-muted-foreground">{receitas.length} categorias</p>
+                  <p className="text-xs text-muted-foreground">{receitas.length} categorias · arraste para reordenar</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleNew('entrada')}>
@@ -136,7 +190,7 @@ export function FinanceCategorias() {
                 </div>
                 <div>
                   <h3 className="font-bold">Categorias de Despesa</h3>
-                  <p className="text-xs text-muted-foreground">{despesas.length} categorias</p>
+                  <p className="text-xs text-muted-foreground">{despesas.length} categorias · arraste para reordenar</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleNew('saida')}>
