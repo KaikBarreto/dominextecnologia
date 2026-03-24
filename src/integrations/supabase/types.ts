@@ -1323,9 +1323,13 @@ export type Database = {
           description: string
           due_date: string | null
           id: string
+          installment_group_id: string | null
+          installment_number: number | null
+          installment_total: number | null
           is_paid: boolean | null
           notes: string | null
           paid_date: string | null
+          payment_method: string | null
           receipt_url: string | null
           service_order_id: string | null
           transaction_date: string
@@ -1342,9 +1346,13 @@ export type Database = {
           description: string
           due_date?: string | null
           id?: string
+          installment_group_id?: string | null
+          installment_number?: number | null
+          installment_total?: number | null
           is_paid?: boolean | null
           notes?: string | null
           paid_date?: string | null
+          payment_method?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
           transaction_date?: string
@@ -1361,9 +1369,13 @@ export type Database = {
           description?: string
           due_date?: string | null
           id?: string
+          installment_group_id?: string | null
+          installment_number?: number | null
+          installment_total?: number | null
           is_paid?: boolean | null
           notes?: string | null
           paid_date?: string | null
+          payment_method?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
           transaction_date?: string
