@@ -129,7 +129,7 @@ export function AppSidebar() {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>(() => {
     return menuItems
-      .filter(item => item.children?.some(c => location.pathname === c.path))
+      .filter(item => item.children?.some(c => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))))
       .map(item => item.title);
   });
   const menuScrollRef = useRef<HTMLDivElement>(null);
