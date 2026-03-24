@@ -160,7 +160,7 @@ export function AppSidebar() {
   const filteredSystemMenu = isSuperAdmin ? [] : filterByAccess(systemMenuItems);
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
-    children?.some((c) => location.pathname === c.path) ?? false;
+    children?.some((c) => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))) ?? false;
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) =>
