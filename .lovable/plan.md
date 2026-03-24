@@ -1,66 +1,100 @@
 
 
+# Análise: O que falta no módulo Financeiro
 
-## Plan: Módulo Contratos (ex-PMOC) — Implementado ✅
-
-### Implementado
-
-1. **Banco de dados**: Tabelas `contracts`, `contract_items`, `contract_occurrences` criadas com RLS por `company_id`. Colunas `contract_id` e `origin` adicionadas a `service_orders`.
-
-2. **Hooks**: `useContracts.ts` (CRUD, stats, geração de OSs em batch) e `useContractDetail.ts` (detalhe, ocorrências, progresso).
-
-3. **ContractFormDialog**: Sheet lateral com stepper de 4 etapas (Informações → Frequência → Itens → Revisão). Atalhos rápidos de frequência, prévia de datas, aviso de fins de semana, itens manuais.
-
-4. **Páginas**: `/contratos` (listagem com KPIs, filtros, tabela) e `/contratos/:id` (detalhe 2 colunas com progresso e ocorrências).
-
-5. **Navegação**: PMOC → Contratos em sidebar, topbar, mobile menu. Rota `/pmoc` redireciona para `/contratos`. Permissão `screen:contracts`.
-
-### Tabelas PMOC antigas mantidas (sem perda de dados)
+## O que já existe (bem implementado)
+- CRUD de receitas e despesas com categorias customizáveis
+- Visão geral com gráfico de pizza por categoria
+- Contas a pagar/receber com alertas de vencimento
+- DRE com classificação por dre_group (impostos, CMV, OPEX)
+- Categorias com ícones/cores, sistema de seed por tenant
+- Recorrência em contas (semanal, mensal, anual)
+- Exclusão em massa, filtro por período, paginação
+- Exportação do DRE em HTML
 
 ---
 
-## Plan: Feriados na Agenda + Melhorias Mapa ao Vivo — Implementado ✅
+## O que falta — Funcionalidades
 
-### Implementado
+### 1. Fluxo de Caixa mensal (gráfico de barras)
+O componente `DashboardCashFlow` já existe no Dashboard, mas **não existe dentro do módulo Financeiro**. A Visão Geral deveria ter um gráfico de barras entradas vs saídas por mês, não só o pizza de categorias.
 
-1. **Feriados**: `src/utils/holidays.ts` com cálculo de feriados nacionais (fixos + móveis como Carnaval, Corpus Christi, Páscoa) e municipais (capitais e cidades maiores). Integrado em todos os calendários (Mês, Semana, Dia, Agenda Mobile).
+### 2. Anexo de comprovantes
+A tabela já tem `receipt_url` mas **o formulário não permite upload de comprovante/nota fiscal**. Falta:
+- Campo de upload de arquivo no `TransactionFormDialog`
+- Visualização do comprovante na listagem (ícone clicável)
+- Bucket de storage para comprovantes financeiros
 
-2. **Toggle Feriados**: Nova seção "Agenda" em Configurações > Usabilidade com switch `showHolidays` (padrão: ativado).
+### 3. Exportação de dados
+- Exportar listagem de transações em **CSV/Excel**
+- Exportar relatório de contas a pagar/receber
 
-3. **Base da Empresa no Mapa**: Marcador teal com ícone de casa mostrando a localização da empresa (geocodificação automática via Nominatim). Incluído nos bounds do mapa.
+### 4. Método de pagamento
+- Campo para registrar **forma de pagamento** (PIX, boleto, cartão, dinheiro, transferência)
+- Filtro por método de pagamento na listagem
 
-4. **Popups Maiores + Click-to-Pin**: Tooltip pequeno no hover, popup maior e persistente no clique (fecha com X nativo do Leaflet). CSS customizado para popups com border-radius e shadow.
+### 5. Centro de custo / Conta bancária
+- Poder categorizar transações por **conta bancária** (Caixa, Banco X, Banco Y)
+- Saldo por conta
+- Transferências entre contas
 
-5. **Legenda atualizada**: Adicionado item "Base da empresa" na legenda do mapa.
+### 6. Parcelamento
+- Ao criar uma despesa/receita, permitir **parcelar em N vezes**
+- Gerar automaticamente N transações com vencimentos mensais
+- Agrupar parcelas visualmente (ex: "2/6")
+
+### 7. Notas / Observações visíveis
+- O campo `notes` existe na tabela mas **não aparece no formulário nem na listagem**
 
 ---
 
-## Plan: Sistema Modular de Assinatura com Feature Gating — Em Progresso 🔄
+## O que falta — UI/UX
 
-### Implementado ✅
+### 8. Gráfico de evolução na Visão Geral
+- Linha temporal mostrando evolução do saldo ao longo do tempo
+- Cards de "A Pagar" e "A Receber" na visão geral (existem no summary mas não como cards clicáveis)
 
-1. **Banco de Dados**: Tabelas `subscription_modules` (catálogo) e `company_modules` (ativações por empresa) criadas com RLS. Coluna `included_modules` adicionada a `subscription_plans`. Coluna `extra_users` adicionada a `companies`. Seed de 9 módulos/adicionais.
+### 9. Indicadores de tendência
+- Comparação com período anterior (ex: "receitas +12% vs mês passado")
+- Seta de tendência nos cards de resumo
 
-2. **Hook `useCompanyModules`**: Busca módulos ativos da empresa, expõe `hasModule(code)`. Super admins têm acesso total.
+### 10. Filtro por categoria na listagem
+- Além da busca textual, ter um **dropdown de filtro por categoria**
+- Filtro por status (pago/pendente) nas abas de receitas e despesas
 
-3. **`ModuleGateModal`**: Modal reutilizável com nome, descrição, preço e botão "Contratar Agora" → redireciona para `/assinatura`.
+### 11. Valor formatado no input
+- O campo de valor usa `type="number"` — deveria usar **máscara monetária** (R$ 1.234,56)
 
-4. **Feature Gating — Financeiro**: Abas "Contas" e "DRE" só aparecem com `finance_advanced`. Modal de gate ao tentar acessar.
+### 12. Vinculação visível com OS/Contrato/Cliente
+- Na listagem, mostrar badges linkáveis para OS, contrato ou cliente vinculado
+- Poder filtrar por cliente
 
-5. **Feature Gating — Precificação**: Abas "Custos dos Serviços" e "Custos Globais" em Serviços, e aba "Precificação" em Orçamentos, só com `pricing_advanced`.
+### 13. Confirmação de pagamento mais rica
+- Ao marcar como pago, permitir informar **data do pagamento** e **método** (hoje marca com data atual automaticamente)
 
-6. **Feature Gating — CRM e RH**: Rotas `/crm` e `/funcionarios` protegidas via `ModuleRoute`. Itens do sidebar filtrados por `moduleKey`.
+---
 
-7. **Feature Gating — White Label**: Seção de White Label em Configurações mostra convite de contratação se módulo não ativo.
+## Priorização sugerida (impacto x esforço)
 
-8. **Sidebar**: Itens de menu filtrados por `moduleKey` além de `screenKey`.
+| Prioridade | Item | Esforço |
+|------------|------|---------|
+| Alta | Fluxo de caixa na visão geral | Baixo |
+| Alta | Anexo de comprovantes | Médio |
+| Alta | Parcelamento | Médio |
+| Alta | Máscara monetária no input | Baixo |
+| Alta | Campo de notas no formulário | Baixo |
+| Média | Filtro por categoria | Baixo |
+| Média | Exportação CSV | Baixo |
+| Média | Método de pagamento | Médio |
+| Média | Indicadores de tendência | Médio |
+| Baixa | Centro de custo / contas bancárias | Alto |
+| Baixa | Transferências entre contas | Alto |
 
-9. **Checkout Modular**: 3 planos pré-montados (Essencial R$200, Avançado R$350, Master R$650) + modo "Monte o Seu" com checkboxes de módulos, contador de usuários extras e cálculo automático.
+---
 
-10. **Billing (Assinatura)**: Mostra módulos ativos e disponíveis com cards visuais e CTA de contratação.
+## Plano de implementação
 
-### Pendente 🔲
+Posso implementar em ordem de prioridade. Sugiro começar pelo bloco de **quick wins** (fluxo de caixa, máscara monetária, notas, filtro por categoria) e depois partir para os médios (comprovantes, parcelamento, método de pagamento).
 
-- Admin: gestão de módulos por empresa no painel super admin
-- Landing Page: atualizar PricingSection com novos planos e tabela comparativa
-- MobileMenu: filtrar itens por moduleKey (similar ao sidebar)
+Qual bloco você quer que eu implemente primeiro?
+
