@@ -37,6 +37,7 @@ const transactionSchema = z.object({
   amount: z.coerce.number().positive('Valor deve ser positivo'),
   transaction_date: z.string().min(1, 'Data é obrigatória'),
   is_paid: z.boolean().default(true),
+  notes: z.string().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -105,6 +106,7 @@ export function TransactionFormDialog({
           amount: transaction?.amount ?? 0,
           transaction_date: transaction?.transaction_date ?? new Date().toISOString().split('T')[0],
           is_paid: transaction?.is_paid ?? true,
+          notes: transaction?.notes ?? '',
         });
       }
     }
@@ -148,6 +150,7 @@ export function TransactionFormDialog({
             amount: 0,
             transaction_date: new Date().toISOString().split('T')[0],
             is_paid: true,
+            notes: '',
           });
         }}
       />
@@ -238,19 +241,34 @@ export function TransactionFormDialog({
             )}
           />
 
-          {/* Amount */}
+          {/* Amount with currency mask */}
           <FormField
             control={form.control}
             name="amount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valor (R$)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" placeholder="0,00" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                const raw = e.target.value.replace(/\D/g, '');
+                const numericValue = parseInt(raw || '0', 10) / 100;
+                field.onChange(numericValue);
+              };
+              const displayValue = field.value
+                ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '';
+              return (
+                <FormItem>
+                  <FormLabel>Valor (R$)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="0,00"
+                      value={displayValue}
+                      onChange={handleCurrencyChange}
+                      inputMode="numeric"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           {/* Description */}
@@ -277,6 +295,21 @@ export function TransactionFormDialog({
                 <FormLabel>Data</FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Notes */}
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Observações</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Anotações internas (opcional)" rows={2} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
