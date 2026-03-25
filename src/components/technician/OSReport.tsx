@@ -161,7 +161,10 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
       .eq('service_order_id', serviceOrder.id);
-    if (data) setFormResponses(data as any);
+    if (data) {
+      const sorted = [...(data as any[])].sort((a, b) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
+      setFormResponses(sorted);
+    }
   };
 
   const formatCurrency = (value: number | null | undefined) => {
