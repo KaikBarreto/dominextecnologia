@@ -75,7 +75,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
       setPhotos(photosData || []);
       if (osData.form_template_id) {
         const { data: responsesData } = await supabase.from('form_responses').select(`id, question_id, response_value, response_photo_url, question:form_questions(*)`).eq('service_order_id', serviceOrderId);
-        setFormResponses((responsesData as any) || []);
+        const sorted = [...(responsesData || [])].sort((a: any, b: any) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
+        setFormResponses(sorted as any);
       }
     } catch (error) { console.error('Error fetching OS data:', error); }
     finally { setLoading(false); }
