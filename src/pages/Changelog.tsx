@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.14',
+    date: '26 de março de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Texto preservado em perguntas combinadas',
+        description: 'Corrigido bug onde o envio de foto em perguntas com múltiplos tipos de resposta (foto + texto) apagava o texto já digitado pelo técnico.',
+        category: 'correcao',
+      },
+      {
+        title: 'Categoria e marca no cabeçalho dos questionários',
+        description: 'O cabeçalho de cada equipamento nos questionários agora exibe badge colorido da categoria, marca/modelo e localização — tanto na visão do técnico, link público e relatório PDF.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Equipamentos com accordion no link público',
+        description: 'Quando a OS tem mais de 3 equipamentos, a lista é exibida dentro de um accordion fechado por padrão. Agora também mostra foto clicável, categoria, marca e local.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ordenação correta dos questionários',
+        description: 'As respostas dos questionários no link público e na visualização interna agora respeitam a ordem de posição configurada no template.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.13',
     date: '24 de março de 2026',
     type: 'patch',
