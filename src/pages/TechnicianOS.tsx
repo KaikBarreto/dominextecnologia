@@ -1043,9 +1043,21 @@ export default function TechnicianOS() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {item.equipment?.name || 'Equipamento'}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm truncate">
+                                {item.equipment?.name || 'Equipamento'}
+                              </p>
+                              {item.equipment?.category && (
+                                <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: item.equipment.category.color }}>
+                                  {item.equipment.category.name}
+                                </Badge>
+                              )}
+                            </div>
+                            {item.equipment?.brand && (
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                {item.equipment.brand} {item.equipment.model}
+                              </p>
+                            )}
                             {item.equipment?.location && (
                               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                                 <MapPinned className="h-3 w-3 shrink-0" />
