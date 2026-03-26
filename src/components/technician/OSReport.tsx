@@ -414,6 +414,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
       clone?.remove();
+      setOpenQuestionnaireItems(prevOpen);
       setGenerating(false);
     }
   };
