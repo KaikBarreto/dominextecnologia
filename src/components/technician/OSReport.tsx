@@ -45,7 +45,7 @@ interface CompanyData {
 interface EquipmentItem {
   equipment_id: string;
   form_template_id: string | null;
-  equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null; category: { id: string; name: string; color: string } | null } | null;
   form_template: { id: string; name: string } | null;
 }
 
@@ -149,7 +149,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       .select(`
         equipment_id,
         form_template_id,
-        equipment:equipment(id, name, brand, model),
+        equipment:equipment(id, name, brand, model, category:equipment_categories(id, name, color)),
         form_template:form_templates(id, name)
       `)
       .eq('service_order_id', serviceOrder.id);
@@ -349,7 +349,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       }];
     }
     // Group by equipment_id (or fallback to template_id for legacy data)
-    const groups: { label: string; responses: FormResponseData[] }[] = [];
+    const groups: { label: string; responses: FormResponseData[]; categoryBadge?: { name: string; color: string } | null }[] = [];
     for (const item of equipmentItems) {
       if (!item.form_template_id) continue;
       const eqResponses = otherResponses.filter(r => {
@@ -363,7 +363,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         const label = item.equipment?.name 
           ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
           : (item.form_template?.name || 'Checklist');
-        groups.push({ label, responses: eqResponses });
+        const categoryBadge = item.equipment?.category || null;
+        groups.push({ label, responses: eqResponses, categoryBadge });
       }
     }
     // Any remaining responses not matched to a template
@@ -674,6 +675,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <div key={gi} data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
+                  {group.categoryBadge && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white normal-case" style={{ backgroundColor: group.categoryBadge.color }}>
+                      {group.categoryBadge.name}
+                    </span>
+                  )}
                 </h3>
                 <div className="space-y-2">
                   {nonEmptyResponses.map((response, idx) => renderResponseItem(response, idx))}
