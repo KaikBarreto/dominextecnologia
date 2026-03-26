@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.13";
+export const APP_VERSION = "1.5.14";
 
-export const VERSION_NOTES = "Financeiro com navegação por rotas, títulos individuais por seção e melhorias de organização";
+export const VERSION_NOTES = "Correção de texto em questionários combinados, badges de categoria nos equipamentos e accordion no link público";
