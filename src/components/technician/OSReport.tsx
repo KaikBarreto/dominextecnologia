@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Download, Printer, Building2, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2, Star } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2, Star } from 'lucide-react';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,46 @@ import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
-...
+
+interface OSPhoto {
+  id: string;
+  photo_url: string;
+  photo_type: string;
+  description: string | null;
+}
+
+interface FormResponseData {
+  id: string;
+  question_id: string;
+  response_value: string | null;
+  response_photo_url: string | null;
+  question: FormQuestion;
+}
+
+interface CompanyData {
+  name: string;
+  document?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  logo_url?: string | null;
+}
+
+interface EquipmentItem {
+  equipment_id: string;
+  form_template_id: string | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
+  form_template: { id: string; name: string } | null;
+}
+
+interface OSReportProps {
+  serviceOrder: ServiceOrder & { customer: any; equipment: any; form_template?: any };
+  photos: OSPhoto[];
+}
+
 export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
@@ -32,15 +71,61 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const printRestoreRef = useRef<string[] | null>(null);
   const { toast } = useToast();
 
+  const beforePhotos = photos.filter(p => p.photo_type === 'antes');
+  const duringPhotos = photos.filter(p => p.photo_type === 'durante');
+  const afterPhotos = photos.filter(p => p.photo_type === 'depois');
+
+  const checkInLoc = serviceOrder.check_in_location as { lat: number; lng: number } | null;
+  const checkOutLoc = serviceOrder.check_out_location as { lat: number; lng: number } | null;
+
+  const signatureResponses = formResponses.filter(r => r.question?.question_type === 'signature');
+  const otherResponses = formResponses.filter(r => r.question?.question_type !== 'signature');
+
+  const isResponseEmpty = (response: FormResponseData): boolean => {
+    const val = response.response_value;
+    const photo = response.response_photo_url;
+    if (response.question?.question_type === 'photo') return !photo;
+    if (response.question?.question_type === 'signature') return !val;
+    if (!val || val.trim() === '' || val.trim() === '-') return true;
+    return false;
+  };
+
+  const responsesByTemplate = (() => {
+    if (equipmentItems.length <= 1) {
+      return [{
+        label: serviceOrder.equipment?.name || (serviceOrder.form_template ? serviceOrder.form_template.name : 'Checklist'),
+        responses: otherResponses,
+      }];
+    }
+
+    const groups: { label: string; responses: FormResponseData[]; categoryBadge?: { name: string; color: string } | null }[] = [];
+    for (const item of equipmentItems) {
+      if (!item.form_template_id) continue;
+      const eqResponses = otherResponses.filter(r => {
+        if ((r as any).equipment_id) return (r as any).equipment_id === item.equipment_id;
+        return r.question?.template_id === item.form_template_id;
+      });
+      if (eqResponses.length > 0) {
+        const label = item.equipment?.name
+          ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
+          : (item.form_template?.name || 'Checklist');
+        groups.push({ label, responses: eqResponses, categoryBadge: item.equipment?.category || null });
+      }
+    }
+
+    const matchedIds = new Set(groups.flatMap(g => g.responses.map(r => r.id)));
+    const unmatched = otherResponses.filter(r => !matchedIds.has(r.id));
+    if (unmatched.length > 0) groups.push({ label: 'Outros', responses: unmatched });
+    return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
+  })();
+
   useEffect(() => {
     fetchCompany();
     fetchAllResponses();
     fetchRating();
     fetchEquipmentItems();
     fetchTechnician();
-    if ((serviceOrder as any).contract_id) {
-      fetchContract((serviceOrder as any).contract_id);
-    }
+    if ((serviceOrder as any).contract_id) fetchContract((serviceOrder as any).contract_id);
   }, [serviceOrder.id]);
 
   useEffect(() => {
@@ -71,26 +156,99 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
     window.addEventListener('beforeprint', openAllForPrint);
     window.addEventListener('afterprint', restoreAfterPrint);
-
     return () => {
       window.removeEventListener('beforeprint', openAllForPrint);
       window.removeEventListener('afterprint', restoreAfterPrint);
     };
   }, [openQuestionnaireItems, formResponses, equipmentItems.length]);
-...
-  const handlePrint = () => {
-    printRestoreRef.current = openQuestionnaireItems;
-    const validValues = responsesByTemplate
-      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
-      .filter(Boolean) as string[];
-    setOpenQuestionnaireItems(validValues);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.print();
-      });
+
+  const fetchTechnician = async () => {
+    let userId = serviceOrder.technician_id;
+    if (!userId) {
+      const { data: assignees } = await supabase.from('service_order_assignees').select('user_id').eq('service_order_id', serviceOrder.id).limit(1);
+      userId = (assignees as any)?.[0]?.user_id;
+    }
+    if (!userId) return;
+    const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
+    if (data) setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
+  };
+
+  const fetchRating = async () => {
+    const { data } = await supabase.from('service_ratings').select('*').eq('service_order_id', serviceOrder.id).maybeSingle();
+    if (data) setRatingData(data);
+  };
+
+  const fetchCompany = async () => {
+    const { data } = await supabase.from('company_settings').select('*').limit(1).single();
+    if (data) {
+      setCompany(data);
+      const d = data as any;
+      const wlEnabled = !!d.white_label_enabled;
+      setIsWhiteLabel(wlEnabled);
+      setHeaderConfig(wlEnabled ? {
+        bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+        textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
+        logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+        showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+        logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
+        statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+        logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
+      } : DEFAULT_HEADER_CONFIG);
+    }
+  };
+
+  const fetchContract = async (contractId: string) => {
+    const { data } = await supabase.from('contracts').select('id, name').eq('id', contractId).maybeSingle();
+    if (data) setContractInfo(data);
+  };
+
+  const fetchEquipmentItems = async () => {
+    const { data } = await supabase
+      .from('service_order_equipment')
+      .select(`
+        equipment_id,
+        form_template_id,
+        equipment:equipment(id, name, brand, model, location, photo_url, category:equipment_categories(id, name, color)),
+        form_template:form_templates(id, name)
+      `)
+      .eq('service_order_id', serviceOrder.id);
+    if (data) setEquipmentItems(data as unknown as EquipmentItem[]);
+  };
+
+  const fetchAllResponses = async () => {
+    const { data } = await supabase
+      .from('form_responses')
+      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
+      .eq('service_order_id', serviceOrder.id);
+    if (data) {
+      const sorted = [...(data as any[])].sort((a, b) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
+      setFormResponses(sorted);
+    }
+  };
+
+  const formatCurrency = (value: number | null | undefined) => {
+    if (!value) return '-';
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const handleCopyLink = () => {
+    const url = buildServiceOrderShareLink(serviceOrder.id);
+    navigator.clipboard.writeText(url).then(() => {
+      toast({ title: 'Link copiado!' });
+    }).catch(() => {
+      toast({ variant: 'destructive', title: 'Erro ao copiar link' });
     });
   };
-...
+
+  const handlePrint = () => {
+    printRestoreRef.current = openQuestionnaireItems;
+    const allValues = responsesByTemplate
+      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
+      .filter(Boolean) as string[];
+    setOpenQuestionnaireItems(allValues);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+  };
+
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
@@ -99,10 +257,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
-      const element = reportRef.current;
-
-      // Clone the element off-screen at fixed desktop width
-      clone = element.cloneNode(true) as HTMLElement;
+      clone = reportRef.current.cloneNode(true) as HTMLElement;
       clone.style.position = 'absolute';
       clone.style.left = '-9999px';
       clone.style.top = '0';
@@ -116,56 +271,30 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       clone.style.backgroundColor = '#ffffff';
       document.body.appendChild(clone);
 
-      // Wait for images to load in the clone
       const images = clone.querySelectorAll('img');
-      await Promise.all(
-        Array.from(images).map(
-          img =>
-            img.complete
-              ? Promise.resolve()
-              : new Promise(resolve => {
-                  img.onload = resolve;
-                  img.onerror = resolve;
-                })
-        )
-      );
+      await Promise.all(Array.from(images).map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      })));
 
-      // Force all accordions open in the clone for PDF capture
-      const closedItems = clone.querySelectorAll('[data-state="closed"]');
-      closedItems.forEach(item => {
-        item.setAttribute('data-state', 'open');
+      clone.querySelectorAll('[data-state="closed"]').forEach((item) => {
+        const el = item as HTMLElement;
+        el.setAttribute('data-state', 'open');
+        el.hidden = false;
       });
-      const hiddenContents = clone.querySelectorAll('[data-state="closed"][data-orientation], [data-state="closed"][hidden], [data-state="closed"]');
-      hiddenContents.forEach(item => {
+      clone.querySelectorAll('[role="region"], [data-radix-collapsible-content]').forEach((item) => {
         const el = item as HTMLElement;
         el.hidden = false;
+        el.setAttribute('data-state', 'open');
         el.style.display = 'block';
         el.style.height = 'auto';
         el.style.maxHeight = 'none';
         el.style.overflow = 'visible';
         el.style.opacity = '1';
       });
-      const allContent = clone.querySelectorAll('[data-radix-collection-item], [data-radix-collapsible-content], [role="region"]');
-      allContent.forEach(item => {
-        const el = item as HTMLElement;
-        if (el.getAttribute('data-state') === 'closed') {
-          el.setAttribute('data-state', 'open');
-        }
-        if (el.getAttribute('role') === 'region' || el.hasAttribute('data-radix-collapsible-content')) {
-          el.hidden = false;
-          el.style.display = 'block';
-          el.style.height = 'auto';
-          el.style.maxHeight = 'none';
-          el.style.overflow = 'visible';
-          el.style.opacity = '1';
-        }
-      });
 
-      // Force layout recalculation
       void clone.offsetHeight;
-
       const cloneFullHeight = clone.scrollHeight;
-
       const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
@@ -176,7 +305,6 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         height: cloneFullHeight,
       });
 
-      // Collect section boundaries from the clone to avoid cutting content
       const cloneRect = clone.getBoundingClientRect();
       const sections = clone.querySelectorAll('[data-pdf-section]');
       const sectionBottoms: number[] = [];
@@ -195,49 +323,34 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const margin = 10;
       const usableHeight = pdfHeight - margin * 2;
       const imgWidth = pdfWidth - margin * 2;
-      const scale = imgWidth / canvas.width; // mm per canvas pixel
+      const scale = imgWidth / canvas.width;
       const totalCanvasHeight = canvas.height;
       const pageHeightInCanvasPx = usableHeight / scale;
-      const canvasScale = canvas.width / 794; // html2canvas scale (2)
+      const canvasScale = canvas.width / 794;
 
-      // Determine page break points — snap to section boundaries
-      const pageBreaks: number[] = [0]; // start positions in canvas pixels
+      const pageBreaks: number[] = [0];
       let currentY = 0;
-
       while (currentY + pageHeightInCanvasPx < totalCanvasHeight) {
         let idealBreak = currentY + pageHeightInCanvasPx;
-
-        // Find the best section boundary to break at (last one that fits)
         let bestBreak = idealBreak;
         for (const secBottom of sectionBottoms) {
           const secBottomPx = secBottom * canvasScale;
           if (secBottomPx <= currentY) continue;
-          if (secBottomPx <= idealBreak) {
-            bestBreak = secBottomPx;
-          } else {
-            break;
-          }
+          if (secBottomPx <= idealBreak) bestBreak = secBottomPx;
+          else break;
         }
-
-        // If bestBreak didn't advance enough (section too tall), fall back to ideal break
-        if (bestBreak <= currentY + 10) {
-          bestBreak = idealBreak;
-        }
-
+        if (bestBreak <= currentY + 10) bestBreak = idealBreak;
         pageBreaks.push(bestBreak);
         currentY = bestBreak;
       }
       pageBreaks.push(totalCanvasHeight);
 
-      // Render each page by slicing the canvas
       for (let i = 0; i < pageBreaks.length - 1; i++) {
         if (i > 0) pdf.addPage();
-
         const sliceY = pageBreaks[i];
         const sliceH = pageBreaks[i + 1] - sliceY;
         if (sliceH <= 0) continue;
 
-        // Create a slice canvas
         const sliceCanvas = document.createElement('canvas');
         sliceCanvas.width = canvas.width;
         sliceCanvas.height = sliceH;
@@ -248,85 +361,20 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
         const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
         const sliceImgHeight = sliceH * scale;
-
         pdf.addImage(sliceImgData, 'JPEG', margin, margin, imgWidth, sliceImgHeight);
       }
 
       pdf.save(`OS-${String(serviceOrder.order_number).padStart(6, '0')}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao gerar PDF',
-        description: 'Não foi possível montar o relatório em PDF. Tente novamente.',
-      });
+      toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
       clone?.remove();
       setGenerating(false);
     }
   };
 
-  const beforePhotos = photos.filter(p => p.photo_type === 'antes');
-  const duringPhotos = photos.filter(p => p.photo_type === 'durante');
-  const afterPhotos = photos.filter(p => p.photo_type === 'depois');
-
-  const checkInLoc = serviceOrder.check_in_location as { lat: number; lng: number } | null;
-  const checkOutLoc = serviceOrder.check_out_location as { lat: number; lng: number } | null;
-
-  const signatureResponses = formResponses.filter(r => r.question?.question_type === 'signature');
-  const otherResponses = formResponses.filter(r => r.question?.question_type !== 'signature');
-
-  // Group responses by equipment_id for multi-equipment OS
-  const responsesByTemplate = (() => {
-    if (equipmentItems.length <= 1) {
-      // Single equipment or legacy: show flat
-      return [{ 
-        label: serviceOrder.equipment?.name || (serviceOrder.form_template ? serviceOrder.form_template.name : 'Checklist'),
-        responses: otherResponses 
-      }];
-    }
-    // Group by equipment_id (or fallback to template_id for legacy data)
-    const groups: { label: string; responses: FormResponseData[]; categoryBadge?: { name: string; color: string } | null }[] = [];
-    for (const item of equipmentItems) {
-      if (!item.form_template_id) continue;
-      const eqResponses = otherResponses.filter(r => {
-        if ((r as any).equipment_id) {
-          return (r as any).equipment_id === item.equipment_id;
-        }
-        // Legacy fallback: match by template_id
-        return r.question?.template_id === item.form_template_id;
-      });
-      if (eqResponses.length > 0) {
-        const label = item.equipment?.name 
-          ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
-          : (item.form_template?.name || 'Checklist');
-        const categoryBadge = item.equipment?.category || null;
-        groups.push({ label, responses: eqResponses, categoryBadge });
-      }
-    }
-    // Any remaining responses not matched to a template
-    const matchedIds = new Set(groups.flatMap(g => g.responses.map(r => r.id)));
-    const unmatched = otherResponses.filter(r => !matchedIds.has(r.id));
-    if (unmatched.length > 0) {
-      groups.push({ label: 'Outros', responses: unmatched });
-    }
-    return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
-  })();
-
-  const isResponseEmpty = (response: FormResponseData): boolean => {
-    const val = response.response_value;
-    const photo = response.response_photo_url;
-    // Photo type: empty if no photo
-    if (response.question?.question_type === 'photo') return !photo;
-    // Signature type: empty if no value
-    if (response.question?.question_type === 'signature') return !val;
-    // All others: empty if null, empty string, or just '-'
-    if (!val || val.trim() === '' || val.trim() === '-') return true;
-    return false;
-  };
-
   const renderResponseItem = (response: FormResponseData, idx: number) => {
-    // Skip blank/empty responses
     if (isResponseEmpty(response)) return null;
 
     return (
@@ -336,11 +384,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
           <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
           <div className="mt-1">
             {response.question?.question_type === 'boolean' ? (
-              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                response.response_value === 'true' 
-                  ? 'bg-emerald-100 text-emerald-700' 
-                  : 'bg-red-100 text-red-700'
-              }`}>
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                 {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                 {response.response_value === 'true' ? 'Sim' : 'Não'}
               </span>
@@ -350,19 +394,17 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                   <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(url.trim())} />
                 ))}
               </div>
+            ) : response.response_value?.includes('|||') ? (
+              <div className="flex flex-wrap gap-1.5 mt-0.5">
+                {response.response_value.split('|||').filter(Boolean).map((val, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    <Check className="h-3 w-3" />
+                    {val.trim()}
+                  </span>
+                ))}
+              </div>
             ) : (
-              response.response_value?.includes('|||') ? (
-                <div className="flex flex-wrap gap-1.5 mt-0.5">
-                  {response.response_value.split('|||').filter(Boolean).map((val, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                      <Check className="h-3 w-3" />
-                      {val.trim()}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-600 break-words">{response.response_value}</p>
-              )
+              <p className="text-sm text-slate-600 break-words">{response.response_value}</p>
             )}
           </div>
         </div>
