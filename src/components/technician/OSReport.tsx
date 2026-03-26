@@ -675,6 +675,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <div key={gi} data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
+                  {group.categoryBadge && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white normal-case" style={{ backgroundColor: group.categoryBadge.color }}>
+                      {group.categoryBadge.name}
+                    </span>
+                  )}
                 </h3>
                 <div className="space-y-2">
                   {nonEmptyResponses.map((response, idx) => renderResponseItem(response, idx))}
