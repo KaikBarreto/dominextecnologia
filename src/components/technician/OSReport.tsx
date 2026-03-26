@@ -45,7 +45,7 @@ interface CompanyData {
 interface EquipmentItem {
   equipment_id: string;
   form_template_id: string | null;
-  equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null; category: { id: string; name: string; color: string } | null } | null;
   form_template: { id: string; name: string } | null;
 }
 
@@ -149,7 +149,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       .select(`
         equipment_id,
         form_template_id,
-        equipment:equipment(id, name, brand, model),
+        equipment:equipment(id, name, brand, model, category:equipment_categories(id, name, color)),
         form_template:form_templates(id, name)
       `)
       .eq('service_order_id', serviceOrder.id);
