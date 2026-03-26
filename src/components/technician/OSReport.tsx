@@ -260,106 +260,43 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       .filter(Boolean) as string[];
     setOpenQuestionnaireItems(allValues);
 
+    // Also open equipment accordion
+    const equipAccordion = reportRef.current.querySelector('[data-state="closed"][value="equipment-list"]');
+    if (equipAccordion) {
+      equipAccordion.setAttribute('data-state', 'open');
+      const region = equipAccordion.querySelector('[role="region"]');
+      if (region) {
+        (region as HTMLElement).style.display = 'block';
+        (region as HTMLElement).style.height = 'auto';
+      }
+    }
+
     // Wait for React to re-render with all accordions open
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-    let clone: HTMLElement | null = null;
     try {
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
       const element = reportRef.current;
 
-      // Clone and copy computed styles for accurate off-screen rendering
-      clone = element.cloneNode(true) as HTMLElement;
-
-      // Copy computed styles from original to clone recursively
-      const copyStyles = (source: Element, target: Element) => {
-        const sourceStyles = window.getComputedStyle(source);
-        const targetEl = target as HTMLElement;
-        // Copy key visual properties
-        const propsToSet = [
-          'color', 'backgroundColor', 'background', 'backgroundImage',
-          'borderColor', 'borderWidth', 'borderStyle', 'borderRadius',
-          'padding', 'margin', 'font', 'fontSize', 'fontWeight', 'fontFamily',
-          'lineHeight', 'letterSpacing', 'textTransform', 'textAlign',
-          'display', 'flexDirection', 'alignItems', 'justifyContent', 'gap',
-          'gridTemplateColumns', 'opacity', 'boxShadow', 'textDecoration',
-        ];
-        for (const prop of propsToSet) {
-          try {
-            targetEl.style.setProperty(prop, sourceStyles.getPropertyValue(prop));
-          } catch {}
-        }
-        const sourceChildren = source.children;
-        const targetChildren = target.children;
-        for (let i = 0; i < sourceChildren.length && i < targetChildren.length; i++) {
-          copyStyles(sourceChildren[i], targetChildren[i]);
-        }
-      };
-
-      copyStyles(element, clone);
-
-      clone.style.position = 'absolute';
-      clone.style.left = '-9999px';
-      clone.style.top = '0';
-      clone.style.width = '794px';
-      clone.style.minWidth = '794px';
-      clone.style.maxWidth = '794px';
-      clone.style.overflow = 'visible';
-      clone.style.height = 'auto';
-      clone.style.opacity = '1';
-      clone.style.pointerEvents = 'none';
-      clone.style.backgroundColor = '#ffffff';
-      document.body.appendChild(clone);
-
-      // Wait for images to load in the clone
-      const images = clone.querySelectorAll('img');
-      await Promise.all(Array.from(images).map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
-        img.onload = resolve;
-        img.onerror = resolve;
-      })));
-
-      // Ensure all accordions are visually open in clone
-      clone.querySelectorAll('[data-state="closed"]').forEach((item) => {
-        const el = item as HTMLElement;
-        el.setAttribute('data-state', 'open');
-        el.hidden = false;
-      });
-      clone.querySelectorAll('[role="region"], [data-radix-collapsible-content]').forEach((item) => {
-        const el = item as HTMLElement;
-        el.hidden = false;
-        el.setAttribute('data-state', 'open');
-        el.style.display = 'block';
-        el.style.height = 'auto';
-        el.style.maxHeight = 'none';
-        el.style.overflow = 'visible';
-        el.style.opacity = '1';
-      });
-
-      void clone.offsetHeight;
-      const cloneFullHeight = clone.scrollHeight;
-      const canvas = await html2canvas(clone, {
+      // Capture the original element directly to preserve all styles
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        width: 794,
-        windowWidth: 794,
-        height: cloneFullHeight,
+        logging: false,
       });
 
-      const cloneRect = clone.getBoundingClientRect();
-      const sections = clone.querySelectorAll('[data-pdf-section]');
+      const elementRect = element.getBoundingClientRect();
+      const sections = element.querySelectorAll('[data-pdf-section]');
       const sectionBottoms: number[] = [];
       sections.forEach(sec => {
         const r = sec.getBoundingClientRect();
-        sectionBottoms.push(r.bottom - cloneRect.top);
+        sectionBottoms.push(r.bottom - elementRect.top);
       });
       sectionBottoms.sort((a, b) => a - b);
-
-      clone.remove();
-      clone = null;
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -370,7 +307,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const scale = imgWidth / canvas.width;
       const totalCanvasHeight = canvas.height;
       const pageHeightInCanvasPx = usableHeight / scale;
-      const canvasScale = canvas.width / 794;
+      const canvasScale = canvas.width / elementRect.width;
 
       const pageBreaks: number[] = [0];
       let currentY = 0;
@@ -413,7 +350,6 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       console.error('PDF generation error:', err);
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
-      clone?.remove();
       setOpenQuestionnaireItems(prevOpen);
       setGenerating(false);
     }
