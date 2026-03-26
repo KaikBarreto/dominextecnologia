@@ -1,0 +1,262 @@
+/**
+ * PDF Page Renderer — block-based A4 pagination system.
+ *
+ * Strategy:
+ * 1. Clone the report DOM into a hidden off-screen container with fixed A4 width.
+ * 2. Walk through top-level `[data-pdf-section]` blocks and measure heights.
+ * 3. Distribute blocks into pages so nothing is cut mid-block.
+ * 4. For each page, render only the assigned blocks inside an A4-sized div.
+ * 5. Capture each page with html2canvas → add to jsPDF.
+ *
+ * Large blocks (questionnaires with many items) are split by their children
+ * so individual responses are never cut.
+ */
+
+// A4 at 96 DPI ≈ 794 × 1123 px.  We use a slightly smaller content area for padding.
+const A4_WIDTH_PX = 794;
+const A4_HEIGHT_PX = 1123;
+const PAGE_PADDING = 32; // px each side
+const CONTENT_HEIGHT = A4_HEIGHT_PX - PAGE_PADDING * 2;
+
+interface BlockInfo {
+  element: HTMLElement;
+  height: number;
+}
+
+/**
+ * Measures the height of an element when placed in an A4-width container.
+ */
+function measureElement(el: HTMLElement, container: HTMLElement): number {
+  container.appendChild(el);
+  const h = el.offsetHeight;
+  container.removeChild(el);
+  return h;
+}
+
+/**
+ * Splits a large block (e.g. questionnaire accordion) into sub-blocks
+ * by its direct children so we can break between items.
+ */
+function splitLargeBlock(block: HTMLElement, maxHeight: number, measureContainer: HTMLElement): HTMLElement[] {
+  const children = Array.from(block.children) as HTMLElement[];
+  if (children.length <= 1) return [block];
+
+  const chunks: HTMLElement[] = [];
+  let currentChunk = block.cloneNode(false) as HTMLElement;
+  (currentChunk as HTMLElement).innerHTML = '';
+  let currentH = 0;
+
+  for (const child of children) {
+    const clone = child.cloneNode(true) as HTMLElement;
+    // Measure how tall this child is
+    const wrapper = block.cloneNode(false) as HTMLElement;
+    wrapper.innerHTML = '';
+    wrapper.appendChild(clone.cloneNode(true));
+    const childH = measureElement(wrapper, measureContainer);
+
+    if (currentH + childH > maxHeight && currentChunk.children.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = block.cloneNode(false) as HTMLElement;
+      (currentChunk as HTMLElement).innerHTML = '';
+      currentH = 0;
+    }
+    currentChunk.appendChild(clone);
+    currentH += childH;
+  }
+  if (currentChunk.children.length > 0) chunks.push(currentChunk);
+  return chunks.length > 0 ? chunks : [block];
+}
+
+/**
+ * Main export: generates a PDF from a report element.
+ *
+ * @param reportElement - The root report DOM element (the one with class print-report)
+ * @param filename - Output filename
+ */
+export async function generateReportPDF(reportElement: HTMLElement, filename: string): Promise<void> {
+  const html2canvas = (await import('html2canvas-pro')).default;
+  const { jsPDF } = await import('jspdf');
+
+  // 1. Create a hidden off-screen container with A4 width
+  const offscreen = document.createElement('div');
+  offscreen.style.cssText = `
+    position: fixed; left: -9999px; top: 0;
+    width: ${A4_WIDTH_PX}px;
+    background: white;
+    font-family: 'Montserrat', sans-serif;
+    z-index: -1;
+    overflow: hidden;
+  `;
+  document.body.appendChild(offscreen);
+
+  // Measurement container (same width, for measuring individual blocks)
+  const measureDiv = document.createElement('div');
+  measureDiv.style.cssText = `
+    position: fixed; left: -19999px; top: 0;
+    width: ${A4_WIDTH_PX}px;
+    background: white;
+    font-family: 'Montserrat', sans-serif;
+    z-index: -1;
+    overflow: hidden;
+  `;
+  document.body.appendChild(measureDiv);
+
+  try {
+    // 2. Clone the report
+    const clone = reportElement.cloneNode(true) as HTMLElement;
+    clone.style.width = `${A4_WIDTH_PX}px`;
+    clone.style.borderRadius = '0';
+    clone.style.overflow = 'visible';
+
+    // Force all accordions open in the clone
+    clone.querySelectorAll('[data-state="closed"]').forEach(el => {
+      el.setAttribute('data-state', 'open');
+    });
+    clone.querySelectorAll('[role="region"]').forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.style.display = 'block';
+      htmlEl.style.height = 'auto';
+      htmlEl.style.maxHeight = 'none';
+      htmlEl.style.overflow = 'visible';
+      htmlEl.style.opacity = '1';
+      htmlEl.style.visibility = 'visible';
+    });
+
+    // Remove print:hidden elements
+    clone.querySelectorAll('.print\\:hidden, [class*="print:hidden"]').forEach(el => el.remove());
+
+    // Place in measurement container to get computed styles
+    offscreen.appendChild(clone);
+
+    // Wait for images and styles to settle
+    await new Promise(r => setTimeout(r, 200));
+
+    // 3. Collect blocks — the header sections come first (no data-pdf-section wrapper for
+    //    the overall header/status bar), then the padded content area sections.
+    //    We'll walk top-level children of the clone.
+    const blocks: HTMLElement[] = [];
+    
+    // The clone structure is:
+    // - header div (data-pdf-section) 
+    // - status bar div (data-pdf-section)
+    // - content div (p-4 sm:p-6) containing [data-pdf-section] children
+    
+    const topChildren = Array.from(clone.children) as HTMLElement[];
+    for (const child of topChildren) {
+      if (child.hasAttribute('data-pdf-section')) {
+        blocks.push(child);
+      } else {
+        // This is the content wrapper — extract its data-pdf-section children
+        const sections = child.querySelectorAll(':scope > [data-pdf-section], :scope > .space-y-2 > [data-pdf-section], :scope > div > [data-pdf-section]');
+        if (sections.length > 0) {
+          sections.forEach(s => blocks.push(s as HTMLElement));
+        } else {
+          // Also grab the Accordion groups directly
+          const innerChildren = Array.from(child.children) as HTMLElement[];
+          for (const inner of innerChildren) {
+            if (inner.hasAttribute('data-pdf-section')) {
+              blocks.push(inner);
+            } else {
+              // Could be the accordion wrapper — get its children
+              const accordionItems = inner.querySelectorAll('[data-pdf-section]');
+              if (accordionItems.length > 0) {
+                accordionItems.forEach(ai => blocks.push(ai as HTMLElement));
+              } else if (inner.children.length > 0 || inner.textContent?.trim()) {
+                blocks.push(inner);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Remove blocks from clone (we'll place them in pages)
+    offscreen.removeChild(clone);
+
+    // 4. Measure each block
+    const measuredBlocks: BlockInfo[] = [];
+    for (const block of blocks) {
+      const detached = block.cloneNode(true) as HTMLElement;
+      const h = measureElement(detached, measureDiv);
+      if (h > CONTENT_HEIGHT) {
+        // Split large block
+        const subBlocks = splitLargeBlock(detached, CONTENT_HEIGHT, measureDiv);
+        for (const sub of subBlocks) {
+          const subH = measureElement(sub.cloneNode(true) as HTMLElement, measureDiv);
+          measuredBlocks.push({ element: sub, height: subH });
+        }
+      } else {
+        measuredBlocks.push({ element: detached, height: h });
+      }
+    }
+
+    // 5. Distribute blocks into pages
+    const pages: BlockInfo[][] = [];
+    let currentPage: BlockInfo[] = [];
+    let currentHeight = 0;
+
+    for (const block of measuredBlocks) {
+      if (currentHeight + block.height > CONTENT_HEIGHT && currentPage.length > 0) {
+        pages.push(currentPage);
+        currentPage = [];
+        currentHeight = 0;
+      }
+      currentPage.push(block);
+      currentHeight += block.height;
+    }
+    if (currentPage.length > 0) pages.push(currentPage);
+
+    // 6. Render each page and capture
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    for (let i = 0; i < pages.length; i++) {
+      const pageDiv = document.createElement('div');
+      pageDiv.style.cssText = `
+        width: ${A4_WIDTH_PX}px;
+        min-height: ${A4_HEIGHT_PX}px;
+        background: white;
+        padding: ${PAGE_PADDING}px;
+        box-sizing: border-box;
+        font-family: 'Montserrat', sans-serif;
+        overflow: hidden;
+      `;
+
+      // First page: no top padding (header goes edge-to-edge)
+      if (i === 0) {
+        pageDiv.style.padding = '0';
+        pageDiv.style.paddingBottom = `${PAGE_PADDING}px`;
+      }
+
+      for (const block of pages[i]) {
+        const el = block.element.cloneNode(true) as HTMLElement;
+        pageDiv.appendChild(el);
+      }
+
+      offscreen.appendChild(pageDiv);
+      await new Promise(r => setTimeout(r, 100)); // let it render
+
+      const canvas = await html2canvas(pageDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: A4_WIDTH_PX,
+        windowWidth: A4_WIDTH_PX,
+      });
+
+      offscreen.removeChild(pageDiv);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    }
+
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(offscreen);
+    document.body.removeChild(measureDiv);
+  }
+}
