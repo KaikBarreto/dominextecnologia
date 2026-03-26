@@ -207,12 +207,27 @@ Design Premium com Verde da Marca #00C597
   .print-report div {
     color: #000 !important;
   }
+  /* Keep original color on elements with inline style color (e.g. white label headers) */
+  .print-report [style*="color"],
+  .print-report [style*="color"] * {
+    color: inherit !important;
+  }
   /* Keep white text on dark/colored backgrounds */
+  .print-report [style*="background"],
+  .print-report [style*="background"] *,
   .print-report [class*="bg-gradient"],
   .print-report [class*="bg-gradient"] *,
   .print-report [class*="bg-emerald"],
   .print-report [class*="bg-emerald"] * {
-    color: #fff !important;
+    color: inherit !important;
+  }
+  /* Force all accordions open for print */
+  .print-report [data-state="closed"] > [role="region"],
+  .print-report [data-state="closed"] > [data-radix-collapsible-content] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    opacity: 1 !important;
   }
 
   @page {

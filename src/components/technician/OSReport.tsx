@@ -225,6 +225,20 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         )
       );
 
+      // Force all accordions open in the clone for PDF capture
+      const closedItems = clone.querySelectorAll('[data-state="closed"]');
+      closedItems.forEach(item => {
+        item.setAttribute('data-state', 'open');
+        const content = item.querySelector('[data-radix-collapsible-content], [role="region"]');
+        if (content) {
+          (content as HTMLElement).style.display = 'block';
+          (content as HTMLElement).style.height = 'auto';
+          (content as HTMLElement).style.overflow = 'visible';
+          (content as HTMLElement).style.opacity = '1';
+          (content as HTMLElement).setAttribute('data-state', 'open');
+        }
+      });
+
       // Force layout recalculation
       void clone.offsetHeight;
 
@@ -711,26 +725,38 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             </div>
           )}
 
-          {/* Questionnaire Responses - grouped by equipment */}
-          {responsesByTemplate.map((group, gi) => {
-            const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
-            if (nonEmptyResponses.length === 0) return null;
+          {/* Questionnaire Responses - grouped by equipment (accordions) */}
+          {responsesByTemplate.length > 0 && (() => {
+            const validGroups = responsesByTemplate.filter(group => group.responses.some(r => !isResponseEmpty(r)));
+            if (validGroups.length === 0) return null;
             return (
-              <div key={gi} data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
-                  {group.categoryBadge && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white normal-case" style={{ backgroundColor: group.categoryBadge.color }}>
-                      {group.categoryBadge.name}
-                    </span>
-                  )}
-                </h3>
-                <div className="space-y-2">
-                  {nonEmptyResponses.map((response, idx) => renderResponseItem(response, idx))}
-                </div>
-              </div>
+              <Accordion type="multiple" className="w-full space-y-2">
+                {validGroups.map((group, gi) => {
+                  const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
+                  return (
+                    <AccordionItem key={gi} value={`checklist-${gi}`} className="border border-slate-200 rounded-lg overflow-hidden" data-pdf-section>
+                      <AccordionTrigger className="hover:no-underline px-3 sm:px-4 py-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
+                          {(group as any).categoryBadge && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white normal-case" style={{ backgroundColor: (group as any).categoryBadge.color }}>
+                              {(group as any).categoryBadge.name}
+                            </span>
+                          )}
+                          <span className="ml-1 text-slate-400 font-normal normal-case">({nonEmptyResponses.length})</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-3 sm:px-4 pb-3">
+                        <div className="space-y-2">
+                          {nonEmptyResponses.map((response, idx) => renderResponseItem(response, idx))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
             );
-          })}
+          })()}
 
           {/* Service Details */}
           {serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
