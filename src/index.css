@@ -192,13 +192,13 @@ Design Premium com Verde da Marca #00C597
     display: none !important;
   }
 
-  /* Force all text to be dark/black for print */
   .print-report,
   .print-report * {
     color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
   .print-report h1,
   .print-report h2,
   .print-report h3,
@@ -207,27 +207,34 @@ Design Premium com Verde da Marca #00C597
   .print-report div {
     color: #000 !important;
   }
-  /* Keep original color on elements with inline style color (e.g. white label headers) */
-  .print-report [style*="color"],
-  .print-report [style*="color"] * {
+
+  .print-report [data-print-preserve-colors="true"],
+  .print-report [data-print-preserve-colors="true"] *,
+  .print-report [data-print-preserve-colors="true"] h1,
+  .print-report [data-print-preserve-colors="true"] h2,
+  .print-report [data-print-preserve-colors="true"] h3,
+  .print-report [data-print-preserve-colors="true"] p,
+  .print-report [data-print-preserve-colors="true"] span,
+  .print-report [data-print-preserve-colors="true"] div {
     color: inherit !important;
   }
-  /* Keep white text on dark/colored backgrounds */
-  .print-report [style*="background"],
-  .print-report [style*="background"] *,
-  .print-report [class*="bg-gradient"],
-  .print-report [class*="bg-gradient"] *,
-  .print-report [class*="bg-emerald"],
-  .print-report [class*="bg-emerald"] * {
-    color: inherit !important;
+
+  .print-report [data-print-preserve-colors="true"][style*="background"],
+  .print-report [data-print-preserve-colors="true"][style*="background"] * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  /* Force all accordions open for print */
+
   .print-report [data-state="closed"] > [role="region"],
-  .print-report [data-state="closed"] > [data-radix-collapsible-content] {
+  .print-report [data-state="closed"] > [data-radix-collapsible-content],
+  .print-report [data-state="closed"][role="region"],
+  .print-report [data-state="closed"][data-radix-collapsible-content] {
     display: block !important;
     height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
     opacity: 1 !important;
+    visibility: visible !important;
   }
 
   @page {
