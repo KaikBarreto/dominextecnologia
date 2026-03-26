@@ -349,7 +349,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       }];
     }
     // Group by equipment_id (or fallback to template_id for legacy data)
-    const groups: { label: string; responses: FormResponseData[] }[] = [];
+    const groups: { label: string; responses: FormResponseData[]; categoryBadge?: { name: string; color: string } | null }[] = [];
     for (const item of equipmentItems) {
       if (!item.form_template_id) continue;
       const eqResponses = otherResponses.filter(r => {
