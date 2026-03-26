@@ -252,12 +252,54 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
+
+    // Force all questionnaire accordions open before capture
+    const prevOpen = openQuestionnaireItems;
+    const allValues = responsesByTemplate
+      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
+      .filter(Boolean) as string[];
+    setOpenQuestionnaireItems(allValues);
+
+    // Wait for React to re-render with all accordions open
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
     let clone: HTMLElement | null = null;
     try {
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
-      clone = reportRef.current.cloneNode(true) as HTMLElement;
+      const element = reportRef.current;
+
+      // Clone and copy computed styles for accurate off-screen rendering
+      clone = element.cloneNode(true) as HTMLElement;
+
+      // Copy computed styles from original to clone recursively
+      const copyStyles = (source: Element, target: Element) => {
+        const sourceStyles = window.getComputedStyle(source);
+        const targetEl = target as HTMLElement;
+        // Copy key visual properties
+        const propsToSet = [
+          'color', 'backgroundColor', 'background', 'backgroundImage',
+          'borderColor', 'borderWidth', 'borderStyle', 'borderRadius',
+          'padding', 'margin', 'font', 'fontSize', 'fontWeight', 'fontFamily',
+          'lineHeight', 'letterSpacing', 'textTransform', 'textAlign',
+          'display', 'flexDirection', 'alignItems', 'justifyContent', 'gap',
+          'gridTemplateColumns', 'opacity', 'boxShadow', 'textDecoration',
+        ];
+        for (const prop of propsToSet) {
+          try {
+            targetEl.style.setProperty(prop, sourceStyles.getPropertyValue(prop));
+          } catch {}
+        }
+        const sourceChildren = source.children;
+        const targetChildren = target.children;
+        for (let i = 0; i < sourceChildren.length && i < targetChildren.length; i++) {
+          copyStyles(sourceChildren[i], targetChildren[i]);
+        }
+      };
+
+      copyStyles(element, clone);
+
       clone.style.position = 'absolute';
       clone.style.left = '-9999px';
       clone.style.top = '0';
@@ -271,12 +313,14 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       clone.style.backgroundColor = '#ffffff';
       document.body.appendChild(clone);
 
+      // Wait for images to load in the clone
       const images = clone.querySelectorAll('img');
       await Promise.all(Array.from(images).map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
         img.onload = resolve;
         img.onerror = resolve;
       })));
 
+      // Ensure all accordions are visually open in clone
       clone.querySelectorAll('[data-state="closed"]').forEach((item) => {
         const el = item as HTMLElement;
         el.setAttribute('data-state', 'open');
@@ -370,6 +414,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
       clone?.remove();
+      setOpenQuestionnaireItems(prevOpen);
       setGenerating(false);
     }
   };
