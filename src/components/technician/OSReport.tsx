@@ -4,6 +4,7 @@ import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, FormQuestion } from '@/types/database';
@@ -506,9 +507,10 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
               <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
+                  <span className="ml-auto text-slate-400 font-normal">{equipmentItems.filter(i => i.equipment).length}</span>
                 </h3>
-                <div className="space-y-3">
-                  {equipmentItems.map(item => item.equipment && (
+                {(() => {
+                  const renderEquipmentItem = (item: EquipmentItem) => item.equipment && (
                     <div key={item.equipment_id} className="flex items-start gap-3">
                       {item.equipment.photo_url && (
                         <img
@@ -535,8 +537,30 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+
+                  if (equipmentItems.length > 3) {
+                    return (
+                      <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="equipments" className="border-0">
+                          <AccordionTrigger className="hover:no-underline py-2 text-sm text-slate-600">
+                            Ver {equipmentItems.filter(i => i.equipment).length} equipamentos
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-3">
+                              {equipmentItems.map(renderEquipmentItem)}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {equipmentItems.map(renderEquipmentItem)}
+                    </div>
+                  );
+                })()}
               </div>
             ) : serviceOrder.equipment && (
               <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
