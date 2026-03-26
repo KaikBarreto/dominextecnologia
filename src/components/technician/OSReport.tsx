@@ -280,69 +280,38 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
       const element = reportRef.current;
 
-      // Capture the original element directly to preserve all styles
+      // Wait a bit more for DOM to settle
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
 
-      const elementRect = element.getBoundingClientRect();
-      const sections = element.querySelectorAll('[data-pdf-section]');
-      const sectionBottoms: number[] = [];
-      sections.forEach(sec => {
-        const r = sec.getBoundingClientRect();
-        sectionBottoms.push(r.bottom - elementRect.top);
-      });
-      sectionBottoms.sort((a, b) => a - b);
-
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10;
-      const usableHeight = pdfHeight - margin * 2;
-      const imgWidth = pdfWidth - margin * 2;
-      const scale = imgWidth / canvas.width;
-      const totalCanvasHeight = canvas.height;
-      const pageHeightInCanvasPx = usableHeight / scale;
-      const canvasScale = canvas.width / elementRect.width;
 
-      const pageBreaks: number[] = [0];
-      let currentY = 0;
-      while (currentY + pageHeightInCanvasPx < totalCanvasHeight) {
-        let idealBreak = currentY + pageHeightInCanvasPx;
-        let bestBreak = idealBreak;
-        for (const secBottom of sectionBottoms) {
-          const secBottomPx = secBottom * canvasScale;
-          if (secBottomPx <= currentY) continue;
-          if (secBottomPx <= idealBreak) bestBreak = secBottomPx;
-          else break;
-        }
-        if (bestBreak <= currentY + 10) bestBreak = idealBreak;
-        pageBreaks.push(bestBreak);
-        currentY = bestBreak;
-      }
-      pageBreaks.push(totalCanvasHeight);
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      for (let i = 0; i < pageBreaks.length - 1; i++) {
-        if (i > 0) pdf.addPage();
-        const sliceY = pageBreaks[i];
-        const sliceH = pageBreaks[i + 1] - sliceY;
-        if (sliceH <= 0) continue;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = sliceH;
-        const ctx = sliceCanvas.getContext('2d')!;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        ctx.drawImage(canvas, 0, sliceY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
 
-        const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
-        const sliceImgHeight = sliceH * scale;
-        pdf.addImage(sliceImgData, 'JPEG', margin, margin, imgWidth, sliceImgHeight);
+      while (heightLeft > 0) {
+        position -= pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
       }
 
       pdf.save(`OS-${String(serviceOrder.order_number).padStart(6, '0')}.pdf`);
