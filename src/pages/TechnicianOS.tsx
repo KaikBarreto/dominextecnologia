@@ -51,7 +51,7 @@ interface OSPhoto {
 interface EquipmentItem {
   equipment_id: string;
   form_template_id: string | null;
-  equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null } | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
   form_template: { id: string; name: string } | null;
 }
 
@@ -177,7 +177,7 @@ export default function TechnicianOS() {
         .select(`
           equipment_id,
           form_template_id,
-          equipment:equipment(id, name, brand, model, location, photo_url),
+          equipment:equipment(id, name, brand, model, location, photo_url, category:equipment_categories(id, name, color)),
           form_template:form_templates(id, name)
         `)
         .eq('service_order_id', id);
