@@ -724,9 +724,9 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                       <AccordionTrigger className="hover:no-underline px-3 sm:px-4 py-3">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
                           <ClipboardCheck className="h-3.5 w-3.5" /> {group.label}
-                          {group.categoryBadge && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white normal-case" style={{ backgroundColor: group.categoryBadge.color }}>
-                              {group.categoryBadge.name}
+                          {(group as any).categoryBadge && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white normal-case" style={{ backgroundColor: (group as any).categoryBadge.color }}>
+                              {(group as any).categoryBadge.name}
                             </span>
                           )}
                           <span className="ml-1 text-slate-400 font-normal normal-case">({nonEmptyResponses.length})</span>
