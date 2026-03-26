@@ -225,6 +225,20 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         )
       );
 
+      // Force all accordions open in the clone for PDF capture
+      const closedItems = clone.querySelectorAll('[data-state="closed"]');
+      closedItems.forEach(item => {
+        item.setAttribute('data-state', 'open');
+        const content = item.querySelector('[data-radix-collapsible-content], [role="region"]');
+        if (content) {
+          (content as HTMLElement).style.display = 'block';
+          (content as HTMLElement).style.height = 'auto';
+          (content as HTMLElement).style.overflow = 'visible';
+          (content as HTMLElement).style.opacity = '1';
+          (content as HTMLElement).setAttribute('data-state', 'open');
+        }
+      });
+
       // Force layout recalculation
       void clone.offsetHeight;
 
