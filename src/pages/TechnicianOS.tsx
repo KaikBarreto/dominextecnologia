@@ -515,14 +515,93 @@ export default function TechnicianOS() {
             </div>
           )}
 
-          {/* Check-in timestamp */}
-          {checkInTime && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-              <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="text-xs sm:text-sm">
-                Check-in: {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-              </span>
-            </div>
+          {/* Check-in / Check-out with technician info */}
+          {(checkInTime || checkOutTime) && (
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Execução</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {checkInTime && (
+                    <div className="flex items-start gap-3">
+                      {technicianProfile?.avatar_url ? (
+                        <img
+                          src={technicianProfile.avatar_url}
+                          alt={technicianProfile.full_name}
+                          className="w-10 h-10 rounded-full object-cover border shrink-0 mt-0.5 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs text-muted-foreground font-semibold">CHECK-IN</p>
+                        {technicianProfile && (
+                          <p className="text-sm font-semibold text-foreground">{technicianProfile.full_name}</p>
+                        )}
+                        <p className="text-sm font-medium text-foreground">
+                          {format(new Date(checkInTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                        {checkInLocation && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="break-all">{checkInLocation.lat.toFixed(6)}, {checkInLocation.lng.toFixed(6)}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {checkOutTime && (
+                    <div className="flex items-start gap-3">
+                      {technicianProfile?.avatar_url ? (
+                        <img
+                          src={technicianProfile.avatar_url}
+                          alt={technicianProfile.full_name}
+                          className="w-10 h-10 rounded-full object-cover border shrink-0 mt-0.5 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs text-muted-foreground font-semibold">CHECK-OUT</p>
+                        {technicianProfile && (
+                          <p className="text-sm font-semibold text-foreground">{technicianProfile.full_name}</p>
+                        )}
+                        <p className="text-sm font-medium text-foreground">
+                          {format(new Date(checkOutTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                        {checkOutLocation && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="break-all">{checkOutLocation.lat.toFixed(6)}, {checkOutLocation.lng.toFixed(6)}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {checkInTime && checkOutTime && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Duração:</strong>{' '}
+                      {(() => {
+                        const diff = new Date(checkOutTime).getTime() - new Date(checkInTime).getTime();
+                        const hours = Math.floor(diff / 3600000);
+                        const minutes = Math.floor((diff % 3600000) / 60000);
+                        return `${hours}h ${minutes}min`;
+                      })()}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Client Info with photo */}
