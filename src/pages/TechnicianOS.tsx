@@ -20,6 +20,7 @@ import {
   Link2,
   Check,
   MapPinned,
+  Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -556,25 +557,85 @@ export default function TechnicianOS() {
           {equipmentItems.length > 0 && (
             <Card>
               <CardContent className="p-3 sm:p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Equipamentos</p>
-                <div className="space-y-2">
-                  {equipmentItems.map(item => item.equipment && (
-                    <div key={item.equipment_id} className="flex items-center gap-3 text-sm">
-                      {item.equipment.photo_url ? (
-                        <img
-                          src={item.equipment.photo_url}
-                          alt={item.equipment.name}
-                          className="h-12 w-12 rounded-lg object-cover border cursor-pointer shrink-0"
-                          onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
-                        />
-                      ) : null}
-                      <div className="min-w-0">
-                        <p className="font-medium">{item.equipment.name}</p>
-                        {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-2 mb-2">
+                  <Wrench className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equipamento{equipmentItems.length > 1 ? 's' : ''}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{equipmentItems.filter(i => i.equipment).length}</span>
                 </div>
+                {equipmentItems.length > 3 ? (
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="equipments" className="border-0">
+                      <AccordionTrigger className="hover:no-underline py-2 text-sm text-primary">
+                        Ver {equipmentItems.filter(i => i.equipment).length} equipamentos
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3">
+                          {equipmentItems.map(item => item.equipment && (
+                            <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
+                              {item.equipment.photo_url ? (
+                                <img
+                                  src={item.equipment.photo_url}
+                                  alt={item.equipment.name}
+                                  className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
+                                  onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
+                                />
+                              ) : null}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium">{item.equipment.name}</p>
+                                  {(item.equipment as any).category && (
+                                    <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: (item.equipment as any).category.color }}>
+                                      {(item.equipment as any).category.name}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
+                                {item.equipment.location && (
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                    <MapPinned className="h-3 w-3 shrink-0" />
+                                    {item.equipment.location}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                ) : (
+                  <div className="space-y-3">
+                    {equipmentItems.map(item => item.equipment && (
+                      <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
+                        {item.equipment.photo_url ? (
+                          <img
+                            src={item.equipment.photo_url}
+                            alt={item.equipment.name}
+                            className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
+                            onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
+                          />
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium">{item.equipment.name}</p>
+                            {(item.equipment as any).category && (
+                              <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: (item.equipment as any).category.color }}>
+                                {(item.equipment as any).category.name}
+                              </Badge>
+                            )}
+                          </div>
+                          {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
+                          {item.equipment.location && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <MapPinned className="h-3 w-3 shrink-0" />
+                              {item.equipment.location}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
