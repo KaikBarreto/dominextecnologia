@@ -363,7 +363,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         const label = item.equipment?.name 
           ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
           : (item.form_template?.name || 'Checklist');
-        groups.push({ label, responses: eqResponses });
+        const categoryBadge = item.equipment?.category || null;
+        groups.push({ label, responses: eqResponses, categoryBadge });
       }
     }
     // Any remaining responses not matched to a template
