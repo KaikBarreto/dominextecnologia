@@ -45,7 +45,7 @@ interface CompanyData {
 interface EquipmentItem {
   equipment_id: string;
   form_template_id: string | null;
-  equipment: { id: string; name: string; brand: string | null; model: string | null; category: { id: string; name: string; color: string } | null } | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
   form_template: { id: string; name: string } | null;
 }
 
@@ -149,7 +149,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       .select(`
         equipment_id,
         form_template_id,
-        equipment:equipment(id, name, brand, model, category:equipment_categories(id, name, color)),
+        equipment:equipment(id, name, brand, model, location, photo_url, category:equipment_categories(id, name, color)),
         form_template:form_templates(id, name)
       `)
       .eq('service_order_id', serviceOrder.id);
@@ -507,13 +507,33 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {equipmentItems.map(item => item.equipment && (
-                    <div key={item.equipment_id}>
-                      <p className="font-semibold text-slate-900">{item.equipment.name}</p>
-                      <p className="text-sm text-slate-600">
-                        {item.equipment.brand} {item.equipment.model}
-                      </p>
+                    <div key={item.equipment_id} className="flex items-start gap-3">
+                      {item.equipment.photo_url && (
+                        <img
+                          src={item.equipment.photo_url}
+                          alt={item.equipment.name}
+                          className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
+                          onClick={() => setPreviewImage(item.equipment!.photo_url)}
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-slate-900">{item.equipment.name}</p>
+                          {item.equipment.category && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: item.equipment.category.color }}>
+                              {item.equipment.category.name}
+                            </span>
+                          )}
+                        </div>
+                        {item.equipment.brand && (
+                          <p className="text-sm text-slate-600">{item.equipment.brand} {item.equipment.model}</p>
+                        )}
+                        {item.equipment.location && (
+                          <p className="text-xs text-slate-400 mt-0.5">📍 {item.equipment.location}</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
