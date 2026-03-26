@@ -663,16 +663,37 @@ export default function TechnicianOS() {
                           <AccordionItem key={templateId} value={templateId} className="border-b last:border-0">
                             <AccordionTrigger className="hover:no-underline py-3 gap-2">
                               <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                                <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-                                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-                                </div>
+                                {group.equipment?.equipment?.photo_url ? (
+                                  <img
+                                    src={group.equipment.equipment.photo_url}
+                                    alt={group.equipment.equipment.name}
+                                    className="h-8 w-8 rounded-md object-cover shrink-0 border"
+                                  />
+                                ) : (
+                                  <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                    <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">
-                                    {group.equipment?.equipment?.name || 'Questionário'}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-sm truncate">
+                                      {group.equipment?.equipment?.name || 'Questionário'}
+                                    </p>
+                                    {(group.equipment?.equipment as any)?.category && (
+                                      <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: (group.equipment!.equipment as any).category.color }}>
+                                        {(group.equipment!.equipment as any).category.name}
+                                      </Badge>
+                                    )}
+                                  </div>
                                   {group.equipment?.equipment?.brand && (
                                     <p className="text-xs text-muted-foreground truncate">
                                       {group.equipment.equipment.brand} {group.equipment.equipment.model}
+                                    </p>
+                                  )}
+                                  {group.equipment?.equipment?.location && (
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                      <MapPinned className="h-3 w-3 shrink-0" />
+                                      <span className="truncate">{group.equipment.equipment.location}</span>
                                     </p>
                                   )}
                                 </div>
