@@ -252,74 +252,14 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
-
-    // Force all questionnaire accordions open before capture
-    const prevOpen = openQuestionnaireItems;
-    const allValues = responsesByTemplate
-      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
-      .filter(Boolean) as string[];
-    setOpenQuestionnaireItems(allValues);
-
-    // Also open equipment accordion
-    const equipAccordion = reportRef.current.querySelector('[data-state="closed"][value="equipment-list"]');
-    if (equipAccordion) {
-      equipAccordion.setAttribute('data-state', 'open');
-      const region = equipAccordion.querySelector('[role="region"]');
-      if (region) {
-        (region as HTMLElement).style.display = 'block';
-        (region as HTMLElement).style.height = 'auto';
-      }
-    }
-
-    // Wait for React to re-render with all accordions open
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
     try {
-      const html2canvas = (await import('html2canvas-pro')).default;
-      const { jsPDF } = await import('jspdf');
-
-      const element = reportRef.current;
-
-      // Wait a bit more for DOM to settle
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position -= pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`OS-${String(serviceOrder.order_number).padStart(6, '0')}.pdf`);
+      const { generateReportPDF } = await import('@/utils/pdfPageRenderer');
+      const orderNum = String(serviceOrder.order_number).padStart(6, '0');
+      await generateReportPDF(reportRef.current, `OS-${orderNum}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
-      setOpenQuestionnaireItems(prevOpen);
       setGenerating(false);
     }
   };
