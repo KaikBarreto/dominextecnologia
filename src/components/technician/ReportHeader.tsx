@@ -57,6 +57,7 @@ export function ReportHeader({
       {/* Company header */}
       <div
         data-pdf-section
+        data-print-preserve-colors="true"
         className="p-4 sm:p-6"
         style={{ background: cfg.bgColor, color: cfg.textColor }}
       >
@@ -92,17 +93,19 @@ export function ReportHeader({
             )}
             <div className="min-w-0">
               <h1
+                data-print-preserve-colors="true"
                 className="text-base sm:text-xl font-bold leading-tight"
                 style={{ color: cfg.textColor }}
               >
                 {company?.name || 'Empresa'}
               </h1>
               {company?.document && (
-                <p className="text-xs sm:text-sm" style={{ color: cfg.textColor, opacity: 0.9 }}>
+                <p data-print-preserve-colors="true" className="text-xs sm:text-sm" style={{ color: cfg.textColor, opacity: 0.9 }}>
                   CNPJ: {company.document}
                 </p>
               )}
               <div
+                data-print-preserve-colors="true"
                 className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-0 text-xs mt-0.5"
                 style={{ color: cfg.textColor, opacity: 0.8 }}
               >
@@ -114,6 +117,7 @@ export function ReportHeader({
 
           {company?.address && (
             <p
+              data-print-preserve-colors="true"
               className="text-xs sm:hidden"
               style={{ color: cfg.textColor, opacity: 0.75 }}
             >
@@ -126,12 +130,13 @@ export function ReportHeader({
 
           <div className="flex items-center justify-between sm:flex-col sm:items-end sm:ml-auto shrink-0">
             <div
+              data-print-preserve-colors="true"
               className="text-lg sm:text-2xl font-black tracking-tight"
               style={{ color: cfg.textColor }}
             >
               OS #{orderNumber}
             </div>
-            <p className="text-xs sm:text-sm" style={{ color: cfg.textColor, opacity: 0.9 }}>
+            <p data-print-preserve-colors="true" className="text-xs sm:text-sm" style={{ color: cfg.textColor, opacity: 0.9 }}>
               {osType}
             </p>
           </div>
@@ -139,6 +144,7 @@ export function ReportHeader({
 
         {company?.address && (
           <p
+            data-print-preserve-colors="true"
             className="text-xs mt-2 hidden sm:block"
             style={{ color: cfg.textColor, opacity: 0.75 }}
           >
@@ -153,6 +159,7 @@ export function ReportHeader({
       {/* Status bar */}
       <div
         data-pdf-section
+        data-print-preserve-colors="true"
         className="text-center py-2 text-xs sm:text-sm font-semibold tracking-wide uppercase"
         style={{ backgroundColor: cfg.statusBarColor, color: '#ffffff' }}
       >

@@ -15,46 +15,7 @@ import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from './ReportHeader';
 import type { ReportHeaderConfig } from './ReportHeader';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
-
-interface OSPhoto {
-  id: string;
-  photo_url: string;
-  photo_type: string;
-  description: string | null;
-}
-
-interface FormResponseData {
-  id: string;
-  question_id: string;
-  response_value: string | null;
-  response_photo_url: string | null;
-  question: FormQuestion;
-}
-
-interface CompanyData {
-  name: string;
-  document?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  address?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zip_code?: string | null;
-  logo_url?: string | null;
-}
-
-interface EquipmentItem {
-  equipment_id: string;
-  form_template_id: string | null;
-  equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
-  form_template: { id: string; name: string } | null;
-}
-
-interface OSReportProps {
-  serviceOrder: ServiceOrder & { customer: any; equipment: any; form_template?: any };
-  photos: OSPhoto[];
-}
-
+...
 export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
@@ -67,6 +28,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
   const [technicianInfo, setTechnicianInfo] = useState<{ full_name: string; photo_url: string | null } | null>(null);
+  const [openQuestionnaireItems, setOpenQuestionnaireItems] = useState<string[]>([]);
+  const printRestoreRef = useRef<string[] | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -80,112 +43,54 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     }
   }, [serviceOrder.id]);
 
-  const fetchTechnician = async () => {
-    let userId = serviceOrder.technician_id;
-    // Fallback to first assignee if no technician_id
-    if (!userId) {
-      const { data: assignees } = await supabase
-        .from('service_order_assignees')
-        .select('user_id')
-        .eq('service_order_id', serviceOrder.id)
-        .limit(1);
-      userId = (assignees as any)?.[0]?.user_id;
+  useEffect(() => {
+    const validValues = responsesByTemplate
+      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
+      .filter(Boolean) as string[];
+
+    if (validValues.length > 0 && openQuestionnaireItems.length === 0) {
+      setOpenQuestionnaireItems(validValues);
     }
-    if (!userId) return;
-    const { data } = await supabase
-      .from('profiles')
-      .select('full_name, avatar_url')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (data) setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
-  };
+  }, [formResponses, equipmentItems.length]);
 
-  const fetchRating = async () => {
-    const { data } = await supabase
-      .from('service_ratings')
-      .select('*')
-      .eq('service_order_id', serviceOrder.id)
-      .maybeSingle();
-    if (data) setRatingData(data);
-  };
+  useEffect(() => {
+    const openAllForPrint = () => {
+      printRestoreRef.current = openQuestionnaireItems;
+      const validValues = responsesByTemplate
+        .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
+        .filter(Boolean) as string[];
+      setOpenQuestionnaireItems(validValues);
+    };
 
-  const fetchCompany = async () => {
-    const { data } = await supabase.from('company_settings').select('*').limit(1).single();
-    if (data) {
-      setCompany(data);
-      const d = data as any;
-      const wlEnabled = !!d.white_label_enabled;
-      setIsWhiteLabel(wlEnabled);
-
-      if (wlEnabled) {
-        // Use company's custom header config
-        setHeaderConfig({
-          bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
-          textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
-          logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
-          showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
-          logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
-          statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
-          logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
-        });
-      } else {
-        // No white label — use Dominex defaults
-        setHeaderConfig(DEFAULT_HEADER_CONFIG);
+    const restoreAfterPrint = () => {
+      if (printRestoreRef.current) {
+        setOpenQuestionnaireItems(printRestoreRef.current);
+        printRestoreRef.current = null;
       }
-    }
-  };
+    };
 
-  const fetchContract = async (contractId: string) => {
-    const { data } = await supabase
-      .from('contracts')
-      .select('id, name')
-      .eq('id', contractId)
-      .maybeSingle();
-    if (data) setContractInfo(data);
-  };
+    window.addEventListener('beforeprint', openAllForPrint);
+    window.addEventListener('afterprint', restoreAfterPrint);
 
-  const fetchEquipmentItems = async () => {
-    const { data } = await supabase
-      .from('service_order_equipment')
-      .select(`
-        equipment_id,
-        form_template_id,
-        equipment:equipment(id, name, brand, model, location, photo_url, category:equipment_categories(id, name, color)),
-        form_template:form_templates(id, name)
-      `)
-      .eq('service_order_id', serviceOrder.id);
-    if (data) setEquipmentItems(data as unknown as EquipmentItem[]);
-  };
-
-  const fetchAllResponses = async () => {
-    const { data } = await supabase
-      .from('form_responses')
-      .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
-      .eq('service_order_id', serviceOrder.id);
-    if (data) {
-      const sorted = [...(data as any[])].sort((a, b) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
-      setFormResponses(sorted);
-    }
-  };
-
-  const formatCurrency = (value: number | null | undefined) => {
-    if (!value) return '-';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  };
-
+    return () => {
+      window.removeEventListener('beforeprint', openAllForPrint);
+      window.removeEventListener('afterprint', restoreAfterPrint);
+    };
+  }, [openQuestionnaireItems, formResponses, equipmentItems.length]);
+...
   const handlePrint = () => {
-    window.print();
-  };
-
-  const handleCopyLink = () => {
-    const url = buildServiceOrderShareLink(serviceOrder.id);
-    navigator.clipboard.writeText(url).then(() => {
-      toast({ title: 'Link copiado!' });
-    }).catch(() => {
-      toast({ variant: 'destructive', title: 'Erro ao copiar link' });
+    printRestoreRef.current = openQuestionnaireItems;
+    const validValues = responsesByTemplate
+      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
+      .filter(Boolean) as string[];
+    setOpenQuestionnaireItems(validValues);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+      });
     });
   };
-
+...
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
@@ -229,13 +134,30 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       const closedItems = clone.querySelectorAll('[data-state="closed"]');
       closedItems.forEach(item => {
         item.setAttribute('data-state', 'open');
-        const content = item.querySelector('[data-radix-collapsible-content], [role="region"]');
-        if (content) {
-          (content as HTMLElement).style.display = 'block';
-          (content as HTMLElement).style.height = 'auto';
-          (content as HTMLElement).style.overflow = 'visible';
-          (content as HTMLElement).style.opacity = '1';
-          (content as HTMLElement).setAttribute('data-state', 'open');
+      });
+      const hiddenContents = clone.querySelectorAll('[data-state="closed"][data-orientation], [data-state="closed"][hidden], [data-state="closed"]');
+      hiddenContents.forEach(item => {
+        const el = item as HTMLElement;
+        el.hidden = false;
+        el.style.display = 'block';
+        el.style.height = 'auto';
+        el.style.maxHeight = 'none';
+        el.style.overflow = 'visible';
+        el.style.opacity = '1';
+      });
+      const allContent = clone.querySelectorAll('[data-radix-collection-item], [data-radix-collapsible-content], [role="region"]');
+      allContent.forEach(item => {
+        const el = item as HTMLElement;
+        if (el.getAttribute('data-state') === 'closed') {
+          el.setAttribute('data-state', 'open');
+        }
+        if (el.getAttribute('role') === 'region' || el.hasAttribute('data-radix-collapsible-content')) {
+          el.hidden = false;
+          el.style.display = 'block';
+          el.style.height = 'auto';
+          el.style.maxHeight = 'none';
+          el.style.overflow = 'visible';
+          el.style.opacity = '1';
         }
       });
 
@@ -730,7 +652,12 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
             const validGroups = responsesByTemplate.filter(group => group.responses.some(r => !isResponseEmpty(r)));
             if (validGroups.length === 0) return null;
             return (
-              <Accordion type="multiple" className="w-full space-y-2">
+              <Accordion
+                type="multiple"
+                value={openQuestionnaireItems}
+                onValueChange={setOpenQuestionnaireItems}
+                className="w-full space-y-2"
+              >
                 {validGroups.map((group, gi) => {
                   const nonEmptyResponses = group.responses.filter(r => !isResponseEmpty(r));
                   return (
