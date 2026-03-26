@@ -220,7 +220,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       }
 
       const combinedUrl = uploadedUrls.join(',');
-      await saveResponse(questionId, null, combinedUrl);
+      await saveResponse(questionId, responses[questionId]?.response_value || null, combinedUrl);
       toast({ title: `${files.length > 1 ? `${files.length} fotos enviadas` : 'Foto enviada'}!` });
     } catch (error: any) {
       toast({
