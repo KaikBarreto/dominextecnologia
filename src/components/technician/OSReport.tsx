@@ -55,6 +55,9 @@ interface OSReportProps {
   photos: OSPhoto[];
 }
 
+// Helper to safely extract joined object (Supabase may return array for some joins)
+const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
+
 export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
