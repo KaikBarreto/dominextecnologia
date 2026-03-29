@@ -215,7 +215,20 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
         form_template:form_templates(id, name)
       `)
       .eq('service_order_id', serviceOrder.id);
-    if (data) setEquipmentItems(data as unknown as EquipmentItem[]);
+    if (data) {
+      const normalized = (data as any[]).map(item => ({
+        ...item,
+        equipment: unwrapJoin(item.equipment),
+        form_template: unwrapJoin(item.form_template),
+      }));
+      // Also unwrap nested category inside equipment
+      normalized.forEach(item => {
+        if (item.equipment && item.equipment.category) {
+          item.equipment.category = unwrapJoin(item.equipment.category);
+        }
+      });
+      setEquipmentItems(normalized as unknown as EquipmentItem[]);
+    }
   };
 
   const fetchAllResponses = async () => {
@@ -224,7 +237,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
       .eq('service_order_id', serviceOrder.id);
     if (data) {
-      const sorted = [...(data as any[])].sort((a, b) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
+      const normalized = (data as any[]).map(r => ({
+        ...r,
+        question: unwrapJoin(r.question),
+      }));
+      const sorted = normalized.sort((a, b) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
       setFormResponses(sorted);
     }
   };
