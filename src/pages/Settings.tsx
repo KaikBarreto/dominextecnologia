@@ -108,6 +108,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (settings) {
+      isHydratingRef.current = true;
       setCompanyName(settings.name || '');
       setCompanyDoc(settings.document || '');
       setCompanyPhone(settings.phone || '');
@@ -133,6 +134,10 @@ export default function Settings() {
       setReportLogoBgColor((settings as any).report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor);
       setReportStatusBarColor((settings as any).report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor);
       setReportLogoType((settings as any).report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType);
+      // Schedule end of hydration after React finishes batching
+      requestAnimationFrame(() => {
+        isHydratingRef.current = false;
+      });
     }
   }, [settings]);
 
