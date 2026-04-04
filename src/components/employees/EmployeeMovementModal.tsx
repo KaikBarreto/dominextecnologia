@@ -42,11 +42,15 @@ export function EmployeeMovementModal({
   const { dailyHours, monthlyHours, workDaysPerMonth } = useEmployeeWorkHours(employeeId);
   const suggestedDailyValue = salary > 0 ? calculateDailyValue(salary, workDaysPerMonth) : 0;
 
+  // Pre-fill falta value when suggestion becomes available (async)
+  const [faltaPreFilled, setFaltaPreFilled] = useState(false);
   useEffect(() => {
-    if (open && type === 'falta' && salary > 0 && !draft.showResumePrompt) {
+    if (!open) { setFaltaPreFilled(false); return; }
+    if (type === 'falta' && salary > 0 && suggestedDailyValue > 0 && !draft.showResumePrompt && !faltaPreFilled) {
       setAmount(currencyMask(String(Math.round(suggestedDailyValue * 100))));
+      setFaltaPreFilled(true);
     }
-  }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt]);
+  }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt, faltaPreFilled]);
 
   useEffect(() => {
     if (open && !draft.showResumePrompt) {
