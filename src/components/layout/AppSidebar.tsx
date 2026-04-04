@@ -269,24 +269,6 @@ export function AppSidebar() {
               )}
             </NavLink>
 
-            {!isSuperAdmin && companyName && !collapsed && (
-              <div className="border-b border-border px-4 py-3">
-                <div className="flex flex-col items-center justify-center text-center gap-1">
-                  <p className="max-w-full truncate text-sm font-semibold text-foreground">{companyName}</p>
-                  {planLabel && (
-                    <Badge variant="secondary" className="px-2 py-0.5 text-[10px] font-medium">
-                      Plano {planLabel}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {!isSuperAdmin && companyName && collapsed && (
-              <div className="flex items-center justify-center py-2 border-b border-border" title={`${companyName} — Plano ${planLabel}`}>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              </div>
-            )}
 
             <div ref={menuScrollRef} className={cn('flex-1 overflow-y-auto pt-2', collapsed ? 'px-1.5' : 'px-4')}>
               <nav className="space-y-0.5">
