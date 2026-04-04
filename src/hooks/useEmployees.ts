@@ -17,6 +17,8 @@ export interface Employee {
   photo_url: string | null;
   user_id: string | null;
   is_active: boolean;
+  monthly_cost: number | null;
+  monthly_cost_breakdown: Record<string, number> | null;
   created_at: string;
   updated_at: string;
 }
