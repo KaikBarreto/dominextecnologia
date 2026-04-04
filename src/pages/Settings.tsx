@@ -844,12 +844,12 @@ export default function Settings() {
                 )}
               </div>}
 
-              <div className="flex flex-wrap gap-3 pt-4">
-                <Button onClick={handleSaveCompany} disabled={updateSettings.isPending}>
-                  {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Salvar Dados da Empresa
-                </Button>
-              </div>
+              {updateSettings.isPending && (
+                <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Salvando...
+                </div>
+              )}
             </CardContent>
           </Card>
         );
