@@ -172,7 +172,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     setAsoDisplay(fmt(b.asoAnual));
     setEpiDisplay(fmt(b.epiAnual));
     setCelularDisplay(fmt(b.celularAnual));
-  }, [open, initialBreakdown, initialSalary]);
+  }, [open, initialBreakdown, initialSalary, defaultMonthlyHours]);
 
   const updateCurrencyField = (field: keyof MonthlyCostBreakdown, display: string, setDisplay: (v: string) => void) => {
     setDisplay(display);
