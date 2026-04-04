@@ -19,6 +19,7 @@ import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from '@/components/service-orders/MonthlyCostCalculatorModal';
 import { formatBRL } from '@/utils/currency';
+import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 
 interface EmployeeFormDialogProps {
   open: boolean;
