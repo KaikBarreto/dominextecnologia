@@ -63,20 +63,32 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
         {/* Financial Summary */}
         <div className="rounded-lg border p-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Salário Base</span>
+            <span className="text-muted-foreground">Salário</span>
             <span className="font-medium">{fmt(salary)}</span>
           </div>
           {balance.totalBonus > 0 && (
             <div className="flex justify-between text-green-600">
-              <span>+ Bônus</span>
+              <span>Total de Bônus</span>
               <span>{fmt(balance.totalBonus)}</span>
             </div>
           )}
-          {balance.totalFaltas > 0 && (
-            <div className="flex justify-between text-destructive">
-              <span>- Faltas</span>
-              <span>{fmt(balance.totalFaltas)}</span>
-            </div>
+          {(balance.totalVales > 0 || balance.totalFaltas > 0) && (
+            <>
+              <div className="flex justify-between text-destructive font-medium">
+                <span>Descontos</span>
+                <span>{fmt(balance.totalVales + balance.totalFaltas)}</span>
+              </div>
+              {balance.totalVales > 0 && (
+                <div className="flex justify-between text-muted-foreground pl-4">
+                  <span>Vales</span>
+                  <span>{fmt(balance.totalVales)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-muted-foreground pl-4">
+                <span>Faltas</span>
+                <span>{fmt(balance.totalFaltas)}</span>
+              </div>
+            </>
           )}
           <div className="border-t pt-2 flex justify-between font-medium">
             <span>Subtotal</span>
