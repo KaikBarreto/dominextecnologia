@@ -122,10 +122,14 @@ function EmployeeCombobox({
 }
 
 export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalculatorModalProps) {
+  const { monthlyHours: companyMonthlyHours } = useEmployeeWorkHours(null);
   const [monthlyHours, setMonthlyHours] = useState(176);
   const [defaultServiceHours, setDefaultServiceHours] = useState(2);
   const [workers, setWorkers] = useState<Worker[]>(() => [makeWorker(2)]);
   const [costCalcWorkerId, setCostCalcWorkerId] = useState<string | null>(null);
+
+  // Sync company hours on mount
+  useState(() => { setMonthlyHours(companyMonthlyHours); });
 
   const costCalcWorker = costCalcWorkerId ? workers.find(w => w.id === costCalcWorkerId) : null;
 
