@@ -301,7 +301,11 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
               />
               <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             </div>
-            <p className="text-[10px] text-muted-foreground">Padrão: 176h (22 dias × 8h)</p>
+            <p className="text-[10px] text-muted-foreground">
+              {defaultMonthlyHours && defaultMonthlyHours !== 176
+                ? `Baseado na jornada configurada: ${defaultMonthlyHours}h/mês`
+                : 'Padrão: 176h (22 dias × 8h)'}
+            </p>
           </div>
         </div>
 
