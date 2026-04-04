@@ -135,7 +135,7 @@ function ModeToggleField({
   );
 }
 
-export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, initialBreakdown, onApply }: MonthlyCostCalculatorModalProps) {
+export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, initialBreakdown, onApply, defaultMonthlyHours }: MonthlyCostCalculatorModalProps) {
   const [bd, setBd] = useState<MonthlyCostBreakdown>({ ...defaultBreakdown });
 
   // Currency display states
