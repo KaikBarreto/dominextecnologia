@@ -49,14 +49,17 @@ export function TimeSettingsPanel() {
 
   const openScheduleEdit = (employeeId: string) => {
     const empScheds = schedules.filter(s => s.employee_id === employeeId);
-    const form: Record<number, any> = {};
+    const companyIn = form.default_in || '08:00';
+    const companyOut = form.default_out || '17:00';
+    const companyBreak = form.default_break_min ?? 60;
+    const editForm: Record<number, any> = {};
     for (let i = 0; i < 7; i++) {
       const existing = empScheds.find(s => s.weekday === i);
-      form[i] = existing
+      editForm[i] = existing
         ? { in: existing.expected_in, out: existing.expected_out, break: existing.break_minutes, work: existing.is_work_day }
-        : { in: '08:00', out: '17:00', break: 60, work: i !== 0 && i !== 6 };
+        : { in: companyIn, out: companyOut, break: companyBreak, work: i !== 0 && i !== 6 };
     }
-    setScheduleForm(form);
+    setScheduleForm(editForm);
     setEditingEmployee(employeeId);
   };
 
@@ -161,11 +164,23 @@ export function TimeSettingsPanel() {
                       </td>
                       {WEEKDAYS.map((_, i) => {
                         const sched = empScheds.find(s => s.weekday === i);
-                        return (
-                          <td key={i} className="text-center px-2 py-3 text-xs">
-                            {sched ? (sched.is_work_day ? `${sched.expected_in.slice(0,5)}-${sched.expected_out.slice(0,5)}` : 'Folga') : '—'}
-                          </td>
-                        );
+                        const hasCustom = empScheds.length > 0;
+                        if (hasCustom && sched) {
+                          return (
+                            <td key={i} className="text-center px-2 py-3 text-xs">
+                              {sched.is_work_day ? `${sched.expected_in.slice(0,5)}-${sched.expected_out.slice(0,5)}` : 'Folga'}
+                            </td>
+                          );
+                        }
+                        if (!hasCustom) {
+                          const isWorkDay = i !== 0 && i !== 6;
+                          return (
+                            <td key={i} className="text-center px-2 py-3 text-xs text-muted-foreground">
+                              {isWorkDay ? `${form.default_in.slice(0,5)}-${form.default_out.slice(0,5)}` : 'Folga'}
+                            </td>
+                          );
+                        }
+                        return <td key={i} className="text-center px-2 py-3 text-xs text-muted-foreground">—</td>;
                       })}
                       <td className="px-4 py-3">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openScheduleEdit(emp.id)}>
@@ -182,10 +197,15 @@ export function TimeSettingsPanel() {
           <div className="sm:hidden space-y-2 p-3">
             {employees.map(emp => {
               const empScheds = schedules.filter(s => s.employee_id === emp.id);
-              const workDays = WEEKDAYS.filter((_, i) => {
-                const sched = empScheds.find(s => s.weekday === i);
-                return sched?.is_work_day;
+              const hasCustom = empScheds.length > 0;
+              const workDayLabels = WEEKDAYS.filter((_, i) => {
+                if (hasCustom) {
+                  const sched = empScheds.find(s => s.weekday === i);
+                  return sched?.is_work_day;
+                }
+                return i !== 0 && i !== 6;
               });
+              const scheduleLabel = hasCustom ? workDayLabels.join(', ') : `Herda empresa (${form.default_in.slice(0,5)}-${form.default_out.slice(0,5)})`;
               return (
                 <Card key={emp.id}>
                   <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -196,9 +216,7 @@ export function TimeSettingsPanel() {
                       </Avatar>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{emp.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {workDays.length > 0 ? workDays.join(', ') : 'Sem jornada definida'}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{scheduleLabel}</p>
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => openScheduleEdit(emp.id)}>
