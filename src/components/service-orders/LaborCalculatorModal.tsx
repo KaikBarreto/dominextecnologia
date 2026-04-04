@@ -12,6 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from './MonthlyCostCalculatorModal';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 
 interface Worker {
   id: string;
