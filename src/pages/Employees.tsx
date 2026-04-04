@@ -508,6 +508,37 @@ export default function Employees() {
           onDeleteMovement={id => deleteMovement.mutate(id)}
         />
       )}
+
+      <AlertDialog open={!!receiptConfirmData} onOpenChange={o => { if (!o) setReceiptConfirmData(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deseja gerar Recibo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O recibo do pagamento será aberto em uma nova página para impressão ou download em PDF.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Não</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (receiptConfirmData) {
+                const html = generateReceiptHTML({
+                  employeeName: receiptConfirmData.employee.name,
+                  salary: receiptConfirmData.employee.salary || 0,
+                  movement: receiptConfirmData.movement,
+                  companySettings,
+                  whiteLabel: wlEnabled,
+                  generatedByName: profile?.full_name || undefined,
+                });
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const win = window.open(url, '_blank');
+                if (win) win.onload = () => URL.revokeObjectURL(url);
+              }
+              setReceiptConfirmData(null);
+            }}>Sim, gerar recibo</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
