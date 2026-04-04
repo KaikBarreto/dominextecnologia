@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Trash2, Download, FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, Download, FileText } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
