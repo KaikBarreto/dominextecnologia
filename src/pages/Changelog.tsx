@@ -40,6 +40,38 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.17',
+    date: '4 de abril de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Salvamento automático nas configurações',
+        description: 'Os dados da empresa agora são salvos automaticamente ao alterar qualquer campo, sem necessidade de clicar em botão.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cabeçalho White Label nos documentos',
+        description: 'Recibos e extratos de funcionários agora utilizam o mesmo cabeçalho personalizado do relatório de OS quando a empresa possui White Label ativo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Detalhamento de pagamento no extrato',
+        description: 'A linha de pagamento no extrato do funcionário agora exibe o detalhamento completo (salário, bônus, vales, faltas) expandido por padrão, com botão para gerar recibo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção de visibilidade nos documentos',
+        description: 'Corrigido bug onde o endereço aparecia nos documentos gerados mesmo com a opção "Exibir em documentos" desativada nas configurações.',
+        category: 'correcao',
+      },
+      {
+        title: 'Preview de tema escuro corrigido',
+        description: 'O preview do tema escuro nas configurações de aparência agora utiliza as cores reais do sistema.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.15',
     date: '4 de abril de 2026',
     type: 'patch',

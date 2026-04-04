@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.16";
+export const APP_VERSION = "1.5.17";
 
-export const VERSION_NOTES = "Nome da empresa e plano na sidebar, central de ajuda, toggle de tema, DSR em faltas, exportação de extrato, novos planos na landing page, correção de saldo de funcionários";
+export const VERSION_NOTES = "Salvamento automático nas configurações, cabeçalho White Label nos documentos HTML, recibo de pagamento com detalhamento, correção de visibilidade de endereço nos documentos";
