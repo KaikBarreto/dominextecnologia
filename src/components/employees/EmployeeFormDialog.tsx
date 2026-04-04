@@ -205,6 +205,17 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <Input value={salary} onChange={e => setSalary(currencyMask(e.target.value))} placeholder="R$ 0,00" />
           </div>
           <div className="space-y-1.5">
+            <Label>Custo mensal total</Label>
+            <div className="flex gap-1">
+              <Input value={monthlyCost} onChange={e => setMonthlyCost(currencyMask(e.target.value))} placeholder="R$ 0,00" />
+              <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title="Calcular custo mensal detalhado">
+                <Calculator className="h-4 w-4 mr-1" />
+                Calcular
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Salário + encargos + benefícios</p>
+          </div>
+          <div className="space-y-1.5">
             <Label>Data de Admissão</Label>
             <Input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} />
           </div>
