@@ -985,6 +985,8 @@ export type Database = {
           hire_date: string | null
           id: string
           is_active: boolean
+          monthly_cost: number | null
+          monthly_cost_breakdown: Json | null
           name: string
           phone: string | null
           photo_url: string | null
@@ -1002,6 +1004,8 @@ export type Database = {
           hire_date?: string | null
           id?: string
           is_active?: boolean
+          monthly_cost?: number | null
+          monthly_cost_breakdown?: Json | null
           name: string
           phone?: string | null
           photo_url?: string | null
@@ -1019,6 +1023,8 @@ export type Database = {
           hire_date?: string | null
           id?: string
           is_active?: boolean
+          monthly_cost?: number | null
+          monthly_cost_breakdown?: Json | null
           name?: string
           phone?: string | null
           photo_url?: string | null
