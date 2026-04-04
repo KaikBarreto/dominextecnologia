@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, BarChart3, Plus, Search, Clock, UsersRound } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
