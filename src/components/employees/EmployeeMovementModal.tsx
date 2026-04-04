@@ -76,9 +76,17 @@ export function EmployeeMovementModal({
     let finalDescription = description || undefined;
 
     if (type === 'falta') {
-      if (faltaMode === 'salario' && applyDSR) {
-        finalAmount = baseValue * 2;
-        finalDescription = `${description || 'Falta'} + DSR (${currencyMask(String(Math.round(baseValue * 100)))} × 2)`;
+      if (faltaMode === 'salario') {
+        if (applyDSR) {
+          finalAmount = baseValue * 2;
+          finalDescription = `${description || 'Falta'} + DSR (${currencyMask(String(Math.round(baseValue * 100)))} × 2)`;
+        }
+      } else if (faltaMode === 'banco') {
+        if (applyDSR) {
+          // DSR portion is financial (1 day salary), work portion goes to bank
+          finalAmount = baseValue; // bank hours deduction (1 work day)
+          finalDescription = `${description || 'Falta'} — ${dailyHours.toFixed(1)}h banco + DSR R$ ${suggestedDailyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        }
       }
     }
 
@@ -93,7 +101,15 @@ export function EmployeeMovementModal({
   };
 
   const baseValue = parseCurrency(amount);
-  const dsrTotal = type === 'falta' && faltaMode === 'salario' && applyDSR ? baseValue * 2 : baseValue;
+
+  // Calculate totals for summary
+  const dsrValue = applyDSR ? suggestedDailyValue : 0;
+  const salaryDiscount = type === 'falta' && faltaMode === 'salario'
+    ? baseValue + dsrValue
+    : type === 'falta' && faltaMode === 'banco' && applyDSR
+      ? dsrValue
+      : 0;
+  const bankHoursDiscount = type === 'falta' && faltaMode === 'banco' ? dailyHours : 0;
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Registrar ${typeLabels[type]} — ${employeeName}`}>
@@ -135,7 +151,7 @@ export function EmployeeMovementModal({
                 <RadioGroupItem value="banco" />
                 <div>
                   <p className="text-sm font-medium">Descontar do banco de horas</p>
-                  <p className="text-xs text-muted-foreground">Registra horas negativas sem impacto financeiro</p>
+                  <p className="text-xs text-muted-foreground">Registra {dailyHours.toFixed(1)}h negativas no banco de horas</p>
                 </div>
               </label>
             </RadioGroup>
@@ -153,8 +169,8 @@ export function EmployeeMovementModal({
           )}
         </div>
 
-        {/* DSR checkbox */}
-        {type === 'falta' && faltaMode === 'salario' && (
+        {/* DSR checkbox — available for both modes */}
+        {type === 'falta' && (
           <div className="rounded-lg border p-3 space-y-2">
             <div className="flex items-start gap-2">
               <Checkbox
@@ -165,27 +181,71 @@ export function EmployeeMovementModal({
               />
               <label htmlFor="dsr" className="cursor-pointer">
                 <p className="text-sm font-medium">Aplicar perda de DSR</p>
-                <p className="text-xs text-muted-foreground">
-                  A falta injustificada resulta na perda do Descanso Semanal Remunerado (valor × 2)
-                </p>
+                {faltaMode === 'salario' ? (
+                  <p className="text-xs text-muted-foreground">
+                    A falta injustificada resulta na perda do Descanso Semanal Remunerado (valor × 2)
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Desconta 1 dia proporcional do salário (DSR) e 1 dia de trabalho ({dailyHours.toFixed(1)}h) do banco de horas
+                  </p>
+                )}
               </label>
             </div>
+
+            {/* Summary breakdown */}
             {applyDSR && baseValue > 0 && (
               <div className="text-xs bg-muted rounded p-2 space-y-0.5">
-                <div className="flex justify-between">
-                  <span>Dia faltado</span>
-                  <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Perda DSR</span>
-                  <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
-                <div className="flex justify-between font-semibold border-t pt-1 mt-1">
-                  <span>Total desconto</span>
-                  <span className="text-destructive">{dsrTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
+                {faltaMode === 'salario' ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Dia faltado</span>
+                      <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Perda DSR</span>
+                      <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                      <span>Total desconto do salário</span>
+                      <span className="text-destructive">{(baseValue * 2).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Banco de horas</span>
+                      <span>−{dailyHours.toFixed(1)}h</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Perda DSR (desconto salarial)</span>
+                      <span>{suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                      <span>Total</span>
+                      <span className="text-destructive">
+                        {dailyHours.toFixed(1)}h + {suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Summary when no DSR but falta selected */}
+        {type === 'falta' && !applyDSR && baseValue > 0 && (
+          <div className="text-xs bg-muted rounded-lg p-2">
+            <div className="flex justify-between font-medium">
+              <span>Total desconto</span>
+              <span className="text-destructive">
+                {faltaMode === 'salario'
+                  ? baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                  : `${dailyHours.toFixed(1)}h`
+                }
+              </span>
+            </div>
           </div>
         )}
 
@@ -199,11 +259,6 @@ export function EmployeeMovementModal({
           <Button type="submit" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Registrar {typeLabels[type]}
-            {type === 'falta' && faltaMode === 'salario' && applyDSR && baseValue > 0 && (
-              <span className="ml-1 text-xs opacity-80">
-                ({dsrTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
-              </span>
-            )}
           </Button>
         </div>
       </form>
