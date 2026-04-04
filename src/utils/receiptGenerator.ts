@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
 import type { EmployeeMovement, BalanceSummary } from '@/utils/employeeCalculations';
 import { formatMovementType } from '@/utils/employeeCalculations';
+import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 
 interface ReceiptData {
   employeeName: string;
