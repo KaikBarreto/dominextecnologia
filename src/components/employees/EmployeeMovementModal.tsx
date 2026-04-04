@@ -36,65 +36,11 @@ export function EmployeeMovementModal({
   const [description, setDescription] = useState('');
   const [faltaMode, setFaltaMode] = useState<'salario' | 'banco'>('salario');
   const [applyDSR, setApplyDSR] = useState(false);
-  const { profile } = useAuth();
 
   const draft = useFormDraft<MovementDraft>({ key: `employee-movement-${type}`, isOpen: open });
 
-  const companyId = profile?.company_id;
-  const { data: timeSettings } = useQuery({
-    queryKey: ['time-settings-for-falta', companyId],
-    queryFn: async () => {
-      if (!companyId) return null;
-      const { data } = await supabase
-        .from('time_settings')
-        .select('default_in, default_out, default_break_min')
-        .eq('company_id', companyId)
-        .maybeSingle();
-      return data;
-    },
-    enabled: type === 'falta' && !!companyId,
-  });
-
-  const { data: employeeSchedule } = useQuery({
-    queryKey: ['time-schedule-for-falta', employeeId],
-    queryFn: async () => {
-      if (!employeeId) return null;
-      const { data } = await supabase
-        .from('time_schedules')
-        .select('weekday, expected_in, expected_out, break_minutes, is_work_day')
-        .eq('employee_id', employeeId);
-      return data;
-    },
-    enabled: type === 'falta' && !!employeeId,
-  });
-
-  const dailyHours = useMemo(() => {
-    if (employeeSchedule && employeeSchedule.length > 0) {
-      const workDays = employeeSchedule.filter((s: any) => s.is_work_day);
-      if (workDays.length > 0) {
-        let totalMin = 0;
-        for (const d of workDays) {
-          const inTime = d.expected_in?.split(':').map(Number) || [8, 0];
-          const outTime = d.expected_out?.split(':').map(Number) || [17, 0];
-          const workMin = (outTime[0] * 60 + (outTime[1] || 0)) - (inTime[0] * 60 + (inTime[1] || 0)) - (d.break_minutes || 0);
-          totalMin += Math.max(workMin, 0);
-        }
-        return totalMin / workDays.length / 60;
-      }
-    }
-
-    if (timeSettings?.default_in && timeSettings?.default_out) {
-      const inP = timeSettings.default_in.split(':').map(Number);
-      const outP = timeSettings.default_out.split(':').map(Number);
-      const workMin = (outP[0] * 60 + (outP[1] || 0)) - (inP[0] * 60 + (inP[1] || 0)) - (timeSettings.default_break_min || 0);
-      return Math.max(workMin, 0) / 60;
-    }
-
-    return 8;
-  }, [employeeSchedule, timeSettings]);
-
-  const monthlyHours = dailyHours * 22;
-  const suggestedDailyValue = salary > 0 ? calculateDailyValue(salary, 22) : 0;
+  const { dailyHours, monthlyHours, workDaysPerMonth } = useEmployeeWorkHours(employeeId);
+  const suggestedDailyValue = salary > 0 ? calculateDailyValue(salary, workDaysPerMonth) : 0;
 
   useEffect(() => {
     if (open && type === 'falta' && salary > 0 && !draft.showResumePrompt && amount === '') {
