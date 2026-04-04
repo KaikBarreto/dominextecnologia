@@ -107,7 +107,6 @@ export function useCompanySettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-settings'] });
-      toast({ title: 'Dados da empresa salvos!' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Erro ao salvar', description: error.message });
