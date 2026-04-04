@@ -393,6 +393,16 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
         onApply={(totalCost, breakdown) => {
           if (costCalcWorkerId) {
             updateWorker(costCalcWorkerId, { salary: totalCost, monthlyCostBreakdown: breakdown });
+            // Persist to employee record if linked
+            const worker = workers.find(w => w.id === costCalcWorkerId);
+            if (worker?.employeeId) {
+              supabase.from('employees').update({
+                monthly_cost: totalCost,
+                monthly_cost_breakdown: breakdown as any,
+              }).eq('id', worker.employeeId).then(({ error }) => {
+                if (error) console.error('Erro ao salvar custo mensal do funcionário:', error);
+              });
+            }
           }
         }}
       />
