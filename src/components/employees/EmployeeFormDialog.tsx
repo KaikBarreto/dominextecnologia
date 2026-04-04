@@ -313,6 +313,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         onOpenChange={setShowCostCalc}
         initialSalary={parseCurrency(salary)}
         initialBreakdown={monthlyCostBreakdown}
+        defaultMonthlyHours={resolvedMonthlyHours}
         onApply={(totalCost, breakdown) => {
           setMonthlyCost(currencyMask(String(Math.round(totalCost * 100))));
           setMonthlyCostBreakdown(breakdown);
