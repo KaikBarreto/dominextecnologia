@@ -161,7 +161,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         onDiscard={() => {
           draft.discardDraft();
           setName(''); setCpf(''); setPhone(''); setEmail(''); setPosition('');
-          setSalary(''); setHireDate(''); setAddress(''); setPixKey('');
+          setSalary(''); setMonthlyCost(''); setMonthlyCostBreakdown(null); setHireDate(''); setAddress(''); setPixKey('');
         }}
       />
       <form onSubmit={handleSubmit} className="space-y-4 p-1">
