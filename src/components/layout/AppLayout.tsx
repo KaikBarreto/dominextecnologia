@@ -46,20 +46,8 @@ function HeaderContent() {
         </div>
       )}
 
-      {/* Right: actions */}
-      <div className="flex items-center gap-1 w-auto">
-        {user && (
-          <>
-            <span className="text-sm text-muted-foreground hidden sm:inline mr-1">{user.email}</span>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/perfil')} title="Meu Perfil">
-              <UserCircle className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-white" onClick={signOut} title="Sair">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </>
-        )}
-      </div>
+      {/* Right: empty spacer to balance layout */}
+      <div className="w-10" />
     </header>
   );
 }
