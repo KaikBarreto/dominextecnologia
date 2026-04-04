@@ -2,12 +2,9 @@ import { Trash2, Download, FileText } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useDataPagination } from '@/hooks/useDataPagination';
-import { useTableSort } from '@/hooks/useTableSort';
-import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { BalanceSummary, formatMovementType, getMovementBadgeVariant, EmployeeMovement } from '@/utils/employeeCalculations';
 import { generateExtractHTMLWithHeader, generateReceiptHTML } from '@/utils/receiptGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -107,8 +104,8 @@ function PaymentDetails({ movement, salary, fmt, onReceipt }: { movement: Employ
 
 export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSalary, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const { sortedItems, sortConfig, handleSort } = useTableSort(movements);
-  const pagination = useDataPagination(sortedItems, 25);
+  const sorted = [...movements].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const pagination = useDataPagination(sorted, 10);
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
   const { profile } = useAuth();
@@ -160,70 +157,65 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
           </div>
         </div>
 
-        <div className="overflow-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="whitespace-nowrap">Data</SortableTableHead>
-                <SortableTableHead sortKey="type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>
-                <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
-                <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="text-right whitespace-nowrap">Valor</SortableTableHead>
-                <SortableTableHead sortKey="balance_after" sortConfig={sortConfig} onSort={handleSort} className="text-right whitespace-nowrap">Saldo</SortableTableHead>
-                <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-20"> </SortableTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pagination.paginatedItems.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma movimentação</TableCell></TableRow>
-              ) : pagination.paginatedItems.map(m => {
-                const isPayment = m.type === 'pagamento';
-                return (
-                  <TableRow key={m.id}>
-                    <TableCell className="text-xs whitespace-nowrap align-top">{format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
-                    <TableCell className="align-top">
-                      <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px]">
-                        {formatMovementType(m.type)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs max-w-[300px] align-top">
-                      <div>{m.description || '—'}</div>
-                      {isPayment && (
-                        <PaymentDetails
-                          movement={m}
-                          salary={employeeSalary}
-                          fmt={fmt}
-                          onReceipt={() => { handleReceipt(m); }}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell className={`text-right text-xs font-medium align-top ${['vale', 'falta', 'pagamento'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
-                      {['vale', 'falta', 'pagamento'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
-                      <div className="text-[10px] text-muted-foreground font-normal">Saldo após: {fmt(m.balance_after)}</div>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="flex items-center gap-1">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
-                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => onDeleteMovement(m.id)}>Excluir</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+        <div className="overflow-auto rounded-lg border divide-y">
+          {pagination.paginatedItems.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">Nenhuma movimentação</div>
+          ) : pagination.paginatedItems.map(m => {
+            const isPayment = m.type === 'pagamento';
+            return (
+              <div key={m.id} className="p-3 space-y-2">
+                {/* Movement header row */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px] shrink-0">
+                      {formatMovementType(m.type)}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-right">
+                      <div className={`text-xs font-semibold ${['vale', 'falta', 'pagamento'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
+                        {['vale', 'falta', 'pagamento'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      <div className="text-[10px] text-muted-foreground">Saldo após: {fmt(m.balance_after)}</div>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+                          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => onDeleteMovement(m.id)}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+                {/* Description */}
+                {m.description && !isPayment && (
+                  <p className="text-xs text-muted-foreground pl-1">{m.description}</p>
+                )}
+                {isPayment && (
+                  <>
+                    {m.description && <p className="text-xs text-muted-foreground pl-1">{m.description}</p>}
+                    <PaymentDetails
+                      movement={m}
+                      salary={employeeSalary}
+                      fmt={fmt}
+                      onReceipt={() => handleReceipt(m)}
+                    />
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {movements.length > 0 && (
