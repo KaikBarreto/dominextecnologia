@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Camera, Link2, Unlink, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Camera, Link2, Unlink, Eye, EyeOff, Calculator } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from '@/components/service-orders/MonthlyCostCalculatorModal';
+import { formatBRL } from '@/utils/currency';
 
 interface EmployeeFormDialogProps {
   open: boolean;
