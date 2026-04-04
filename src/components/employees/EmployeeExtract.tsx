@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,14 +20,98 @@ interface EmployeeExtractProps {
   onDeleteMovement: (id: string) => void;
 }
 
+function generateExtractHTML(employeeName: string, movements: EmployeeMovement[], balance: BalanceSummary): string {
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const sorted = [...movements].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Extrato — ${employeeName}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1a1a1a; font-size: 13px; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .subtitle { color: #666; margin-bottom: 16px; font-size: 12px; }
+  .summary { display: flex; gap: 12px; margin-bottom: 20px; }
+  .summary-card { flex: 1; border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px; text-align: center; }
+  .summary-card .label { font-size: 11px; color: #888; text-transform: uppercase; }
+  .summary-card .value { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .green { color: #16a34a; }
+  .red { color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 12px; }
+  th { background: #f9fafb; font-weight: 600; font-size: 11px; text-transform: uppercase; color: #666; }
+  .right { text-align: right; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+  .badge-vale { background: #fef2f2; color: #dc2626; }
+  .badge-bonus { background: #f0fdf4; color: #16a34a; }
+  .badge-falta { background: #f5f5f5; color: #666; }
+  .badge-pagamento { background: #eff6ff; color: #2563eb; }
+  .badge-ajuste { background: #f5f5f5; color: #666; }
+  .btn-print { position: fixed; top: 16px; right: 16px; background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-print:hover { background: #1d4ed8; }
+  @media print { .btn-print { display: none; } }
+</style>
+</head>
+<body>
+<button class="btn-print" onclick="window.print()">Salvar em PDF</button>
+<h1>Extrato — ${employeeName}</h1>
+<p class="subtitle">Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+
+<div class="summary">
+  <div class="summary-card"><div class="label">Bônus</div><div class="value green">${fmt(balance.totalBonus)}</div></div>
+  <div class="summary-card"><div class="label">Vales</div><div class="value red">${fmt(balance.totalVales)}</div></div>
+  <div class="summary-card"><div class="label">Faltas</div><div class="value red">${fmt(balance.totalFaltas)}</div></div>
+  <div class="summary-card"><div class="label">Saldo</div><div class="value ${balance.currentBalance >= 0 ? 'green' : 'red'}">${fmt(balance.currentBalance)}</div></div>
+</div>
+
+<table>
+<thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th class="right">Valor</th><th class="right">Saldo</th></tr></thead>
+<tbody>
+${sorted.map(m => {
+  const isDebit = ['vale', 'falta'].includes(m.type);
+  const badgeClass = `badge badge-${m.type}`;
+  return `<tr>
+    <td>${format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</td>
+    <td><span class="${badgeClass}">${formatMovementType(m.type)}</span></td>
+    <td>${m.description || '—'}</td>
+    <td class="right ${isDebit ? 'red' : 'green'}">${isDebit ? '-' : '+'}${fmt(Math.abs(m.amount))}</td>
+    <td class="right">${fmt(m.balance_after)}</td>
+  </tr>`;
+}).join('')}
+</tbody>
+</table>
+</body></html>`;
+}
+
 export function EmployeeExtract({ open, onOpenChange, employeeName, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const { sortedItems, sortConfig, handleSort } = useTableSort(movements);
   const pagination = useDataPagination(sortedItems, 25);
 
+  const handleExport = () => {
+    const html = generateExtractHTML(employeeName, movements, balance);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) {
+      win.onload = () => URL.revokeObjectURL(url);
+    }
+  };
+
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Extrato — ${employeeName}`} className="sm:max-w-[900px]">
       <div className="space-y-4">
+        {/* Export button */}
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
+        </div>
+
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="rounded-lg border p-3 text-center">

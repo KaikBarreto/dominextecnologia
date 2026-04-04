@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { cn } from '@/lib/utils';
@@ -8,59 +8,80 @@ import { Badge } from '@/components/ui/badge';
 
 const plans = [
   {
-    code: 'starter',
-    name: 'Starter',
-    desc: 'Para pequenas equipes focadas em eficiência',
-    monthly: 197,
-    annual: 157,
+    code: 'essencial',
+    name: 'Essencial',
+    desc: 'Gestão básica para pequenas equipes',
+    monthly: 200,
+    annual: 160,
     popular: false,
-    features: ['OS ilimitadas', '2 usuários inclusos', 'App para técnicos', 'Painel do gestor', 'Relatórios básicos', 'Suporte por email'],
-    cta: 'Testar por 7 Dias Grátis',
-    ctaLink: '/cadastro?origem=Site',
+    features: [
+      'OS ilimitadas',
+      '5 usuários inclusos',
+      'App para técnicos',
+      'Agenda e calendário',
+      'Relatórios básicos',
+      'Suporte por email',
+    ],
+    cta: 'Testar 7 Dias Grátis',
+    ctaLink: '/cadastro?plano=essencial&origem=Site',
   },
   {
-    code: 'pro',
-    name: 'Pro',
-    desc: 'Gestão completa + Integrações avançadas',
-    monthly: 497,
-    annual: 397,
+    code: 'avancado',
+    name: 'Avançado',
+    desc: 'Para empresas que precisam de RH e finanças',
+    monthly: 350,
+    annual: 280,
+    popular: false,
+    features: [
+      'Tudo do Essencial +',
+      '10 usuários inclusos',
+      'Módulo Funcionários / RH',
+      'Financeiro avançado',
+      'Contas a pagar/receber',
+      'DRE e relatórios financeiros',
+    ],
+    cta: 'Testar 7 Dias Grátis',
+    ctaLink: '/cadastro?plano=avancado&origem=Site',
+  },
+  {
+    code: 'master',
+    name: 'Master',
+    desc: 'Operação completa com CRM e portal',
+    monthly: 650,
+    annual: 520,
     popular: true,
     features: [
-      'Tudo do Starter +',
-      '5 usuários inclusos',
-      'Rastreamento em tempo real',
-      'Manutenções recorrentes',
-      'Avaliações de cliente',
+      'Tudo do Avançado +',
+      '20 usuários inclusos',
+      'CRM / Funil de vendas',
+      'Precificação avançada',
+      'Portal do cliente',
       'Suporte prioritário',
     ],
-    cta: 'Testar por 7 Dias Grátis',
-    ctaLink: '/cadastro?origem=Site',
+    cta: 'Testar 7 Dias Grátis',
+    ctaLink: '/cadastro?plano=master&origem=Site',
   },
   {
-    code: 'enterprise',
-    name: 'Enterprise',
-    desc: 'Plano completo para operações de grande porte',
+    code: 'personalizado',
+    name: 'Personalizado',
+    desc: 'Para grandes operações e múltiplas filiais',
     monthly: null,
     annual: null,
     popular: false,
     features: [
-      'Tudo do Pro +',
+      'Tudo do Master +',
       'Usuários ilimitados',
       'Múltiplas filiais',
-      'Gestão de frotas',
-      'SLA com alertas',
-      'Gestor de conta',
+      'NF-e integrada',
+      'White Label',
+      'Gestor de conta dedicado',
     ],
-    cta: 'Testar por 7 Dias Grátis',
-    ctaLink: '/cadastro?origem=Site',
+    cta: 'Falar com Consultor',
+    ctaLink: '/cadastro?plano=personalizado&origem=Site',
   },
 ];
 
-// Ensure order: starter, pro, enterprise
-const sortedPlans = [...plans].sort((a, b) => {
-  const order = ['starter', 'pro', 'enterprise'];
-  return order.indexOf(a.code) - order.indexOf(b.code);
-});
+const sortedPlans = plans;
 
 export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
@@ -87,7 +108,7 @@ export default function PricingSection() {
           <Badge className={cn('bg-emerald-500 text-white transition-opacity ml-5', annual ? 'opacity-100' : 'opacity-0 pointer-events-none')}>-20%</Badge>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 items-stretch">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch">
           {sortedPlans.map((plan) => {
             const displayPrice = plan.monthly !== null ? (annual ? plan.annual : plan.monthly) : null;
             const yearlyTotal = plan.monthly !== null ? Math.round(plan.monthly * 12 * 0.8) : null;
@@ -96,13 +117,12 @@ export default function PricingSection() {
               <div
                 key={plan.code}
                 className={cn(
-                  'relative rounded-2xl border p-8 flex flex-col transition-all',
+                  'relative rounded-2xl border p-7 flex flex-col transition-all',
                   plan.popular
-                    ? 'border-primary bg-white/5 shadow-brand-glow scale-[1.02] md:-mt-4 md:mb-[-16px]'
+                    ? 'border-primary bg-white/5 shadow-brand-glow scale-[1.02]'
                     : 'border-white/10 bg-white/[0.03]'
                 )}
               >
-                {/* Top accent bar */}
                 {plan.popular && (
                   <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" />
                 )}
@@ -116,16 +136,16 @@ export default function PricingSection() {
                 )}
 
                 <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                <p className="text-sm text-white/40 mb-6">{plan.desc}</p>
+                <p className="text-sm text-white/40 mb-5">{plan.desc}</p>
 
                 {displayPrice !== null ? (
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <p className="text-[10px] uppercase tracking-widest text-white/40 font-medium mb-1">
                       {annual ? 'equivalente a' : 'a partir de'}
                     </p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm text-white/60">R$</span>
-                      <span className={cn('font-extrabold tracking-tight text-white', plan.popular ? 'text-5xl text-primary' : 'text-4xl')}>
+                      <span className={cn('font-extrabold tracking-tight text-white', plan.popular ? 'text-4xl text-primary' : 'text-3xl')}>
                         {displayPrice}
                       </span>
                       <span className="text-white/40 text-sm">/mês</span>
@@ -140,18 +160,18 @@ export default function PricingSection() {
                     )}
                   </div>
                 ) : (
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <span className="text-2xl font-bold text-white">Sob consulta</span>
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-3">
                   <div className="flex-1 h-px bg-white/10" />
                   <span className="text-[10px] uppercase tracking-widest text-white/40 font-medium">Recursos</span>
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
 
-                <ul className="space-y-3 mb-8 flex-1">
+                <ul className="space-y-2.5 mb-6 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm text-white/60">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
