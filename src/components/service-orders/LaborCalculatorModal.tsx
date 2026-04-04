@@ -128,8 +128,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
   const [workers, setWorkers] = useState<Worker[]>(() => [makeWorker(2)]);
   const [costCalcWorkerId, setCostCalcWorkerId] = useState<string | null>(null);
 
-  // Sync company hours on mount
-  useState(() => { setMonthlyHours(companyMonthlyHours); });
+  // Sync company hours when available
+  useEffect(() => { setMonthlyHours(companyMonthlyHours); }, [companyMonthlyHours]);
 
   const costCalcWorker = costCalcWorkerId ? workers.find(w => w.id === costCalcWorkerId) : null;
 
