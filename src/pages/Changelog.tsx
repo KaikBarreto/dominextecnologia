@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.15',
+    date: '4 de abril de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Pagamento de funcionário redesenhado',
+        description: 'Novo modal de pagamento com resumo financeiro completo (salário, bônus, faltas), campo editável para escolher quanto descontar dos vales e seleção da conta financeira para débito.',
+        category: 'recurso',
+      },
+      {
+        title: 'Reset automático de saldo após pagamento',
+        description: 'Ao confirmar o pagamento, o sistema registra o pagamento, faz um ajuste automático para resetar o saldo ao salário base e relança eventuais vales não descontados.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Integração financeira no pagamento',
+        description: 'O pagamento de funcionário agora registra a saída diretamente na conta bancária/caixa selecionada, mantendo o saldo atualizado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.14',
     date: '26 de março de 2026',
     type: 'patch',
