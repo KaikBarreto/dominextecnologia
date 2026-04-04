@@ -42,6 +42,8 @@ export default function Employees() {
   const { toast } = useToast();
   const { user, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
+  const { settings: companySettings } = useCompanySettings();
+  const { enabled: wlEnabled } = useWhiteLabel();
 
   const canManageTime = isAdminOrGestor() || hasPermission('fn:manage_timeclock') || hasPermission('fn:manage_employees');
 
