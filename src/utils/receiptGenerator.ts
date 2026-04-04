@@ -90,7 +90,7 @@ function buildDominexFooter(whiteLabel?: boolean): string {
   if (whiteLabel) return '';
   return `
   <div style="text-align:center;padding-top:24px;border-top:1px solid #eee;margin-top:40px">
-    <img src="https://dominextecnologia.lovable.app/lovable-uploads/0d8b9de1-d24c-4a3b-bbbf-d42d3fa27ce6.png" alt="Dominex" style="height:32px;margin-bottom:4px" />
+    <img src="${DOMINEX_LOGO_BLACK_BASE64}" alt="Dominex" style="height:32px;margin-bottom:4px" />
     <br/><span style="font-size:11px;color:#999">dominex.app</span>
   </div>`;
 }
