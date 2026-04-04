@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
-import type { EmployeeMovement } from '@/utils/employeeCalculations';
+import type { EmployeeMovement, BalanceSummary } from '@/utils/employeeCalculations';
+import { formatMovementType } from '@/utils/employeeCalculations';
 
 interface ReceiptData {
   employeeName: string;
@@ -48,7 +49,6 @@ export function generateReceiptHTML(data: ReceiptData): string {
   const { employeeName, salary, movement, companySettings, whiteLabel, generatedByName } = data;
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // Parse payment_details
   const details = movement.payment_details || {};
   const bonus = Number(details.bonus) || 0;
   const totalVales = Number(details.totalVales) || 0;
@@ -57,7 +57,6 @@ export function generateReceiptHTML(data: ReceiptData): string {
   const paymentMethod = movement.payment_method || details.paymentMethod || 'Não informado';
   const subtotal = salary + bonus;
   const paidAmount = Math.abs(movement.amount);
-  const diffFromBase = paidAmount - salary;
 
   const companyHeader = buildCompanyHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
@@ -168,8 +167,8 @@ ${dominexFooter}
 
 export function generateExtractHTMLWithHeader(
   employeeName: string,
-  movements: import('@/utils/employeeCalculations').EmployeeMovement[],
-  balance: import('@/utils/employeeCalculations').BalanceSummary,
+  movements: EmployeeMovement[],
+  balance: BalanceSummary,
   companySettings?: CompanySettings | null,
   whiteLabel?: boolean
 ): string {
@@ -232,7 +231,6 @@ ${companyHeader ? `<div class="header">${companyHeader}</div><hr class="divider"
 ${sorted.map(m => {
   const isDebit = ['vale', 'falta'].includes(m.type);
   const badgeClass = `badge badge-${m.type}`;
-  const { formatMovementType } = require('@/utils/employeeCalculations');
   return `<tr>
     <td>${format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</td>
     <td><span class="${badgeClass}">${formatMovementType(m.type)}</span></td>
