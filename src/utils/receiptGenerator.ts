@@ -12,11 +12,61 @@ interface ReceiptData {
   generatedByName?: string;
 }
 
+function buildWhiteLabelHeader(s: CompanySettings): string {
+  const bgColor = s.report_header_bg_color || '#1e293b';
+  const textColor = s.report_header_text_color || '#ffffff';
+  const logoSize = s.report_header_logo_size || 80;
+  const showLogoBg = s.report_header_show_logo_bg !== false;
+  const logoBgColor = s.report_header_logo_bg_color || '#ffffff';
+  const logoType = s.report_header_logo_type || 'full';
+  const logoUrl = logoType === 'icon'
+    ? (s.white_label_icon_url || s.logo_url)
+    : s.logo_url;
+
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" alt="Logo" style="height:${logoSize}px;width:${logoSize}px;object-fit:contain;border-radius:8px;${showLogoBg ? `background:${logoBgColor};padding:6px;` : ''}" />`
+    : `<div style="height:${logoSize}px;width:${logoSize}px;background:rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center">
+        <span style="font-size:${logoSize * 0.35}px;color:rgba(255,255,255,0.7)">🏢</span>
+      </div>`;
+
+  const nameLine = s.show_name_in_documents !== false && s.name
+    ? `<div style="font-size:18px;font-weight:700;color:${textColor}">${s.name}</div>` : '';
+  const cnpjLine = s.show_cnpj_in_documents && s.document
+    ? `<div style="font-size:12px;color:${textColor};opacity:0.9">CNPJ: ${s.document}</div>` : '';
+
+  const contactParts: string[] = [];
+  if (s.show_phone_in_documents && s.phone) contactParts.push(s.phone);
+  if (s.show_email_in_documents && s.email) contactParts.push(s.email);
+  const contactLine = contactParts.length
+    ? `<div style="font-size:11px;color:${textColor};opacity:0.8;margin-top:2px">${contactParts.join(' | ')}</div>` : '';
+
+  let addressLine = '';
+  if (s.show_address_in_documents && s.address) {
+    let a = s.address;
+    if (s.address_number) a += `, ${s.address_number}`;
+    if (s.complement) a += ` ${s.complement}`;
+    if (s.neighborhood) a += ` - ${s.neighborhood}`;
+    if (s.city) a += ` - ${s.city}`;
+    if (s.state) a += `/${s.state}`;
+    if (s.zip_code) a += ` | CEP: ${s.zip_code}`;
+    addressLine = `<div style="font-size:11px;color:${textColor};opacity:0.75;margin-top:6px">${a}</div>`;
+  }
+
+  return `<div style="background:${bgColor};padding:20px 24px;border-radius:8px 8px 0 0">
+    <div style="display:flex;align-items:center;gap:16px">
+      ${logoHtml}
+      <div>${nameLine}${cnpjLine}${contactLine}</div>
+    </div>
+    ${addressLine}
+  </div>`;
+}
+
 function buildCompanyHeader(s: CompanySettings | null | undefined): string {
   if (!s) return '';
+  if (s.white_label_enabled) return buildWhiteLabelHeader(s);
+
   const lines: string[] = [];
   if (s.show_name_in_documents !== false && s.name) lines.push(`<strong style="font-size:16px">${s.name}</strong>`);
-  const addrParts: string[] = [];
   if (s.show_address_in_documents && s.address) {
     let a = s.address;
     if (s.address_number) a += `, ${s.address_number}`;
@@ -25,9 +75,8 @@ function buildCompanyHeader(s: CompanySettings | null | undefined): string {
     if (s.city) a += ` - ${s.city}`;
     if (s.state) a += `/${s.state}`;
     if (s.zip_code) a += ` - CEP: ${s.zip_code}`;
-    addrParts.push(a);
+    lines.push(`<span style="font-size:12px;color:#555">${a}</span>`);
   }
-  if (addrParts.length) lines.push(`<span style="font-size:12px;color:#555">${addrParts.join('')}</span>`);
   const contact: string[] = [];
   if (s.show_phone_in_documents && s.phone) contact.push(`Tel: ${s.phone}`);
   if (s.show_email_in_documents && s.email) contact.push(s.email);
@@ -45,6 +94,15 @@ function buildDominexFooter(whiteLabel?: boolean): string {
   </div>`;
 }
 
+function renderHeader(s: CompanySettings | null | undefined): string {
+  if (!s) return '';
+  if (s.white_label_enabled) {
+    return buildWhiteLabelHeader(s);
+  }
+  const plainHeader = buildCompanyHeader(s);
+  return plainHeader ? `<div class="header">${plainHeader}</div><hr class="divider" />` : '';
+}
+
 export function generateReceiptHTML(data: ReceiptData): string {
   const { employeeName, salary, movement, companySettings, whiteLabel, generatedByName } = data;
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -58,7 +116,7 @@ export function generateReceiptHTML(data: ReceiptData): string {
   const subtotal = salary + bonus;
   const paidAmount = Math.abs(movement.amount);
 
-  const companyHeader = buildCompanyHeader(companySettings);
+  const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
   const dateStr = format(new Date(movement.created_at), "dd/MM/yyyy 'às' HH:mm");
 
@@ -97,7 +155,7 @@ export function generateReceiptHTML(data: ReceiptData): string {
 <body>
 <button class="btn-print" onclick="window.print()">Salvar em PDF</button>
 
-${companyHeader ? `<div class="header">${companyHeader}</div><hr class="divider" />` : ''}
+${headerHTML}
 
 <h1>RECIBO DE PAGAMENTO</h1>
 <p class="date-sub">Emitido em ${dateStr}</p>
@@ -174,7 +232,7 @@ export function generateExtractHTMLWithHeader(
 ): string {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const sorted = [...movements].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  const companyHeader = buildCompanyHeader(companySettings);
+  const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
 
   return `<!DOCTYPE html>
@@ -213,7 +271,7 @@ export function generateExtractHTMLWithHeader(
 <body>
 <button class="btn-print" onclick="window.print()">Salvar em PDF</button>
 
-${companyHeader ? `<div class="header">${companyHeader}</div><hr class="divider" />` : ''}
+${headerHTML}
 
 <h1>Extrato — ${employeeName}</h1>
 <p class="subtitle">Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
