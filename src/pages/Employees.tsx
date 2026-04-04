@@ -10,7 +10,7 @@ import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebar
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
-import { EmployeePaymentModal } from '@/components/employees/EmployeePaymentModal';
+import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
@@ -211,6 +211,7 @@ export default function Employees() {
     amount: number;
     description: string;
     notes?: string;
+    accountId?: string;
   }) => {
     const today = new Date().toISOString().split('T')[0];
     await supabase.from('financial_transactions').insert({
@@ -222,12 +223,14 @@ export default function Employees() {
       paid_date: today,
       is_paid: true,
       notes: input.notes,
+      account_id: input.accountId || null,
       created_by: user?.id,
     });
 
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
   }, [queryClient, user?.id]);
 
   const handleMovement = (data: { amount: number; description?: string }) => {
@@ -258,24 +261,69 @@ export default function Employees() {
     });
   };
 
-  const handlePayment = () => {
+  const handlePayment = async (payload: PaymentPayload) => {
     if (!paymentEmployee) return;
-    const paymentAmount = activeBalance.currentBalance;
+    const sal = paymentEmployee.salary;
+    const subtotal = sal + activeBalance.totalBonus - activeBalance.totalFaltas;
+    const toPay = subtotal - payload.valeDiscount;
+    const remainingVales = activeBalance.totalVales - payload.valeDiscount;
 
+    const paymentDetails = {
+      salary: sal,
+      bonus: activeBalance.totalBonus,
+      faltas: activeBalance.totalFaltas,
+      subtotal,
+      valeDiscount: payload.valeDiscount,
+      remainingVales,
+      amountPaid: toPay,
+      accountId: payload.accountId,
+    };
+
+    // 1. Register payment movement
     addMovement.mutate({
       employee_id: paymentEmployee.id,
       type: 'pagamento',
-      amount: paymentAmount,
+      amount: toPay,
       balance_after: 0,
-      description: 'Pagamento de salário',
+      description: payload.description || 'Pagamento de salário',
+      payment_method: payload.accountId,
       created_by: user?.id,
     }, {
       onSuccess: async () => {
+        // 2. Register adjustment to reset balance to salary
+        await supabase.from('employee_movements').insert({
+          employee_id: paymentEmployee.id,
+          type: 'ajuste',
+          amount: sal,
+          balance_after: sal,
+          description: 'Reset para salário base',
+          payment_details: paymentDetails,
+          created_by: user?.id,
+        } as any);
+
+        // 3. Re-register remaining vales if partial discount
+        if (remainingVales > 0) {
+          await supabase.from('employee_movements').insert({
+            employee_id: paymentEmployee.id,
+            type: 'vale',
+            amount: remainingVales,
+            balance_after: sal - remainingVales,
+            description: 'Vales não descontados no pagamento',
+            created_by: user?.id,
+          } as any);
+        }
+
+        // 4. Register financial transaction linked to account
         await registerFinancialTransaction({
           type: 'saida',
-          amount: paymentAmount,
+          amount: toPay,
           description: `Pagamento de salário - ${paymentEmployee.name}`,
+          notes: payload.description,
+          accountId: payload.accountId,
         });
+
+        queryClient.invalidateQueries({ queryKey: ['employee-movements'] });
+        queryClient.invalidateQueries({ queryKey: ['all-employee-movements'] });
         setPaymentEmployee(null);
       },
     });
