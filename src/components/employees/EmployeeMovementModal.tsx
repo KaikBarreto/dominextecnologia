@@ -42,30 +42,39 @@ export function EmployeeMovementModal({
   const { dailyHours, monthlyHours, workDaysPerMonth } = useEmployeeWorkHours(employeeId);
   const suggestedDailyValue = salary > 0 ? calculateDailyValue(salary, workDaysPerMonth) : 0;
 
-  // Pre-fill falta value when suggestion becomes available (async)
+  // Reset local state on open before auto-suggesting the falta value
   const [faltaPreFilled, setFaltaPreFilled] = useState(false);
-  useEffect(() => {
-    if (!open) { setFaltaPreFilled(false); return; }
-    if (type === 'falta' && salary > 0 && suggestedDailyValue > 0 && !draft.showResumePrompt && !faltaPreFilled) {
-      setAmount(currencyMask(String(Math.round(suggestedDailyValue * 100))));
-      setFaltaPreFilled(true);
-    }
-  }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt, faltaPreFilled]);
 
   useEffect(() => {
-    if (open && !draft.showResumePrompt) {
-      draft.saveDraft({ amount, description });
+    if (!open) {
+      setFaltaPreFilled(false);
+      return;
     }
-  }, [amount, description, open, draft.showResumePrompt]);
 
-  useEffect(() => {
-    if (open && !(draft.hasDraft && draft.draftData)) {
+    if (!(draft.hasDraft && draft.draftData)) {
       setAmount('');
       setDescription('');
       setFaltaMode('salario');
       setApplyDSR(false);
+      setFaltaPreFilled(false);
     }
   }, [open]);
+
+  // Pre-fill falta value when suggestion becomes available (async)
+  useEffect(() => {
+    if (!open || draft.showResumePrompt) return;
+
+    if (
+      type === 'falta' &&
+      salary > 0 &&
+      suggestedDailyValue > 0 &&
+      !faltaPreFilled &&
+      !amount
+    ) {
+      setAmount(currencyMask(String(Math.round(suggestedDailyValue * 100))));
+      setFaltaPreFilled(true);
+    }
+  }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt, faltaPreFilled, amount]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
