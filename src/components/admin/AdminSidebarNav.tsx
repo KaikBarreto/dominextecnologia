@@ -119,8 +119,8 @@ export function AdminSidebarNav() {
                 <Settings className="h-4 w-4 shrink-0" />
                 <span>Configurações</span>
               </button>
-              <a href={WHATSAPP_SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
-                <MessageCircle className="h-4 w-4 shrink-0" />
+              <a href={WHATSAPP_SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-[#25D366] hover:text-white transition-colors">
+                <WhatsAppIcon />
                 <span>Suporte</span>
               </a>
             </div>
