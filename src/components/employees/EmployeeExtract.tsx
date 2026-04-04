@@ -177,21 +177,17 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma movimentação</TableCell></TableRow>
               ) : pagination.paginatedItems.map(m => {
                 const isPayment = m.type === 'pagamento';
-                const isExpanded = expandedPayments.has(m.id);
                 return (
-                  <TableRow key={m.id} className={isPayment ? 'cursor-pointer' : ''} onClick={() => isPayment && toggleExpand(m.id)}>
-                    <TableCell className="text-xs whitespace-nowrap">{format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {isPayment && (isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />)}
-                        <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px]">
-                          {formatMovementType(m.type)}
-                        </Badge>
-                      </div>
+                  <TableRow key={m.id}>
+                    <TableCell className="text-xs whitespace-nowrap align-top">{format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
+                    <TableCell className="align-top">
+                      <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px]">
+                        {formatMovementType(m.type)}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-xs max-w-[300px]">
+                    <TableCell className="text-xs max-w-[300px] align-top">
                       <div>{m.description || '—'}</div>
-                      {isPayment && isExpanded && (
+                      {isPayment && (
                         <PaymentDetails
                           movement={m}
                           salary={employeeSalary}
@@ -200,11 +196,11 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
                         />
                       )}
                     </TableCell>
-                    <TableCell className={`text-right text-xs font-medium ${['vale', 'falta', 'pagamento'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
+                    <TableCell className={`text-right text-xs font-medium align-top ${['vale', 'falta', 'pagamento'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
                       {['vale', 'falta', 'pagamento'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
+                      <div className="text-[10px] text-muted-foreground font-normal">Saldo após: {fmt(m.balance_after)}</div>
                     </TableCell>
-                    <TableCell className="text-right text-xs">{fmt(m.balance_after)}</TableCell>
-                    <TableCell onClick={e => e.stopPropagation()}>
+                    <TableCell className="align-top">
                       <div className="flex items-center gap-1">
                         <AlertDialog>
                           <AlertDialogTrigger asChild>

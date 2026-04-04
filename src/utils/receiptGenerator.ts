@@ -89,8 +89,8 @@ export function generateReceiptHTML(data: ReceiptData): string {
   .sig-line { border-top:1px solid #333; margin-bottom:6px; }
   .sig-name { font-size:12px; font-weight:600; }
   .sig-role { font-size:11px; color:#888; }
-  .btn-print { position:fixed; top:16px; right:16px; background:#2563eb; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; z-index:100; }
-  .btn-print:hover { background:#1d4ed8; }
+  .btn-print { position:fixed; bottom:24px; right:24px; background:linear-gradient(135deg, #1e293b, #0f172a); color:white; border:none; padding:12px 24px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:600; z-index:100; box-shadow:0 4px 14px rgba(0,0,0,0.3); }
+  .btn-print:hover { background:linear-gradient(135deg, #334155, #1e293b); }
   @media print { .btn-print { display:none; } }
 </style>
 </head>
