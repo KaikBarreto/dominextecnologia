@@ -43,7 +43,7 @@ export function EmployeeMovementModal({
   const suggestedDailyValue = salary > 0 ? calculateDailyValue(salary, workDaysPerMonth) : 0;
 
   useEffect(() => {
-    if (open && type === 'falta' && salary > 0 && !draft.showResumePrompt && amount === '') {
+    if (open && type === 'falta' && salary > 0 && !draft.showResumePrompt) {
       setAmount(currencyMask(String(Math.round(suggestedDailyValue * 100))));
     }
   }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt]);
