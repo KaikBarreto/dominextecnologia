@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Camera, Link2, Unlink, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Camera, Link2, Unlink, Eye, EyeOff, Calculator } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from '@/components/service-orders/MonthlyCostCalculatorModal';
+import { formatBRL } from '@/utils/currency';
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -46,6 +48,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
   const [showPasswordField, setShowPasswordField] = useState(false);
+  const [monthlyCost, setMonthlyCost] = useState('');
+  const [monthlyCostBreakdown, setMonthlyCostBreakdown] = useState<MonthlyCostBreakdown | null>(null);
+  const [showCostCalc, setShowCostCalc] = useState(false);
 
   type EmployeeDraft = { name: string; cpf: string; phone: string; email: string; position: string; salary: string; hireDate: string; address: string; pixKey: string };
   const draft = useFormDraft<EmployeeDraft>({ key: 'employee-form', isOpen: open, isEditing });
@@ -81,6 +86,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setEmail(employee?.email || '');
         setPosition(employee?.position || '');
         setSalary(employee?.salary ? currencyMask(String(Math.round(employee.salary * 100))) : '');
+        setMonthlyCost(employee?.monthly_cost ? currencyMask(String(Math.round(employee.monthly_cost * 100))) : '');
+        setMonthlyCostBreakdown(employee?.monthly_cost_breakdown ?? null);
         setHireDate(employee?.hire_date || '');
         setAddress(employee?.address || '');
         setPixKey(employee?.pix_key || '');
@@ -129,6 +136,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       email: email || null,
       position: position || null,
       salary: parseCurrency(salary),
+      monthly_cost: parseCurrency(monthlyCost) || null,
+      monthly_cost_breakdown: monthlyCostBreakdown,
       hire_date: hireDate || null,
       address: address || null,
       pix_key: pixKey || null,
@@ -152,7 +161,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         onDiscard={() => {
           draft.discardDraft();
           setName(''); setCpf(''); setPhone(''); setEmail(''); setPosition('');
-          setSalary(''); setHireDate(''); setAddress(''); setPixKey('');
+          setSalary(''); setMonthlyCost(''); setMonthlyCostBreakdown(null); setHireDate(''); setAddress(''); setPixKey('');
         }}
       />
       <form onSubmit={handleSubmit} className="space-y-4 p-1">
@@ -194,6 +203,17 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <div className="space-y-1.5">
             <Label>Salário *</Label>
             <Input value={salary} onChange={e => setSalary(currencyMask(e.target.value))} placeholder="R$ 0,00" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Custo mensal total</Label>
+            <div className="flex gap-1">
+              <Input value={monthlyCost} onChange={e => setMonthlyCost(currencyMask(e.target.value))} placeholder="R$ 0,00" />
+              <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title="Calcular custo mensal detalhado">
+                <Calculator className="h-4 w-4 mr-1" />
+                Calcular
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Salário + encargos + benefícios</p>
           </div>
           <div className="space-y-1.5">
             <Label>Data de Admissão</Label>
@@ -286,6 +306,20 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </Button>
         </div>
       </form>
+      <MonthlyCostCalculatorModal
+        open={showCostCalc}
+        onOpenChange={setShowCostCalc}
+        initialSalary={parseCurrency(salary)}
+        initialBreakdown={monthlyCostBreakdown}
+        onApply={(totalCost, breakdown) => {
+          setMonthlyCost(currencyMask(String(Math.round(totalCost * 100))));
+          setMonthlyCostBreakdown(breakdown);
+          // Also update salary from breakdown base salary if it was set
+          if (breakdown.baseSalary > 0 && parseCurrency(salary) === 0) {
+            setSalary(currencyMask(String(Math.round(breakdown.baseSalary * 100))));
+          }
+        }}
+      />
     </ResponsiveModal>
   );
 }
