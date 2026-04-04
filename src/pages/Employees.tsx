@@ -449,6 +449,8 @@ export default function Employees() {
           currentBalance={activeBalance.currentBalance}
           onSubmit={handleMovement}
           isPending={addMovement.isPending}
+          employeeId={movementEmployee.id}
+          salary={movementEmployee.salary}
         />
       )}
 
