@@ -147,7 +147,13 @@ export default function Settings() {
   const lastSavedJsonRef = useRef<string>('');
 
   useEffect(() => {
-    if (settings) settingsLoadedRef.current = true;
+    if (settings) {
+      settingsLoadedRef.current = true;
+      // Snapshot current state so auto-save won't fire for data that just loaded
+      requestAnimationFrame(() => {
+        lastSavedJsonRef.current = JSON.stringify(buildPayload());
+      });
+    }
   }, [settings]);
 
   const buildPayload = useCallback(() => ({
