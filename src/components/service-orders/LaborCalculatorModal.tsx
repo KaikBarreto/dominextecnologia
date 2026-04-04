@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from './MonthlyCostCalculatorModal';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 
 interface Worker {
   id: string;
@@ -121,10 +122,14 @@ function EmployeeCombobox({
 }
 
 export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalculatorModalProps) {
+  const { monthlyHours: companyMonthlyHours } = useEmployeeWorkHours(null);
   const [monthlyHours, setMonthlyHours] = useState(176);
   const [defaultServiceHours, setDefaultServiceHours] = useState(2);
   const [workers, setWorkers] = useState<Worker[]>(() => [makeWorker(2)]);
   const [costCalcWorkerId, setCostCalcWorkerId] = useState<string | null>(null);
+
+  // Sync company hours when available
+  useEffect(() => { setMonthlyHours(companyMonthlyHours); }, [companyMonthlyHours]);
 
   const costCalcWorker = costCalcWorkerId ? workers.find(w => w.id === costCalcWorkerId) : null;
 
@@ -390,6 +395,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
         onOpenChange={open => { if (!open) setCostCalcWorkerId(null); }}
         initialSalary={costCalcWorker?.salary ?? 0}
         initialBreakdown={costCalcWorker?.monthlyCostBreakdown ?? null}
+        defaultMonthlyHours={monthlyHours}
         onApply={(totalCost, breakdown) => {
           if (costCalcWorkerId) {
             updateWorker(costCalcWorkerId, { salary: totalCost, monthlyCostBreakdown: breakdown });

@@ -49,6 +49,7 @@ interface MonthlyCostCalculatorModalProps {
   initialSalary?: number;
   initialBreakdown?: MonthlyCostBreakdown | null;
   onApply: (totalCost: number, breakdown: MonthlyCostBreakdown) => void;
+  defaultMonthlyHours?: number;
 }
 
 function CurrencyField({ label, value, onChange, hint }: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
@@ -134,7 +135,7 @@ function ModeToggleField({
   );
 }
 
-export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, initialBreakdown, onApply }: MonthlyCostCalculatorModalProps) {
+export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, initialBreakdown, onApply, defaultMonthlyHours }: MonthlyCostCalculatorModalProps) {
   const [bd, setBd] = useState<MonthlyCostBreakdown>({ ...defaultBreakdown });
 
   // Currency display states
@@ -153,9 +154,10 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
   useEffect(() => {
     if (!open) return;
+    const resolvedHours = defaultMonthlyHours || 176;
     const b: MonthlyCostBreakdown = initialBreakdown
-      ? { ...defaultBreakdown, ...initialBreakdown }
-      : { ...defaultBreakdown, baseSalary: initialSalary ?? 0 };
+      ? { ...defaultBreakdown, ...initialBreakdown, monthlyHours: initialBreakdown.monthlyHours || resolvedHours }
+      : { ...defaultBreakdown, baseSalary: initialSalary ?? 0, monthlyHours: resolvedHours };
     setBd(b);
     const fmt = (v: number) => v > 0 ? currencyMask(String(Math.round(v * 100))) : '';
     setSalaryDisplay(fmt(b.baseSalary));
@@ -170,7 +172,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     setAsoDisplay(fmt(b.asoAnual));
     setEpiDisplay(fmt(b.epiAnual));
     setCelularDisplay(fmt(b.celularAnual));
-  }, [open, initialBreakdown, initialSalary]);
+  }, [open, initialBreakdown, initialSalary, defaultMonthlyHours]);
 
   const updateCurrencyField = (field: keyof MonthlyCostBreakdown, display: string, setDisplay: (v: string) => void) => {
     setDisplay(display);
