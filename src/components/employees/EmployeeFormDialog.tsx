@@ -48,6 +48,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
   const [showPasswordField, setShowPasswordField] = useState(false);
+  const [monthlyCost, setMonthlyCost] = useState('');
+  const [monthlyCostBreakdown, setMonthlyCostBreakdown] = useState<MonthlyCostBreakdown | null>(null);
+  const [showCostCalc, setShowCostCalc] = useState(false);
 
   type EmployeeDraft = { name: string; cpf: string; phone: string; email: string; position: string; salary: string; hireDate: string; address: string; pixKey: string };
   const draft = useFormDraft<EmployeeDraft>({ key: 'employee-form', isOpen: open, isEditing });
