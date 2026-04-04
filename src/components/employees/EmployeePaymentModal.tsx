@@ -51,7 +51,7 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
     return Math.min(parsed, balance.totalVales);
   }, [valeDiscountStr, balance.totalVales]);
 
-  const subtotal = salary + balance.totalBonus - balance.totalFaltas;
+  const subtotal = salary + balance.totalBonus - balance.totalVales - balance.totalFaltas;
   const toPay = subtotal - valeDiscount;
   const remainingVales = balance.totalVales - valeDiscount;
 
