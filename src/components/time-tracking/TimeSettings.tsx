@@ -197,10 +197,15 @@ export function TimeSettingsPanel() {
           <div className="sm:hidden space-y-2 p-3">
             {employees.map(emp => {
               const empScheds = schedules.filter(s => s.employee_id === emp.id);
-              const workDays = WEEKDAYS.filter((_, i) => {
-                const sched = empScheds.find(s => s.weekday === i);
-                return sched?.is_work_day;
+              const hasCustom = empScheds.length > 0;
+              const workDayLabels = WEEKDAYS.filter((_, i) => {
+                if (hasCustom) {
+                  const sched = empScheds.find(s => s.weekday === i);
+                  return sched?.is_work_day;
+                }
+                return i !== 0 && i !== 6;
               });
+              const scheduleLabel = hasCustom ? workDayLabels.join(', ') : `Herda empresa (${form.default_in.slice(0,5)}-${form.default_out.slice(0,5)})`;
               return (
                 <Card key={emp.id}>
                   <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -211,9 +216,7 @@ export function TimeSettingsPanel() {
                       </Avatar>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{emp.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {workDays.length > 0 ? workDays.join(', ') : 'Sem jornada definida'}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{scheduleLabel}</p>
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => openScheduleEdit(emp.id)}>
