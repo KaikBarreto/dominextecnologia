@@ -395,6 +395,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
         onOpenChange={open => { if (!open) setCostCalcWorkerId(null); }}
         initialSalary={costCalcWorker?.salary ?? 0}
         initialBreakdown={costCalcWorker?.monthlyCostBreakdown ?? null}
+        defaultMonthlyHours={monthlyHours}
         onApply={(totalCost, breakdown) => {
           if (costCalcWorkerId) {
             updateWorker(costCalcWorkerId, { salary: totalCost, monthlyCostBreakdown: breakdown });
