@@ -29,17 +29,32 @@ interface EmployeePaymentModalProps {
 export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary, balance, onSubmit, isPending }: EmployeePaymentModalProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const { accounts, balances } = useFinancialAccounts();
-  const activeAccounts = accounts.filter(a => a.is_active);
+  const activeAccounts = useMemo(() => {
+    const active = accounts.filter(a => a.is_active);
+    // Sort: "Conta Principal" or "Caixa" first, then by sort_order
+    return active.sort((a, b) => {
+      const aMain = a.name.toLowerCase().includes('principal') || a.name.toLowerCase() === 'caixa' ? 0 : 1;
+      const bMain = b.name.toLowerCase().includes('principal') || b.name.toLowerCase() === 'caixa' ? 0 : 1;
+      if (aMain !== bMain) return aMain - bMain;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+  }, [accounts]);
 
   const [valeDiscountStr, setValeDiscountStr] = useState('');
   const [accountId, setAccountId] = useState('');
   const [description, setDescription] = useState('');
 
+  // Find default account (Conta Principal first, then first active)
+  const defaultAccountId = useMemo(() => {
+    const principal = activeAccounts.find(a => a.name.toLowerCase().includes('principal'));
+    return principal?.id || (activeAccounts.length > 0 ? activeAccounts[0].id : '');
+  }, [activeAccounts]);
+
   // Reset state when modal opens
   const handleOpenChange = (o: boolean) => {
     if (o) {
       setValeDiscountStr(balance.totalVales > 0 ? currencyMask(String(Math.round(balance.totalVales * 100))) : '');
-      setAccountId(activeAccounts.length > 0 ? activeAccounts[0].id : '');
+      setAccountId(defaultAccountId);
       setDescription('');
     }
     onOpenChange(o);
