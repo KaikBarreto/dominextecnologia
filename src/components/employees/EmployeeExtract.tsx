@@ -1,4 +1,5 @@
-import { Trash2, Download, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { Trash2, Download, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,79 @@ function openHTMLInNewTab(html: string) {
   if (win) win.onload = () => URL.revokeObjectURL(url);
 }
 
+function PaymentDetails({ movement, salary, fmt, onReceipt }: { movement: EmployeeMovement; salary: number; fmt: (v: number) => string; onReceipt: () => void }) {
+  const details = movement.payment_details || {};
+  const bonus = Number(details.bonus) || 0;
+  const totalVales = Number(details.totalVales) || Number(details.valeDiscount) || 0;
+  const totalFaltas = Number(details.faltas) || 0;
+  const valeDiscount = Number(details.valeDiscount) || totalVales;
+  const subtotal = salary + bonus;
+  const paidAmount = Math.abs(movement.amount);
+  const diffFromBase = paidAmount - salary;
+  const paymentMethod = movement.payment_method ? 'Conta bancária' : (details.paymentMethod || '');
+
+  return (
+    <div className="mt-2 rounded-lg border bg-muted/30 p-3 space-y-1 text-xs">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Salário base</span>
+        <span className="font-medium">{fmt(salary)}</span>
+      </div>
+      {bonus > 0 && (
+        <div className="flex justify-between text-green-600">
+          <span>+ Bônus</span>
+          <span>+{fmt(bonus)}</span>
+        </div>
+      )}
+      {(bonus > 0) && (
+        <div className="flex justify-between border-t pt-1">
+          <span className="text-muted-foreground">Subtotal</span>
+          <span className="font-medium">{fmt(subtotal)}</span>
+        </div>
+      )}
+      {totalVales > 0 && (
+        <>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total de vales acumulados</span>
+            <span className="text-destructive">{fmt(totalVales)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Vales descontados neste pgto</span>
+            <span className="text-destructive">-{fmt(valeDiscount)}</span>
+          </div>
+        </>
+      )}
+      {totalFaltas > 0 && (
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total de faltas</span>
+          <span className="text-destructive">-{fmt(totalFaltas)}</span>
+        </div>
+      )}
+      <div className="flex justify-between border-t pt-1">
+        <span className="font-semibold">Valor pago</span>
+        <span className="font-bold text-green-600">{fmt(paidAmount)}</span>
+      </div>
+      {diffFromBase !== 0 && (
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Diferença do salário base</span>
+          <span className={diffFromBase > 0 ? 'text-green-600' : 'text-destructive'}>{diffFromBase > 0 ? '+' : '-'}{fmt(Math.abs(diffFromBase))}</span>
+        </div>
+      )}
+      {paymentMethod && (
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Forma</span>
+          <span>{paymentMethod}</span>
+        </div>
+      )}
+      <div className="pt-1">
+        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={onReceipt}>
+          <FileText className="h-3 w-3" />
+          Gerar Recibo
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSalary, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const { sortedItems, sortConfig, handleSort } = useTableSort(movements);
@@ -39,6 +113,15 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
   const { profile } = useAuth();
+  const [expandedPayments, setExpandedPayments] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedPayments(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const handleExport = () => {
     const html = generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled);
@@ -103,46 +186,57 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
             <TableBody>
               {pagination.paginatedItems.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma movimentação</TableCell></TableRow>
-              ) : pagination.paginatedItems.map(m => (
-                <TableRow key={m.id}>
-                  <TableCell className="text-xs whitespace-nowrap">{format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
-                  <TableCell>
-                    <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px]">
-                      {formatMovementType(m.type)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs max-w-[200px] truncate">{m.description || '—'}</TableCell>
-                  <TableCell className={`text-right text-xs font-medium ${['vale', 'falta'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
-                    {['vale', 'falta'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
-                  </TableCell>
-                  <TableCell className="text-right text-xs">{fmt(m.balance_after)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      {m.type === 'pagamento' && (
-                        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={() => handleReceipt(m)}>
-                          <FileText className="h-3 w-3" />
-                          Recibo
-                        </Button>
+              ) : pagination.paginatedItems.map(m => {
+                const isPayment = m.type === 'pagamento';
+                const isExpanded = expandedPayments.has(m.id);
+                return (
+                  <TableRow key={m.id} className={isPayment ? 'cursor-pointer' : ''} onClick={() => isPayment && toggleExpand(m.id)}>
+                    <TableCell className="text-xs whitespace-nowrap">{format(new Date(m.created_at), 'dd/MM/yyyy HH:mm')}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {isPayment && (isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />)}
+                        <Badge variant={getMovementBadgeVariant(m.type) as any} className="text-[10px]">
+                          {formatMovementType(m.type)}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs max-w-[300px]">
+                      <div>{m.description || '—'}</div>
+                      {isPayment && isExpanded && (
+                        <PaymentDetails
+                          movement={m}
+                          salary={employeeSalary}
+                          fmt={fmt}
+                          onReceipt={() => { handleReceipt(m); }}
+                        />
                       )}
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
-                            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onDeleteMovement(m.id)}>Excluir</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className={`text-right text-xs font-medium ${['vale', 'falta', 'pagamento'].includes(m.type) ? 'text-destructive' : 'text-green-600'}`}>
+                      {['vale', 'falta', 'pagamento'].includes(m.type) ? '-' : '+'}{fmt(Math.abs(m.amount))}
+                    </TableCell>
+                    <TableCell className="text-right text-xs">{fmt(m.balance_after)}</TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => onDeleteMovement(m.id)}>Excluir</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

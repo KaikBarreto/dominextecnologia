@@ -261,7 +261,7 @@ export function TopbarLayout() {
                   href={WHATSAPP_SUPPORT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="cursor-pointer"
+                  className="cursor-pointer hover:!bg-[#25D366] hover:!text-white focus:!bg-[#25D366] focus:!text-white"
                 >
                   <WhatsAppIcon className="mr-2" /> Suporte
                 </a>
