@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from './MonthlyCostCalculatorModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Worker {
   id: string;
@@ -392,6 +393,16 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
         onApply={(totalCost, breakdown) => {
           if (costCalcWorkerId) {
             updateWorker(costCalcWorkerId, { salary: totalCost, monthlyCostBreakdown: breakdown });
+            // Persist to employee record if linked
+            const worker = workers.find(w => w.id === costCalcWorkerId);
+            if (worker?.employeeId) {
+              supabase.from('employees').update({
+                monthly_cost: totalCost,
+                monthly_cost_breakdown: breakdown as any,
+              }).eq('id', worker.employeeId).then(({ error }) => {
+                if (error) console.error('Erro ao salvar custo mensal do funcionário:', error);
+              });
+            }
           }
         }}
       />
