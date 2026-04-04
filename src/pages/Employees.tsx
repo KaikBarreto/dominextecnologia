@@ -40,7 +40,7 @@ export default function Employees() {
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
-  const { user, isAdminOrGestor, hasPermission } = useAuth();
+  const { user, profile, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
