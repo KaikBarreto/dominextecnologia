@@ -13,9 +13,14 @@ export function normalizeOptionalForeignKeys<T extends Record<string, any>>(
   const normalized = { ...payload } as T;
 
   keys.forEach((key) => {
-    (normalized as Record<string, any>)[key as string] = normalizeOptionalForeignKey(
-      (normalized as Record<string, any>)[key as string]
-    );
+    const k = key as string;
+    // Only normalize keys that are actually present in the payload
+    // to avoid overwriting existing DB values with null on partial updates
+    if (k in normalized) {
+      (normalized as Record<string, any>)[k] = normalizeOptionalForeignKey(
+        (normalized as Record<string, any>)[k]
+      );
+    }
   });
 
   return normalized;
