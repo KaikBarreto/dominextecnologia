@@ -32,6 +32,7 @@ export default function Employees() {
   const [movementEmployee, setMovementEmployee] = useState<Employee | null>(null);
   const [paymentEmployee, setPaymentEmployee] = useState<Employee | null>(null);
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
+  const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
