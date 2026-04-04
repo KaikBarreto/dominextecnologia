@@ -355,6 +355,21 @@ export default function Employees() {
         queryClient.invalidateQueries({ queryKey: ['employee-movements'] });
         queryClient.invalidateQueries({ queryKey: ['all-employee-movements'] });
         setPaymentEmployee(null);
+
+        // Show receipt confirmation dialog
+        setReceiptConfirmData({
+          employee: emp,
+          movement: {
+            type: 'pagamento',
+            amount: toPay,
+            balance_after: 0,
+            description: payload.description || 'Pagamento de salário',
+            payment_method: payload.accountId,
+            payment_details: paymentDetails,
+            created_at: new Date().toISOString(),
+            id: '',
+          },
+        });
       },
     });
   };
