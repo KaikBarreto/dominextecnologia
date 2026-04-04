@@ -480,6 +480,7 @@ export default function Employees() {
           open={!!extractEmployee}
           onOpenChange={o => { if (!o) setExtractEmployee(null); }}
           employeeName={extractEmployee.name}
+          employeeSalary={extractEmployee.salary || 0}
           movements={movements}
           balance={activeBalance}
           onDeleteMovement={id => deleteMovement.mutate(id)}
