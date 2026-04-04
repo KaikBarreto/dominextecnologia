@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
@@ -136,35 +136,51 @@ export default function Settings() {
     }
   }, [settings]);
 
-  const handleSaveCompany = () => {
-    updateSettings.mutate({
-      name: companyName,
-      document: companyDoc || null,
-      phone: companyPhone || null,
-      email: companyEmail || null,
-      address: companyAddress || null,
-      address_number: companyNumber || null,
-      neighborhood: companyNeighborhood || null,
-      complement: companyComplement || null,
-      city: companyCity || null,
-      state: companyState || null,
-      zip_code: companyZip || null,
-      white_label_enabled: wlEnabled,
-      white_label_primary_color: wlColor || null,
-      show_name_in_documents: showNameInDocs,
-      show_cnpj_in_documents: showCnpjInDocs,
-      show_address_in_documents: showAddressInDocs,
-      show_phone_in_documents: showPhoneInDocs,
-      show_email_in_documents: showEmailInDocs,
-      report_header_bg_color: reportBgColor,
-      report_header_text_color: reportTextColor,
-      report_header_logo_size: reportLogoSize,
-      report_header_show_logo_bg: reportShowLogoBg,
-      report_header_logo_bg_color: reportLogoBgColor,
-      report_status_bar_color: reportStatusBarColor,
-      report_header_logo_type: reportLogoType,
-    } as any);
-  };
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settingsLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (settings) settingsLoadedRef.current = true;
+  }, [settings]);
+
+  const debouncedSave = useCallback(() => {
+    if (!settingsLoadedRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      updateSettings.mutate({
+        name: companyName,
+        document: companyDoc || null,
+        phone: companyPhone || null,
+        email: companyEmail || null,
+        address: companyAddress || null,
+        address_number: companyNumber || null,
+        neighborhood: companyNeighborhood || null,
+        complement: companyComplement || null,
+        city: companyCity || null,
+        state: companyState || null,
+        zip_code: companyZip || null,
+        white_label_enabled: wlEnabled,
+        white_label_primary_color: wlColor || null,
+        show_name_in_documents: showNameInDocs,
+        show_cnpj_in_documents: showCnpjInDocs,
+        show_address_in_documents: showAddressInDocs,
+        show_phone_in_documents: showPhoneInDocs,
+        show_email_in_documents: showEmailInDocs,
+        report_header_bg_color: reportBgColor,
+        report_header_text_color: reportTextColor,
+        report_header_logo_size: reportLogoSize,
+        report_header_show_logo_bg: reportShowLogoBg,
+        report_header_logo_bg_color: reportLogoBgColor,
+        report_status_bar_color: reportStatusBarColor,
+        report_header_logo_type: reportLogoType,
+      } as any);
+    }, 800);
+  }, [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, updateSettings]);
+
+  useEffect(() => {
+    debouncedSave();
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [debouncedSave]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
@@ -828,12 +844,12 @@ export default function Settings() {
                 )}
               </div>}
 
-              <div className="flex flex-wrap gap-3 pt-4">
-                <Button onClick={handleSaveCompany} disabled={updateSettings.isPending}>
-                  {updateSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Salvar Dados da Empresa
-                </Button>
-              </div>
+              {updateSettings.isPending && (
+                <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Salvando...
+                </div>
+              )}
             </CardContent>
           </Card>
         );
