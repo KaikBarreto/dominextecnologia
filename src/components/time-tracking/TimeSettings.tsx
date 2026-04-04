@@ -49,14 +49,17 @@ export function TimeSettingsPanel() {
 
   const openScheduleEdit = (employeeId: string) => {
     const empScheds = schedules.filter(s => s.employee_id === employeeId);
-    const form: Record<number, any> = {};
+    const companyIn = form.default_in || '08:00';
+    const companyOut = form.default_out || '17:00';
+    const companyBreak = form.default_break_min ?? 60;
+    const editForm: Record<number, any> = {};
     for (let i = 0; i < 7; i++) {
       const existing = empScheds.find(s => s.weekday === i);
-      form[i] = existing
+      editForm[i] = existing
         ? { in: existing.expected_in, out: existing.expected_out, break: existing.break_minutes, work: existing.is_work_day }
-        : { in: '08:00', out: '17:00', break: 60, work: i !== 0 && i !== 6 };
+        : { in: companyIn, out: companyOut, break: companyBreak, work: i !== 0 && i !== 6 };
     }
-    setScheduleForm(form);
+    setScheduleForm(editForm);
     setEditingEmployee(employeeId);
   };
 
