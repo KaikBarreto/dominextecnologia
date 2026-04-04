@@ -86,6 +86,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setEmail(employee?.email || '');
         setPosition(employee?.position || '');
         setSalary(employee?.salary ? currencyMask(String(Math.round(employee.salary * 100))) : '');
+        setMonthlyCost(employee?.monthly_cost ? currencyMask(String(Math.round(employee.monthly_cost * 100))) : '');
+        setMonthlyCostBreakdown(employee?.monthly_cost_breakdown ?? null);
         setHireDate(employee?.hire_date || '');
         setAddress(employee?.address || '');
         setPixKey(employee?.pix_key || '');
