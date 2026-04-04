@@ -306,6 +306,20 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </Button>
         </div>
       </form>
+      <MonthlyCostCalculatorModal
+        open={showCostCalc}
+        onOpenChange={setShowCostCalc}
+        initialSalary={parseCurrency(salary)}
+        initialBreakdown={monthlyCostBreakdown}
+        onApply={(totalCost, breakdown) => {
+          setMonthlyCost(currencyMask(String(Math.round(totalCost * 100))));
+          setMonthlyCostBreakdown(breakdown);
+          // Also update salary from breakdown base salary if it was set
+          if (breakdown.baseSalary > 0 && parseCurrency(salary) === 0) {
+            setSalary(currencyMask(String(Math.round(breakdown.baseSalary * 100))));
+          }
+        }}
+      />
     </ResponsiveModal>
   );
 }
