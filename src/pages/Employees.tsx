@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, BarChart3, Plus, Search, Clock, UsersRound } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,9 @@ import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { generateReceiptHTML } from '@/utils/receiptGenerator';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Employees() {
@@ -32,11 +36,14 @@ export default function Employees() {
   const [movementEmployee, setMovementEmployee] = useState<Employee | null>(null);
   const [paymentEmployee, setPaymentEmployee] = useState<Employee | null>(null);
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
+  const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
 
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
-  const { user, isAdminOrGestor, hasPermission } = useAuth();
+  const { user, profile, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
+  const { settings: companySettings } = useCompanySettings();
+  const { enabled: wlEnabled } = useWhiteLabel();
 
   const canManageTime = isAdminOrGestor() || hasPermission('fn:manage_timeclock') || hasPermission('fn:manage_employees');
 
@@ -348,6 +355,21 @@ export default function Employees() {
         queryClient.invalidateQueries({ queryKey: ['employee-movements'] });
         queryClient.invalidateQueries({ queryKey: ['all-employee-movements'] });
         setPaymentEmployee(null);
+
+        // Show receipt confirmation dialog
+        setReceiptConfirmData({
+          employee: emp,
+          movement: {
+            type: 'pagamento',
+            amount: toPay,
+            balance_after: 0,
+            description: payload.description || 'Pagamento de salário',
+            payment_method: payload.accountId,
+            payment_details: paymentDetails,
+            created_at: new Date().toISOString(),
+            id: '',
+          },
+        });
       },
     });
   };
@@ -486,6 +508,37 @@ export default function Employees() {
           onDeleteMovement={id => deleteMovement.mutate(id)}
         />
       )}
+
+      <AlertDialog open={!!receiptConfirmData} onOpenChange={o => { if (!o) setReceiptConfirmData(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deseja gerar Recibo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O recibo do pagamento será aberto em uma nova página para impressão ou download em PDF.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Não</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (receiptConfirmData) {
+                const html = generateReceiptHTML({
+                  employeeName: receiptConfirmData.employee.name,
+                  salary: receiptConfirmData.employee.salary || 0,
+                  movement: receiptConfirmData.movement,
+                  companySettings,
+                  whiteLabel: wlEnabled,
+                  generatedByName: profile?.full_name || undefined,
+                });
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const win = window.open(url, '_blank');
+                if (win) win.onload = () => URL.revokeObjectURL(url);
+              }
+              setReceiptConfirmData(null);
+            }}>Sim, gerar recibo</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
