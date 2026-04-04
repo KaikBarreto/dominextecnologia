@@ -136,6 +136,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       email: email || null,
       position: position || null,
       salary: parseCurrency(salary),
+      monthly_cost: parseCurrency(monthlyCost) || null,
+      monthly_cost_breakdown: monthlyCostBreakdown,
       hire_date: hireDate || null,
       address: address || null,
       pix_key: pixKey || null,
