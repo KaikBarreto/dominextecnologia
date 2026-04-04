@@ -33,9 +33,13 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
     const active = accounts.filter(a => a.is_active);
     // Sort: "Conta Principal" or "Caixa" first, then by sort_order
     return active.sort((a, b) => {
-      const aMain = a.name.toLowerCase().includes('principal') || a.name.toLowerCase() === 'caixa' ? 0 : 1;
-      const bMain = b.name.toLowerCase().includes('principal') || b.name.toLowerCase() === 'caixa' ? 0 : 1;
-      if (aMain !== bMain) return aMain - bMain;
+      const priority = (acc: typeof a) => {
+        if (acc.name.toLowerCase().includes('principal')) return 0;
+        if (acc.name.toLowerCase() === 'caixa') return 1;
+        return 2;
+      };
+      const diff = priority(a) - priority(b);
+      if (diff !== 0) return diff;
       return (a.sort_order ?? 0) - (b.sort_order ?? 0);
     });
   }, [accounts]);
