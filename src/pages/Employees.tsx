@@ -233,29 +233,38 @@ export default function Employees() {
     queryClient.invalidateQueries({ queryKey: ['account-balances'] });
   }, [queryClient, user?.id]);
 
-  const handleMovement = (data: { amount: number; description?: string }) => {
+  const handleMovement = (data: { amount: number; description?: string; subType?: string }) => {
     if (!movementEmployee) return;
+
+    // If falta_banco, just record a non-financial movement
+    const isBancoHoras = movementType === 'falta' && data.subType === 'banco';
+    const effectiveType = isBancoHoras ? 'falta_banco' : movementType;
+
     const bal = activeBalance;
     let newBalance = bal.currentBalance;
-    if (movementType === 'vale' || movementType === 'falta') newBalance -= data.amount;
-    else newBalance += data.amount;
+    if (!isBancoHoras) {
+      if (movementType === 'vale' || movementType === 'falta') newBalance -= data.amount;
+      else newBalance += data.amount;
+    }
 
     addMovement.mutate({
       employee_id: movementEmployee.id,
-      type: movementType,
+      type: effectiveType,
       amount: data.amount,
-      balance_after: newBalance,
+      balance_after: isBancoHoras ? bal.currentBalance : newBalance,
       description: data.description,
       created_by: user?.id,
     }, {
       onSuccess: async () => {
-        const isRevenue = movementType === 'falta';
-        await registerFinancialTransaction({
-          type: isRevenue ? 'entrada' : 'saida',
-          amount: data.amount,
-          description: `${movementType === 'vale' ? 'Vale' : movementType === 'bonus' ? 'Bônus' : 'Falta'} - ${movementEmployee.name}`,
-          notes: data.description,
-        });
+        if (!isBancoHoras) {
+          const isRevenue = movementType === 'falta';
+          await registerFinancialTransaction({
+            type: isRevenue ? 'entrada' : 'saida',
+            amount: data.amount,
+            description: `${movementType === 'vale' ? 'Vale' : movementType === 'bonus' ? 'Bônus' : 'Falta'} - ${movementEmployee.name}`,
+            notes: data.description,
+          });
+        }
         setMovementEmployee(null);
       },
     });
