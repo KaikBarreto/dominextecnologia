@@ -104,8 +104,8 @@ function PaymentDetails({ movement, salary, fmt, onReceipt }: { movement: Employ
 
 export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSalary, movements, balance, onDeleteMovement }: EmployeeExtractProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const { sortedItems, sortConfig, handleSort } = useTableSort(movements);
-  const pagination = useDataPagination(sortedItems, 25);
+  const sorted = [...movements].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const pagination = useDataPagination(sorted, 10);
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
   const { profile } = useAuth();
