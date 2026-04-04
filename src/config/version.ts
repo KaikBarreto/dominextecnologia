@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.15";
+export const APP_VERSION = "1.5.16";
 
-export const VERSION_NOTES = "Novo modal de pagamento de funcionário com desconto editável de vales, seleção de conta e reset automático de saldo";
+export const VERSION_NOTES = "Nome da empresa e plano na sidebar, central de ajuda, toggle de tema, DSR em faltas, exportação de extrato, novos planos na landing page, correção de saldo de funcionários";
