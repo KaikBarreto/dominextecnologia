@@ -112,16 +112,6 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
   const { settings: companySettings } = useCompanySettings();
   const { enabled: wlEnabled } = useWhiteLabel();
   const { profile } = useAuth();
-  const [expandedPayments, setExpandedPayments] = useState<Set<string>>(new Set());
-
-  const toggleExpand = (id: string) => {
-    setExpandedPayments(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
   const handleExport = () => {
     const html = generateExtractHTMLWithHeader(employeeName, movements, balance, companySettings, wlEnabled);
     openHTMLInNewTab(html);
