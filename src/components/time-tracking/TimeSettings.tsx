@@ -164,11 +164,23 @@ export function TimeSettingsPanel() {
                       </td>
                       {WEEKDAYS.map((_, i) => {
                         const sched = empScheds.find(s => s.weekday === i);
-                        return (
-                          <td key={i} className="text-center px-2 py-3 text-xs">
-                            {sched ? (sched.is_work_day ? `${sched.expected_in.slice(0,5)}-${sched.expected_out.slice(0,5)}` : 'Folga') : '—'}
-                          </td>
-                        );
+                        const hasCustom = empScheds.length > 0;
+                        if (hasCustom && sched) {
+                          return (
+                            <td key={i} className="text-center px-2 py-3 text-xs">
+                              {sched.is_work_day ? `${sched.expected_in.slice(0,5)}-${sched.expected_out.slice(0,5)}` : 'Folga'}
+                            </td>
+                          );
+                        }
+                        if (!hasCustom) {
+                          const isWorkDay = i !== 0 && i !== 6;
+                          return (
+                            <td key={i} className="text-center px-2 py-3 text-xs text-muted-foreground">
+                              {isWorkDay ? `${form.default_in.slice(0,5)}-${form.default_out.slice(0,5)}` : 'Folga'}
+                            </td>
+                          );
+                        }
+                        return <td key={i} className="text-center px-2 py-3 text-xs text-muted-foreground">—</td>;
                       })}
                       <td className="px-4 py-3">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openScheduleEdit(emp.id)}>
