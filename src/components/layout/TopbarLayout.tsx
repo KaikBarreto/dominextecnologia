@@ -117,7 +117,7 @@ export function TopbarLayout() {
             <img
               src={logoUrl}
               alt="Logo"
-              className="h-7 shrink-0 cursor-pointer"
+              className="max-h-9 w-auto shrink-0 cursor-pointer object-contain"
               onClick={() => navigate('/dashboard')}
             />
           ) : (
