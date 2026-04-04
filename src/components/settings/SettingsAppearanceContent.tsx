@@ -148,23 +148,23 @@ export function SettingsAppearanceContent() {
                 : 'border-border hover:border-primary/50'
             }`}
           >
-            <div className="bg-[#111827] p-4">
+            <div className="bg-[#0d0d0d] p-4">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <Moon className="h-4 w-4 text-primary-foreground" />
+                <div className="w-8 h-8 rounded-full bg-[#00c774] flex items-center justify-center">
+                  <Moon className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="h-3 w-16 bg-[#f3f4f6] rounded" />
-                  <div className="h-2 w-12 bg-[#6b7280] rounded mt-1" />
+                  <div className="h-3 w-16 bg-[#f2f2f2] rounded" />
+                  <div className="h-2 w-12 bg-[#999999] rounded mt-1" />
                 </div>
               </div>
               <div className="space-y-2">
-                <div className="h-6 bg-[#1f2937] rounded" />
-                <div className="h-6 bg-[#1f2937] rounded w-3/4" />
+                <div className="h-6 bg-[#262626] rounded" />
+                <div className="h-6 bg-[#262626] rounded w-3/4" />
               </div>
             </div>
-            <div className="bg-[#1f2937] px-4 py-2 text-center border-t border-[#374151]">
-              <span className="text-sm font-medium text-[#f3f4f6]">Tema Escuro</span>
+            <div className="bg-[#141414] px-4 py-2 text-center border-t border-[#2e2e2e]">
+              <span className="text-sm font-medium text-[#f2f2f2]">Tema Escuro</span>
             </div>
             {darkMode && (
               <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
