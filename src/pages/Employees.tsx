@@ -21,6 +21,9 @@ import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { generateReceiptHTML } from '@/utils/receiptGenerator';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Employees() {
