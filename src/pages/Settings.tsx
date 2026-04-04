@@ -150,12 +150,39 @@ export default function Settings() {
   useEffect(() => {
     if (settings) {
       settingsLoadedRef.current = true;
-      // Snapshot current state so auto-save won't fire for data that just loaded
-      requestAnimationFrame(() => {
-        lastSavedJsonRef.current = JSON.stringify(buildPayload());
+      lastSavedJsonRef.current = JSON.stringify({
+        name: settings.name || '',
+        document: settings.document || null,
+        phone: settings.phone || null,
+        email: settings.email || null,
+        address: settings.address || null,
+        address_number: settings.address_number || null,
+        neighborhood: settings.neighborhood || null,
+        complement: settings.complement || null,
+        city: settings.city || null,
+        state: settings.state || null,
+        zip_code: settings.zip_code || null,
+        white_label_enabled: !!settings.white_label_enabled,
+        white_label_primary_color: settings.white_label_primary_color || '#00C597',
+        show_name_in_documents: settings.show_name_in_documents ?? true,
+        show_cnpj_in_documents: settings.show_cnpj_in_documents ?? true,
+        show_address_in_documents: settings.show_address_in_documents ?? true,
+        show_phone_in_documents: settings.show_phone_in_documents ?? true,
+        show_email_in_documents: settings.show_email_in_documents ?? true,
+        report_header_bg_color: (settings as any).report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+        report_header_text_color: (settings as any).report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
+        report_header_logo_size: (settings as any).report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+        report_header_show_logo_bg: (settings as any).report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+        report_header_logo_bg_color: (settings as any).report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
+        report_status_bar_color: (settings as any).report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+        report_header_logo_type: (settings as any).report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
       });
     }
   }, [settings]);
+
+  useEffect(() => {
+    applyWhiteLabelTheme(wlEnabled, wlColor);
+  }, [wlEnabled, wlColor]);
 
   const buildPayload = useCallback(() => ({
     name: companyName,
