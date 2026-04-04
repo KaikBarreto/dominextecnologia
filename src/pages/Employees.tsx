@@ -211,6 +211,7 @@ export default function Employees() {
     amount: number;
     description: string;
     notes?: string;
+    accountId?: string;
   }) => {
     const today = new Date().toISOString().split('T')[0];
     await supabase.from('financial_transactions').insert({
@@ -222,12 +223,14 @@ export default function Employees() {
       paid_date: today,
       is_paid: true,
       notes: input.notes,
+      account_id: input.accountId || null,
       created_by: user?.id,
     });
 
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
   }, [queryClient, user?.id]);
 
   const handleMovement = (data: { amount: number; description?: string }) => {
