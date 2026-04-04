@@ -77,7 +77,6 @@ export function useCompanySettings() {
       if (error) throw error;
       const row = data?.[0];
 
-      // Sync relevant fields to the companies table
       try {
         const { data: profile } = await supabase
           .from('profiles')
@@ -103,12 +102,31 @@ export function useCompanySettings() {
         console.error('Error syncing to companies table:', syncErr);
       }
 
-      return row;
+      return row as CompanySettings | undefined;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-settings'] });
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: ['company-settings'] });
+      const previous = queryClient.getQueryData<CompanySettings>(['company-settings']);
+
+      if (previous) {
+        queryClient.setQueryData<CompanySettings>(['company-settings'], {
+          ...previous,
+          ...input,
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      return { previous };
     },
-    onError: (error: Error) => {
+    onSuccess: (row) => {
+      if (row) {
+        queryClient.setQueryData<CompanySettings>(['company-settings'], row);
+      }
+    },
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['company-settings'], context.previous);
+      }
       toast({ variant: 'destructive', title: 'Erro ao salvar', description: error.message });
     },
   });
