@@ -37,12 +37,11 @@ export function EmployeeMovementModal({
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [faltaMode, setFaltaMode] = useState<'salario' | 'banco'>('salario');
-  const [applyDSR, setApplyDSR] = useState(true);
+  const [applyDSR, setApplyDSR] = useState(false);
   const { profile } = useAuth();
 
   const draft = useFormDraft<MovementDraft>({ key: `employee-movement-${type}`, isOpen: open });
 
-  // Fetch time settings for hourly calculation
   const companyId = profile?.company_id;
   const { data: timeSettings } = useQuery({
     queryKey: ['time-settings-for-falta', companyId],
@@ -58,7 +57,6 @@ export function EmployeeMovementModal({
     enabled: type === 'falta' && !!companyId,
   });
 
-  // Fetch employee-specific schedule
   const { data: employeeSchedule } = useQuery({
     queryKey: ['time-schedule-for-falta', employeeId],
     queryFn: async () => {
@@ -72,9 +70,7 @@ export function EmployeeMovementModal({
     enabled: type === 'falta' && !!employeeId,
   });
 
-  // Calculate daily hours for this employee
   const dailyHours = useMemo(() => {
-    // Try employee-specific schedule first (average work day hours)
     if (employeeSchedule && employeeSchedule.length > 0) {
       const workDays = employeeSchedule.filter((s: any) => s.is_work_day);
       if (workDays.length > 0) {
@@ -89,7 +85,6 @@ export function EmployeeMovementModal({
       }
     }
 
-    // Try company time settings
     if (timeSettings?.default_in && timeSettings?.default_out) {
       const inP = timeSettings.default_in.split(':').map(Number);
       const outP = timeSettings.default_out.split(':').map(Number);
@@ -97,34 +92,30 @@ export function EmployeeMovementModal({
       return Math.max(workMin, 0) / 60;
     }
 
-    // Default: 8h/day
     return 8;
   }, [employeeSchedule, timeSettings]);
 
-  const monthlyHours = dailyHours * 22; // approximate
+  const monthlyHours = dailyHours * 22;
   const suggestedDailyValue = salary > 0 ? calculateDailyValue(salary, 22) : 0;
 
-  // Pre-fill suggested value when opening falta
   useEffect(() => {
     if (open && type === 'falta' && salary > 0 && !draft.showResumePrompt && amount === '') {
       setAmount(currencyMask(String(Math.round(suggestedDailyValue * 100))));
     }
   }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt]);
 
-  // Save draft on changes
   useEffect(() => {
     if (open && !draft.showResumePrompt) {
       draft.saveDraft({ amount, description });
     }
   }, [amount, description, open, draft.showResumePrompt]);
 
-  // Reset on open
   useEffect(() => {
     if (open && !(draft.hasDraft && draft.draftData)) {
       setAmount('');
       setDescription('');
       setFaltaMode('salario');
-      setApplyDSR(true);
+      setApplyDSR(false);
     }
   }, [open]);
 
