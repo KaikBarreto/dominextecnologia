@@ -63,11 +63,11 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', screenKey: 'screen:dashboard' },
+  { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
   {
     title: 'Operacional',
     icon: Wrench,
     children: [
-      { title: 'Agenda', icon: Calendar, path: '/agenda', screenKey: 'screen:schedule' },
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
       { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
@@ -119,7 +119,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 export function AppSidebar() {
-  const { profile, roles, hasScreenAccess, signOut } = useAuth();
+  const { user, profile, roles, hasScreenAccess, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   const { state, toggleSidebar } = useSidebar();
@@ -180,7 +180,7 @@ export function AppSidebar() {
   };
 
   const userMenuItems = [
-    { label: 'Dados Pessoais', icon: UserCircle, action: () => navigate('/perfil') },
+    { label: 'Perfil', icon: UserCircle, action: () => navigate('/perfil') },
     { label: 'Assinatura', icon: CreditCard, action: () => navigate('/assinatura') },
     { label: 'Tutoriais', icon: GraduationCap, action: () => navigate('/tutoriais') },
     { label: 'Configurações', icon: Settings, action: () => navigate('/configuracoes'), screenKey: 'screen:settings' },
@@ -363,6 +363,7 @@ export function AppSidebar() {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold truncate">{profile?.full_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
                     <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] px-1.5 py-0 mt-0.5 hover:bg-primary">
                       {roleLabel}
                     </Badge>
@@ -386,9 +387,9 @@ export function AppSidebar() {
                   href={WHATSAPP_SUPPORT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-[#25D366] hover:text-white transition-colors"
                 >
-                  <MessageCircle className="h-4 w-4 shrink-0" />
+                  <WhatsAppIcon />
                   <span>Suporte</span>
                 </a>
               </div>
