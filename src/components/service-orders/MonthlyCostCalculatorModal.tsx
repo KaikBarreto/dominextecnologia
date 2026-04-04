@@ -174,6 +174,18 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     setCelularDisplay(fmt(b.celularAnual));
   }, [open, initialBreakdown, initialSalary, defaultMonthlyHours]);
 
+  // Keep monthlyHours in sync when defaultMonthlyHours resolves after initial render
+  useEffect(() => {
+    if (!open || !defaultMonthlyHours) return;
+    setBd(prev => {
+      // Only update if user hasn't manually changed it from the previous default
+      if (prev.monthlyHours === 176 && defaultMonthlyHours !== 176) {
+        return { ...prev, monthlyHours: defaultMonthlyHours };
+      }
+      return prev;
+    });
+  }, [defaultMonthlyHours, open]);
+
   const updateCurrencyField = (field: keyof MonthlyCostBreakdown, display: string, setDisplay: (v: string) => void) => {
     setDisplay(display);
     setBd(prev => ({ ...prev, [field]: parseCurrency(display) }));
