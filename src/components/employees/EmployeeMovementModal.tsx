@@ -10,9 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { currencyMask, parseCurrency, calculateDailyValue } from '@/utils/employeeCalculations';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 
 interface EmployeeMovementModalProps {
   open: boolean;
