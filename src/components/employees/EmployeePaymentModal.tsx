@@ -50,6 +50,13 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
     return principal?.id || (activeAccounts.length > 0 ? activeAccounts[0].id : '');
   }, [activeAccounts]);
 
+  // Auto-select default account when accounts load or modal opens
+  useEffect(() => {
+    if (open && defaultAccountId && !accountId) {
+      setAccountId(defaultAccountId);
+    }
+  }, [open, defaultAccountId]);
+
   // Reset state when modal opens
   const handleOpenChange = (o: boolean) => {
     if (o) {
