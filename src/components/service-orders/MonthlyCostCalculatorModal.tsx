@@ -178,8 +178,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
   useEffect(() => {
     if (!open || !defaultMonthlyHours) return;
     setBd(prev => {
-      // Only update if user hasn't manually changed it from the previous default
-      if (prev.monthlyHours === 176 && defaultMonthlyHours !== 176) {
+      if (prev.monthlyHours !== defaultMonthlyHours) {
         return { ...prev, monthlyHours: defaultMonthlyHours };
       }
       return prev;
