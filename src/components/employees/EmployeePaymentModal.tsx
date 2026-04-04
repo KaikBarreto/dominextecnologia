@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Loader2, Wallet, CreditCard } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,13 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
     const principal = activeAccounts.find(a => a.name.toLowerCase().includes('principal'));
     return principal?.id || (activeAccounts.length > 0 ? activeAccounts[0].id : '');
   }, [activeAccounts]);
+
+  // Auto-select default account when accounts load or modal opens
+  useEffect(() => {
+    if (open && defaultAccountId && !accountId) {
+      setAccountId(defaultAccountId);
+    }
+  }, [open, defaultAccountId]);
 
   // Reset state when modal opens
   const handleOpenChange = (o: boolean) => {
