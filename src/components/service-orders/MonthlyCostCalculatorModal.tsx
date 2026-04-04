@@ -154,9 +154,10 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
   useEffect(() => {
     if (!open) return;
+    const resolvedHours = defaultMonthlyHours || 176;
     const b: MonthlyCostBreakdown = initialBreakdown
-      ? { ...defaultBreakdown, ...initialBreakdown }
-      : { ...defaultBreakdown, baseSalary: initialSalary ?? 0 };
+      ? { ...defaultBreakdown, ...initialBreakdown, monthlyHours: initialBreakdown.monthlyHours || resolvedHours }
+      : { ...defaultBreakdown, baseSalary: initialSalary ?? 0, monthlyHours: resolvedHours };
     setBd(b);
     const fmt = (v: number) => v > 0 ? currencyMask(String(Math.round(v * 100))) : '';
     setSalaryDisplay(fmt(b.baseSalary));
