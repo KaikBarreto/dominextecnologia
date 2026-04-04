@@ -33,6 +33,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const { toast } = useToast();
   const { users } = useUsers();
   const isEditing = !!employee;
+  const { monthlyHours: resolvedMonthlyHours } = useEmployeeWorkHours(employee?.id || null);
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
