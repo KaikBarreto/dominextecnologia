@@ -246,7 +246,7 @@ export function AppSidebar() {
           <SidebarContent className="flex h-full flex-col p-0 overflow-hidden">
             <NavLink
               to="/dashboard"
-              className="h-14 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar"
+              className="h-14 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
             >
               {logoLoading ? (
                 collapsed
@@ -263,8 +263,8 @@ export function AppSidebar() {
                 )
               ) : (
                 <>
-                  <img src={logoUrl || defaultLogoDark} alt="Logo" className="h-8 w-auto mx-auto dark:hidden" />
-                  <img src={logoUrl || logoHorizontalVerde} alt="Logo" className="h-8 w-auto mx-auto hidden dark:block" />
+                  <img src={logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain dark:hidden" />
+                  <img src={logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain hidden dark:block" />
                 </>
               )}
             </NavLink>
