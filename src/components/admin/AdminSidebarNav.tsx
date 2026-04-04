@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   Building2,
@@ -6,9 +6,15 @@ import {
   CreditCard,
   Wallet,
   Settings,
+  UserCircle,
+  GraduationCap,
+  LogOut,
+  ChevronsUpDown,
+  MessageCircle,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import logoWhiteHorizontal from '@/assets/logo-white-horizontal.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -18,11 +24,13 @@ const ADMIN_MENU_ITEMS = [
   { label: 'Empresas', path: '/admin/empresas', icon: Building2 },
   { label: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
   { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet },
-  { label: 'Configurações', path: '/configuracoes', icon: Settings },
 ];
 
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
+
 export function AdminSidebarNav() {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const initials = profile?.full_name
     ?.split(' ')
@@ -42,32 +50,6 @@ export function AdminSidebarNav() {
       {/* Admin label */}
       <div className="flex items-center justify-center py-2 border-b border-border">
         <span className="text-xs font-semibold text-destructive">Painel Administrativo</span>
-      </div>
-
-      {/* Profile */}
-      <div className="p-4 pb-3 border-b border-border">
-        {profile ? (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-11 w-11 shrink-0">
-              <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-sidebar-foreground truncate">{profile.full_name}</p>
-              <Badge className="bg-destructive text-destructive-foreground font-semibold text-[10px] px-1.5 py-0 mt-0.5 hover:bg-destructive">
-                ADMIN
-              </Badge>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 animate-pulse">
-            <div className="h-11 w-11 rounded-full bg-muted shrink-0" />
-            <div className="min-w-0 space-y-2">
-              <div className="h-4 w-28 bg-muted rounded" />
-              <div className="h-3 w-20 bg-muted rounded" />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Menu */}
@@ -92,6 +74,65 @@ export function AdminSidebarNav() {
             </NavLink>
           ))}
         </nav>
+      </div>
+
+      {/* Footer: User Menu */}
+      <div className="border-t border-border p-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/50">
+              <Avatar className="h-9 w-9 shrink-0">
+                <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-sm font-semibold text-sidebar-foreground truncate leading-tight">
+                  {profile?.full_name?.split(' ').slice(0, 2).join(' ')}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">Administrador</p>
+              </div>
+              <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="start" sideOffset={8} className="w-56 p-0">
+            <div className="px-3 py-3 border-b">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate">{profile?.full_name}</p>
+                  <Badge className="bg-destructive text-destructive-foreground font-semibold text-[10px] px-1.5 py-0 mt-0.5 hover:bg-destructive">
+                    ADMIN
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="py-1">
+              <button onClick={() => navigate('/perfil')} className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                <UserCircle className="h-4 w-4 shrink-0" />
+                <span>Dados Pessoais</span>
+              </button>
+              <button onClick={() => navigate('/configuracoes')} className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                <Settings className="h-4 w-4 shrink-0" />
+                <span>Configurações</span>
+              </button>
+              <a href={WHATSAPP_SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                <MessageCircle className="h-4 w-4 shrink-0" />
+                <span>Suporte</span>
+              </a>
+            </div>
+
+            <div className="border-t py-1">
+              <button onClick={signOut} className="flex w-full items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors">
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Sair</span>
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
