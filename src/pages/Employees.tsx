@@ -10,7 +10,7 @@ import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebar
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
-import { EmployeePaymentModal } from '@/components/employees/EmployeePaymentModal';
+import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { EmployeeExtract } from '@/components/employees/EmployeeExtract';
 import { EmployeesDashboard } from '@/components/employees/EmployeesDashboard';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
