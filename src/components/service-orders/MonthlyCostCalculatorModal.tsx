@@ -3,14 +3,16 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calculator } from 'lucide-react';
+import { Calculator, Clock } from 'lucide-react';
 import { formatBRL } from '@/utils/currency';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
 
 export interface MonthlyCostBreakdown {
   baseSalary: number;
-  periculosidade: number; // percentage
-  leisSociais: number; // percentage
+  periculosidade: number;
+  periculosidadeMode: 'percent' | 'fixed';
+  leisSociais: number;
+  leisSociaisMode: 'percent' | 'fixed';
   planoSaude: number;
   planoOdonto: number;
   seguroVida: number;
@@ -20,12 +22,15 @@ export interface MonthlyCostBreakdown {
   asoAnual: number;
   epiAnual: number;
   celularAnual: number;
+  monthlyHours: number;
 }
 
 export const defaultBreakdown: MonthlyCostBreakdown = {
   baseSalary: 0,
   periculosidade: 30,
+  periculosidadeMode: 'percent',
   leisSociais: 80,
+  leisSociaisMode: 'percent',
   planoSaude: 0,
   planoOdonto: 0,
   seguroVida: 0,
@@ -35,6 +40,7 @@ export const defaultBreakdown: MonthlyCostBreakdown = {
   asoAnual: 0,
   epiAnual: 0,
   celularAnual: 0,
+  monthlyHours: 176,
 };
 
 interface MonthlyCostCalculatorModalProps {
@@ -60,21 +66,70 @@ function CurrencyField({ label, value, onChange, hint }: { label: string; value:
   );
 }
 
-function PercentField({ label, value, onChange, hint }: { label: string; value: number; onChange: (v: number) => void; hint?: string }) {
+function ModeToggleField({
+  label,
+  percentValue,
+  fixedValue,
+  mode,
+  onPercentChange,
+  onFixedChange,
+  onModeChange,
+  computedValue,
+}: {
+  label: string;
+  percentValue: number;
+  fixedValue: string;
+  mode: 'percent' | 'fixed';
+  onPercentChange: (v: number) => void;
+  onFixedChange: (v: string) => void;
+  onModeChange: (m: 'percent' | 'fixed') => void;
+  computedValue: number;
+}) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
-      <div className="relative">
-        <Input
-          type="number" min={0} max={100} step={1}
-          value={value || ''}
-          onChange={e => onChange(Number(e.target.value) || 0)}
-          placeholder="0"
-          className="h-8 text-sm pr-8"
-        />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{label}</Label>
+        <div className="flex rounded-md border overflow-hidden text-[10px]">
+          <button
+            type="button"
+            className={`px-2 py-0.5 transition-colors ${mode === 'percent' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            onClick={() => onModeChange('percent')}
+          >
+            %
+          </button>
+          <button
+            type="button"
+            className={`px-2 py-0.5 transition-colors ${mode === 'fixed' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            onClick={() => onModeChange('fixed')}
+          >
+            R$
+          </button>
+        </div>
       </div>
-      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
+      {mode === 'percent' ? (
+        <div className="relative">
+          <Input
+            type="number" min={0} max={200} step={1}
+            value={percentValue || ''}
+            onChange={e => onPercentChange(Number(e.target.value) || 0)}
+            placeholder="0"
+            className="h-8 text-sm pr-8"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+        </div>
+      ) : (
+        <Input
+          value={fixedValue}
+          onChange={e => onFixedChange(currencyMask(e.target.value))}
+          placeholder="R$ 0,00"
+          className="h-8 text-sm"
+        />
+      )}
+      {computedValue > 0 && (
+        <p className="text-[10px] text-muted-foreground">
+          = R$ {formatBRL(computedValue)}
+        </p>
+      )}
     </div>
   );
 }
@@ -84,6 +139,8 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
   // Currency display states
   const [salaryDisplay, setSalaryDisplay] = useState('');
+  const [pericFixedDisplay, setPericFixedDisplay] = useState('');
+  const [leisFixedDisplay, setLeisFixedDisplay] = useState('');
   const [planoSaudeDisplay, setPlanoSaudeDisplay] = useState('');
   const [planoOdontoDisplay, setPlanoOdontoDisplay] = useState('');
   const [seguroVidaDisplay, setSeguroVidaDisplay] = useState('');
@@ -96,10 +153,14 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
   useEffect(() => {
     if (!open) return;
-    const b = initialBreakdown ?? { ...defaultBreakdown, baseSalary: initialSalary ?? 0 };
+    const b: MonthlyCostBreakdown = initialBreakdown
+      ? { ...defaultBreakdown, ...initialBreakdown }
+      : { ...defaultBreakdown, baseSalary: initialSalary ?? 0 };
     setBd(b);
     const fmt = (v: number) => v > 0 ? currencyMask(String(Math.round(v * 100))) : '';
     setSalaryDisplay(fmt(b.baseSalary));
+    setPericFixedDisplay(b.periculosidadeMode === 'fixed' ? fmt(b.periculosidade) : '');
+    setLeisFixedDisplay(b.leisSociaisMode === 'fixed' ? fmt(b.leisSociais) : '');
     setPlanoSaudeDisplay(fmt(b.planoSaude));
     setPlanoOdontoDisplay(fmt(b.planoOdonto));
     setSeguroVidaDisplay(fmt(b.seguroVida));
@@ -116,15 +177,23 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     setBd(prev => ({ ...prev, [field]: parseCurrency(display) }));
   };
 
-  const total = useMemo(() => {
-    const salarioBase = bd.baseSalary;
-    const periculosidadeVal = salarioBase * (bd.periculosidade / 100);
-    const subtotalComPeric = salarioBase + periculosidadeVal;
-    const leisSociaisVal = subtotalComPeric * (bd.leisSociais / 100);
-    const beneficios = bd.planoSaude + bd.planoOdonto + bd.seguroVida + bd.transporte + bd.refeicao;
-    const anuaisRateados = (bd.treinamentosAnual + bd.asoAnual + bd.epiAnual + bd.celularAnual) / 12;
-    return subtotalComPeric + leisSociaisVal + beneficios + anuaisRateados;
-  }, [bd]);
+  // Computed values
+  const periculosidadeVal = useMemo(() => {
+    if (bd.periculosidadeMode === 'percent') return bd.baseSalary * (bd.periculosidade / 100);
+    return bd.periculosidade;
+  }, [bd.baseSalary, bd.periculosidade, bd.periculosidadeMode]);
+
+  const subtotalComPeric = bd.baseSalary + periculosidadeVal;
+
+  const leisSociaisVal = useMemo(() => {
+    if (bd.leisSociaisMode === 'percent') return subtotalComPeric * (bd.leisSociais / 100);
+    return bd.leisSociais;
+  }, [subtotalComPeric, bd.leisSociais, bd.leisSociaisMode]);
+
+  const beneficios = bd.planoSaude + bd.planoOdonto + bd.seguroVida + bd.transporte + bd.refeicao;
+  const anuaisRateados = (bd.treinamentosAnual + bd.asoAnual + bd.epiAnual + bd.celularAnual) / 12;
+  const total = subtotalComPeric + leisSociaisVal + beneficios + anuaisRateados;
+  const hourlyRate = bd.monthlyHours > 0 ? total / bd.monthlyHours : 0;
 
   const handleApply = () => {
     onApply(Math.round(total * 100) / 100, bd);
@@ -139,10 +208,6 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
       </Button>
     </div>
   );
-
-  const periculosidadeVal = bd.baseSalary * (bd.periculosidade / 100);
-  const subtotalComPeric = bd.baseSalary + periculosidadeVal;
-  const leisSociaisVal = subtotalComPeric * (bd.leisSociais / 100);
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Calcular Custo Mensal" className="sm:max-w-lg" footer={footer}>
@@ -161,17 +226,37 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
             onChange={v => updateCurrencyField('baseSalary', v, setSalaryDisplay)}
           />
           <div className="grid grid-cols-2 gap-3">
-            <PercentField
+            <ModeToggleField
               label="Periculosidade"
-              value={bd.periculosidade}
-              onChange={v => setBd(prev => ({ ...prev, periculosidade: v }))}
-              hint={periculosidadeVal > 0 ? `= R$ ${formatBRL(periculosidadeVal)}` : undefined}
+              percentValue={bd.periculosidadeMode === 'percent' ? bd.periculosidade : 0}
+              fixedValue={pericFixedDisplay}
+              mode={bd.periculosidadeMode}
+              onPercentChange={v => setBd(prev => ({ ...prev, periculosidade: v }))}
+              onFixedChange={v => {
+                setPericFixedDisplay(v);
+                setBd(prev => ({ ...prev, periculosidade: parseCurrency(v) }));
+              }}
+              onModeChange={m => {
+                setBd(prev => ({ ...prev, periculosidadeMode: m, periculosidade: m === 'percent' ? 30 : 0 }));
+                if (m === 'fixed') setPericFixedDisplay('');
+              }}
+              computedValue={periculosidadeVal}
             />
-            <PercentField
+            <ModeToggleField
               label="Leis sociais"
-              value={bd.leisSociais}
-              onChange={v => setBd(prev => ({ ...prev, leisSociais: v }))}
-              hint={leisSociaisVal > 0 ? `= R$ ${formatBRL(leisSociaisVal)}` : undefined}
+              percentValue={bd.leisSociaisMode === 'percent' ? bd.leisSociais : 0}
+              fixedValue={leisFixedDisplay}
+              mode={bd.leisSociaisMode}
+              onPercentChange={v => setBd(prev => ({ ...prev, leisSociais: v }))}
+              onFixedChange={v => {
+                setLeisFixedDisplay(v);
+                setBd(prev => ({ ...prev, leisSociais: parseCurrency(v) }));
+              }}
+              onModeChange={m => {
+                setBd(prev => ({ ...prev, leisSociaisMode: m, leisSociais: m === 'percent' ? 80 : 0 }));
+                if (m === 'fixed') setLeisFixedDisplay('');
+              }}
+              computedValue={leisSociaisVal}
             />
           </div>
         </div>
@@ -199,6 +284,25 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           </div>
         </div>
 
+        {/* Horas mensais */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jornada</h4>
+          <div className="space-y-1">
+            <Label className="text-xs">Horas trabalhadas por mês</Label>
+            <div className="relative">
+              <Input
+                type="number" min={1} step={1}
+                value={bd.monthlyHours || ''}
+                onChange={e => setBd(prev => ({ ...prev, monthlyHours: Number(e.target.value) || 0 }))}
+                placeholder="176"
+                className="h-8 text-sm pr-8"
+              />
+              <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <p className="text-[10px] text-muted-foreground">Padrão: 176h (22 dias × 8h)</p>
+          </div>
+        </div>
+
         {/* Resumo */}
         <div className="rounded-lg border p-3 bg-muted/30 space-y-1.5">
           <div className="flex justify-between text-xs">
@@ -207,32 +311,42 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
           </div>
           {periculosidadeVal > 0 && (
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">+ Periculosidade ({bd.periculosidade}%)</span>
+              <span className="text-muted-foreground">
+                + Periculosidade {bd.periculosidadeMode === 'percent' ? `(${bd.periculosidade}%)` : ''}
+              </span>
               <span>R$ {formatBRL(periculosidadeVal)}</span>
             </div>
           )}
           {leisSociaisVal > 0 && (
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">+ Leis sociais ({bd.leisSociais}%)</span>
+              <span className="text-muted-foreground">
+                + Leis sociais {bd.leisSociaisMode === 'percent' ? `(${bd.leisSociais}%)` : ''}
+              </span>
               <span>R$ {formatBRL(leisSociaisVal)}</span>
             </div>
           )}
-          {(bd.planoSaude + bd.planoOdonto + bd.seguroVida + bd.transporte + bd.refeicao) > 0 && (
+          {beneficios > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">+ Benefícios</span>
-              <span>R$ {formatBRL(bd.planoSaude + bd.planoOdonto + bd.seguroVida + bd.transporte + bd.refeicao)}</span>
+              <span>R$ {formatBRL(beneficios)}</span>
             </div>
           )}
-          {(bd.treinamentosAnual + bd.asoAnual + bd.epiAnual + bd.celularAnual) > 0 && (
+          {anuaisRateados > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">+ Custos anuais (÷12)</span>
-              <span>R$ {formatBRL((bd.treinamentosAnual + bd.asoAnual + bd.epiAnual + bd.celularAnual) / 12)}</span>
+              <span>R$ {formatBRL(anuaisRateados)}</span>
             </div>
           )}
           <div className="flex justify-between items-center pt-2 border-t">
             <span className="text-sm font-semibold">Custo Total Mensal</span>
             <span className="text-sm font-bold text-primary">R$ {formatBRL(total)}</span>
           </div>
+          {bd.monthlyHours > 0 && total > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold">Hora Homem (HH)</span>
+              <span className="text-sm font-bold text-primary">R$ {formatBRL(hourlyRate)}/h</span>
+            </div>
+          )}
         </div>
       </div>
     </ResponsiveModal>

@@ -263,7 +263,8 @@ export default function Employees() {
 
   const handlePayment = async (payload: PaymentPayload) => {
     if (!paymentEmployee) return;
-    const sal = paymentEmployee.salary;
+    const emp = paymentEmployee; // capture reference to avoid stale closure
+    const sal = emp.salary;
     const subtotal = sal + activeBalance.totalBonus - activeBalance.totalFaltas;
     const toPay = subtotal - payload.valeDiscount;
     const remainingVales = activeBalance.totalVales - payload.valeDiscount;
@@ -281,7 +282,7 @@ export default function Employees() {
 
     // 1. Register payment movement
     addMovement.mutate({
-      employee_id: paymentEmployee.id,
+      employee_id: emp.id,
       type: 'pagamento',
       amount: toPay,
       balance_after: 0,
@@ -290,37 +291,50 @@ export default function Employees() {
       created_by: user?.id,
     }, {
       onSuccess: async () => {
-        // 2. Register adjustment to reset balance to salary
-        await supabase.from('employee_movements').insert({
-          employee_id: paymentEmployee.id,
-          type: 'ajuste',
-          amount: sal,
-          balance_after: sal,
-          description: 'Reset para salário base',
-          payment_details: paymentDetails,
-          created_by: user?.id,
-        } as any);
-
-        // 3. Re-register remaining vales if partial discount
-        if (remainingVales > 0) {
-          await supabase.from('employee_movements').insert({
-            employee_id: paymentEmployee.id,
-            type: 'vale',
-            amount: remainingVales,
-            balance_after: sal - remainingVales,
-            description: 'Vales não descontados no pagamento',
+        try {
+          // 2. Register adjustment to reset balance to salary
+          const { error: ajusteError } = await supabase.from('employee_movements').insert({
+            employee_id: emp.id,
+            type: 'ajuste',
+            amount: sal,
+            balance_after: sal,
+            description: 'Reset para salário base',
+            payment_details: paymentDetails,
             created_by: user?.id,
           } as any);
-        }
+          if (ajusteError) {
+            console.error('Erro ao registrar ajuste:', ajusteError);
+            toast({ variant: 'destructive', title: 'Erro ao resetar saldo', description: 'O pagamento foi registrado mas o saldo não foi resetado. Contate o suporte.' });
+          }
 
-        // 4. Register financial transaction linked to account
-        await registerFinancialTransaction({
-          type: 'saida',
-          amount: toPay,
-          description: `Pagamento de salário - ${paymentEmployee.name}`,
-          notes: payload.description,
-          accountId: payload.accountId,
-        });
+          // 3. Re-register remaining vales if partial discount
+          if (remainingVales > 0) {
+            const { error: valeError } = await supabase.from('employee_movements').insert({
+              employee_id: emp.id,
+              type: 'vale',
+              amount: remainingVales,
+              balance_after: sal - remainingVales,
+              description: 'Vales não descontados no pagamento',
+              created_by: user?.id,
+            } as any);
+            if (valeError) {
+              console.error('Erro ao relançar vales:', valeError);
+              toast({ variant: 'destructive', title: 'Erro ao relançar vales residuais' });
+            }
+          }
+
+          // 4. Register financial transaction linked to account
+          await registerFinancialTransaction({
+            type: 'saida',
+            amount: toPay,
+            description: `Pagamento de salário - ${emp.name}`,
+            notes: payload.description,
+            accountId: payload.accountId,
+          });
+        } catch (err) {
+          console.error('Erro no fluxo de pagamento:', err);
+          toast({ variant: 'destructive', title: 'Erro no fluxo de pagamento', description: 'Alguns registros podem não ter sido criados.' });
+        }
 
         queryClient.invalidateQueries({ queryKey: ['employee-movements'] });
         queryClient.invalidateQueries({ queryKey: ['all-employee-movements'] });
