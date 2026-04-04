@@ -19,6 +19,7 @@ import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from '@/components/service-orders/MonthlyCostCalculatorModal';
 import { formatBRL } from '@/utils/currency';
+import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const { toast } = useToast();
   const { users } = useUsers();
   const isEditing = !!employee;
+  const { monthlyHours: resolvedMonthlyHours } = useEmployeeWorkHours(employee?.id || null);
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
@@ -311,6 +313,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         onOpenChange={setShowCostCalc}
         initialSalary={parseCurrency(salary)}
         initialBreakdown={monthlyCostBreakdown}
+        defaultMonthlyHours={resolvedMonthlyHours}
         onApply={(totalCost, breakdown) => {
           setMonthlyCost(currencyMask(String(Math.round(totalCost * 100))));
           setMonthlyCostBreakdown(breakdown);
