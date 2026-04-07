@@ -400,9 +400,11 @@ function OrderDetail({
           <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Finalizar OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogTitle>{isTask ? 'Finalizar Tarefa?' : `Finalizar OS #${order.order_number}?`}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.
+                  {isTask
+                    ? 'A tarefa será marcada como concluída.'
+                    : 'A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -424,9 +426,11 @@ function OrderDetail({
           <AlertDialog open={showReopenConfirm} onOpenChange={setShowReopenConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Reabrir OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogTitle>{isTask ? 'Reabrir Tarefa?' : `Reabrir OS #${order.order_number}?`}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  A ordem de serviço será reaberta e voltará ao status "Em andamento", permitindo edição dos campos preenchidos.
+                  {isTask
+                    ? 'A tarefa será reaberta e voltará ao status pendente.'
+                    : 'A ordem de serviço será reaberta e voltará ao status "Em andamento", permitindo edição dos campos preenchidos.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
