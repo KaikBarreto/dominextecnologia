@@ -106,21 +106,31 @@ function OrderDetail({
     setDeleteMode(null);
   };
 
+  const isTask = (order as any).entry_type === 'tarefa';
+  const taskTitle = (order as any).task_title;
+
   return (
     <>
       <div className="flex items-center gap-2 mb-4">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h3 className="text-sm font-semibold">Resumo da OS</h3>
+        <h3 className="text-sm font-semibold">{isTask ? 'Resumo da Tarefa' : 'Resumo da OS'}</h3>
       </div>
       <ScrollArea className="h-[calc(100%-3rem)]">
         <div className="space-y-4 pr-3 overflow-hidden">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <Badge className={cn('text-xs shrink-0', statusBadge.className)}>{statusBadge.label}</Badge>
-            <Badge variant="outline" className="text-xs truncate max-w-[140px]">{osTypeLabels[order.os_type]}</Badge>
-            <Badge variant="secondary" className="text-xs shrink-0">OS #{order.order_number}</Badge>
+            {isTask ? (
+              <Badge variant="outline" className="text-xs truncate max-w-[140px] border-violet-500/50 text-violet-400">Tarefa</Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs truncate max-w-[140px]">{osTypeLabels[order.os_type]}</Badge>
+            )}
+            <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : 'OS #'}{order.order_number}</Badge>
           </div>
+          {isTask && taskTitle && (
+            <p className="text-sm font-medium">{taskTitle}</p>
+          )}
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span>
@@ -130,6 +140,7 @@ function OrderDetail({
               às {order.scheduled_time?.slice(0, 5) || '--:--'}
             </span>
           </div>
+          {!isTask && (
           <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
             <div className="flex items-center gap-2 text-sm font-medium">
               <User className="h-4 w-4 text-primary" />
@@ -176,6 +187,7 @@ function OrderDetail({
               </div>
             )}
           </div>
+          )}
 
           {/* Assignees (technicians / team) */}
           {(assignees.length > 0 || teamInfo) && (
@@ -258,14 +270,16 @@ function OrderDetail({
               <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
             </div>
           )}
-          <Button 
-            onClick={() => navigate(`/os-tecnico/${order.id}`)} 
-            className="w-full mt-4"
-          >
-            <ClipboardList className="h-4 w-4 mr-2" />
-            {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
-          </Button>
-          {onFinalize && order.status !== 'concluida' && (
+          {!isTask && (
+            <Button 
+              onClick={() => navigate(`/os-tecnico/${order.id}`)} 
+              className="w-full mt-4"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
+            </Button>
+          )}
+          {!isTask && onFinalize && order.status !== 'concluida' && (
             <Button
               className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => setShowFinalizeConfirm(true)}
@@ -274,7 +288,7 @@ function OrderDetail({
               Finalizar OS
             </Button>
           )}
-          {onReopen && order.status === 'concluida' && (
+          {!isTask && onReopen && order.status === 'concluida' && (
             <Button
               variant="outline"
               className="w-full mt-2 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
@@ -306,7 +320,7 @@ function OrderDetail({
               </Button>
             )}
           </div>
-          {order.customer_id && (
+          {!isTask && order.customer_id && (
             <Button
               variant="outline"
               size="sm"
