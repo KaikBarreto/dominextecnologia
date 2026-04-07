@@ -144,20 +144,21 @@ export function ScheduleHeader({
 
       {/* Legend */}
       {serviceTypes.length > 0 && (
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
           {serviceTypes.filter(t => t.is_active).map((st) => (
-            <div key={st.id} className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: st.color }} />
-              <span className="text-xs text-muted-foreground">{st.name}</span>
-            </div>
+            <span
+              key={st.id}
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium text-white"
+              style={{ backgroundColor: st.color }}
+            >
+              {st.name}
+            </span>
           ))}
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-secondary flex items-center justify-center">
-              <Star className="h-2 w-2 text-secondary-foreground" />
-            </div>
-            <span className="text-xs text-muted-foreground">Feriado</span>
-          </div>
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-secondary-foreground">
+            <Star className="h-2.5 w-2.5" />
+            Feriado
+          </span>
         </div>
       )}
     </div>
