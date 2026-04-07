@@ -711,6 +711,55 @@ export default function ContractDetail() {
 
       {/* Edit contract */}
       <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} editContract={contract} onCreated={(newId) => { if (newId !== id) navigate(`/contratos/${newId}`); else queryClient.invalidateQueries({ queryKey: ['contract-detail'] }); }} />
+
+      {/* Edit receivable modal */}
+      <ResponsiveModal open={showEditRecModal} onOpenChange={setShowEditRecModal} title="Editar Conta a Receber">
+        <div className="space-y-4 p-1">
+          <div><Label>Descrição</Label><Input value={editRecDescription} onChange={e => setEditRecDescription(e.target.value)} /></div>
+          <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={editRecAmount} onChange={e => setEditRecAmount(e.target.value)} /></div>
+          <div><Label>Vencimento</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Salvar
+            </Button>
+          </div>
+        </div>
+      </ResponsiveModal>
+
+      {/* Bulk edit prompt */}
+      <AlertDialog open={showBulkEditPrompt} onOpenChange={setShowBulkEditPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar alterações</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja alterar apenas esta conta ou todas as contas pendentes vinculadas a este contrato?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={editRecSaving}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" disabled={editRecSaving} onClick={() => handleSaveEditRec(false)}>
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Somente esta
+            </Button>
+            <Button disabled={editRecSaving} onClick={() => handleSaveEditRec(true)}>
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Todas pendentes
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete receivable confirmation */}
+      <AlertDialog open={!!deletingRecId} onOpenChange={() => setDeletingRecId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conta</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir esta conta a receber?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRecTransaction} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
