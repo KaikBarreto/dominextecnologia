@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.18',
+    date: '7 de abril de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Selecionar todos os equipamentos na OS',
+        description: 'Adicionado botão "Selecionar todos" na etapa de equipamentos ao criar ou editar uma Ordem de Serviço.',
+        category: 'recurso',
+      },
+      {
+        title: 'Indicador visual de OS concluída na agenda',
+        description: 'Ordens de Serviço finalizadas agora exibem ícone de check e opacidade reduzida nos cards da agenda para fácil identificação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.17',
     date: '4 de abril de 2026',
     type: 'patch',
