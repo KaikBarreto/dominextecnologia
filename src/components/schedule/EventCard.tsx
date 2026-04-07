@@ -134,6 +134,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   const serviceTypeColor = (order as any).service_type?.color;
   const isTask = (order as any).entry_type === 'tarefa';
   const taskTitle = (order as any).task_title;
+  const isDone = order.status === 'concluida';
 
   if (compact) {
     return (
@@ -144,17 +145,19 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         className={cn(
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
+          isDone && 'opacity-60',
           isTask && !serviceTypeColor && 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-300/50 dark:border-violet-600/50',
           !isTask && !serviceTypeColor && statusBadge.className,
           isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
         )}
         style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
       >
-        {isTask && <CheckSquare className="h-3 w-3 shrink-0 mt-px" />}
-        <span className="font-medium shrink-0">
+        {isDone && <CheckCircle2 className="h-3 w-3 shrink-0 mt-px" />}
+        {isTask && !isDone && <CheckSquare className="h-3 w-3 shrink-0 mt-px" />}
+        <span className={cn('font-medium shrink-0', isDone && 'line-through')}>
           {order.scheduled_time?.slice(0, 5) || '--:--'}
         </span>
-        <span className="truncate flex-1">
+        <span className={cn('truncate flex-1', isDone && 'line-through')}>
           {isTask ? (taskTitle || 'Tarefa') : (order.customer?.name || 'Cliente')}
         </span>
       </div>
