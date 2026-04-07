@@ -773,6 +773,51 @@ export default function CustomerDetail() {
         isLoading={createServiceOrder.isPending}
       />
 
+      {/* Task Form Dialog - pre-filled with this customer */}
+      <TaskFormDialog
+        open={taskFormOpen}
+        onOpenChange={setTaskFormOpen}
+        defaultCustomerId={id}
+        isLoading={creatingTask}
+        onSubmit={async (data: TaskFormData) => {
+          setCreatingTask(true);
+          try {
+            const payload = normalizeOptionalForeignKeys({
+              entry_type: 'tarefa',
+              task_title: data.task_title,
+              task_type_id: data.task_type_id || null,
+              service_type_id: data.service_type_id || null,
+              customer_id: id || null,
+              technician_id: data.technician_id || null,
+              team_id: data.team_id || null,
+              scheduled_date: data.scheduled_date || null,
+              scheduled_time: data.scheduled_time || null,
+              duration_minutes: data.duration_minutes || 60,
+              description: data.description || null,
+              os_type: 'visita_tecnica',
+              status: 'pendente',
+            } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']);
+
+            const { data: created, error } = await supabase.from('service_orders').insert(payload as any).select('id');
+            if (error) throw error;
+
+            if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
+              const assigneeRows = created.flatMap((row: any) =>
+                data.assignee_user_ids!.map(uid => ({ service_order_id: row.id, user_id: uid }))
+              );
+              await supabase.from('service_order_assignees').insert(assigneeRows);
+            }
+
+            toast({ title: 'Tarefa criada com sucesso!' });
+            queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+          } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: err.message });
+          } finally {
+            setCreatingTask(false);
+          }
+        }}
+      />
+
       {/* Contract Form Dialog - pre-filled with this customer */}
       <ContractFormDialog
         open={contractFormOpen}
