@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.20',
+    date: '7 de abril de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção do filtro "Este ano" no financeiro',
+        description: 'O filtro anual agora inclui datas futuras até o final do ano, corrigindo o cálculo de totais pendentes.',
+        category: 'correcao',
+      },
+      {
+        title: 'Recorrência anual em tarefas e OSs',
+        description: 'Adicionada opção de recorrência anual na criação de tarefas e ordens de serviço na agenda.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.5.19',
     date: '7 de abril de 2026',
     type: 'patch',
