@@ -286,29 +286,23 @@ export default function ContractDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/contratos')}>
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigate('/contratos')}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{contract.name}</h1>
-            <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+            <h1 className="text-lg sm:text-2xl font-bold truncate">{contract.name}</h1>
+            <Badge variant={statusCfg.variant} className="shrink-0">{statusCfg.label}</Badge>
           </div>
-          <p className="text-muted-foreground text-sm truncate">{contract.customers?.name || 'Cliente'}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm truncate">{contract.customers?.name || 'Cliente'}</p>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <Button variant="edit-ghost" size="icon" className="sm:hidden h-8 w-8" onClick={() => setShowEditForm(true)}>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => setShowEditForm(true)}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="destructive-ghost" size="icon" className="sm:hidden h-8 w-8" onClick={() => setShowDeleteDialog(true)}>
+          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="h-4 w-4" />
-          </Button>
-          <Button variant="edit-ghost" size="sm" className="hidden sm:inline-flex" onClick={() => setShowEditForm(true)}>
-            <Pencil className="h-4 w-4 mr-1" /> Editar
-          </Button>
-          <Button variant="destructive-ghost" size="sm" className="hidden sm:inline-flex" onClick={() => setShowDeleteDialog(true)}>
-            <Trash2 className="h-4 w-4 mr-1" /> Excluir
           </Button>
         </div>
       </div>
