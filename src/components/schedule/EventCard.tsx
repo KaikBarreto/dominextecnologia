@@ -1,4 +1,4 @@
-import { MapPin, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckSquare } from 'lucide-react';
+import { MapPin, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckSquare, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -134,6 +134,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   const serviceTypeColor = (order as any).service_type?.color;
   const isTask = (order as any).entry_type === 'tarefa';
   const taskTitle = (order as any).task_title;
+  const isDone = order.status === 'concluida';
 
   if (compact) {
     return (
@@ -144,17 +145,19 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         className={cn(
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
+          isDone && 'opacity-60',
           isTask && !serviceTypeColor && 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-300/50 dark:border-violet-600/50',
           !isTask && !serviceTypeColor && statusBadge.className,
           isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
         )}
         style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
       >
-        {isTask && <CheckSquare className="h-3 w-3 shrink-0 mt-px" />}
-        <span className="font-medium shrink-0">
+        {isDone && <CheckCircle2 className="h-3 w-3 shrink-0 mt-px" />}
+        {isTask && !isDone && <CheckSquare className="h-3 w-3 shrink-0 mt-px" />}
+        <span className={cn('font-medium shrink-0', isDone && 'line-through')}>
           {order.scheduled_time?.slice(0, 5) || '--:--'}
         </span>
-        <span className="truncate flex-1">
+        <span className={cn('truncate flex-1', isDone && 'line-through')}>
           {isTask ? (taskTitle || 'Tarefa') : (order.customer?.name || 'Cliente')}
         </span>
       </div>
@@ -176,6 +179,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
         fillHeight && 'h-full',
         !bgColor && 'border bg-card hover:border-primary/30',
+        isDone && 'opacity-65',
         taskBorderClass,
         isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
       )}
@@ -183,7 +187,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          {isTask && <CheckSquare className={cn('h-3.5 w-3.5', bgColor ? 'text-white/80' : 'text-violet-500')} />}
+          {isDone && <CheckCircle2 className={cn('h-4 w-4', bgColor ? 'text-white' : 'text-emerald-500')} />}
+          {isTask && !isDone && <CheckSquare className={cn('h-3.5 w-3.5', bgColor ? 'text-white/80' : 'text-violet-500')} />}
           <span className="font-semibold text-sm">
             {order.scheduled_time?.slice(0, 5) || '--:--'}
           </span>
