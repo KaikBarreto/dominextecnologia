@@ -67,7 +67,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       if (filter === 'pagas') return t.is_paid;
       if (filter === 'pendentes') return !t.is_paid;
       if (filter === 'vencidas') {
-        return !t.is_paid && t.due_date && isBefore(new Date(t.due_date), today);
+        return !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
       }
       return true;
     });
@@ -75,13 +75,13 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
   const summary = useMemo(() => {
     const pendente = baseFiltered.filter((t) => !t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
-    const vencido = baseFiltered.filter((t) => !t.is_paid && t.due_date && isBefore(new Date(t.due_date), today)).reduce((s, t) => s + Number(t.amount), 0);
-    const prox7 = baseFiltered.filter((t) => !t.is_paid && t.due_date && !isBefore(new Date(t.due_date), today) && isBefore(new Date(t.due_date), next7Days)).reduce((s, t) => s + Number(t.amount), 0);
+    const vencido = baseFiltered.filter((t) => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today)).reduce((s, t) => s + Number(t.amount), 0);
+    const prox7 = baseFiltered.filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), today) && isBefore(parseLocalDate(t.due_date), next7Days)).reduce((s, t) => s + Number(t.amount), 0);
     return { pendente, vencido, prox7 };
   }, [baseFiltered, today, next7Days]);
 
   const isOverdue = (t: FinancialTransaction) =>
-    !t.is_paid && t.due_date && isBefore(new Date(t.due_date), today);
+    !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
 
   const filters: { key: FilterStatus; label: string }[] = [
     { key: 'pendentes', label: 'Pendentes' },
@@ -235,7 +235,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {t.due_date ? format(new Date(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
+                    {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
                   </span>
                   <span className={`font-semibold text-sm ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
                     {formatCurrency(t.amount)}
@@ -282,7 +282,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                       <TableCell className="text-sm">
                         {t.due_date ? (
                           <span className={cn(isOverdue(t) && 'text-destructive font-semibold')}>
-                            {format(new Date(t.due_date), 'dd/MM/yyyy', { locale: ptBR })}
+                            {format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR })}
                             {isOverdue(t) && <AlertTriangle className="inline ml-1 h-3.5 w-3.5" />}
                           </span>
                         ) : (
