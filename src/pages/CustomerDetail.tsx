@@ -532,7 +532,67 @@ export default function CustomerDetail() {
         </div>
       )}
 
-      {activeTab === 'chamados' && (
+      {activeTab === 'tarefas' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Tarefas do Cliente</h2>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setTaskFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Tarefa
+            </Button>
+          </div>
+          {customerTasks.length === 0 ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <CheckSquare className="mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Nenhuma tarefa registrada para este cliente</p>
+            </div>
+          ) : (
+            <Card><CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableTableHead sortKey="task_title" sortConfig={taskSortConfig} onSort={handleTaskSort}>Tarefa</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={taskSortConfig} onSort={handleTaskSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_date" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_time" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Horário</SortableTableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tasksPagination.paginatedItems.map((task: any) => {
+                      const isDone = task.status === 'finalizado' || task.status === 'concluido';
+                      return (
+                        <TableRow key={task.id} className={isDone ? 'opacity-60' : ''}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {isDone && <CheckCircle2 className="h-4 w-4 text-success shrink-0" />}
+                              <span className={cn('font-medium', isDone && 'line-through')}>{task.task_title || task.description || '-'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={isDone ? 'default' : 'outline'}>
+                              {isDone ? 'Concluída' : task.status === 'em_andamento' ? 'Em andamento' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {task.scheduled_date ? format(new Date(task.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {task.scheduled_time ? task.scheduled_time.slice(0, 5) : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <DataTablePagination page={tasksPagination.page} totalPages={tasksPagination.totalPages} totalItems={tasksPagination.totalItems} from={tasksPagination.from} to={tasksPagination.to} pageSize={tasksPagination.pageSize} onPageChange={tasksPagination.setPage} onPageSizeChange={tasksPagination.setPageSize} />
+            </CardContent></Card>
+          )}
+        </div>
+      )}
+
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Chamados do Portal</h2>
