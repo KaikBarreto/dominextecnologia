@@ -285,7 +285,7 @@ export default function ContractDetail() {
   const totalPaid = (linkedTransactions || []).filter(t => t.is_paid).reduce((sum, t) => sum + Number(t.amount), 0);
 
   return (
-    <div className="space-y-6 overflow-hidden">
+    <div className="space-y-6 overflow-hidden max-w-full w-full">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigate('/contratos')}>
           <ChevronLeft className="h-5 w-5" />
@@ -343,7 +343,7 @@ export default function ContractDetail() {
 
           {/* Equipment */}
           <Card>
-            <CardHeader><CardTitle>Equipamentos do Contrato ({items.length})</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base sm:text-lg truncate">Equipamentos do Contrato ({items.length})</CardTitle></CardHeader>
             <CardContent>
               {items.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento vinculado</p>
@@ -421,11 +421,13 @@ export default function ContractDetail() {
                       </div>
                     </div>
                   ))}
-                  <div className="flex justify-between pt-2 border-t text-sm">
+                  <div className="flex flex-col sm:flex-row justify-between pt-2 border-t text-sm gap-1">
                     <span className="text-muted-foreground">Total: R$ {formatBRL(totalReceivable)}</span>
                     <span className="text-muted-foreground">Recebido: R$ {formatBRL(totalPaid)}</span>
                   </div>
-                  <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
+                  <div className="overflow-x-auto">
+                    <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -433,7 +435,7 @@ export default function ContractDetail() {
 
           {/* Occurrences */}
           <Card>
-            <CardHeader><CardTitle>Ocorrências ({occurrences.length})</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base sm:text-lg">Ocorrências ({occurrences.length})</CardTitle></CardHeader>
             <CardContent className={cn(isMobile ? 'p-3' : 'p-0')}>
               {isMobile ? (
                 <div className="space-y-2">
