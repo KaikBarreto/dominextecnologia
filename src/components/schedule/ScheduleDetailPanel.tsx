@@ -187,6 +187,7 @@ function OrderDetail({
               </div>
             )}
           </div>
+          )}
 
           {/* Assignees (technicians / team) */}
           {(assignees.length > 0 || teamInfo) && (
