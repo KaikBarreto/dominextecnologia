@@ -378,9 +378,9 @@ export default function ContractDetail() {
 
           {/* Receivables */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Contas a Receber</CardTitle>
-              <Button size="sm" variant="outline" onClick={() => {
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><DollarSign className="h-5 w-5" /> Contas a Receber</CardTitle>
+              <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => {
                 setRecDescription(`Mensalidade - ${contract.name}`);
                 setShowReceivableModal(true);
               }}>
