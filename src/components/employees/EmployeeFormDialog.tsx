@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { Loader2, Camera, Link2, Unlink, Eye, EyeOff, Calculator } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -112,7 +113,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     }
     setUploading(true);
     try {
-      const path = `photos/${Date.now()}_${file.name}`;
+      const safeName = sanitizeStorageFileName(file.name);
+      const path = `photos/${Date.now()}_${safeName}`;
       const { error } = await supabase.storage.from('employee-photos').upload(path, file);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('employee-photos').getPublicUrl(path);

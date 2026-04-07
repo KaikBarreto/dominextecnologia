@@ -17,11 +17,18 @@ import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, 
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction } from '@/types/database';
-import { format, isBefore, addDays, startOfDay } from 'date-fns';
+import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+/** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
+function parseLocalDate(dateStr: string): Date {
+  return parseISO(dateStr + 'T12:00:00');
+}
 import { ContaFormDialog } from './ContaFormDialog';
 import type { TransactionType } from '@/types/database';
 import { useFinancial } from '@/hooks/useFinancial';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -62,7 +69,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       if (filter === 'pagas') return t.is_paid;
       if (filter === 'pendentes') return !t.is_paid;
       if (filter === 'vencidas') {
-        return !t.is_paid && t.due_date && isBefore(new Date(t.due_date), today);
+        return !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
       }
       return true;
     });
@@ -70,13 +77,15 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
   const summary = useMemo(() => {
     const pendente = baseFiltered.filter((t) => !t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
-    const vencido = baseFiltered.filter((t) => !t.is_paid && t.due_date && isBefore(new Date(t.due_date), today)).reduce((s, t) => s + Number(t.amount), 0);
-    const prox7 = baseFiltered.filter((t) => !t.is_paid && t.due_date && !isBefore(new Date(t.due_date), today) && isBefore(new Date(t.due_date), next7Days)).reduce((s, t) => s + Number(t.amount), 0);
+    const vencido = baseFiltered.filter((t) => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today)).reduce((s, t) => s + Number(t.amount), 0);
+    const prox7 = baseFiltered.filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), today) && isBefore(parseLocalDate(t.due_date), next7Days)).reduce((s, t) => s + Number(t.amount), 0);
     return { pendente, vencido, prox7 };
   }, [baseFiltered, today, next7Days]);
 
+  const pagination = useDataPagination(filtered);
+
   const isOverdue = (t: FinancialTransaction) =>
-    !t.is_paid && t.due_date && isBefore(new Date(t.due_date), today);
+    !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
 
   const filters: { key: FilterStatus; label: string }[] = [
     { key: 'pendentes', label: 'Pendentes' },
@@ -195,7 +204,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         </div>
       ) : isMobile ? (
         <div className="space-y-3">
-          {filtered.map((t) => (
+          {pagination.paginatedItems.map((t) => (
             <Card key={t.id} className={cn(isOverdue(t) && 'border-destructive/40')}>
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -230,7 +239,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {t.due_date ? format(new Date(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
+                    {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
                   </span>
                   <span className={`font-semibold text-sm ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
                     {formatCurrency(t.amount)}
@@ -246,6 +255,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
               </CardContent>
             </Card>
           ))}
+          <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
         </div>
       ) : (
         <Card>
@@ -263,7 +273,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((t) => (
+                  {pagination.paginatedItems.map((t) => (
                     <TableRow key={t.id} className={cn(isOverdue(t) && 'bg-destructive/5')}>
                       <TableCell>
                         <div>
@@ -277,7 +287,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                       <TableCell className="text-sm">
                         {t.due_date ? (
                           <span className={cn(isOverdue(t) && 'text-destructive font-semibold')}>
-                            {format(new Date(t.due_date), 'dd/MM/yyyy', { locale: ptBR })}
+                            {format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR })}
                             {isOverdue(t) && <AlertTriangle className="inline ml-1 h-3.5 w-3.5" />}
                           </span>
                         ) : (
@@ -327,6 +337,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 </TableBody>
               </Table>
             </div>
+            <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
           </CardContent>
         </Card>
       )}

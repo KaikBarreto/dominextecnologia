@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,6 +82,15 @@ export default function ContractDetail() {
   const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
   const [eqPage, setEqPage] = useState(1);
+  const [editingRecTransaction, setEditingRecTransaction] = useState<any>(null);
+  const [showEditRecModal, setShowEditRecModal] = useState(false);
+  const [editRecDescription, setEditRecDescription] = useState('');
+  const [editRecAmount, setEditRecAmount] = useState('');
+  const [editRecDueDate, setEditRecDueDate] = useState('');
+  const [editRecSaving, setEditRecSaving] = useState(false);
+  const [showBulkEditPrompt, setShowBulkEditPrompt] = useState(false);
+  const [pendingEditData, setPendingEditData] = useState<any>(null);
+  const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
 
   const sortedOccurrences = useMemo(() => 
     (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
@@ -90,6 +99,47 @@ export default function ContractDetail() {
   const { sortedItems: sortedOcc, sortConfig: occSortConfig, handleSort: handleOccSort } = useTableSort(sortedOccurrences);
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
+
+  const { markAsPaid: markTxPaid, deleteTransaction, updateTransaction } = useFinancial();
+
+  const handleOpenEditRec = (t: any) => {
+    setEditRecDescription(t.description);
+    setEditRecAmount(String(t.amount));
+    setEditRecDueDate(t.due_date || '');
+    setPendingEditData({ id: t.id, contract_id: id });
+    setShowEditRecModal(true);
+  };
+
+  const handleSaveEditRec = async (applyToAll: boolean) => {
+    if (!pendingEditData) return;
+    setEditRecSaving(true);
+    try {
+      if (applyToAll) {
+        const unpaidTxs = (linkedTransactions || []).filter((t: any) => !t.is_paid && t.id !== pendingEditData.id);
+        for (const tx of unpaidTxs) {
+          await updateTransaction.mutateAsync({ id: tx.id, description: editRecDescription, amount: Number(editRecAmount) } as any);
+        }
+      }
+      await updateTransaction.mutateAsync({ id: pendingEditData.id, description: editRecDescription, amount: Number(editRecAmount), due_date: editRecDueDate || undefined } as any);
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      setShowEditRecModal(false);
+      setShowBulkEditPrompt(false);
+      toast({ title: applyToAll ? 'Todas as contas atualizadas!' : 'Conta atualizada!' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    } finally { setEditRecSaving(false); }
+  };
+
+  const handleDeleteRecTransaction = async () => {
+    if (!deletingRecId) return;
+    try {
+      await deleteTransaction.mutateAsync(deletingRecId);
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      setDeletingRecId(null);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    }
+  };
 
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
@@ -359,6 +409,17 @@ export default function ContractDetail() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">R$ {formatBRL(Number(t.amount))}</span>
                         <Badge variant={t.is_paid ? 'success' : 'outline'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
+                        {!t.is_paid && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-success" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => handleOpenEditRec(t)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -650,6 +711,55 @@ export default function ContractDetail() {
 
       {/* Edit contract */}
       <ContractFormDialog open={showEditForm} onOpenChange={setShowEditForm} editContract={contract} onCreated={(newId) => { if (newId !== id) navigate(`/contratos/${newId}`); else queryClient.invalidateQueries({ queryKey: ['contract-detail'] }); }} />
+
+      {/* Edit receivable modal */}
+      <ResponsiveModal open={showEditRecModal} onOpenChange={setShowEditRecModal} title="Editar Conta a Receber">
+        <div className="space-y-4 p-1">
+          <div><Label>Descrição</Label><Input value={editRecDescription} onChange={e => setEditRecDescription(e.target.value)} /></div>
+          <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={editRecAmount} onChange={e => setEditRecAmount(e.target.value)} /></div>
+          <div><Label>Vencimento</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Salvar
+            </Button>
+          </div>
+        </div>
+      </ResponsiveModal>
+
+      {/* Bulk edit prompt */}
+      <AlertDialog open={showBulkEditPrompt} onOpenChange={setShowBulkEditPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar alterações</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja alterar apenas esta conta ou todas as contas pendentes vinculadas a este contrato?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={editRecSaving}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" disabled={editRecSaving} onClick={() => handleSaveEditRec(false)}>
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Somente esta
+            </Button>
+            <Button disabled={editRecSaving} onClick={() => handleSaveEditRec(true)}>
+              {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Todas pendentes
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete receivable confirmation */}
+      <AlertDialog open={!!deletingRecId} onOpenChange={() => setDeletingRecId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conta</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir esta conta a receber?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRecTransaction} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
