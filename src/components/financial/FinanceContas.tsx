@@ -82,6 +82,8 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
     return { pendente, vencido, prox7 };
   }, [baseFiltered, today, next7Days]);
 
+  const pagination = useDataPagination(filtered);
+
   const isOverdue = (t: FinancialTransaction) =>
     !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
 
