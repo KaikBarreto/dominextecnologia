@@ -82,7 +82,8 @@ export default function CustomerDetail() {
   const queryClient = useQueryClient();
 
   const customer = customers.find(c => c.id === id);
-  const customerOrders = serviceOrders.filter(os => os.customer_id === id);
+  const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
+  const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
   const customerTransactions = transactions.filter(t => t.customer_id === id);
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
@@ -91,6 +92,8 @@ export default function CustomerDetail() {
 
   const { sortedItems: sortedOrders, sortConfig: osSortConfig, handleSort: handleOsSort } = useTableSort(customerOrders);
   const ordersPagination = useDataPagination(sortedOrders);
+  const { sortedItems: sortedTasks, sortConfig: taskSortConfig, handleSort: handleTaskSort } = useTableSort(customerTasks);
+  const tasksPagination = useDataPagination(sortedTasks);
   const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(customerTransactions);
   const transactionsPagination = useDataPagination(sortedTransactions);
   const { sortedItems: sortedTickets, sortConfig: ticketSortConfig, handleSort: handleTicketSort } = useTableSort(portalTickets);
@@ -103,6 +106,7 @@ export default function CustomerDetail() {
       { key: 'geral', label: 'Geral' },
       { key: 'equipamentos', label: 'Equipamentos' },
       { key: 'historico', label: 'Histórico de OS' },
+      { key: 'tarefas', label: 'Tarefas' },
     ];
     if (hasPortal) {
       allTabs.push({ key: 'chamados', label: 'Chamados' });
