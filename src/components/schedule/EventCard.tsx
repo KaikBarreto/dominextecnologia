@@ -145,7 +145,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         className={cn(
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
-          isDone && 'opacity-60',
+          isDone && !serviceTypeColor && 'opacity-70',
           isTask && !serviceTypeColor && 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-300/50 dark:border-violet-600/50',
           !isTask && !serviceTypeColor && statusBadge.className,
           isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
@@ -179,7 +179,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
         fillHeight && 'h-full',
         !bgColor && 'border bg-card hover:border-primary/30',
-        isDone && !bgColor && 'opacity-65',
+        isDone && !bgColor && 'opacity-70',
         taskBorderClass,
         isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
       )}
