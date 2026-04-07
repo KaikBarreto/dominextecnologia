@@ -279,6 +279,25 @@ function OrderDetail({
               {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
             </Button>
           )}
+          {isTask && onFinalize && order.status !== 'concluida' && (
+            <Button
+              className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setShowFinalizeConfirm(true)}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Finalizar Tarefa
+            </Button>
+          )}
+          {isTask && onReopen && order.status === 'concluida' && (
+            <Button
+              variant="outline"
+              className="w-full mt-4 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
+              onClick={() => setShowReopenConfirm(true)}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reabrir Tarefa
+            </Button>
+          )}
           {!isTask && onFinalize && order.status !== 'concluida' && (
             <Button
               className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -381,9 +400,11 @@ function OrderDetail({
           <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Finalizar OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogTitle>{isTask ? 'Finalizar Tarefa?' : `Finalizar OS #${order.order_number}?`}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.
+                  {isTask
+                    ? 'A tarefa será marcada como concluída.'
+                    : 'A ordem de serviço será marcada como concluída, independentemente do preenchimento ou status atual.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -405,9 +426,11 @@ function OrderDetail({
           <AlertDialog open={showReopenConfirm} onOpenChange={setShowReopenConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Reabrir OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogTitle>{isTask ? 'Reabrir Tarefa?' : `Reabrir OS #${order.order_number}?`}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  A ordem de serviço será reaberta e voltará ao status "Em andamento", permitindo edição dos campos preenchidos.
+                  {isTask
+                    ? 'A tarefa será reaberta e voltará ao status pendente.'
+                    : 'A ordem de serviço será reaberta e voltará ao status "Em andamento", permitindo edição dos campos preenchidos.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
