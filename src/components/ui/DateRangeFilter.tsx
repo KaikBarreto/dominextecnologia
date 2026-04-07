@@ -75,10 +75,15 @@ export function useDateRangeFilter(defaultPreset: DatePreset = 'this_month') {
     }
   };
 
-  const filterByDate = <T extends Record<string, any>>(items: T[], dateField: string): T[] => {
+  const filterByDate = <T extends Record<string, any>>(items: T[], dateField: string, fallbackField?: string): T[] => {
     if (!range.from && !range.to) return items;
     return items.filter((item) => {
-      const d = new Date(item[dateField]);
+      const raw = item[dateField] ?? (fallbackField ? item[fallbackField] : null);
+      if (!raw) return false;
+      const dateStr = String(raw);
+      // Parse date-only strings (YYYY-MM-DD) as local noon to avoid UTC shift
+      const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
       if (range.from && d < range.from) return false;
       if (range.to && d > range.to) return false;
       return true;
