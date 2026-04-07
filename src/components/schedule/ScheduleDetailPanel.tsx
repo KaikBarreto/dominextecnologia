@@ -270,14 +270,16 @@ function OrderDetail({
               <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
             </div>
           )}
-          <Button 
-            onClick={() => navigate(`/os-tecnico/${order.id}`)} 
-            className="w-full mt-4"
-          >
-            <ClipboardList className="h-4 w-4 mr-2" />
-            {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
-          </Button>
-          {onFinalize && order.status !== 'concluida' && (
+          {!isTask && (
+            <Button 
+              onClick={() => navigate(`/os-tecnico/${order.id}`)} 
+              className="w-full mt-4"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
+            </Button>
+          )}
+          {!isTask && onFinalize && order.status !== 'concluida' && (
             <Button
               className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => setShowFinalizeConfirm(true)}
@@ -286,7 +288,7 @@ function OrderDetail({
               Finalizar OS
             </Button>
           )}
-          {onReopen && order.status === 'concluida' && (
+          {!isTask && onReopen && order.status === 'concluida' && (
             <Button
               variant="outline"
               className="w-full mt-2 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
@@ -318,7 +320,7 @@ function OrderDetail({
               </Button>
             )}
           </div>
-          {order.customer_id && (
+          {!isTask && order.customer_id && (
             <Button
               variant="outline"
               size="sm"
