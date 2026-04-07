@@ -187,7 +187,8 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          {isTask && <CheckSquare className={cn('h-3.5 w-3.5', bgColor ? 'text-white/80' : 'text-violet-500')} />}
+          {isDone && <CheckCircle2 className={cn('h-4 w-4', bgColor ? 'text-white' : 'text-emerald-500')} />}
+          {isTask && !isDone && <CheckSquare className={cn('h-3.5 w-3.5', bgColor ? 'text-white/80' : 'text-violet-500')} />}
           <span className="font-semibold text-sm">
             {order.scheduled_time?.slice(0, 5) || '--:--'}
           </span>
