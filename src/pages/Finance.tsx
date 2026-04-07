@@ -133,7 +133,7 @@ export default function Finance() {
 
         {activeTab === 'contas' && (
           <FinanceContas
-            transactions={filteredTransactions}
+            transactions={filterByDate(transactions, 'due_date')}
             isLoading={isLoading}
             onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
           />
