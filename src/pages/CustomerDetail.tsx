@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, Loader2, FileText, Megaphone } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, Loader2, FileText, Megaphone, CheckSquare, CheckCircle2 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -36,8 +36,11 @@ import { ptBR } from 'date-fns/locale';
 import { getFrequencyLabel } from '@/hooks/useContracts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { TaskFormDialog, TaskFormData } from '@/components/schedule/TaskFormDialog';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { useQueryClient } from '@tanstack/react-query';
 
-type TabKey = 'geral' | 'equipamentos' | 'historico' | 'financeiro' | 'chamados' | 'contratos';
+type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -73,10 +76,14 @@ export default function CustomerDetail() {
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const [generatingPortal, setGeneratingPortal] = useState(false);
   const [contractFormOpen, setContractFormOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [creatingTask, setCreatingTask] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const customer = customers.find(c => c.id === id);
-  const customerOrders = serviceOrders.filter(os => os.customer_id === id);
+  const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
+  const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
   const customerTransactions = transactions.filter(t => t.customer_id === id);
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
@@ -85,6 +92,8 @@ export default function CustomerDetail() {
 
   const { sortedItems: sortedOrders, sortConfig: osSortConfig, handleSort: handleOsSort } = useTableSort(customerOrders);
   const ordersPagination = useDataPagination(sortedOrders);
+  const { sortedItems: sortedTasks, sortConfig: taskSortConfig, handleSort: handleTaskSort } = useTableSort(customerTasks);
+  const tasksPagination = useDataPagination(sortedTasks);
   const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(customerTransactions);
   const transactionsPagination = useDataPagination(sortedTransactions);
   const { sortedItems: sortedTickets, sortConfig: ticketSortConfig, handleSort: handleTicketSort } = useTableSort(portalTickets);
@@ -97,6 +106,7 @@ export default function CustomerDetail() {
       { key: 'geral', label: 'Geral' },
       { key: 'equipamentos', label: 'Equipamentos' },
       { key: 'historico', label: 'Histórico de OS' },
+      { key: 'tarefas', label: 'Tarefas' },
     ];
     if (hasPortal) {
       allTabs.push({ key: 'chamados', label: 'Chamados' });
@@ -522,6 +532,66 @@ export default function CustomerDetail() {
         </div>
       )}
 
+      {activeTab === 'tarefas' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Tarefas do Cliente</h2>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setTaskFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Tarefa
+            </Button>
+          </div>
+          {customerTasks.length === 0 ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <CheckSquare className="mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Nenhuma tarefa registrada para este cliente</p>
+            </div>
+          ) : (
+            <Card><CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableTableHead sortKey="task_title" sortConfig={taskSortConfig} onSort={handleTaskSort}>Tarefa</SortableTableHead>
+                      <SortableTableHead sortKey="status" sortConfig={taskSortConfig} onSort={handleTaskSort}>Status</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_date" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                      <SortableTableHead sortKey="scheduled_time" sortConfig={taskSortConfig} onSort={handleTaskSort} className="hidden sm:table-cell">Horário</SortableTableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tasksPagination.paginatedItems.map((task: any) => {
+                      const isDone = task.status === 'finalizado' || task.status === 'concluido';
+                      return (
+                        <TableRow key={task.id} className={isDone ? 'opacity-60' : ''}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {isDone && <CheckCircle2 className="h-4 w-4 text-success shrink-0" />}
+                              <span className={cn('font-medium', isDone && 'line-through')}>{task.task_title || task.description || '-'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={isDone ? 'default' : 'outline'}>
+                              {isDone ? 'Concluída' : task.status === 'em_andamento' ? 'Em andamento' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {task.scheduled_date ? format(new Date(task.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {task.scheduled_time ? task.scheduled_time.slice(0, 5) : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <DataTablePagination page={tasksPagination.page} totalPages={tasksPagination.totalPages} totalItems={tasksPagination.totalItems} from={tasksPagination.from} to={tasksPagination.to} pageSize={tasksPagination.pageSize} onPageChange={tasksPagination.setPage} onPageSizeChange={tasksPagination.setPageSize} />
+            </CardContent></Card>
+          )}
+        </div>
+      )}
+
       {activeTab === 'chamados' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -701,6 +771,51 @@ export default function CustomerDetail() {
           await createServiceOrder.mutateAsync(data);
         }}
         isLoading={createServiceOrder.isPending}
+      />
+
+      {/* Task Form Dialog - pre-filled with this customer */}
+      <TaskFormDialog
+        open={taskFormOpen}
+        onOpenChange={setTaskFormOpen}
+        defaultCustomerId={id}
+        isLoading={creatingTask}
+        onSubmit={async (data: TaskFormData) => {
+          setCreatingTask(true);
+          try {
+            const payload = normalizeOptionalForeignKeys({
+              entry_type: 'tarefa',
+              task_title: data.task_title,
+              task_type_id: data.task_type_id || null,
+              service_type_id: data.service_type_id || null,
+              customer_id: id || null,
+              technician_id: data.technician_id || null,
+              team_id: data.team_id || null,
+              scheduled_date: data.scheduled_date || null,
+              scheduled_time: data.scheduled_time || null,
+              duration_minutes: data.duration_minutes || 60,
+              description: data.description || null,
+              os_type: 'visita_tecnica',
+              status: 'pendente',
+            } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']);
+
+            const { data: created, error } = await supabase.from('service_orders').insert(payload as any).select('id');
+            if (error) throw error;
+
+            if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
+              const assigneeRows = created.flatMap((row: any) =>
+                data.assignee_user_ids!.map(uid => ({ service_order_id: row.id, user_id: uid }))
+              );
+              await supabase.from('service_order_assignees').insert(assigneeRows);
+            }
+
+            toast({ title: 'Tarefa criada com sucesso!' });
+            queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+          } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: err.message });
+          } finally {
+            setCreatingTask(false);
+          }
+        }}
       />
 
       {/* Contract Form Dialog - pre-filled with this customer */}

@@ -42,6 +42,7 @@ interface TaskFormDialogProps {
   isLoading?: boolean;
   defaultDate?: string;
   defaultTime?: string;
+  defaultCustomerId?: string;
 }
 
 const RECURRENCE_OPTIONS = [
@@ -54,7 +55,7 @@ const RECURRENCE_OPTIONS = [
 
 const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId }: TaskFormDialogProps) {
   const { data: profiles = [] } = useProfiles();
   const { taskTypes } = useTaskTypes();
   const { teamsWithMembers } = useTeams();
@@ -78,7 +79,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   useEffect(() => {
     if (open) {
       setTitle('');
-      setCustomerId('');
+      setCustomerId(defaultCustomerId || '');
       setTaskTypeId('');
       setSelectedUserIds([]);
       setSelectedTeamIds([]);
@@ -93,7 +94,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
       const dayOfWeek = new Date(defaultDate || new Date()).getDay();
       setRecurrenceWeekdays([dayOfWeek]);
     }
-  }, [open, defaultDate, defaultTime]);
+  }, [open, defaultDate, defaultTime, defaultCustomerId]);
 
   const toggleWeekday = (day: number) => {
     setRecurrenceWeekdays(prev =>
