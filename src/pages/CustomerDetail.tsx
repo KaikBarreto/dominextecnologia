@@ -592,7 +592,7 @@ export default function CustomerDetail() {
         </div>
       )}
 
-
+      {activeTab === 'chamados' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Chamados do Portal</h2>
