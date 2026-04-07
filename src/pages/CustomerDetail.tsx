@@ -76,7 +76,10 @@ export default function CustomerDetail() {
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const [generatingPortal, setGeneratingPortal] = useState(false);
   const [contractFormOpen, setContractFormOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [creatingTask, setCreatingTask] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const customer = customers.find(c => c.id === id);
   const customerOrders = serviceOrders.filter(os => os.customer_id === id);
