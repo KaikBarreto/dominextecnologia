@@ -273,7 +273,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((t) => (
+                  {pagination.paginatedItems.map((t) => (
                     <TableRow key={t.id} className={cn(isOverdue(t) && 'bg-destructive/5')}>
                       <TableCell>
                         <div>
