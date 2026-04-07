@@ -36,6 +36,9 @@ import { ptBR } from 'date-fns/locale';
 import { getFrequencyLabel } from '@/hooks/useContracts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { TaskFormDialog, TaskFormData } from '@/components/schedule/TaskFormDialog';
+import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { useQueryClient } from '@tanstack/react-query';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
 
