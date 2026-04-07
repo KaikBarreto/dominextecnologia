@@ -100,6 +100,47 @@ export default function ContractDetail() {
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
 
+  const { markAsPaid: markTxPaid, deleteTransaction, updateTransaction } = useFinancial();
+
+  const handleOpenEditRec = (t: any) => {
+    setEditRecDescription(t.description);
+    setEditRecAmount(String(t.amount));
+    setEditRecDueDate(t.due_date || '');
+    setPendingEditData({ id: t.id, contract_id: id });
+    setShowEditRecModal(true);
+  };
+
+  const handleSaveEditRec = async (applyToAll: boolean) => {
+    if (!pendingEditData) return;
+    setEditRecSaving(true);
+    try {
+      if (applyToAll) {
+        const unpaidTxs = (linkedTransactions || []).filter((t: any) => !t.is_paid && t.id !== pendingEditData.id);
+        for (const tx of unpaidTxs) {
+          await updateTransaction.mutateAsync({ id: tx.id, description: editRecDescription, amount: Number(editRecAmount) } as any);
+        }
+      }
+      await updateTransaction.mutateAsync({ id: pendingEditData.id, description: editRecDescription, amount: Number(editRecAmount), due_date: editRecDueDate || undefined } as any);
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      setShowEditRecModal(false);
+      setShowBulkEditPrompt(false);
+      toast({ title: applyToAll ? 'Todas as contas atualizadas!' : 'Conta atualizada!' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    } finally { setEditRecSaving(false); }
+  };
+
+  const handleDeleteRecTransaction = async () => {
+    if (!deletingRecId) return;
+    try {
+      await deleteTransaction.mutateAsync(deletingRecId);
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      setDeletingRecId(null);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    }
+  };
+
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
     setRecSaving(true);
