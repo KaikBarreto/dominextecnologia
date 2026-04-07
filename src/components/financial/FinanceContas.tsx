@@ -17,8 +17,13 @@ import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, 
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction } from '@/types/database';
-import { format, isBefore, addDays, startOfDay } from 'date-fns';
+import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+/** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
+function parseLocalDate(dateStr: string): Date {
+  return parseISO(dateStr + 'T12:00:00');
+}
 import { ContaFormDialog } from './ContaFormDialog';
 import type { TransactionType } from '@/types/database';
 import { useFinancial } from '@/hooks/useFinancial';
