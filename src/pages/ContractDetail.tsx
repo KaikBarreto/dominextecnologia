@@ -393,27 +393,31 @@ export default function ContractDetail() {
               ) : (
                 <div className="space-y-2">
                   {recPagination.paginatedItems.map(t => (
-                    <div key={t.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border text-sm gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{t.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
-                        </p>
+                    <div key={t.id} className="p-3 rounded-md border text-sm space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{t.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
+                          </p>
+                        </div>
+                        <Badge variant={t.is_paid ? 'success' : 'outline'} className="shrink-0">{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between">
                         <span className="font-semibold">R$ {formatBRL(Number(t.amount))}</span>
-                        <Badge variant={t.is_paid ? 'success' : 'outline'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
-                        {!t.is_paid && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-success" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
-                            <Check className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-1">
+                          {!t.is_paid && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-success" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => handleOpenEditRec(t)}>
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => handleOpenEditRec(t)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
