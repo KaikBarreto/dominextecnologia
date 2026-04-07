@@ -307,34 +307,39 @@ export default function ContractDetail() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 min-w-0 w-full">
         {/* Left column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 min-w-0 w-full">
           {/* Info card */}
-          <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><ScrollText className="h-5 w-5" /> Informações</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader>
+              <CardTitle className="flex min-w-0 items-center gap-2 break-words">
+                <ScrollText className="h-5 w-5 shrink-0" />
+                <span className="min-w-0 break-words">Informações</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <div className="grid min-w-0 grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
-                  <p className="font-medium mt-0.5">{(contract.customers as any)?.name || '-'}</p>
+                  <p className="mt-0.5 break-words font-medium">{(contract.customers as any)?.name || '-'}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Frequência</p>
-                  <p className="font-medium mt-0.5">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</p>
+                  <p className="mt-0.5 break-words font-medium">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Início</p>
-                  <p className="font-medium mt-0.5">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</p>
+                  <p className="mt-0.5 break-words font-medium">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Horizonte</p>
-                  <p className="font-medium mt-0.5">{contract.horizon_months} meses</p>
+                  <p className="mt-0.5 break-words font-medium">{contract.horizon_months} meses</p>
                 </div>
                 {contract.notes && (
-                  <div className="col-span-2">
+                  <div className="min-w-0 sm:col-span-2">
                     <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
-                    <p className="mt-0.5">{contract.notes}</p>
+                    <p className="mt-0.5 break-words">{contract.notes}</p>
                   </div>
                 )}
               </div>
@@ -342,32 +347,34 @@ export default function ContractDetail() {
           </Card>
 
           {/* Equipment */}
-          <Card>
-            <CardHeader><CardTitle className="text-base sm:text-lg truncate">Equipamentos do Contrato ({items.length})</CardTitle></CardHeader>
-            <CardContent>
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader>
+              <CardTitle className="min-w-0 text-base sm:text-lg break-words">Equipamentos do Contrato ({items.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="min-w-0">
               {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum equipamento vinculado</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">Nenhum equipamento vinculado</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   {items.slice((eqPage - 1) * 5, eqPage * 5).map(item => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-md border">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{item.item_name}</p>
-                        {item.item_description && <p className="text-xs text-muted-foreground">{item.item_description}</p>}
+                    <div key={item.id} className="flex min-w-0 flex-col items-start gap-3 rounded-md border p-3 sm:flex-row sm:items-center">
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-sm font-medium">{item.item_name}</p>
+                        {item.item_description && <p className="break-words text-xs text-muted-foreground">{item.item_description}</p>}
                       </div>
                       {item.equipment && (
-                        <Badge variant="secondary" className="text-xs">Equipamento</Badge>
+                        <Badge variant="secondary" className="shrink-0 self-start text-xs sm:self-auto">Equipamento</Badge>
                       )}
                     </div>
                   ))}
                   {items.length > 5 && (
-                    <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex flex-col items-start gap-2 border-t pt-2 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-xs text-muted-foreground">
                         {(eqPage - 1) * 5 + 1}-{Math.min(eqPage * 5, items.length)} de {items.length}
                       </span>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setEqPage(p => p - 1)} disabled={eqPage <= 1}>Anterior</Button>
-                        <Button size="sm" variant="outline" onClick={() => setEqPage(p => p + 1)} disabled={eqPage >= Math.ceil(items.length / 5)}>Próxima</Button>
+                      <div className="flex w-full gap-2 sm:w-auto">
+                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => setEqPage(p => p - 1)} disabled={eqPage <= 1}>Anterior</Button>
+                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => setEqPage(p => p + 1)} disabled={eqPage >= Math.ceil(items.length / 5)}>Próxima</Button>
                       </div>
                     </div>
                   )}
@@ -377,35 +384,38 @@ export default function ContractDetail() {
           </Card>
 
           {/* Receivables */}
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><DollarSign className="h-5 w-5" /> Contas a Receber</CardTitle>
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
+                <DollarSign className="h-5 w-5 shrink-0" />
+                <span className="min-w-0 break-words">Contas a Receber</span>
+              </CardTitle>
               <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => {
                 setRecDescription(`Mensalidade - ${contract.name}`);
                 setShowReceivableModal(true);
               }}>
-                <Plus className="h-4 w-4 mr-1" /> Nova Receita
+                <Plus className="mr-1 h-4 w-4" /> Nova Receita
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0">
               {(linkedTransactions || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma conta vinculada a este contrato</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">Nenhuma conta vinculada a este contrato</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   {recPagination.paginatedItems.map(t => (
-                    <div key={t.id} className="p-3 rounded-md border text-sm space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{t.description}</p>
-                          <p className="text-xs text-muted-foreground">
+                    <div key={t.id} className="space-y-2 rounded-md border p-3 text-sm min-w-0">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{t.description}</p>
+                          <p className="break-words text-xs text-muted-foreground">
                             {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
                           </p>
                         </div>
                         <Badge variant={t.is_paid ? 'success' : 'outline'} className="shrink-0">{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">R$ {formatBRL(Number(t.amount))}</span>
-                        <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
+                        <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
                           {!t.is_paid && (
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-success" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
                               <Check className="h-3.5 w-3.5" />
@@ -421,11 +431,11 @@ export default function ContractDetail() {
                       </div>
                     </div>
                   ))}
-                  <div className="flex flex-col sm:flex-row justify-between pt-2 border-t text-sm gap-1">
-                    <span className="text-muted-foreground">Total: R$ {formatBRL(totalReceivable)}</span>
-                    <span className="text-muted-foreground">Recebido: R$ {formatBRL(totalPaid)}</span>
+                  <div className="flex flex-col gap-1 border-t pt-2 text-sm sm:flex-row sm:justify-between">
+                    <span className="text-muted-foreground break-words">Total: R$ {formatBRL(totalReceivable)}</span>
+                    <span className="text-muted-foreground break-words">Recebido: R$ {formatBRL(totalPaid)}</span>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="min-w-0 overflow-x-auto">
                     <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
                   </div>
                 </div>
@@ -434,30 +444,32 @@ export default function ContractDetail() {
           </Card>
 
           {/* Occurrences */}
-          <Card>
-            <CardHeader><CardTitle className="text-base sm:text-lg">Ocorrências ({occurrences.length})</CardTitle></CardHeader>
-            <CardContent className={cn(isMobile ? 'p-3' : 'p-0')}>
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader>
+              <CardTitle className="min-w-0 text-base sm:text-lg break-words">Ocorrências ({occurrences.length})</CardTitle>
+            </CardHeader>
+            <CardContent className={cn(isMobile ? 'p-3 min-w-0' : 'p-0 min-w-0')}>
               {isMobile ? (
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   {occPagination.paginatedItems.map(occ => {
                     const occDate = parseLocalDate(occ.scheduled_date);
                     const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
                     const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
                     return (
-                      <div key={occ.id} className={cn('p-3 rounded-md border space-y-2', isPast && 'border-warning/50 bg-warning/5')}>
-                        <div className="flex items-center justify-between">
+                      <div key={occ.id} className={cn('min-w-0 space-y-2 rounded-md border p-3', isPast && 'border-warning/50 bg-warning/5')}>
+                        <div className="flex items-center justify-between gap-2">
                           <span className="font-mono text-xs text-muted-foreground">#{occ.occurrence_number}</span>
-                          <Badge variant={occStatusCfg.variant}>{occStatusCfg.label}</Badge>
+                          <Badge variant={occStatusCfg.variant} className="shrink-0">{occStatusCfg.label}</Badge>
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className={cn('font-medium', isPast && 'text-warning')}>
-                            {format(occDate, 'dd/MM/yyyy')} <span className="text-muted-foreground font-normal">({format(occDate, 'EEE', { locale: ptBR })})</span>
+                        <div className="flex min-w-0 flex-col items-start gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                          <span className={cn('font-medium break-words', isPast && 'text-warning')}>
+                            {format(occDate, 'dd/MM/yyyy')} <span className="font-normal text-muted-foreground">({format(occDate, 'EEE', { locale: ptBR })})</span>
                           </span>
                           {occ.service_orders ? (
-                            <Badge variant="secondary" className="text-xs">OS #{occ.service_orders.order_number}</Badge>
+                            <Badge variant="secondary" className="shrink-0 self-start text-xs">OS #{occ.service_orders.order_number}</Badge>
                           ) : null}
                         </div>
-                        <div className="flex items-center gap-1 justify-end">
+                        <div className="flex items-center justify-end gap-1">
                           {occ.service_order_id && (
                             <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
                               <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer">
@@ -478,70 +490,72 @@ export default function ContractDetail() {
                       </div>
                     );
                   })}
-                  <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
+                  <div className="min-w-0 overflow-x-auto">
+                    <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
+                  </div>
                 </div>
               ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">#</SortableTableHead>
-                      <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>Data</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Dia</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>OS</SortableTableHead>
-                      <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>Status</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {occPagination.paginatedItems.map(occ => {
-                      const occDate = parseLocalDate(occ.scheduled_date);
-                      const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
-                      const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">#</SortableTableHead>
+                        <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>Data</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Dia</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>OS</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>Status</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {occPagination.paginatedItems.map(occ => {
+                        const occDate = parseLocalDate(occ.scheduled_date);
+                        const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
+                        const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
 
-                      return (
-                        <TableRow key={occ.id} className={cn(isPast && 'bg-warning/5')}>
-                          <TableCell className="font-mono text-xs text-muted-foreground">{occ.occurrence_number}</TableCell>
-                          <TableCell className={cn(isPast && 'text-warning font-medium')}>
-                            {format(occDate, 'dd/MM/yyyy')}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {format(occDate, 'EEE', { locale: ptBR })}
-                          </TableCell>
-                          <TableCell>
-                            {occ.service_orders ? (
-                              <Badge variant="secondary">OS #{occ.service_orders.order_number}</Badge>
-                            ) : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={occStatusCfg.variant}>{occStatusCfg.label}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {occ.service_order_id && (
-                                <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                                  <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                  </a>
-                                </Button>
-                              )}
-                              {occ.status === 'scheduled' && (
-                                <Button
-                                  variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-warning"
-                                  title="Pular esta ocorrência"
-                                  onClick={() => updateOccurrenceStatus.mutate({ id: occ.id, status: 'skipped' })}
-                                >
-                                  <SkipForward className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                        return (
+                          <TableRow key={occ.id} className={cn(isPast && 'bg-warning/5')}>
+                            <TableCell className="font-mono text-xs text-muted-foreground">{occ.occurrence_number}</TableCell>
+                            <TableCell className={cn(isPast && 'text-warning font-medium')}>
+                              {format(occDate, 'dd/MM/yyyy')}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {format(occDate, 'EEE', { locale: ptBR })}
+                            </TableCell>
+                            <TableCell>
+                              {occ.service_orders ? (
+                                <Badge variant="secondary">OS #{occ.service_orders.order_number}</Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={occStatusCfg.variant}>{occStatusCfg.label}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {occ.service_order_id && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                                    <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer">
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  </Button>
+                                )}
+                                {occ.status === 'scheduled' && (
+                                  <Button
+                                    variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-warning"
+                                    title="Pular esta ocorrência"
+                                    onClick={() => updateOccurrenceStatus.mutate({ id: occ.id, status: 'skipped' })}
+                                  >
+                                    <SkipForward className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
               {!isMobile && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
             </CardContent>
@@ -549,61 +563,61 @@ export default function ContractDetail() {
         </div>
 
         {/* Right column */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Resumo</CardTitle></CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="flex justify-between">
+        <div className="space-y-6 min-w-0 w-full">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader><CardTitle className="text-base break-words">Resumo</CardTitle></CardHeader>
+            <CardContent className="space-y-4 text-sm min-w-0">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <span className="text-muted-foreground">Frequência</span>
-                <span className="font-medium">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</span>
+                <span className="min-w-0 break-words text-right font-medium">{getFrequencyLabel(contract.frequency_type, contract.frequency_value)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <span className="text-muted-foreground">Início</span>
-                <span className="font-medium">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</span>
+                <span className="min-w-0 break-words text-right font-medium">{format(parseLocalDate(contract.start_date), 'dd/MM/yyyy')}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <span className="text-muted-foreground">Horizonte</span>
-                <span className="font-medium">{contract.horizon_months} meses</span>
+                <span className="min-w-0 break-words text-right font-medium">{contract.horizon_months} meses</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <span className="text-muted-foreground">Total de ocorrências</span>
-                <span className="font-medium">{stats.totalOccurrences}</span>
+                <span className="min-w-0 break-words text-right font-medium">{stats.totalOccurrences}</span>
               </div>
               {stats.nextOccurrence && (
-                <div className="flex justify-between">
+                <div className="flex min-w-0 items-start justify-between gap-3">
                   <span className="text-muted-foreground">Próxima OS</span>
-                  <span className="font-medium">{format(parseLocalDate(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
+                  <span className="min-w-0 break-words text-right font-medium">{format(parseLocalDate(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
                 </div>
               )}
-              <Button variant="outline" className="w-full mt-2" onClick={() => setShowRenewDialog(true)}>
-                <RefreshCw className="h-4 w-4 mr-2" /> Renovar Contrato
+              <Button variant="outline" className="mt-2 w-full" onClick={() => setShowRenewDialog(true)}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Renovar Contrato
               </Button>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="text-base">Financeiro</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader><CardTitle className="text-base break-words">Financeiro</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm min-w-0">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <span className="text-muted-foreground">Total a receber</span>
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">R$ {formatBRL(totalReceivable)}</span>
+                <span className="min-w-0 break-words text-right font-medium text-success">R$ {formatBRL(totalReceivable)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <span className="text-muted-foreground">Recebido</span>
-                <span className="font-medium">R$ {formatBRL(totalPaid)}</span>
+                <span className="min-w-0 break-words text-right font-medium">R$ {formatBRL(totalPaid)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex min-w-0 items-start justify-between gap-3">
                 <span className="text-muted-foreground">Pendente</span>
-                <span className="font-medium text-orange-500 dark:text-orange-400">R$ {formatBRL(totalReceivable - totalPaid)}</span>
+                <span className="min-w-0 break-words text-right font-medium text-warning">R$ {formatBRL(totalReceivable - totalPaid)}</span>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="text-base">Progresso</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader><CardTitle className="text-base break-words">Progresso</CardTitle></CardHeader>
+            <CardContent className="space-y-3 min-w-0">
               <Progress value={stats.progressPercent} className="h-3" />
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-center text-sm text-muted-foreground break-words">
                 {stats.completedOccurrences} de {stats.totalOccurrences} concluídas ({stats.progressPercent}%)
               </p>
             </CardContent>
