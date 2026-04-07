@@ -233,6 +233,7 @@ export default function Schedule() {
           else if (data.recurrence_type === 'weekly') current = addWeeks(current, interval);
           else if (data.recurrence_type === 'biweekly') current = addWeeks(current, 2 * interval);
           else if (data.recurrence_type === 'monthly') current = addMonths(current, interval);
+          else if (data.recurrence_type === 'yearly') current = addMonths(current, 12 * interval);
           else break;
           if (current > endDate) break;
           dates.push(format(current, 'yyyy-MM-dd'));
