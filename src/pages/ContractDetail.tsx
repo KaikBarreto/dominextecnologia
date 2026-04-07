@@ -82,6 +82,15 @@ export default function ContractDetail() {
   const [recInstallments, setRecInstallments] = useState('1');
   const [recSaving, setRecSaving] = useState(false);
   const [eqPage, setEqPage] = useState(1);
+  const [editingRecTransaction, setEditingRecTransaction] = useState<any>(null);
+  const [showEditRecModal, setShowEditRecModal] = useState(false);
+  const [editRecDescription, setEditRecDescription] = useState('');
+  const [editRecAmount, setEditRecAmount] = useState('');
+  const [editRecDueDate, setEditRecDueDate] = useState('');
+  const [editRecSaving, setEditRecSaving] = useState(false);
+  const [showBulkEditPrompt, setShowBulkEditPrompt] = useState(false);
+  const [pendingEditData, setPendingEditData] = useState<any>(null);
+  const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
 
   const sortedOccurrences = useMemo(() => 
     (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
