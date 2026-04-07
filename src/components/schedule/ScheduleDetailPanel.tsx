@@ -279,6 +279,25 @@ function OrderDetail({
               {order.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
             </Button>
           )}
+          {isTask && onFinalize && order.status !== 'concluida' && (
+            <Button
+              className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setShowFinalizeConfirm(true)}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Finalizar Tarefa
+            </Button>
+          )}
+          {isTask && onReopen && order.status === 'concluida' && (
+            <Button
+              variant="outline"
+              className="w-full mt-4 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
+              onClick={() => setShowReopenConfirm(true)}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reabrir Tarefa
+            </Button>
+          )}
           {!isTask && onFinalize && order.status !== 'concluida' && (
             <Button
               className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
