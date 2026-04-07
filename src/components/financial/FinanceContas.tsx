@@ -204,7 +204,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         </div>
       ) : isMobile ? (
         <div className="space-y-3">
-          {filtered.map((t) => (
+          {pagination.paginatedItems.map((t) => (
             <Card key={t.id} className={cn(isOverdue(t) && 'border-destructive/40')}>
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -255,6 +255,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
               </CardContent>
             </Card>
           ))}
+          <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
         </div>
       ) : (
         <Card>
