@@ -179,7 +179,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         'p-3 rounded-lg cursor-pointer transition-all hover:shadow-md space-y-1.5 overflow-hidden',
         fillHeight && 'h-full',
         !bgColor && 'border bg-card hover:border-primary/30',
-        isDone && 'opacity-65',
+        isDone && !bgColor && 'opacity-65',
         taskBorderClass,
         isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
       )}
