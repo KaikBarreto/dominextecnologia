@@ -40,6 +40,48 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.19',
+    date: '7 de abril de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aba de Tarefas no perfil do cliente',
+        description: 'Agora é possível criar e visualizar tarefas diretamente pelo perfil do cliente, já vinculadas automaticamente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Editar e excluir contas a receber no contrato',
+        description: 'Adicionados botões de editar, excluir e marcar como pago nas contas a receber dentro do detalhe do contrato, com opção de edição em lote.',
+        category: 'recurso',
+      },
+      {
+        title: 'Paginação no financeiro',
+        description: 'Lista de contas a pagar e receber agora possui paginação para melhor navegação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Responsividade da tela de contratos',
+        description: 'Tela de detalhe do contrato agora é 100% responsiva em dispositivos móveis.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção de datas com fuso horário',
+        description: 'Corrigido bug onde datas de vencimento apareciam um dia antes do correto (ex: dia 15 exibido como 14).',
+        category: 'correcao',
+      },
+      {
+        title: 'Filtro de datas no financeiro',
+        description: 'Filtro de período agora filtra corretamente por data de vencimento.',
+        category: 'correcao',
+      },
+      {
+        title: 'Upload de foto de funcionário',
+        description: 'Corrigido erro ao anexar foto na criação do perfil do funcionário.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.18',
     date: '7 de abril de 2026',
     type: 'patch',
