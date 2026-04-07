@@ -285,7 +285,7 @@ export default function ContractDetail() {
   const totalPaid = (linkedTransactions || []).filter(t => t.is_paid).reduce((sum, t) => sum + Number(t.amount), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigate('/contratos')}>
           <ChevronLeft className="h-5 w-5" />
