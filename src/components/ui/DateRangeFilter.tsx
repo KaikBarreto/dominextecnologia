@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Calendar as CalendarIcon, Check, ArrowRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, startOfYear, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, startOfYear, endOfYear, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ export function getDateRangeFromPreset(preset: DatePreset): DateRange {
     case 'last30':
       return { from: startOfDay(subDays(now, 29)), to: endOfDay(now) };
     case 'this_year':
-      return { from: startOfYear(now), to: endOfDay(now) };
+      return { from: startOfYear(now), to: endOfYear(now) };
     case 'custom':
       return { from: undefined, to: undefined };
   }
