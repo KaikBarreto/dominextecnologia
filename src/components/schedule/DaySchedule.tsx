@@ -1,4 +1,4 @@
-import { Clock, MapPin, User, Wrench, Phone } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -86,7 +86,10 @@ export function DaySchedule({ date, orders, onOrderSelect }: DayScheduleProps) {
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-lg">
+                      {order.status === 'concluida' && (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                      )}
+                      <span className={cn('font-semibold text-lg', order.status === 'concluida' && 'line-through')}>
                         {order.scheduled_time?.slice(0, 5) || '--:--'}
                       </span>
                       <Badge variant={statusVariants[order.status]} className="text-xs">
