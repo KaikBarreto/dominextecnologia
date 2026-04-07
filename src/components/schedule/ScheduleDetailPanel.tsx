@@ -140,6 +140,20 @@ function OrderDetail({
               às {order.scheduled_time?.slice(0, 5) || '--:--'}
             </span>
           </div>
+          {isTask && order.customer?.name && (
+            <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <User className="h-4 w-4 text-primary" />
+                {order.customer.name}
+              </div>
+              {order.customer.phone && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5" />
+                  {order.customer.phone}
+                </div>
+              )}
+            </div>
+          )}
           {!isTask && (
           <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
             <div className="flex items-center gap-2 text-sm font-medium">
