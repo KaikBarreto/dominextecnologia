@@ -27,6 +27,8 @@ function parseLocalDate(dateStr: string): Date {
 import { ContaFormDialog } from './ContaFormDialog';
 import type { TransactionType } from '@/types/database';
 import { useFinancial } from '@/hooks/useFinancial';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
