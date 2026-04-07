@@ -590,6 +590,22 @@ export function ServiceOrderFormDialog({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">Selecione o(s) equipamento(s).</p>
+                  {equipment.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (selectedEquipmentIds.length === equipment.length) {
+                          setSelectedEquipmentIds([]);
+                        } else {
+                          setSelectedEquipmentIds(equipment.map(eq => eq.id));
+                        }
+                      }}
+                    >
+                      {selectedEquipmentIds.length === equipment.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </Button>
+                  )}
                 </div>
                 {equipment.map((eq) => (
                   <label key={eq.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
