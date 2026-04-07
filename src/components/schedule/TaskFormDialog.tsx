@@ -50,6 +50,7 @@ const RECURRENCE_OPTIONS = [
   { value: 'weekly', label: 'Semanal' },
   { value: 'biweekly', label: 'Quinzenal' },
   { value: 'monthly', label: 'Mensal' },
+  { value: 'yearly', label: 'Anual' },
   { value: 'custom', label: 'Personalizado' },
 ];
 
@@ -236,6 +237,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {recurrenceType === 'daily' ? 'dia(s)' :
                        recurrenceType === 'monthly' ? 'mês(es)' :
+                       recurrenceType === 'yearly' ? 'ano(s)' :
                        'semana(s)'}
                     </span>
                   </div>

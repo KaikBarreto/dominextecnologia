@@ -124,6 +124,7 @@ export function ServiceOrderFormDialog({
     { value: 'weekly', label: 'Semanal' },
     { value: 'biweekly', label: 'Quinzenal' },
     { value: 'monthly', label: 'Mensal' },
+    { value: 'yearly', label: 'Anual' },
     { value: 'custom', label: 'Personalizado' },
   ];
   const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -1198,6 +1199,7 @@ export function ServiceOrderFormDialog({
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
                             {recurrenceType === 'daily' ? 'dia(s)' :
                              recurrenceType === 'monthly' ? 'mês(es)' :
+                             recurrenceType === 'yearly' ? 'ano(s)' :
                              'semana(s)'}
                           </span>
                         </div>
