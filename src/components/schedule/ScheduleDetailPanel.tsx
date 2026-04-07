@@ -140,6 +140,7 @@ function OrderDetail({
               às {order.scheduled_time?.slice(0, 5) || '--:--'}
             </span>
           </div>
+          {!isTask && (
           <div className="space-y-1.5 p-3 rounded-lg bg-muted/50 border">
             <div className="flex items-center gap-2 text-sm font-medium">
               <User className="h-4 w-4 text-primary" />
