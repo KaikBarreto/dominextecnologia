@@ -1351,9 +1351,9 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Finish OS button - inline after signatures */}
-        {isCheckedIn && (
-          <div className="pb-6">
+        {/* Finish & Pause OS buttons */}
+        {isCheckedIn && !isPaused && (
+          <div className="pb-6 space-y-2">
             <Button 
               className="w-full bg-success hover:bg-success/90 text-success-foreground" 
               size="lg"
@@ -1362,6 +1362,27 @@ export default function TechnicianOS() {
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               {finishing ? 'Finalizando...' : 'Finalizar OS'}
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white" 
+              size="lg"
+              onClick={async () => {
+                try {
+                  const { error } = await supabase
+                    .from('service_orders')
+                    .update({ status: 'pausada' })
+                    .eq('id', id);
+                  if (error) throw error;
+                  setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
+                  toast({ title: 'OS pausada com sucesso!' });
+                } catch (error: any) {
+                  toast({ variant: 'destructive', title: 'Erro ao pausar OS', description: error.message });
+                }
+              }}
+            >
+              <Pause className="h-4 w-4 mr-2" />
+              Pausar OS
             </Button>
           </div>
         )}
