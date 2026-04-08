@@ -60,7 +60,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { createContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
-  const { teams } = useTeams();
+  const { teams, teamsWithMembers } = useTeams();
   const { serviceTypes } = useServiceTypes();
   const { templates } = useFormTemplates();
   const { toast } = useToast();
@@ -112,7 +112,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       if (editContract.team_id) {
         editTeamIds.push(editContract.team_id);
         // Add team members as selected users
-        const team = teams.find(t => t.id === editContract.team_id);
+        const team = teamsWithMembers.find(t => t.id === editContract.team_id);
         if (team) {
           team.members.forEach(m => {
             if (!editUserIds.includes(m.user_id)) editUserIds.push(m.user_id);
@@ -141,7 +141,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }))
       );
     } else {
-      setName(''); setCustomerId(defaultCustomerId || ''); setTechnicianId(''); setServiceTypeId('');
+      setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setSelectedItems([]);
@@ -197,13 +197,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const isAll = technicianId === 'all';
-      const isTeam = !isAll && technicianId.startsWith('team:');
-      const actualTechnicianId = isAll ? null : (isTeam ? null : (technicianId || null));
-      const actualTeamId = isAll ? null : (isTeam ? technicianId.replace('team:', '') : null);
+      const actualTeamId = selectedTeamIds.length > 0 ? selectedTeamIds[0] : null;
+      const actualTechnicianId = selectedUserIds.length > 0 ? selectedUserIds[0] : null;
 
       if (isEditing) {
-        // Update existing contract metadata only
         const { error } = await supabase.from('contracts').update({
           name,
           customer_id: customerId,
@@ -228,6 +225,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           customer_id: customerId,
           technician_id: actualTechnicianId,
           team_id: actualTeamId,
+          assignee_user_ids: selectedUserIds,
           service_type_id: serviceTypeId || null,
           form_template_id: formTemplateId || null,
           status: isActive ? 'active' : 'paused',
