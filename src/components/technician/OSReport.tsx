@@ -272,6 +272,17 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
+
+    // Open all questionnaire accordions so content is in the DOM before cloning
+    const prevOpen = openQuestionnaireItems;
+    const allValues = responsesByTemplate
+      .map((group, gi) => (group.responses.some(r => !isResponseEmpty(r)) ? `checklist-${gi}` : null))
+      .filter(Boolean) as string[];
+    setOpenQuestionnaireItems(allValues);
+
+    // Wait for React to render the open accordions
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200))));
+
     try {
       const { generateReportPDF } = await import('@/utils/pdfPageRenderer');
       const orderNum = String(serviceOrder.order_number).padStart(6, '0');
@@ -280,6 +291,7 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
       console.error('PDF generation error:', err);
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });
     } finally {
+      setOpenQuestionnaireItems(prevOpen);
       setGenerating(false);
     }
   };
