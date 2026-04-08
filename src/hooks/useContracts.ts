@@ -107,6 +107,7 @@ export function useContracts() {
       customer_id: string;
       technician_id?: string | null;
       team_id?: string | null;
+      assignee_user_ids?: string[];
       service_type_id?: string | null;
       form_template_id?: string | null;
       status: string;
@@ -181,6 +182,11 @@ export function useContracts() {
           .filter(i => i.equipment_id)
           .map(i => i.equipment_id!);
 
+        // Determine all user IDs that should be assignees
+        const assigneeUserIds = input.assignee_user_ids && input.assignee_user_ids.length > 0
+          ? input.assignee_user_ids
+          : (input.technician_id ? [input.technician_id] : []);
+
         for (let i = 0; i < occurrenceDates.length; i++) {
           const date = occurrenceDates[i];
           const dateStr = date.toISOString().split('T')[0];
@@ -225,12 +231,14 @@ export function useContracts() {
             );
           }
 
-          // Create assignees from technician_id so technicians see the OS
-          if (input.technician_id) {
-            await supabase.from('service_order_assignees').insert({
-              service_order_id: os.id,
-              user_id: input.technician_id,
-            });
+          // Create assignees for ALL selected users
+          if (assigneeUserIds.length > 0) {
+            await supabase.from('service_order_assignees').insert(
+              assigneeUserIds.map(uid => ({
+                service_order_id: os.id,
+                user_id: uid,
+              }))
+            );
           }
 
           await supabase.from('contract_occurrences').insert({

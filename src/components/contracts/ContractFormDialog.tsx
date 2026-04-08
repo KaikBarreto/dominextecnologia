@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, generateOccurrences, getFrequencyLabel } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -59,7 +60,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { createContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
-  const { teams } = useTeams();
+  const { teams, teamsWithMembers } = useTeams();
   const { serviceTypes } = useServiceTypes();
   const { templates } = useFormTemplates();
   const { toast } = useToast();
@@ -72,7 +73,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Step 1
   const [name, setName] = useState('');
   const [customerId, setCustomerId] = useState(defaultCustomerId || '');
-  const [technicianId, setTechnicianId] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [formTemplateId, setFormTemplateId] = useState('');
   const [notes, setNotes] = useState('');
@@ -104,12 +106,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (editContract) {
       setName(editContract.name || '');
       setCustomerId(editContract.customer_id || '');
-      // Handle technician or team
+      // Handle technician or team for multi-select
+      const editUserIds: string[] = [];
+      const editTeamIds: string[] = [];
       if (editContract.team_id) {
-        setTechnicianId(`team:${editContract.team_id}`);
-      } else {
-        setTechnicianId(editContract.technician_id || '');
+        editTeamIds.push(editContract.team_id);
+        // Add team members as selected users
+        const team = teamsWithMembers.find(t => t.id === editContract.team_id);
+        if (team) {
+          team.members.forEach(m => {
+            if (!editUserIds.includes(m.user_id)) editUserIds.push(m.user_id);
+          });
+        }
       }
+      if (editContract.technician_id && !editUserIds.includes(editContract.technician_id)) {
+        editUserIds.push(editContract.technician_id);
+      }
+      setSelectedUserIds(editUserIds);
+      setSelectedTeamIds(editTeamIds);
       setServiceTypeId(editContract.service_type_id || '');
       setFormTemplateId(editContract.form_template_id || '');
       setNotes(editContract.notes || '');
@@ -127,7 +141,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }))
       );
     } else {
-      setName(''); setCustomerId(defaultCustomerId || ''); setTechnicianId(''); setServiceTypeId('');
+      setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setSelectedItems([]);
@@ -183,13 +197,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const isAll = technicianId === 'all';
-      const isTeam = !isAll && technicianId.startsWith('team:');
-      const actualTechnicianId = isAll ? null : (isTeam ? null : (technicianId || null));
-      const actualTeamId = isAll ? null : (isTeam ? technicianId.replace('team:', '') : null);
+      const actualTeamId = selectedTeamIds.length > 0 ? selectedTeamIds[0] : null;
+      const actualTechnicianId = selectedUserIds.length > 0 ? selectedUserIds[0] : null;
 
       if (isEditing) {
-        // Update existing contract metadata only
         const { error } = await supabase.from('contracts').update({
           name,
           customer_id: customerId,
@@ -214,6 +225,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           customer_id: customerId,
           technician_id: actualTechnicianId,
           team_id: actualTeamId,
+          assignee_user_ids: selectedUserIds,
           service_type_id: serviceTypeId || null,
           form_template_id: formTemplateId || null,
           status: isActive ? 'active' : 'paused',
@@ -300,36 +312,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     searchPlaceholder="Buscar cliente..."
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Técnico / Equipe Responsável</Label>
-                  <Select value={technicianId || 'none'} onValueChange={v => setTechnicianId(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Nenhum (define na OS)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      <SelectItem value="all">👥 Todos (empresa inteira)</SelectItem>
-                      {(technicians?.length ?? 0) > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Técnicos</div>
-                          {technicians?.map(t => (
-                            <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
-                          ))}
-                        </>
-                      )}
-                      {teams.filter(t => t.is_active).length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Equipes</div>
-                          {teams.filter(t => t.is_active).map(t => (
-                            <SelectItem key={`team-${t.id}`} value={`team:${t.id}`}>
-                              <div className="flex items-center gap-2">
-                                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-                                {t.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
+                <div className="sm:col-span-2">
+                  <AssigneeMultiSelect
+                    technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
+                    teams={teamsWithMembers}
+                    selectedUserIds={selectedUserIds}
+                    selectedTeamIds={selectedTeamIds}
+                    onChangeUsers={setSelectedUserIds}
+                    onChangeTeams={setSelectedTeamIds}
+                    label="Responsáveis (Técnicos / Equipes)"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo de Serviço</Label>
@@ -580,6 +572,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               <div className="grid gap-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Nome</span><span className="font-medium text-right">{name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{clientName}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Responsáveis</span><span className="font-medium text-right">{selectedUserIds.length > 0 ? `${selectedUserIds.length} técnico(s)` : 'Nenhum'}{selectedTeamIds.length > 0 ? ` + ${selectedTeamIds.length} equipe(s)` : ''}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Frequência</span><span className="font-medium">{getFrequencyLabel(freqType, freqValue)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Início</span><span className="font-medium">{format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy')}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Horizonte</span><span className="font-medium">{horizonMonths} meses</span></div>
