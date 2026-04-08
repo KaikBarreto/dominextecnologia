@@ -264,6 +264,9 @@ const AppRoutes = () => (
       <Route path="/tutoriais" element={<Tutorials />} />
     </Route>
 
+    {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}
+    <Route path="/:osId" element={<OSRedirect />} />
+
     {/* Catch-all */}
     <Route path="*" element={<NotFound />} />
   </Routes>
