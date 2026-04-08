@@ -2949,21 +2949,21 @@ export type Database = {
       service_order_equipment: {
         Row: {
           created_at: string
-          equipment_id: string
+          equipment_id: string | null
           form_template_id: string | null
           id: string
           service_order_id: string
         }
         Insert: {
           created_at?: string
-          equipment_id: string
+          equipment_id?: string | null
           form_template_id?: string | null
           id?: string
           service_order_id: string
         }
         Update: {
           created_at?: string
-          equipment_id?: string
+          equipment_id?: string | null
           form_template_id?: string | null
           id?: string
           service_order_id?: string

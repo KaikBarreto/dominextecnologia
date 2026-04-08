@@ -92,6 +92,7 @@ export function ServiceOrderFormDialog({
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string>>({});
+  const [selectedStandaloneTemplateIds, setSelectedStandaloneTemplateIds] = useState<string[]>([]);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
@@ -193,17 +194,40 @@ export function ServiceOrderFormDialog({
     }
   }, [watchedValues, selectedCustomerId, selectedServiceTypeId, open, isEditing, draft.showResumePrompt]);
 
+  // Load existing equipment items when editing
+  const loadExistingEquipmentItems = async (osId: string) => {
+    const { data } = await supabase
+      .from('service_order_equipment')
+      .select('equipment_id, form_template_id')
+      .eq('service_order_id', osId);
+    if (data && data.length > 0) {
+      const eqIds: string[] = [];
+      const templateMap: Record<string, string> = {};
+      const standaloneIds: string[] = [];
+      data.forEach((item: any) => {
+        if (item.equipment_id) {
+          eqIds.push(item.equipment_id);
+          if (item.form_template_id) templateMap[item.equipment_id] = item.form_template_id;
+        } else if (item.form_template_id) {
+          standaloneIds.push(item.form_template_id);
+        }
+      });
+      if (eqIds.length > 0) setSelectedEquipmentIds(eqIds);
+      if (Object.keys(templateMap).length > 0) setEquipmentTemplateMap(templateMap);
+      if (standaloneIds.length > 0) setSelectedStandaloneTemplateIds(standaloneIds);
+    }
+  };
+
   useEffect(() => {
     if (open) {
       setStep(0);
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
-      setRequireTechSignature(false);
+      setSelectedStandaloneTemplateIds([]);
       setRequireClientSignature(false);
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
-      // Initialize assignees from junction table data or legacy field
       const existingAssigneeIds = (serviceOrder as any)?._assignee_user_ids as string[] | undefined;
       if (existingAssigneeIds && existingAssigneeIds.length > 0) {
         setSelectedAssigneeUserIds(existingAssigneeIds);
@@ -238,6 +262,10 @@ export function ServiceOrderFormDialog({
         setSelectedCustomerId(serviceOrder?.customer_id ?? defaultCustomerId);
         setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
       }
+      // Load existing equipment items from junction table when editing
+      if (isEditing && serviceOrder?.id) {
+        loadExistingEquipmentItems(serviceOrder.id);
+      }
     }
   }, [open, serviceOrder, computedDate, computedTime]);
 
@@ -266,12 +294,18 @@ export function ServiceOrderFormDialog({
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
 
-    const equipment_items = selectedEquipmentIds.map(eqId => ({
-      equipment_id: eqId,
-      form_template_id: equipmentTemplateMap[eqId] || undefined,
-    }));
+    const equipment_items = [
+      ...selectedEquipmentIds.map(eqId => ({
+        equipment_id: eqId,
+        form_template_id: equipmentTemplateMap[eqId] || undefined,
+      })),
+      ...selectedStandaloneTemplateIds.map(tId => ({
+        equipment_id: undefined as string | undefined,
+        form_template_id: tId,
+      })),
+    ];
 
-    const formTemplateId = equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined);
+    const formTemplateId = equipmentTemplateMap[selectedEquipmentIds[0] || ''] || selectedStandaloneTemplateIds[0] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined);
 
     // If recurrence is enabled, generate multiple OS entries
     if (recurrenceEnabled && recurrenceEndDate) {
@@ -343,7 +377,7 @@ export function ServiceOrderFormDialog({
           const eqRows = created.flatMap((row: any) =>
             equipment_items.map(item => ({
               service_order_id: row.id,
-              equipment_id: item.equipment_id,
+              equipment_id: item.equipment_id || null,
               form_template_id: item.form_template_id || null,
             }))
           );
@@ -386,6 +420,16 @@ export function ServiceOrderFormDialog({
   const buildEditPayload = (data: ServiceOrderFormData) => {
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
+    const equipItems = [
+      ...selectedEquipmentIds.map(eqId => ({
+        equipment_id: eqId,
+        form_template_id: equipmentTemplateMap[eqId] || undefined,
+      })),
+      ...selectedStandaloneTemplateIds.map(tId => ({
+        equipment_id: undefined as string | undefined,
+        form_template_id: tId,
+      })),
+    ];
     return {
       ...data,
       equipment_id: data.equipment_id || undefined,
@@ -394,8 +438,9 @@ export function ServiceOrderFormDialog({
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
-      form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
+      form_template_id: selectedStandaloneTemplateIds[0] || (data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined)),
       assignee_user_ids: selectedAssigneeUserIds,
+      equipment_items: equipItems.length > 0 ? equipItems : undefined,
     };
   };
 
@@ -714,19 +759,42 @@ export function ServiceOrderFormDialog({
                     })}
                   </div>
                 ) : (
-                  <FormField control={form.control} name="form_template_id" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Questionário</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Questionários</Label>
+                    {selectedStandaloneTemplateIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedStandaloneTemplateIds.map(tId => {
+                          const tmpl = filteredTemplates.find(t => t.id === tId);
+                          return (
+                            <Badge key={tId} variant="secondary" className="gap-1 pr-1">
+                              {tmpl?.name || 'Questionário'}
+                              <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
+                                ✕
+                              </button>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex gap-2 items-center">
+                      <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
+                        <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar questionário..." /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Sem questionário</SelectItem>
-                          {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
+                          {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).map((t) => (
+                            <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
+                          ))}
+                          {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).length === 0 && (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum questionário disponível</div>
+                          )}
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                      {selectedStandaloneTemplateIds.length > 0 && (
+                        <Button type="button" variant="ghost" size="icon" title="Pré-visualizar" onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 )}
 
                 <FormField control={form.control} name="description" render={({ field }) => (
@@ -1140,26 +1208,42 @@ export function ServiceOrderFormDialog({
                   })}
                 </div>
               ) : (
-                <FormField control={form.control} name="form_template_id" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Questionário</FormLabel>
-                    <div className="flex gap-2 items-center">
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger className="flex-1"><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Sem questionário</SelectItem>
-                          {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {field.value && field.value !== 'none' && (
-                        <Button type="button" variant="ghost" size="icon" title="Pré-visualizar questionário" onClick={() => setPreviewTemplateId(field.value!)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      )}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Questionários</Label>
+                  {selectedStandaloneTemplateIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedStandaloneTemplateIds.map(tId => {
+                        const tmpl = filteredTemplates.find(t => t.id === tId);
+                        return (
+                          <Badge key={tId} variant="secondary" className="gap-1 pr-1">
+                            {tmpl?.name || 'Questionário'}
+                            <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
+                              ✕
+                            </button>
+                          </Badge>
+                        );
+                      })}
                     </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                  )}
+                  <div className="flex gap-2 items-center">
+                    <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
+                      <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar questionário..." /></SelectTrigger>
+                      <SelectContent>
+                        {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).map((t) => (
+                          <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
+                        ))}
+                        {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).length === 0 && (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum questionário disponível</div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {selectedStandaloneTemplateIds.length > 0 && (
+                      <Button type="button" variant="ghost" size="icon" title="Pré-visualizar" onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
 
               <FormField control={form.control} name="description" render={({ field }) => (
