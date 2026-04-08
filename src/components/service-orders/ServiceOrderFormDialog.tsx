@@ -267,12 +267,18 @@ export function ServiceOrderFormDialog({
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
 
-    const equipment_items = selectedEquipmentIds.map(eqId => ({
-      equipment_id: eqId,
-      form_template_id: equipmentTemplateMap[eqId] || undefined,
-    }));
+    const equipment_items = [
+      ...selectedEquipmentIds.map(eqId => ({
+        equipment_id: eqId,
+        form_template_id: equipmentTemplateMap[eqId] || undefined,
+      })),
+      ...selectedStandaloneTemplateIds.map(tId => ({
+        equipment_id: undefined as string | undefined,
+        form_template_id: tId,
+      })),
+    ];
 
-    const formTemplateId = equipmentTemplateMap[selectedEquipmentIds[0] || ''] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined);
+    const formTemplateId = equipmentTemplateMap[selectedEquipmentIds[0] || ''] || selectedStandaloneTemplateIds[0] || (data.form_template_id === 'none' ? undefined : data.form_template_id || undefined);
 
     // If recurrence is enabled, generate multiple OS entries
     if (recurrenceEnabled && recurrenceEndDate) {
