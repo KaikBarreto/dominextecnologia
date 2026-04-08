@@ -1371,7 +1371,7 @@ export default function TechnicianOS() {
                 try {
                   const { error } = await supabase
                     .from('service_orders')
-                    .update({ status: 'pausada' })
+                    .update({ status: 'pausada' } as any)
                     .eq('id', id);
                   if (error) throw error;
                   setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
