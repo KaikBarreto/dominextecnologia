@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
+import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, generateOccurrences, getFrequencyLabel } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -72,7 +73,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Step 1
   const [name, setName] = useState('');
   const [customerId, setCustomerId] = useState(defaultCustomerId || '');
-  const [technicianId, setTechnicianId] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [formTemplateId, setFormTemplateId] = useState('');
   const [notes, setNotes] = useState('');
