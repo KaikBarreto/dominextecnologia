@@ -48,6 +48,8 @@ export default function QuestionnaireDetail() {
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
   const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
 
   // Question modal state (create or edit)
@@ -239,7 +241,37 @@ export default function QuestionnaireDetail() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{template.name}</h1>
+          {isEditingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="text-xl font-bold h-9"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (editName.trim() && editName.trim() !== template.name) {
+                      updateTemplate.mutate({ id: template.id, name: editName.trim() });
+                    }
+                    setIsEditingName(false);
+                  }
+                  if (e.key === 'Escape') setIsEditingName(false);
+                }}
+                onBlur={() => {
+                  if (editName.trim() && editName.trim() !== template.name) {
+                    updateTemplate.mutate({ id: template.id, name: editName.trim() });
+                  }
+                  setIsEditingName(false);
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group/name cursor-pointer" onClick={() => { setEditName(template.name); setIsEditingName(true); }}>
+              <h1 className="text-xl sm:text-2xl font-bold truncate">{template.name}</h1>
+              <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0" />
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">{sortedQuestions.length} perguntas</p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-center">
