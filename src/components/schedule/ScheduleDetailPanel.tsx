@@ -59,6 +59,8 @@ function OrderDetail({
   onDeleteGroup,
   onFinalize,
   onReopen,
+  onPause,
+  onResume,
 }: {
   order: ServiceOrder & { customer: any; equipment: any };
   onBack: () => void;
@@ -67,6 +69,8 @@ function OrderDetail({
   onDeleteGroup?: (groupId: string) => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
+  onPause?: (id: string) => void;
+  onResume?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
