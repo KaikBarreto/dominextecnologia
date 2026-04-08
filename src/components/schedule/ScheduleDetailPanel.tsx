@@ -504,6 +504,8 @@ export function ScheduleDetailPanel({
   onDeleteGroup,
   onFinalize,
   onReopen,
+  onPause,
+  onResume,
 }: ScheduleDetailPanelProps) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -516,7 +518,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onFinalize={onFinalize} onReopen={onReopen} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
       ) : (
         <>
           <div className="mb-4">
