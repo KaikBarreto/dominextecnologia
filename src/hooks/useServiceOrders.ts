@@ -166,7 +166,7 @@ export function useServiceOrders() {
   });
 
   const updateServiceOrder = useMutation({
-    mutationFn: async ({ id, assignee_user_ids, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[] }) => {
+    mutationFn: async ({ id, assignee_user_ids, equipment_items, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[]; equipment_items?: Array<{ equipment_id?: string; form_template_id?: string }> }) => {
       const sanitized = normalizeOptionalForeignKeys(input, [
         'technician_id',
         'team_id',
@@ -206,6 +206,19 @@ export function useServiceOrders() {
           await supabase.from('service_order_assignees').insert(
             assignee_user_ids.map(uid => ({ service_order_id: id, user_id: uid }))
           );
+        }
+      }
+
+      // Sync equipment items if provided
+      if (equipment_items !== undefined) {
+        await supabase.from('service_order_equipment').delete().eq('service_order_id', id);
+        if (equipment_items.length > 0) {
+          const rows = equipment_items.map(item => ({
+            service_order_id: id,
+            equipment_id: item.equipment_id || null,
+            form_template_id: item.form_template_id || null,
+          }));
+          await supabase.from('service_order_equipment').insert(rows);
         }
       }
 
