@@ -106,12 +106,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     if (editContract) {
       setName(editContract.name || '');
       setCustomerId(editContract.customer_id || '');
-      // Handle technician or team
+      // Handle technician or team for multi-select
+      const editUserIds: string[] = [];
+      const editTeamIds: string[] = [];
       if (editContract.team_id) {
-        setTechnicianId(`team:${editContract.team_id}`);
-      } else {
-        setTechnicianId(editContract.technician_id || '');
+        editTeamIds.push(editContract.team_id);
+        // Add team members as selected users
+        const team = teams.find(t => t.id === editContract.team_id);
+        if (team) {
+          team.members.forEach(m => {
+            if (!editUserIds.includes(m.user_id)) editUserIds.push(m.user_id);
+          });
+        }
       }
+      if (editContract.technician_id && !editUserIds.includes(editContract.technician_id)) {
+        editUserIds.push(editContract.technician_id);
+      }
+      setSelectedUserIds(editUserIds);
+      setSelectedTeamIds(editTeamIds);
       setServiceTypeId(editContract.service_type_id || '');
       setFormTemplateId(editContract.form_template_id || '');
       setNotes(editContract.notes || '');
