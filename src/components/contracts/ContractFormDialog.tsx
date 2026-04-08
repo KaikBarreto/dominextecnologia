@@ -312,36 +312,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     searchPlaceholder="Buscar cliente..."
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Técnico / Equipe Responsável</Label>
-                  <Select value={technicianId || 'none'} onValueChange={v => setTechnicianId(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Nenhum (define na OS)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      <SelectItem value="all">👥 Todos (empresa inteira)</SelectItem>
-                      {(technicians?.length ?? 0) > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Técnicos</div>
-                          {technicians?.map(t => (
-                            <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
-                          ))}
-                        </>
-                      )}
-                      {teams.filter(t => t.is_active).length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Equipes</div>
-                          {teams.filter(t => t.is_active).map(t => (
-                            <SelectItem key={`team-${t.id}`} value={`team:${t.id}`}>
-                              <div className="flex items-center gap-2">
-                                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-                                {t.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
+                <div className="sm:col-span-2">
+                  <AssigneeMultiSelect
+                    technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
+                    teams={teamsWithMembers}
+                    selectedUserIds={selectedUserIds}
+                    selectedTeamIds={selectedTeamIds}
+                    onChangeUsers={setSelectedUserIds}
+                    onChangeTeams={setSelectedTeamIds}
+                    label="Responsáveis (Técnicos / Equipes)"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo de Serviço</Label>
