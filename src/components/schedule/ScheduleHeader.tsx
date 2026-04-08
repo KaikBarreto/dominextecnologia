@@ -34,6 +34,7 @@ const statusOptions: { value: OsStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'pendente', label: 'Pendente' },
   { value: 'em_andamento', label: 'Em Andamento' },
+  { value: 'pausada', label: 'Pausada' },
   { value: 'concluida', label: 'Concluída' },
   { value: 'cancelada', label: 'Cancelada' },
 ];

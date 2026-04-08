@@ -32,6 +32,7 @@ const statusLabels: Record<OsStatus, string> = {
   pendente: 'Pendente',
   a_caminho: 'A Caminho',
   em_andamento: 'Em Andamento',
+  pausada: 'Pausada',
   concluida: 'Concluída',
   cancelada: 'Cancelada',
 };
@@ -41,6 +42,7 @@ const statusVariants: Record<OsStatus, 'default' | 'secondary' | 'destructive' |
   pendente: 'secondary',
   a_caminho: 'default',
   em_andamento: 'default',
+  pausada: 'default',
   concluida: 'outline',
   cancelada: 'destructive',
 };
