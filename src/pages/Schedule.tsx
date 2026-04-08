@@ -593,6 +593,8 @@ export default function Schedule() {
             onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
             onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
+            onPause={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
+            onResume={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
           />
         </div>
       </div>
