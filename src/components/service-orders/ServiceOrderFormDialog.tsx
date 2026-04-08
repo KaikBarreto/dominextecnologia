@@ -350,7 +350,7 @@ export function ServiceOrderFormDialog({
           const eqRows = created.flatMap((row: any) =>
             equipment_items.map(item => ({
               service_order_id: row.id,
-              equipment_id: item.equipment_id,
+              equipment_id: item.equipment_id || null,
               form_template_id: item.form_template_id || null,
             }))
           );
