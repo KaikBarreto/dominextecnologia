@@ -41,6 +41,23 @@ export default function Finance() {
 
   const filteredTransactions = filterByDate(transactions, 'transaction_date');
 
+  // For summary: unpaid items should be filtered by due_date, paid by transaction_date
+  const summaryTransactions = useMemo(() => {
+    if (!range.from && !range.to) return transactions;
+    return transactions.filter((t) => {
+      const dateField = t.is_paid ? 'transaction_date' : 'due_date';
+      const fallback = 'transaction_date';
+      const raw = t[dateField as keyof typeof t] ?? t[fallback as keyof typeof t];
+      if (!raw) return false;
+      const dateStr = String(raw);
+      const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      if (range.from && d < range.from) return false;
+      if (range.to && d > range.to) return false;
+      return true;
+    });
+  }, [transactions, range]);
+
   const summary = useMemo(() => {
     const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
     filteredTransactions.forEach((t) => {
