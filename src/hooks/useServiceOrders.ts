@@ -118,7 +118,7 @@ export function useServiceOrders() {
       );
       const { data, error } = await supabase
         .from('service_orders')
-        .insert(sanitized)
+        .insert(sanitized as any)
         .select()
         .single();
       
@@ -179,7 +179,7 @@ export function useServiceOrders() {
 
       const { data, error } = await supabase
         .from('service_orders')
-        .update(sanitized)
+        .update(sanitized as any)
         .eq('id', id)
         .select()
         .single();

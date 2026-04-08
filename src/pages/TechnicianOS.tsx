@@ -414,6 +414,7 @@ export default function TechnicianOS() {
     pendente: 'warning',
     a_caminho: 'info',
     em_andamento: 'info',
+    pausada: 'warning',
     concluida: 'success',
     cancelada: 'destructive',
   };
