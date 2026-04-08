@@ -278,8 +278,20 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        
-        
+
+// Redirect legacy OS share links (/:uuid) to /os-tecnico/:uuid?modo=cliente
+function OSRedirect() {
+  const { osId } = React.useMemo(() => ({ osId: '' }), []);
+  const params = require('react-router-dom').useParams();
+  const id = params.osId;
+  // Only redirect if it looks like a UUID
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
+  if (isUUID) {
+    return <Navigate to={`/os-tecnico/${id}?modo=cliente`} replace />;
+  }
+  return <NotFound />;
+}
+
         <OfflineIndicator />
         <BrowserRouter>
           <PageTitleUpdater />
