@@ -1090,6 +1090,39 @@ export default function TechnicianOS() {
           </Card>
         )}
 
+        {/* Resume from paused */}
+        {isPaused && (
+          <Card className="border-amber-600/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base text-amber-600">
+                <Pause className="h-4 w-4" />
+                OS Pausada
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Esta OS foi pausada. Retome o atendimento para continuar o preenchimento.
+              </p>
+              <Button className="w-full" size="lg" onClick={async () => {
+                try {
+                  const { error } = await supabase
+                    .from('service_orders')
+                    .update({ status: 'em_andamento' })
+                    .eq('id', id);
+                  if (error) throw error;
+                  setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
+                  toast({ title: 'OS retomada com sucesso!' });
+                } catch (error: any) {
+                  toast({ variant: 'destructive', title: 'Erro ao retomar OS', description: error.message });
+                }
+              }}>
+                <Play className="h-4 w-4 mr-2" />
+                Retomar OS
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Check-in timestamp */}
         {isCheckedIn && (
           <div className="space-y-2">
