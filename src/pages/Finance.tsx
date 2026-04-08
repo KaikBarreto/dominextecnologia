@@ -60,7 +60,7 @@ export default function Finance() {
 
   const summary = useMemo(() => {
     const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
-    filteredTransactions.forEach((t) => {
+    summaryTransactions.forEach((t) => {
       if (t.transaction_type === 'entrada') {
         if (t.is_paid) {
           s.totalEntradas += Number(t.amount);
@@ -76,6 +76,8 @@ export default function Finance() {
       }
     });
     s.saldo = s.totalEntradas - s.totalSaidas;
+    return s;
+  }, [summaryTransactions]);
     return s;
   }, [filteredTransactions]);
 
