@@ -290,7 +290,7 @@ export default function TechnicianOS() {
   };
 
   // Periodic geo tracking while OS is em_andamento or a_caminho
-  const isTracking = (serviceOrder?.status === 'em_andamento' || serviceOrder?.status === 'a_caminho') && isAuthenticated === true;
+  const isTracking = (serviceOrder?.status === 'em_andamento' || serviceOrder?.status === 'a_caminho' || serviceOrder?.status === 'pausada') && isAuthenticated === true;
   useGeoTracking(id, isTracking);
 
   const handleCheckIn = async () => {
