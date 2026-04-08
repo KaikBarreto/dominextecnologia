@@ -92,6 +92,7 @@ export function ServiceOrderFormDialog({
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string>>({});
+  const [selectedStandaloneTemplateIds, setSelectedStandaloneTemplateIds] = useState<string[]>([]);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
