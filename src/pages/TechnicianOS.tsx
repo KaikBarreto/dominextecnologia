@@ -983,6 +983,7 @@ export default function TechnicianOS() {
   const isCheckedIn = !!checkInTime;
   const isPending = serviceOrder.status === 'pendente' || serviceOrder.status === 'agendada';
   const isACaminho = serviceOrder.status === 'a_caminho';
+  const isPaused = serviceOrder.status === 'pausada';
 
   const handleEnRoute = async () => {
     try {
