@@ -393,6 +393,16 @@ export function ServiceOrderFormDialog({
   const buildEditPayload = (data: ServiceOrderFormData) => {
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
+    const equipItems = [
+      ...selectedEquipmentIds.map(eqId => ({
+        equipment_id: eqId,
+        form_template_id: equipmentTemplateMap[eqId] || undefined,
+      })),
+      ...selectedStandaloneTemplateIds.map(tId => ({
+        equipment_id: undefined as string | undefined,
+        form_template_id: tId,
+      })),
+    ];
     return {
       ...data,
       equipment_id: data.equipment_id || undefined,
@@ -401,8 +411,9 @@ export function ServiceOrderFormDialog({
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
-      form_template_id: data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined),
+      form_template_id: selectedStandaloneTemplateIds[0] || (data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined)),
       assignee_user_ids: selectedAssigneeUserIds,
+      equipment_items: equipItems.length > 0 ? equipItems : undefined,
     };
   };
 
