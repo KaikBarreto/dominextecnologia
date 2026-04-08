@@ -3849,6 +3849,7 @@ export type Database = {
         | "em_andamento"
         | "concluida"
         | "cancelada"
+        | "pausada"
       os_type:
         | "manutencao_preventiva"
         | "manutencao_corretiva"
@@ -4005,6 +4006,7 @@ export const Constants = {
         "em_andamento",
         "concluida",
         "cancelada",
+        "pausada",
       ],
       os_type: [
         "manutencao_preventiva",
