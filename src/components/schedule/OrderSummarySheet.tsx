@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, MapPin, User, Wrench, Phone, Mail, FileText, ExternalLink, Building2, Link2, Check, RotateCcw } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, Mail, FileText, ExternalLink, Building2, Link2, Check, RotateCcw, Pause, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,6 +22,8 @@ interface OrderSummarySheetProps {
   onOpenChange: (open: boolean) => void;
   onEdit?: () => void;
   onReopen?: (id: string) => void;
+  onPause?: (id: string) => void;
+  onResume?: (id: string) => void;
 }
 
 const osTypeLabels: Record<OsType, string> = {
@@ -41,7 +43,7 @@ function buildGoogleMapsUrl(customer: any): string | null {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
 }
 
-function OrderContent({ order, onEdit, onReopen }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void; onReopen?: (id: string) => void }) {
+function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: ServiceOrder & { customer: any; equipment: any }; onEdit?: () => void; onReopen?: (id: string) => void; onPause?: (id: string) => void; onResume?: (id: string) => void }) {
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
   const [allEquipment, setAllEquipment] = useState<any[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -246,6 +248,26 @@ function OrderContent({ order, onEdit, onReopen }: { order: ServiceOrder & { cus
             Reabrir OS
           </Button>
         )}
+        {onPause && (order.status === 'em_andamento' || order.status === 'a_caminho') && (
+          <Button
+            variant="outline"
+            className="w-full mt-2 border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
+            onClick={() => onPause(order.id)}
+          >
+            <Pause className="h-4 w-4 mr-2" />
+            Pausar OS
+          </Button>
+        )}
+        {onResume && order.status === 'pausada' && (
+          <Button
+            variant="outline"
+            className="w-full mt-2 border-primary/30 text-primary hover:bg-primary hover:text-white"
+            onClick={() => onResume(order.id)}
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Retomar OS
+          </Button>
+        )}
         {order.customer_id && (
           <button
             onClick={handleCopyTrackingLink}
@@ -260,7 +282,7 @@ function OrderContent({ order, onEdit, onReopen }: { order: ServiceOrder & { cus
   );
 }
 
-export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen }: OrderSummarySheetProps) {
+export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen, onPause, onResume }: OrderSummarySheetProps) {
   const isMobile = useIsMobile();
 
   if (!order) return null;
@@ -273,7 +295,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen 
             <DrawerTitle>Resumo da OS</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6">
-            <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} />
+            <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} onPause={onPause} onResume={onResume} />
           </div>
         </DrawerContent>
       </Drawer>
@@ -287,7 +309,7 @@ export function OrderSummarySheet({ order, open, onOpenChange, onEdit, onReopen 
           <SheetTitle>Resumo da OS</SheetTitle>
         </SheetHeader>
         <div className="mt-4 h-[calc(100%-3rem)]">
-          <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} />
+          <OrderContent order={order} onEdit={onEdit} onReopen={onReopen} onPause={onPause} onResume={onResume} />
         </div>
       </SheetContent>
     </Sheet>

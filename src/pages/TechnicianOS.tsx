@@ -21,6 +21,7 @@ import {
   Check,
   MapPinned,
   Wrench,
+  Pause,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -289,7 +290,7 @@ export default function TechnicianOS() {
   };
 
   // Periodic geo tracking while OS is em_andamento or a_caminho
-  const isTracking = (serviceOrder?.status === 'em_andamento' || serviceOrder?.status === 'a_caminho') && isAuthenticated === true;
+  const isTracking = (serviceOrder?.status === 'em_andamento' || serviceOrder?.status === 'a_caminho' || serviceOrder?.status === 'pausada') && isAuthenticated === true;
   useGeoTracking(id, isTracking);
 
   const handleCheckIn = async () => {
@@ -414,6 +415,7 @@ export default function TechnicianOS() {
     pendente: 'warning',
     a_caminho: 'info',
     em_andamento: 'info',
+    pausada: 'warning',
     concluida: 'success',
     cancelada: 'destructive',
   };
@@ -982,6 +984,7 @@ export default function TechnicianOS() {
   const isCheckedIn = !!checkInTime;
   const isPending = serviceOrder.status === 'pendente' || serviceOrder.status === 'agendada';
   const isACaminho = serviceOrder.status === 'a_caminho';
+  const isPaused = serviceOrder.status === 'pausada';
 
   const handleEnRoute = async () => {
     try {
@@ -1082,6 +1085,39 @@ export default function TechnicianOS() {
               <Button className="w-full" size="lg" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
                 <Play className="h-4 w-4 mr-2" />
                 Fazer Check-in
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Resume from paused */}
+        {isPaused && (
+          <Card className="border-amber-600/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base text-amber-600">
+                <Pause className="h-4 w-4" />
+                OS Pausada
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Esta OS foi pausada. Retome o atendimento para continuar o preenchimento.
+              </p>
+              <Button className="w-full" size="lg" onClick={async () => {
+                try {
+                  const { error } = await supabase
+                    .from('service_orders')
+                    .update({ status: 'em_andamento' })
+                    .eq('id', id);
+                  if (error) throw error;
+                  setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
+                  toast({ title: 'OS retomada com sucesso!' });
+                } catch (error: any) {
+                  toast({ variant: 'destructive', title: 'Erro ao retomar OS', description: error.message });
+                }
+              }}>
+                <Play className="h-4 w-4 mr-2" />
+                Retomar OS
               </Button>
             </CardContent>
           </Card>
@@ -1315,9 +1351,9 @@ export default function TechnicianOS() {
           </Card>
         )}
 
-        {/* Finish OS button - inline after signatures */}
-        {isCheckedIn && (
-          <div className="pb-6">
+        {/* Finish & Pause OS buttons */}
+        {isCheckedIn && !isPaused && (
+          <div className="pb-6 space-y-2">
             <Button 
               className="w-full bg-success hover:bg-success/90 text-success-foreground" 
               size="lg"
@@ -1326,6 +1362,27 @@ export default function TechnicianOS() {
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               {finishing ? 'Finalizando...' : 'Finalizar OS'}
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white" 
+              size="lg"
+              onClick={async () => {
+                try {
+                  const { error } = await supabase
+                    .from('service_orders')
+                    .update({ status: 'pausada' } as any)
+                    .eq('id', id);
+                  if (error) throw error;
+                  setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
+                  toast({ title: 'OS pausada com sucesso!' });
+                } catch (error: any) {
+                  toast({ variant: 'destructive', title: 'Erro ao pausar OS', description: error.message });
+                }
+              }}
+            >
+              <Pause className="h-4 w-4 mr-2" />
+              Pausar OS
             </Button>
           </div>
         )}

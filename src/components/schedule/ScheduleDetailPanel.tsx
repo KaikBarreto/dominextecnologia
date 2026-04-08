@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Navigation, ExternalLink, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,6 +43,8 @@ interface ScheduleDetailPanelProps {
   onDeleteGroup?: (groupId: string) => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
+  onPause?: (id: string) => void;
+  onResume?: (id: string) => void;
 }
 
 function getInitials(name: string) {
@@ -57,6 +59,8 @@ function OrderDetail({
   onDeleteGroup,
   onFinalize,
   onReopen,
+  onPause,
+  onResume,
 }: {
   order: ServiceOrder & { customer: any; equipment: any };
   onBack: () => void;
@@ -65,6 +69,8 @@ function OrderDetail({
   onDeleteGroup?: (groupId: string) => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
+  onPause?: (id: string) => void;
+  onResume?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
@@ -331,6 +337,26 @@ function OrderDetail({
               Reabrir OS
             </Button>
           )}
+          {!isTask && onPause && (order.status === 'em_andamento' || order.status === 'a_caminho') && (
+            <Button
+              variant="outline"
+              className="w-full mt-2 border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
+              onClick={() => onPause(order.id)}
+            >
+              <Pause className="h-4 w-4 mr-2" />
+              Pausar OS
+            </Button>
+          )}
+          {!isTask && onResume && order.status === 'pausada' && (
+            <Button
+              variant="outline"
+              className="w-full mt-2 border-primary/30 text-primary hover:bg-primary hover:text-white"
+              onClick={() => onResume(order.id)}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Retomar OS
+            </Button>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-2">
             {onEdit && (
               <Button
@@ -478,6 +504,8 @@ export function ScheduleDetailPanel({
   onDeleteGroup,
   onFinalize,
   onReopen,
+  onPause,
+  onResume,
 }: ScheduleDetailPanelProps) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -490,7 +518,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onFinalize={onFinalize} onReopen={onReopen} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
       ) : (
         <>
           <div className="mb-4">

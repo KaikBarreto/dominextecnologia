@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.20";
+export const APP_VERSION = "1.5.21";
 
-export const VERSION_NOTES = "Correção do filtro anual no financeiro e melhorias gerais";
+export const VERSION_NOTES = "Status de OS pausada com opção de pausar e retomar";

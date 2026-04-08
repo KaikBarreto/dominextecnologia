@@ -193,6 +193,16 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
+  const handlePauseFromSummary = (id: string) => {
+    updateServiceOrder.mutate({ id, status: 'pausada' as any });
+    setSummaryOrder(null);
+  };
+
+  const handleResumeFromSummary = (id: string) => {
+    updateServiceOrder.mutate({ id, status: 'em_andamento' as any });
+    setSummaryOrder(null);
+  };
+
   const handleNewOrder = () => {
     setSelectedOrder(null);
     setDefaultDate(format(currentDate, 'yyyy-MM-dd'));
@@ -478,6 +488,8 @@ export default function Schedule() {
               onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
               onReopen={(summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
+              onPause={(summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
+              onResume={(summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
             />
           </div>
         )}
@@ -581,6 +593,8 @@ export default function Schedule() {
             onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
             onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
+            onPause={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
+            onResume={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
           />
         </div>
       </div>

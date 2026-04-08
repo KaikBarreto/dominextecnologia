@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.21',
+    date: '8 de abril de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Status "Pausada" para Ordens de Serviço',
+        description: 'Novo status que permite ao técnico pausar uma OS em andamento para continuar o preenchimento em outro dia. Disponível na agenda, resumo da OS e na tela de preenchimento do técnico.',
+        category: 'recurso',
+      },
+      {
+        title: 'Botão de retomar OS pausada',
+        description: 'OSs pausadas exibem botão para retomar o atendimento, voltando ao status "Em Andamento" e permitindo continuar questionários e assinaturas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Filtro por status "Pausada" na agenda',
+        description: 'Adicionado o filtro "Pausada" nos filtros de status da agenda para facilitar a visualização de OSs que precisam ser retomadas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.20',
     date: '7 de abril de 2026',
     type: 'patch',

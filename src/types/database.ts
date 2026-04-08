@@ -2,7 +2,7 @@
 
 export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro' | 'super_admin';
 
-export type OsStatus = 'agendada' | 'pendente' | 'a_caminho' | 'em_andamento' | 'concluida' | 'cancelada';
+export type OsStatus = 'agendada' | 'pendente' | 'a_caminho' | 'em_andamento' | 'pausada' | 'concluida' | 'cancelada';
 
 export type OsType = 'manutencao_preventiva' | 'manutencao_corretiva' | 'instalacao' | 'visita_tecnica';
 
@@ -233,6 +233,7 @@ export const osStatusLabels: Record<OsStatus, string> = {
   pendente: 'Pendente',
   a_caminho: 'A Caminho',
   em_andamento: 'Em Andamento',
+  pausada: 'Pausada',
   concluida: 'Concluída',
   cancelada: 'Cancelada',
 };
