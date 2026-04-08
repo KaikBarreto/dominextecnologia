@@ -48,6 +48,8 @@ export default function QuestionnaireDetail() {
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
   const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
 
   // Question modal state (create or edit)
