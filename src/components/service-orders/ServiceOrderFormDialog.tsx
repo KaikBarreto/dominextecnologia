@@ -194,6 +194,30 @@ export function ServiceOrderFormDialog({
     }
   }, [watchedValues, selectedCustomerId, selectedServiceTypeId, open, isEditing, draft.showResumePrompt]);
 
+  // Load existing equipment items when editing
+  const loadExistingEquipmentItems = async (osId: string) => {
+    const { data } = await supabase
+      .from('service_order_equipment')
+      .select('equipment_id, form_template_id')
+      .eq('service_order_id', osId);
+    if (data && data.length > 0) {
+      const eqIds: string[] = [];
+      const templateMap: Record<string, string> = {};
+      const standaloneIds: string[] = [];
+      data.forEach((item: any) => {
+        if (item.equipment_id) {
+          eqIds.push(item.equipment_id);
+          if (item.form_template_id) templateMap[item.equipment_id] = item.form_template_id;
+        } else if (item.form_template_id) {
+          standaloneIds.push(item.form_template_id);
+        }
+      });
+      if (eqIds.length > 0) setSelectedEquipmentIds(eqIds);
+      if (Object.keys(templateMap).length > 0) setEquipmentTemplateMap(templateMap);
+      if (standaloneIds.length > 0) setSelectedStandaloneTemplateIds(standaloneIds);
+    }
+  };
+
   useEffect(() => {
     if (open) {
       setStep(0);
@@ -204,7 +228,6 @@ export function ServiceOrderFormDialog({
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
-      // Initialize assignees from junction table data or legacy field
       const existingAssigneeIds = (serviceOrder as any)?._assignee_user_ids as string[] | undefined;
       if (existingAssigneeIds && existingAssigneeIds.length > 0) {
         setSelectedAssigneeUserIds(existingAssigneeIds);
@@ -238,6 +261,10 @@ export function ServiceOrderFormDialog({
         });
         setSelectedCustomerId(serviceOrder?.customer_id ?? defaultCustomerId);
         setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
+      }
+      // Load existing equipment items from junction table when editing
+      if (isEditing && serviceOrder?.id) {
+        loadExistingEquipmentItems(serviceOrder.id);
       }
     }
   }, [open, serviceOrder, computedDate, computedTime]);
