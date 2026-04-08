@@ -1217,16 +1217,16 @@ export default function TechnicianOS() {
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3">
               <Accordion type="multiple" className="w-full">
-                {equipmentItems.map((item) => {
+                {equipmentItems.map((item, idx) => {
                   if (!item.form_template_id) return null;
-                  const validation = formValidations[item.equipment_id];
+                  const itemKey = item.equipment_id || `standalone-${item.form_template_id}-${idx}`;
+                  const validation = formValidations[itemKey];
                   const isComplete = validation && validation.isValid;
                   const pendingCount = validation ? validation.missingQuestions.length : 0;
                   return (
-                    <AccordionItem key={item.equipment_id} value={item.equipment_id} className="border-b last:border-0">
+                    <AccordionItem key={itemKey} value={itemKey} className="border-b last:border-0">
                       <AccordionTrigger className="hover:no-underline py-3 gap-2">
                         <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                          {/* Equipment photo or fallback icon */}
                           {item.equipment?.photo_url ? (
                             <img
                               src={item.equipment.photo_url}
@@ -1242,7 +1242,7 @@ export default function TechnicianOS() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-sm truncate">
-                                {item.equipment?.name || 'Equipamento'}
+                                {item.equipment?.name || item.form_template?.name || 'Questionário'}
                               </p>
                               {item.equipment?.category && (
                                 <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: item.equipment.category.color }}>
@@ -1261,8 +1261,12 @@ export default function TechnicianOS() {
                                 <span className="truncate">{item.equipment.location}</span>
                               </p>
                             )}
+                            {!item.equipment && item.form_template && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {item.form_template.name}
+                              </p>
+                            )}
                           </div>
-                          {/* Completion indicator */}
                           {isComplete ? (
                             <Badge variant="success" className="gap-1 shrink-0">
                               <Check className="h-3 w-3" /> Concluído
@@ -1278,8 +1282,8 @@ export default function TechnicianOS() {
                         <DynamicFormQuestions
                           serviceOrderId={id!}
                           templateId={item.form_template_id!}
-                          equipmentId={item.equipment_id}
-                          onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [item.equipment_id]: result }))}
+                          equipmentId={item.equipment_id || undefined}
+                          onValidationChange={(result) => setFormValidations(prev => ({ ...prev, [itemKey]: result }))}
                         />
                       </AccordionContent>
                     </AccordionItem>
