@@ -45,11 +45,17 @@ export default function Finance() {
     const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
     filteredTransactions.forEach((t) => {
       if (t.transaction_type === 'entrada') {
-        s.totalEntradas += Number(t.amount);
-        if (!t.is_paid) s.aReceber += Number(t.amount);
+        if (t.is_paid) {
+          s.totalEntradas += Number(t.amount);
+        } else {
+          s.aReceber += Number(t.amount);
+        }
       } else {
-        s.totalSaidas += Number(t.amount);
-        if (!t.is_paid) s.aPagar += Number(t.amount);
+        if (t.is_paid) {
+          s.totalSaidas += Number(t.amount);
+        } else {
+          s.aPagar += Number(t.amount);
+        }
       }
     });
     s.saldo = s.totalEntradas - s.totalSaidas;
