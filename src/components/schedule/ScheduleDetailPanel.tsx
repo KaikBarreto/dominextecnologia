@@ -337,6 +337,26 @@ function OrderDetail({
               Reabrir OS
             </Button>
           )}
+          {!isTask && onPause && (order.status === 'em_andamento' || order.status === 'a_caminho') && (
+            <Button
+              variant="outline"
+              className="w-full mt-2 border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
+              onClick={() => onPause(order.id)}
+            >
+              <Pause className="h-4 w-4 mr-2" />
+              Pausar OS
+            </Button>
+          )}
+          {!isTask && onResume && order.status === 'pausada' && (
+            <Button
+              variant="outline"
+              className="w-full mt-2 border-primary/30 text-primary hover:bg-primary hover:text-white"
+              onClick={() => onResume(order.id)}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Retomar OS
+            </Button>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-2">
             {onEdit && (
               <Button
