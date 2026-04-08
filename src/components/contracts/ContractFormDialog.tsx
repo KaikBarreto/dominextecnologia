@@ -572,6 +572,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               <div className="grid gap-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Nome</span><span className="font-medium text-right">{name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{clientName}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Responsáveis</span><span className="font-medium text-right">{selectedUserIds.length > 0 ? `${selectedUserIds.length} técnico(s)` : 'Nenhum'}{selectedTeamIds.length > 0 ? ` + ${selectedTeamIds.length} equipe(s)` : ''}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Frequência</span><span className="font-medium">{getFrequencyLabel(freqType, freqValue)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Início</span><span className="font-medium">{format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy')}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Horizonte</span><span className="font-medium">{horizonMonths} meses</span></div>
