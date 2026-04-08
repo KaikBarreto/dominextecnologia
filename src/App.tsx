@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
@@ -264,10 +264,23 @@ const AppRoutes = () => (
       <Route path="/tutoriais" element={<Tutorials />} />
     </Route>
 
+    {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}
+    <Route path="/:osId" element={<OSRedirect />} />
+
     {/* Catch-all */}
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
+
+// Redirect legacy OS share links (/:uuid) to /os-tecnico/:uuid?modo=cliente
+function OSRedirect() {
+  const { osId } = useParams();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(osId || '');
+  if (isUUID) {
+    return <Navigate to={`/os-tecnico/${osId}?modo=cliente`} replace />;
+  }
+  return <NotFound />;
+}
 
 const App = () => (
   <ErrorBoundary>
