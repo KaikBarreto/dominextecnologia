@@ -199,7 +199,7 @@ export function ServiceOrderFormDialog({
       setStep(0);
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
-      setRequireTechSignature(false);
+      setSelectedStandaloneTemplateIds([]);
       setRequireClientSignature(false);
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
