@@ -74,11 +74,17 @@ export function useFinancial() {
 
       data?.forEach((t) => {
         if (t.transaction_type === 'entrada') {
-          summary.totalEntradas += Number(t.amount);
-          if (!t.is_paid) summary.aReceber += Number(t.amount);
+          if (t.is_paid) {
+            summary.totalEntradas += Number(t.amount);
+          } else {
+            summary.aReceber += Number(t.amount);
+          }
         } else {
-          summary.totalSaidas += Number(t.amount);
-          if (!t.is_paid) summary.aPagar += Number(t.amount);
+          if (t.is_paid) {
+            summary.totalSaidas += Number(t.amount);
+          } else {
+            summary.aPagar += Number(t.amount);
+          }
         }
       });
 

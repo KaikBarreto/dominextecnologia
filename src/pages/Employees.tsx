@@ -263,12 +263,12 @@ export default function Employees() {
       created_by: user?.id,
     }, {
       onSuccess: async () => {
-        if (!isBancoHoras) {
-          const isRevenue = movementType === 'falta';
+        // Faltas are internal salary deductions — no financial transaction
+        if (!isBancoHoras && movementType !== 'falta') {
           await registerFinancialTransaction({
-            type: isRevenue ? 'entrada' : 'saida',
+            type: movementType === 'bonus' ? 'entrada' : 'saida',
             amount: data.amount,
-            description: `${movementType === 'vale' ? 'Vale' : movementType === 'bonus' ? 'Bônus' : 'Falta'} - ${movementEmployee.name}`,
+            description: `${movementType === 'vale' ? 'Vale' : 'Bônus'} - ${movementEmployee.name}`,
             notes: data.description,
           });
         }
