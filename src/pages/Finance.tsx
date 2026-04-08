@@ -78,8 +78,6 @@ export default function Finance() {
     s.saldo = s.totalEntradas - s.totalSaidas;
     return s;
   }, [summaryTransactions]);
-    return s;
-  }, [filteredTransactions]);
 
   const handleNavigate = (tab: string) => {
     const route = TAB_ROUTE_MAP[tab];
