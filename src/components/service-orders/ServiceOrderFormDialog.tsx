@@ -721,19 +721,42 @@ export function ServiceOrderFormDialog({
                     })}
                   </div>
                 ) : (
-                  <FormField control={form.control} name="form_template_id" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Questionário</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Sem questionário" /></SelectTrigger></FormControl>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Questionários</Label>
+                    {selectedStandaloneTemplateIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedStandaloneTemplateIds.map(tId => {
+                          const tmpl = filteredTemplates.find(t => t.id === tId);
+                          return (
+                            <Badge key={tId} variant="secondary" className="gap-1 pr-1">
+                              {tmpl?.name || 'Questionário'}
+                              <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
+                                ✕
+                              </button>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex gap-2 items-center">
+                      <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
+                        <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar questionário..." /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Sem questionário</SelectItem>
-                          {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>)}
+                          {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).map((t) => (
+                            <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
+                          ))}
+                          {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).length === 0 && (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum questionário disponível</div>
+                          )}
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                      {selectedStandaloneTemplateIds.length > 0 && (
+                        <Button type="button" variant="ghost" size="icon" title="Pré-visualizar" onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 )}
 
                 <FormField control={form.control} name="description" render={({ field }) => (
