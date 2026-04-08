@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.22',
+    date: '8 de abril de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Múltiplos responsáveis no contrato',
+        description: 'Agora é possível selecionar vários técnicos e/ou equipes como responsáveis ao criar ou editar um contrato. Todos os selecionados recebem as OSs geradas em suas agendas automaticamente.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.5.21',
     date: '8 de abril de 2026',
     type: 'minor',
