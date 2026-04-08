@@ -193,6 +193,16 @@ export default function Schedule() {
     setSummaryOrder(null);
   };
 
+  const handlePauseFromSummary = (id: string) => {
+    updateServiceOrder.mutate({ id, status: 'pausada' as any });
+    setSummaryOrder(null);
+  };
+
+  const handleResumeFromSummary = (id: string) => {
+    updateServiceOrder.mutate({ id, status: 'em_andamento' as any });
+    setSummaryOrder(null);
+  };
+
   const handleNewOrder = () => {
     setSelectedOrder(null);
     setDefaultDate(format(currentDate, 'yyyy-MM-dd'));
