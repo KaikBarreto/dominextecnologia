@@ -545,6 +545,7 @@ export function ScheduleDetailPanel({
   onEdit,
   onDelete,
   onDeleteGroup,
+  onDeleteFinancialGroup,
   onFinalize,
   onReopen,
   onPause,
@@ -561,7 +562,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onDeleteFinancialGroup={onDeleteFinancialGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
       ) : (
         <>
           <div className="mb-4">
