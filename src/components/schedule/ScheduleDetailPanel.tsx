@@ -98,7 +98,15 @@ function OrderDetail({
   };
 
   const handleDeleteClick = () => {
-    if (hasRecurrenceGroup) {
+    if (isFinancialEvent && hasFinancialGroup) {
+      // Financial event with contract/installment group - show "only this" or "all" options
+      setDeleteMode(null);
+      setShowDeleteConfirm(true);
+    } else if (isFinancialEvent) {
+      // Single financial event
+      setDeleteMode('single');
+      setShowDeleteConfirm(true);
+    } else if (hasRecurrenceGroup) {
       setDeleteMode(null);
       setShowDeleteConfirm(true);
     } else {
@@ -108,7 +116,13 @@ function OrderDetail({
   };
 
   const handleConfirmDelete = () => {
-    if (deleteMode === 'group' && (order as any).recurrence_group_id) {
+    if (isFinancialEvent) {
+      if (deleteMode === 'group') {
+        onDeleteFinancialGroup?.();
+      } else {
+        onDelete?.(order.id);
+      }
+    } else if (deleteMode === 'group' && (order as any).recurrence_group_id) {
       onDeleteGroup?.((order as any).recurrence_group_id);
     } else {
       onDelete?.(order.id);
