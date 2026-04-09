@@ -75,6 +75,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [customerId, setCustomerId] = useState(defaultCustomerId || '');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [billingUserIds, setBillingUserIds] = useState<string[]>([]);
+  const [billingTeamIds, setBillingTeamIds] = useState<string[]>([]);
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [formTemplateId, setFormTemplateId] = useState('');
   const [notes, setNotes] = useState('');
