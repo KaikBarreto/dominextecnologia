@@ -473,6 +473,7 @@ export type Database = {
       }
       contracts: {
         Row: {
+          billing_responsible_id: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -485,6 +486,7 @@ export type Database = {
           name: string
           notes: string | null
           service_type_id: string | null
+          show_billing_in_schedule: boolean
           start_date: string
           status: string
           team_id: string | null
@@ -492,6 +494,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_responsible_id?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -504,6 +507,7 @@ export type Database = {
           name: string
           notes?: string | null
           service_type_id?: string | null
+          show_billing_in_schedule?: boolean
           start_date: string
           status?: string
           team_id?: string | null
@@ -511,6 +515,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_responsible_id?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -523,6 +528,7 @@ export type Database = {
           name?: string
           notes?: string | null
           service_type_id?: string | null
+          show_billing_in_schedule?: boolean
           start_date?: string
           status?: string
           team_id?: string | null
