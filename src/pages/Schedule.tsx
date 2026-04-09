@@ -518,8 +518,9 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onClearSelection={handleClearSummary}
               onEdit={(summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
-              onDelete={(summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
+              onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
               onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
+              onDeleteFinancialGroup={(summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
               onReopen={(summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
               onPause={(summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
@@ -623,8 +624,9 @@ export default function Schedule() {
             onOrderSelect={handleOrderSelect}
             onClearSelection={handleClearSummary}
             onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
-            onDelete={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
+            onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
             onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
+            onDeleteFinancialGroup={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
             onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
             onPause={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
