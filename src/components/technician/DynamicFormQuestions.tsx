@@ -394,12 +394,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 {...(cameraOnly ? { capture: "environment" as const } : {})}
                 className="hidden"
                 onChange={(e) => handlePhotoUpload(e, question.id)}
-                disabled={uploadingPhoto === question.id}
+                disabled={uploadingPhotos.has(question.id)}
               />
-              <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhoto === question.id}>
+              <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
                 <span>
                   <Upload className="h-3 w-3 mr-1" />
-                  {uploadingPhoto === question.id ? 'Enviando...' : photoUrls.length > 0 ? 'Adicionar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
+                  {uploadingPhotos.has(question.id) ? 'Enviando...' : photoUrls.length > 0 ? 'Adicionar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
                 </span>
               </Button>
             </label>
