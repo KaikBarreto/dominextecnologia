@@ -58,6 +58,31 @@ interface OSReportProps {
 // Helper to safely extract joined object (Supabase may return array for some joins)
 const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
 
+function ReportImage({ src, alt, className, onClick }: { src: string; alt: string; className?: string; onClick?: () => void }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  return (
+    <div className="relative inline-block">
+      {!loaded && !error && (
+        <div className={cn('bg-slate-200 animate-pulse rounded-md', className?.replace(/cursor-pointer|hover:opacity-80|transition-opacity/g, '') || 'w-20 h-20')} />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className={cn(className, !loaded && 'absolute opacity-0')}
+        onClick={onClick}
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+      />
+      {error && (
+        <div className={cn('bg-slate-100 rounded-md flex items-center justify-center text-xs text-slate-400', className?.replace(/cursor-pointer|hover:opacity-80|transition-opacity/g, '') || 'w-20 h-20')}>
+          Erro
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
