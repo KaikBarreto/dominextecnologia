@@ -82,6 +82,8 @@ function OrderDetail({
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'group' | null>(null);
+  const isFinancialEvent = !!(order as any)._isFinancialEvent;
+  const hasFinancialGroup = isFinancialEvent && !!((order as any)._contractId || (order as any)._installmentGroupId);
 
   const hasRecurrenceGroup = !!(order as any).recurrence_group_id;
 
