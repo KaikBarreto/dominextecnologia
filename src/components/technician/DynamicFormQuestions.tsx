@@ -44,7 +44,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+  const [uploadingPhotos, setUploadingPhotos] = useState<Set<string>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
 
   // Validation effect
