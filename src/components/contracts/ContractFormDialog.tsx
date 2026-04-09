@@ -126,6 +126,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       }
       setSelectedUserIds(editUserIds);
       setSelectedTeamIds(editTeamIds);
+      setBillingUserIds(editContract.billing_responsible_ids || []);
+      setBillingTeamIds([]);
       setServiceTypeId(editContract.service_type_id || '');
       setFormTemplateId(editContract.form_template_id || '');
       setNotes(editContract.notes || '');
@@ -143,7 +145,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }))
       );
     } else {
-      setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]); setServiceTypeId('');
+      setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]);
+      setBillingUserIds([]); setBillingTeamIds([]); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setSelectedItems([]);
