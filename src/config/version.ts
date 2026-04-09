@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.22";
+export const APP_VERSION = "1.5.23";
 
-export const VERSION_NOTES = "Seleção de múltiplos técnicos/equipes como responsáveis do contrato";
+export const VERSION_NOTES = "Controle de visibilidade de cobranças na agenda, exclusão completa de contratos com confirmação";
