@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
@@ -75,6 +76,7 @@ export default function ContractDetail() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [recDescription, setRecDescription] = useState('');
   const [recAmount, setRecAmount] = useState('');
   const [recDueDate, setRecDueDate] = useState('');
@@ -179,6 +181,19 @@ export default function ContractDetail() {
     }
   };
 
+  const handleToggleBillingInSchedule = async () => {
+    if (!contract || !id) return;
+    const newValue = !(contract as any).show_billing_in_schedule;
+    try {
+      await supabase.from('contracts').update({ show_billing_in_schedule: newValue } as any).eq('id', id);
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['contracts-billing-hidden'] });
+      toast({ title: newValue ? 'Cobranças visíveis na agenda' : 'Cobranças ocultas da agenda' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    }
+  };
+
   const handleDeleteContract = async () => {
     if (!contract || !id) return;
     setIsDeleting(true);
@@ -188,20 +203,26 @@ export default function ContractDetail() {
       // Delete service orders linked to this contract
       const osIds = (contract.contract_occurrences || []).filter(o => o.service_order_id).map(o => o.service_order_id!);
       if (osIds.length > 0) {
-        // Delete related service_order_equipment
+        await supabase.from('service_order_assignees').delete().in('service_order_id', osIds);
         await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
+        await supabase.from('form_responses').delete().in('service_order_id', osIds);
+        await supabase.from('os_photos').delete().in('service_order_id', osIds);
+        await supabase.from('service_ratings').delete().in('service_order_id', osIds);
         await supabase.from('service_orders').delete().in('id', osIds);
       }
       // Delete occurrences
       await supabase.from('contract_occurrences').delete().eq('contract_id', id);
       // Delete items
       await supabase.from('contract_items').delete().eq('contract_id', id);
+      // Also delete any OS that references this contract directly but wasn't in occurrences
+      await supabase.from('service_orders').delete().eq('contract_id', id);
       // Delete contract
       const { error } = await supabase.from('contracts').delete().eq('id', id);
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['financial'] });
       toast({ title: 'Contrato excluído com sucesso!' });
       navigate('/contratos');
     } catch (err: any) {
@@ -209,6 +230,7 @@ export default function ContractDetail() {
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
+      setDeleteConfirmName('');
     }
   };
 
@@ -280,6 +302,7 @@ export default function ContractDetail() {
   const statusCfg = STATUS_LABELS[contract.status] || STATUS_LABELS.active;
   const occurrences = sortedOccurrences;
   const items = contract.contract_items || [];
+  const showBillingInSchedule = (contract as any).show_billing_in_schedule !== false;
 
   const totalReceivable = (linkedTransactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
   const totalPaid = (linkedTransactions || []).filter(t => t.is_paid).reduce((sum, t) => sum + Number(t.amount), 0);
@@ -301,7 +324,7 @@ export default function ContractDetail() {
           <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => setShowEditForm(true)}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setShowDeleteDialog(true)}>
+          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => { setDeleteConfirmName(''); setShowDeleteDialog(true); }}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -390,12 +413,25 @@ export default function ContractDetail() {
                 <DollarSign className="h-5 w-5 shrink-0" />
                 <span className="min-w-0 break-words">Contas a Receber</span>
               </CardTitle>
-              <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => {
-                setRecDescription(`Mensalidade - ${contract.name}`);
-                setShowReceivableModal(true);
-              }}>
-                <Plus className="mr-1 h-4 w-4" /> Nova Receita
-              </Button>
+              <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showBillingInSchedule}
+                    onCheckedChange={handleToggleBillingInSchedule}
+                    id="billing-schedule-toggle"
+                  />
+                  <Label htmlFor="billing-schedule-toggle" className="text-xs cursor-pointer whitespace-nowrap">
+                    {showBillingInSchedule ? <Eye className="inline h-3.5 w-3.5 mr-1" /> : <EyeOff className="inline h-3.5 w-3.5 mr-1" />}
+                    Agenda
+                  </Label>
+                </div>
+                <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => {
+                  setRecDescription(`Mensalidade - ${contract.name}`);
+                  setShowReceivableModal(true);
+                }}>
+                  <Plus className="mr-1 h-4 w-4" /> Nova Receita
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="min-w-0">
               {(linkedTransactions || []).length === 0 ? (
@@ -666,28 +702,42 @@ export default function ContractDetail() {
         </div>
       </ResponsiveModal>
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Delete confirmation dialog - requires typing contract name */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmName(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p>Tem certeza que deseja excluir o contrato <strong>{contract.name}</strong>?</p>
                 <p className="text-sm">Serão excluídos junto com o contrato:</p>
                 <ul className="text-sm list-disc pl-5 space-y-1">
                   <li>{occurrences.length} ocorrências</li>
                   <li>{occurrences.filter(o => o.service_order_id).length} ordens de serviço vinculadas</li>
-                  <li>{(linkedTransactions || []).length} transações financeiras vinculadas</li>
+                  <li>{(linkedTransactions || []).length} transações financeiras (contas a receber)</li>
                   <li>{items.length} itens do contrato</li>
+                  <li>Alertas de cobrança na agenda</li>
                 </ul>
                 <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
+                <div className="pt-2">
+                  <Label className="text-sm">Digite o nome do contrato para confirmar:</Label>
+                  <Input
+                    value={deleteConfirmName}
+                    onChange={e => setDeleteConfirmName(e.target.value)}
+                    placeholder={contract.name}
+                    className="mt-1"
+                  />
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteContract} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDeleteContract}
+              disabled={isDeleting || deleteConfirmName !== contract.name}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
               Excluir tudo
             </AlertDialogAction>
