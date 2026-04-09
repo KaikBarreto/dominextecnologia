@@ -219,6 +219,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           frequency_value: freqValue,
           start_date: startDate,
           horizon_months: horizonMonths,
+          billing_responsible_ids: billingUserIds,
         }).eq('id', editContract.id);
         if (error) throw error;
         toast({ title: '✅ Contrato atualizado!' });
