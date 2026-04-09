@@ -41,6 +41,7 @@ interface ScheduleDetailPanelProps {
   onEdit?: () => void;
   onDelete?: (id: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  onDeleteFinancialGroup?: () => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
   onPause?: (id: string) => void;
