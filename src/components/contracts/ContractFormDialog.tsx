@@ -325,7 +325,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     selectedTeamIds={selectedTeamIds}
                     onChangeUsers={setSelectedUserIds}
                     onChangeTeams={setSelectedTeamIds}
-                    label="Responsáveis (Técnicos / Equipes)"
+                    label="Responsáveis Técnicos (OS)"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <AssigneeMultiSelect
+                    technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
+                    teams={teamsWithMembers}
+                    selectedUserIds={billingUserIds}
+                    selectedTeamIds={billingTeamIds}
+                    onChangeUsers={setBillingUserIds}
+                    onChangeTeams={setBillingTeamIds}
+                    label="Responsáveis Financeiros (Cobrança)"
                   />
                 </div>
                 <div className="space-y-2">
