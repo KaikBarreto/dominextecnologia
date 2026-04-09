@@ -232,6 +232,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           technician_id: actualTechnicianId,
           team_id: actualTeamId,
           assignee_user_ids: selectedUserIds,
+          billing_responsible_ids: billingUserIds,
           service_type_id: serviceTypeId || null,
           form_template_id: formTemplateId || null,
           status: isActive ? 'active' : 'paused',
