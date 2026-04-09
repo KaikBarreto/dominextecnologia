@@ -87,10 +87,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const isResponseEmpty = (response: FormResponseData): boolean => {
     const val = response.response_value;
     const photo = response.response_photo_url;
-    if (response.question?.question_type === 'photo') return !photo;
+    // A response is empty only if BOTH value and photo are missing
+    const hasValue = val && val.trim() !== '' && val.trim() !== '-';
+    const hasPhoto = !!photo;
     if (response.question?.question_type === 'signature') return !val;
-    if (!val || val.trim() === '' || val.trim() === '-') return true;
-    return false;
+    return !hasValue && !hasPhoto;
   };
 
   const responsesByTemplate = (() => {
