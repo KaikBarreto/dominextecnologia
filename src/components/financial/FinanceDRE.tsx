@@ -29,8 +29,8 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
 
-  // Filter out inter-account transfers from DRE
-  const transactions = useMemo(() => rawTransactions.filter(t => !t.transfer_pair_id), [rawTransactions]);
+  // Filter out inter-account transfers and unpaid transactions from DRE
+  const transactions = useMemo(() => rawTransactions.filter(t => !t.transfer_pair_id && t.is_paid), [rawTransactions]);
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
   const [showOpex, setShowOpex] = useState(false);
