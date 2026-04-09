@@ -44,7 +44,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+  const [uploadingPhotos, setUploadingPhotos] = useState<Set<string>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
 
   // Validation effect
@@ -194,7 +194,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    setUploadingPhoto(questionId);
+    setUploadingPhotos(prev => new Set(prev).add(questionId));
     try {
       const uploadedUrls: string[] = [];
       // Get existing photos
@@ -229,7 +229,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         description: error.message,
       });
     } finally {
-      setUploadingPhoto(null);
+      setUploadingPhotos(prev => { const next = new Set(prev); next.delete(questionId); return next; });
       // Reset input so same file can be selected again
       event.target.value = '';
     }
@@ -394,12 +394,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 {...(cameraOnly ? { capture: "environment" as const } : {})}
                 className="hidden"
                 onChange={(e) => handlePhotoUpload(e, question.id)}
-                disabled={uploadingPhoto === question.id}
+                disabled={uploadingPhotos.has(question.id)}
               />
-              <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhoto === question.id}>
+              <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
                 <span>
                   <Upload className="h-3 w-3 mr-1" />
-                  {uploadingPhoto === question.id ? 'Enviando...' : photoUrls.length > 0 ? 'Adicionar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
+                  {uploadingPhotos.has(question.id) ? 'Enviando...' : photoUrls.length > 0 ? 'Adicionar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
                 </span>
               </Button>
             </label>
