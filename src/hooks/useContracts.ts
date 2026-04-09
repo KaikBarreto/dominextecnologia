@@ -285,8 +285,8 @@ export function useContracts() {
         .map(o => o.service_order_id)
         .filter(Boolean) as string[];
 
-      // Nullify references in financial_transactions
-      await supabase.from('financial_transactions').update({ contract_id: null }).eq('contract_id', id);
+      // Delete linked financial transactions
+      await supabase.from('financial_transactions').delete().eq('contract_id', id);
 
       // Delete related records
       await supabase.from('contract_occurrences').delete().eq('contract_id', id);
@@ -294,6 +294,7 @@ export function useContracts() {
 
       // Delete linked service orders (and their junction rows)
       if (osIds.length > 0) {
+        await supabase.from('service_order_assignees').delete().in('service_order_id', osIds);
         await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
         await supabase.from('form_responses').delete().in('service_order_id', osIds);
         await supabase.from('os_photos').delete().in('service_order_id', osIds);
@@ -309,6 +310,7 @@ export function useContracts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['financial'] });
       toast({ title: 'Contrato excluído!' });
     },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) }),
