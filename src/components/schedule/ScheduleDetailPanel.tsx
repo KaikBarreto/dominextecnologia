@@ -410,19 +410,43 @@ function OrderDetail({
             </Button>
           )}
 
-          {/* Delete confirmation - with recurrence options */}
+          {/* Delete confirmation - with recurrence/financial options */}
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Excluir OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isFinancialEvent
+                    ? 'Excluir cobrança?'
+                    : `Excluir ${isTask ? 'Tarefa' : 'OS'} #${order.order_number}?`}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {hasRecurrenceGroup && !deleteMode
+                  {isFinancialEvent && hasFinancialGroup && !deleteMode
+                    ? 'Esta cobrança faz parte de um contrato. O que deseja fazer?'
+                    : hasRecurrenceGroup && !deleteMode
                     ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
-                    : 'Esta ação não pode ser desfeita. A ordem de serviço será excluída permanentemente.'}
+                    : 'Esta ação não pode ser desfeita. O item será excluído permanentemente.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className={hasRecurrenceGroup && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
-                {hasRecurrenceGroup && !deleteMode ? (
+              <AlertDialogFooter className={(isFinancialEvent && hasFinancialGroup && !deleteMode) || (hasRecurrenceGroup && !deleteMode) ? 'flex-col gap-2 sm:flex-col' : ''}>
+                {isFinancialEvent && hasFinancialGroup && !deleteMode ? (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { setDeleteMode('single'); }}
+                      className="w-full"
+                    >
+                      Excluir somente esta
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { setDeleteMode('group'); }}
+                      className="w-full"
+                    >
+                      Excluir todas deste contrato
+                    </Button>
+                    <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                  </>
+                ) : hasRecurrenceGroup && !deleteMode ? (
                   <>
                     <Button
                       variant="destructive"
