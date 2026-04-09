@@ -35,7 +35,8 @@ export function useDashboardStats() {
       // Fetch ALL financial transactions for client-side filtering
       const { data: allFinancial, error: financialError } = await supabase
         .from('financial_transactions')
-        .select('transaction_type, amount, transaction_date')
+        .select('transaction_type, amount, transaction_date, is_paid')
+        .eq('is_paid', true)
         .order('transaction_date');
 
       if (financialError) throw financialError;
