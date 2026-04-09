@@ -300,34 +300,44 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
   const renderResponseItem = (response: FormResponseData, idx: number) => {
     if (isResponseEmpty(response)) return null;
 
+    const hasTextValue = response.response_value && response.response_value.trim() !== '' && response.response_value.trim() !== '-';
+    const hasPhoto = !!response.response_photo_url;
+
     return (
       <div key={response.id} className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
         <span className="text-xs font-bold text-slate-400 mt-0.5 min-w-[20px]">{idx + 1}.</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
-          <div className="mt-1">
+          <div className="mt-1 space-y-2">
             {response.question?.question_type === 'boolean' ? (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                 {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                 {response.response_value === 'true' ? 'Sim' : 'Não'}
               </span>
-            ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
-              <div className="flex flex-wrap gap-2">
-                {response.response_photo_url.split(',').filter(Boolean).map((url, i) => (
-                  <img key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(url.trim())} />
-                ))}
-              </div>
-            ) : response.response_value?.includes('|||') ? (
-              <div className="flex flex-wrap gap-1.5 mt-0.5">
-                {response.response_value.split('|||').filter(Boolean).map((val, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                    <Check className="h-3 w-3" />
-                    {val.trim()}
-                  </span>
-                ))}
-              </div>
             ) : (
-              <p className="text-sm text-slate-600 break-words">{response.response_value}</p>
+              <>
+                {hasTextValue && (
+                  response.response_value!.includes('|||') ? (
+                    <div className="flex flex-wrap gap-1.5 mt-0.5">
+                      {response.response_value!.split('|||').filter(Boolean).map((val, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          <Check className="h-3 w-3" />
+                          {val.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-600 break-words">{response.response_value}</p>
+                  )
+                )}
+                {hasPhoto && (
+                  <div className="flex flex-wrap gap-2">
+                    {response.response_photo_url!.split(',').filter(Boolean).map((url, i) => (
+                      <ReportImage key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(url.trim())} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
