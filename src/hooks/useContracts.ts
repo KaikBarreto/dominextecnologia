@@ -108,6 +108,7 @@ export function useContracts() {
       technician_id?: string | null;
       team_id?: string | null;
       assignee_user_ids?: string[];
+      billing_responsible_ids?: string[];
       service_type_id?: string | null;
       form_template_id?: string | null;
       status: string;
@@ -141,6 +142,7 @@ export function useContracts() {
           frequency_value: input.frequency_value,
           start_date: input.start_date,
           horizon_months: input.horizon_months,
+          billing_responsible_ids: input.billing_responsible_ids || [],
           created_by: user?.id || null,
         } as any,
         ['technician_id', 'team_id', 'service_type_id', 'form_template_id']
