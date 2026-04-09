@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.23',
+    date: '9 de abril de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Controle de cobranças na agenda',
+        description: 'Novo toggle na tela de contrato para mostrar ou ocultar as contas a receber na agenda. Cobranças agora aparecem como Tarefas (não como OS).',
+        category: 'recurso',
+      },
+      {
+        title: 'Exclusão completa de contrato',
+        description: 'Ao excluir um contrato, todas as OSs, transações financeiras, ocorrências e itens são removidos automaticamente. Modal de confirmação exige digitar o nome do contrato.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção de upload de fotos no celular',
+        description: 'Corrigido erro "Load failed" ao enviar fotos durante o preenchimento de OS em dispositivos móveis.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.5.22',
     date: '8 de abril de 2026',
     type: 'minor',
