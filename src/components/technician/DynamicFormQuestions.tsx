@@ -194,7 +194,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    setUploadingPhoto(questionId);
+    setUploadingPhotos(prev => new Set(prev).add(questionId));
     try {
       const uploadedUrls: string[] = [];
       // Get existing photos
@@ -229,7 +229,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         description: error.message,
       });
     } finally {
-      setUploadingPhoto(null);
+      setUploadingPhotos(prev => { const next = new Set(prev); next.delete(questionId); return next; });
       // Reset input so same file can be selected again
       event.target.value = '';
     }
