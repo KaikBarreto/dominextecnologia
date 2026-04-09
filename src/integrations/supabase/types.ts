@@ -474,6 +474,7 @@ export type Database = {
       contracts: {
         Row: {
           billing_responsible_id: string | null
+          billing_responsible_ids: string[] | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -495,6 +496,7 @@ export type Database = {
         }
         Insert: {
           billing_responsible_id?: string | null
+          billing_responsible_ids?: string[] | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -516,6 +518,7 @@ export type Database = {
         }
         Update: {
           billing_responsible_id?: string | null
+          billing_responsible_ids?: string[] | null
           company_id?: string
           created_at?: string
           created_by?: string | null

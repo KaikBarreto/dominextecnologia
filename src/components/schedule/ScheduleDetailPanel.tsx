@@ -41,6 +41,7 @@ interface ScheduleDetailPanelProps {
   onEdit?: () => void;
   onDelete?: (id: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  onDeleteFinancialGroup?: () => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
   onPause?: (id: string) => void;
@@ -57,6 +58,7 @@ function OrderDetail({
   onEdit,
   onDelete,
   onDeleteGroup,
+  onDeleteFinancialGroup,
   onFinalize,
   onReopen,
   onPause,
@@ -67,6 +69,7 @@ function OrderDetail({
   onEdit?: () => void;
   onDelete?: (id: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  onDeleteFinancialGroup?: () => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
   onPause?: (id: string) => void;
@@ -79,6 +82,8 @@ function OrderDetail({
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'group' | null>(null);
+  const isFinancialEvent = !!(order as any)._isFinancialEvent;
+  const hasFinancialGroup = isFinancialEvent && !!((order as any)._contractId || (order as any)._installmentGroupId);
 
   const hasRecurrenceGroup = !!(order as any).recurrence_group_id;
 
@@ -93,7 +98,15 @@ function OrderDetail({
   };
 
   const handleDeleteClick = () => {
-    if (hasRecurrenceGroup) {
+    if (isFinancialEvent && hasFinancialGroup) {
+      // Financial event with contract/installment group - show "only this" or "all" options
+      setDeleteMode(null);
+      setShowDeleteConfirm(true);
+    } else if (isFinancialEvent) {
+      // Single financial event
+      setDeleteMode('single');
+      setShowDeleteConfirm(true);
+    } else if (hasRecurrenceGroup) {
       setDeleteMode(null);
       setShowDeleteConfirm(true);
     } else {
@@ -103,7 +116,13 @@ function OrderDetail({
   };
 
   const handleConfirmDelete = () => {
-    if (deleteMode === 'group' && (order as any).recurrence_group_id) {
+    if (isFinancialEvent) {
+      if (deleteMode === 'group') {
+        onDeleteFinancialGroup?.();
+      } else {
+        onDelete?.(order.id);
+      }
+    } else if (deleteMode === 'group' && (order as any).recurrence_group_id) {
       onDeleteGroup?.((order as any).recurrence_group_id);
     } else {
       onDelete?.(order.id);
@@ -391,19 +410,43 @@ function OrderDetail({
             </Button>
           )}
 
-          {/* Delete confirmation - with recurrence options */}
+          {/* Delete confirmation - with recurrence/financial options */}
           <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Excluir OS #{order.order_number}?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isFinancialEvent
+                    ? 'Excluir cobrança?'
+                    : `Excluir ${isTask ? 'Tarefa' : 'OS'} #${order.order_number}?`}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {hasRecurrenceGroup && !deleteMode
+                  {isFinancialEvent && hasFinancialGroup && !deleteMode
+                    ? 'Esta cobrança faz parte de um contrato. O que deseja fazer?'
+                    : hasRecurrenceGroup && !deleteMode
                     ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
-                    : 'Esta ação não pode ser desfeita. A ordem de serviço será excluída permanentemente.'}
+                    : 'Esta ação não pode ser desfeita. O item será excluído permanentemente.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className={hasRecurrenceGroup && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
-                {hasRecurrenceGroup && !deleteMode ? (
+              <AlertDialogFooter className={(isFinancialEvent && hasFinancialGroup && !deleteMode) || (hasRecurrenceGroup && !deleteMode) ? 'flex-col gap-2 sm:flex-col' : ''}>
+                {isFinancialEvent && hasFinancialGroup && !deleteMode ? (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { setDeleteMode('single'); }}
+                      className="w-full"
+                    >
+                      Excluir somente esta
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { setDeleteMode('group'); }}
+                      className="w-full"
+                    >
+                      Excluir todas deste contrato
+                    </Button>
+                    <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                  </>
+                ) : hasRecurrenceGroup && !deleteMode ? (
                   <>
                     <Button
                       variant="destructive"
@@ -502,6 +545,7 @@ export function ScheduleDetailPanel({
   onEdit,
   onDelete,
   onDeleteGroup,
+  onDeleteFinancialGroup,
   onFinalize,
   onReopen,
   onPause,
@@ -518,7 +562,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onDeleteFinancialGroup={onDeleteFinancialGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
       ) : (
         <>
           <div className="mb-4">

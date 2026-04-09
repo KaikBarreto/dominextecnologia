@@ -75,6 +75,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [customerId, setCustomerId] = useState(defaultCustomerId || '');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [billingUserIds, setBillingUserIds] = useState<string[]>([]);
+  const [billingTeamIds, setBillingTeamIds] = useState<string[]>([]);
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [formTemplateId, setFormTemplateId] = useState('');
   const [notes, setNotes] = useState('');
@@ -124,6 +126,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       }
       setSelectedUserIds(editUserIds);
       setSelectedTeamIds(editTeamIds);
+      setBillingUserIds(editContract.billing_responsible_ids || []);
+      setBillingTeamIds([]);
       setServiceTypeId(editContract.service_type_id || '');
       setFormTemplateId(editContract.form_template_id || '');
       setNotes(editContract.notes || '');
@@ -141,7 +145,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }))
       );
     } else {
-      setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]); setServiceTypeId('');
+      setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]);
+      setBillingUserIds([]); setBillingTeamIds([]); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setSelectedItems([]);
@@ -214,6 +219,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           frequency_value: freqValue,
           start_date: startDate,
           horizon_months: horizonMonths,
+          billing_responsible_ids: billingUserIds,
         }).eq('id', editContract.id);
         if (error) throw error;
         toast({ title: '✅ Contrato atualizado!' });
@@ -226,6 +232,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           technician_id: actualTechnicianId,
           team_id: actualTeamId,
           assignee_user_ids: selectedUserIds,
+          billing_responsible_ids: billingUserIds,
           service_type_id: serviceTypeId || null,
           form_template_id: formTemplateId || null,
           status: isActive ? 'active' : 'paused',
@@ -320,7 +327,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     selectedTeamIds={selectedTeamIds}
                     onChangeUsers={setSelectedUserIds}
                     onChangeTeams={setSelectedTeamIds}
-                    label="Responsáveis (Técnicos / Equipes)"
+                    label="Responsáveis Técnicos (OS)"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <AssigneeMultiSelect
+                    technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
+                    teams={teamsWithMembers}
+                    selectedUserIds={billingUserIds}
+                    selectedTeamIds={billingTeamIds}
+                    onChangeUsers={setBillingUserIds}
+                    onChangeTeams={setBillingTeamIds}
+                    label="Responsáveis Financeiros (Cobrança)"
                   />
                 </div>
                 <div className="space-y-2">

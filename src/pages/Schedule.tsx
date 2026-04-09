@@ -168,7 +168,41 @@ export default function Schedule() {
   };
 
   const handleDeleteFromSummary = (id: string) => {
+    // For financial events, delete the financial transaction
+    if ((summaryOrder as any)?._isFinancialEvent) {
+      const realId = (summaryOrder as any)?._realFinancialId;
+      if (realId) {
+        supabase.from('financial_transactions').delete().eq('id', realId).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+          toast({ title: 'Transação financeira excluída' });
+        });
+      }
+      setSummaryOrder(null);
+      return;
+    }
     deleteServiceOrder.mutate(id);
+    setSummaryOrder(null);
+  };
+
+  const handleDeleteFinancialGroup = async (order: any) => {
+    // Delete all transactions from the same contract or installment group
+    const contractId = order._contractId;
+    const installmentGroupId = order._installmentGroupId;
+    
+    let query = supabase.from('financial_transactions').delete();
+    if (installmentGroupId) {
+      query = query.eq('installment_group_id', installmentGroupId);
+    } else if (contractId) {
+      query = query.eq('contract_id', contractId);
+    } else {
+      // Single transaction
+      const realId = order._realFinancialId;
+      if (realId) query = query.eq('id', realId);
+    }
+    
+    await query;
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    toast({ title: 'Transações financeiras excluídas' });
     setSummaryOrder(null);
   };
 
@@ -484,8 +518,9 @@ export default function Schedule() {
               onOrderSelect={handleOrderSelect}
               onClearSelection={handleClearSummary}
               onEdit={(summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
-              onDelete={(summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
+              onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
               onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
+              onDeleteFinancialGroup={(summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
               onReopen={(summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
               onPause={(summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
@@ -589,8 +624,9 @@ export default function Schedule() {
             onOrderSelect={handleOrderSelect}
             onClearSelection={handleClearSummary}
             onEdit={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canEditOS ? undefined : handleEditFromSummary}
-            onDelete={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canDeleteOS ? undefined : handleDeleteFromSummary}
+            onDelete={!canDeleteOS ? undefined : handleDeleteFromSummary}
             onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
+            onDeleteFinancialGroup={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleFinalizeFromSummary}
             onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent || !canReopenOS ? undefined : handleReopenFromSummary}
             onPause={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}

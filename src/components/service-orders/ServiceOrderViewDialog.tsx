@@ -163,7 +163,10 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
         <Card>
           <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><ClipboardCheck className="h-4 w-4" /> Questionário: {serviceOrder.form_template?.name}</CardTitle></CardHeader>
           <CardContent className="pt-0 space-y-3">
-            {formResponses.map((response) => (
+            {formResponses.map((response) => {
+              const hasTextValue = response.response_value && response.response_value.trim() !== '' && response.response_value.trim() !== '-';
+              const hasPhoto = !!response.response_photo_url;
+              return (
               <div key={response.id} className="text-sm border-b last:border-0 pb-2 last:pb-0">
                 <p className="font-medium text-muted-foreground">{response.question?.question}</p>
                 {response.question?.question_type === 'boolean' ? (
@@ -171,17 +174,24 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
                     {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                     {response.response_value === 'true' ? 'Sim' : 'Não'}
                   </Badge>
-                ) : response.question?.question_type === 'photo' && response.response_photo_url ? (
-                  <div className="flex flex-wrap gap-2">
-                    {response.response_photo_url.split(',').filter(Boolean).map((url, i) => (
-                      <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer">
-                        <img src={url.trim()} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
-                      </a>
-                    ))}
+                ) : (
+                  <div className="space-y-1 mt-1">
+                    {hasTextValue && <p>{response.response_value}</p>}
+                    {hasPhoto && (
+                      <div className="flex flex-wrap gap-2">
+                        {response.response_photo_url!.split(',').filter(Boolean).map((url, i) => (
+                          <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer">
+                            <img src={url.trim()} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {!hasTextValue && !hasPhoto && <p>-</p>}
                   </div>
-                ) : (<p className="mt-1">{response.response_value || '-'}</p>)}
+                )}
               </div>
-            ))}
+            );})}
+
           </CardContent>
         </Card>
       )}
