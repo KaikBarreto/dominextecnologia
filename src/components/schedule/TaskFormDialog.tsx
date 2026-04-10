@@ -86,7 +86,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
         setTitle(task.task_title || '');
         setCustomerId(task.customer_id || '');
         setTaskTypeId(task.task_type_id || '');
-        setSelectedUserIds(task._assigneeUserIds || []);
+        setSelectedUserIds(task._assignee_user_ids || (task.technician_id ? [task.technician_id] : []));
         setSelectedTeamIds(task.team_id ? [task.team_id] : []);
         setScheduledDate(task.scheduled_date || format(new Date(), 'yyyy-MM-dd'));
         setScheduledTime(task.scheduled_time || '08:00');
