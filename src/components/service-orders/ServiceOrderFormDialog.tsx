@@ -543,23 +543,28 @@ export function ServiceOrderFormDialog({
           .neq('id', serviceOrder.id);
 
         if (groupOrders && groupOrders.length > 0) {
-          const { scheduled_date, scheduled_time, ...editableFields } = cleanedData;
-          const updatePayload = normalizeOptionalForeignKeys(editableFields, [
-            'technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id',
-          ] as any);
+          const todayStr = new Date().toISOString().split('T')[0];
+          const futureOrders = groupOrders.filter(o => o.scheduled_date && o.scheduled_date >= todayStr);
 
-          for (const os of groupOrders) {
-            await supabase
-              .from('service_orders')
-              .update(updatePayload as any)
-              .eq('id', os.id);
+          if (futureOrders.length > 0) {
+            const { scheduled_date, scheduled_time, ...editableFields } = cleanedData;
+            const updatePayload = normalizeOptionalForeignKeys(editableFields, [
+              'technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id',
+            ] as any);
 
-            if (cleanedData.assignee_user_ids) {
-              await supabase.from('service_order_assignees').delete().eq('service_order_id', os.id);
-              if (cleanedData.assignee_user_ids.length > 0) {
-                await supabase.from('service_order_assignees').insert(
-                  cleanedData.assignee_user_ids.map((uid: string) => ({ service_order_id: os.id, user_id: uid }))
-                );
+            for (const os of futureOrders) {
+              await supabase
+                .from('service_orders')
+                .update(updatePayload as any)
+                .eq('id', os.id);
+
+              if (cleanedData.assignee_user_ids) {
+                await supabase.from('service_order_assignees').delete().eq('service_order_id', os.id);
+                if (cleanedData.assignee_user_ids.length > 0) {
+                  await supabase.from('service_order_assignees').insert(
+                    cleanedData.assignee_user_ids.map((uid: string) => ({ service_order_id: os.id, user_id: uid }))
+                  );
+                }
               }
             }
           }
