@@ -3036,6 +3036,7 @@ export type Database = {
           scheduled_date: string | null
           scheduled_time: string | null
           service_type_id: string | null
+          snapshot_data: Json | null
           solution: string | null
           status: Database["public"]["Enums"]["os_status"]
           task_title: string | null
@@ -3080,6 +3081,7 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type_id?: string | null
+          snapshot_data?: Json | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           task_title?: string | null
@@ -3124,6 +3126,7 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type_id?: string | null
+          snapshot_data?: Json | null
           solution?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           task_title?: string | null
