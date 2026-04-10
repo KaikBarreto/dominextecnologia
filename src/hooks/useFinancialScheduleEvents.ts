@@ -77,7 +77,7 @@ export function useFinancialScheduleEvents() {
           updated_at: t.created_at,
           customer: {
             id: t.customer_id,
-            name: isReceivable ? 'A Receber' : 'A Pagar',
+            name: (t as any).customer?.name || (isReceivable ? 'A Receber' : 'A Pagar'),
           },
           equipment: null,
           _isFinancialEvent: true,
