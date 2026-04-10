@@ -100,6 +100,12 @@ export function useServiceOrders() {
 
       allData.forEach((order: any) => {
         order._assignee_user_ids = assigneeMap.get(order.id) || [];
+        // Apply snapshot fallback for deleted entities
+        const snap = order.snapshot_data;
+        if (!order.customer && snap?.customer) order.customer = snap.customer;
+        if (!order.equipment && snap?.equipment) order.equipment = snap.equipment;
+        if (!order.service_type && snap?.service_type) order.service_type = snap.service_type;
+        if (!order.form_template && snap?.form_template) order.form_template = snap.form_template;
       });
 
       return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any; _assignee_user_ids?: string[] })[];
