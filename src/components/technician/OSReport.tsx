@@ -211,7 +211,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
     }
     if (!userId) return;
     const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
-    if (data) setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
+    if (data) {
+      setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
+    } else if (snapshot?.technician) {
+      // Fallback to snapshot if profile was deleted
+      setTechnicianInfo({ full_name: snapshot.technician.full_name, photo_url: snapshot.technician.avatar_url });
+    }
   };
 
   const fetchRating = async () => {
