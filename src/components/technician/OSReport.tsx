@@ -149,6 +149,12 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
   })();
 
+  // Snapshot fallback for deleted entities
+  const snapshot = (serviceOrder as any).snapshot_data;
+  const customerData = serviceOrder.customer || snapshot?.customer || null;
+  const equipmentData = serviceOrder.equipment || snapshot?.equipment || null;
+  const formTemplateData = serviceOrder.form_template || snapshot?.form_template || null;
+
   useEffect(() => {
     fetchCompany();
     fetchAllResponses();
