@@ -13,7 +13,7 @@ import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, generateOccurrences, getFrequencyLabel } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
@@ -60,6 +60,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const { createContract } = useContracts();
   const { customers } = useCustomers();
   const { data: technicians } = useTechnicians();
+  const { data: allProfiles } = useProfiles();
   const { teams, teamsWithMembers } = useTeams();
   const { serviceTypes } = useServiceTypes();
   const { templates } = useFormTemplates();
@@ -332,13 +333,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 </div>
                 <div className="sm:col-span-2">
                   <AssigneeMultiSelect
-                    technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
+                    technicians={(allProfiles ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
                     teams={teamsWithMembers}
                     selectedUserIds={billingUserIds}
                     selectedTeamIds={billingTeamIds}
                     onChangeUsers={setBillingUserIds}
                     onChangeTeams={setBillingTeamIds}
                     label="Responsáveis Financeiros (Cobrança)"
+                    usersLabel="Usuários"
                   />
                 </div>
                 <div className="space-y-2">
