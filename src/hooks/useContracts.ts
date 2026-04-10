@@ -178,7 +178,7 @@ export function useContracts() {
       // Generate OSs and occurrences
       if (input.status === 'active') {
         const occurrenceDates = generateOccurrences(
-          new Date(input.start_date + 'T00:00:00'),
+          new Date(input.start_date + 'T12:00:00'),
           input.frequency_type as 'days' | 'months',
           input.frequency_value,
           input.horizon_months
@@ -193,9 +193,16 @@ export function useContracts() {
           ? input.assignee_user_ids
           : (input.technician_id ? [input.technician_id] : []);
 
+        let osCreatedCount = 0;
+        let osErrorCount = 0;
+
         for (let i = 0; i < occurrenceDates.length; i++) {
           const date = occurrenceDates[i];
-          const dateStr = date.toISOString().split('T')[0];
+          // Use date parts directly to avoid timezone shifting from toISOString()
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${d}`;
 
           const description = `${input.name} — Ocorrência ${i + 1}`;
 
@@ -209,11 +216,13 @@ export function useContracts() {
               service_type_id: input.service_type_id || null,
               form_template_id: input.form_template_id || null,
               scheduled_date: dateStr,
+              scheduled_time: '08:00',
               description,
               require_tech_signature: true,
               status: 'agendada' as const,
               contract_id: (contract as any).id,
               origin: 'contract',
+              created_by: user?.id || null,
             } as any,
             ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'equipment_id']
           );
@@ -224,36 +233,49 @@ export function useContracts() {
             .select('id')
             .single();
 
-          if (osError) { console.error('Error creating OS:', osError); toast({ variant: 'destructive', title: `Erro ao criar OS #${i + 1}`, description: osError.message }); continue; }
+          if (osError) {
+            console.error(`Error creating OS #${i + 1}:`, osError);
+            osErrorCount++;
+            continue;
+          }
+
+          osCreatedCount++;
 
           // Link equipment via junction table
           if (equipmentIds.length > 0) {
-            await supabase.from('service_order_equipment').insert(
+            const { error: eqErr } = await supabase.from('service_order_equipment').insert(
               equipmentIds.map(eqId => ({
                 service_order_id: os.id,
                 equipment_id: eqId,
                 form_template_id: input.form_template_id || null,
               }))
             );
+            if (eqErr) console.error('Error linking equipment:', eqErr);
           }
 
           // Create assignees for ALL selected users
           if (assigneeUserIds.length > 0) {
-            await supabase.from('service_order_assignees').insert(
+            const { error: assignErr } = await supabase.from('service_order_assignees').insert(
               assigneeUserIds.map(uid => ({
                 service_order_id: os.id,
                 user_id: uid,
               }))
             );
+            if (assignErr) console.error('Error creating assignees:', assignErr);
           }
 
-          await supabase.from('contract_occurrences').insert({
+          const { error: occErr } = await supabase.from('contract_occurrences').insert({
             contract_id: (contract as any).id,
             scheduled_date: dateStr,
             service_order_id: os.id,
             occurrence_number: i + 1,
             status: 'scheduled',
           } as any);
+          if (occErr) console.error('Error creating occurrence:', occErr);
+        }
+
+        if (osErrorCount > 0) {
+          toast({ variant: 'destructive', title: `${osErrorCount} OS(s) falharam ao ser criadas`, description: `${osCreatedCount} de ${occurrenceDates.length} criadas com sucesso.` });
         }
       }
 
