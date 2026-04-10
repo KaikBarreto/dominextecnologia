@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
@@ -76,7 +77,7 @@ export default function ContractDetail() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
-  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [recDescription, setRecDescription] = useState('');
   const [recAmount, setRecAmount] = useState('');
   const [recDueDate, setRecDueDate] = useState('');
@@ -230,7 +231,7 @@ export default function ContractDetail() {
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
-      setDeleteConfirmName('');
+      setDeleteConfirmed(false);
     }
   };
 
@@ -324,7 +325,7 @@ export default function ContractDetail() {
           <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => setShowEditForm(true)}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => { setDeleteConfirmName(''); setShowDeleteDialog(true); }}>
+          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => { setDeleteConfirmed(false); setShowDeleteDialog(true); }}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -703,7 +704,7 @@ export default function ContractDetail() {
       </ResponsiveModal>
 
       {/* Delete confirmation dialog - requires typing contract name */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmName(''); }}>
+      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmed(false); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
@@ -719,14 +720,13 @@ export default function ContractDetail() {
                   <li>Alertas de cobrança na agenda</li>
                 </ul>
                 <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
-                <div className="pt-2">
-                  <Label className="text-sm">Digite o nome do contrato para confirmar:</Label>
-                  <Input
-                    value={deleteConfirmName}
-                    onChange={e => setDeleteConfirmName(e.target.value)}
-                    placeholder={contract.name}
-                    className="mt-1"
+                <div className="flex items-center gap-2 pt-2">
+                  <Checkbox
+                    id="delete-confirm"
+                    checked={deleteConfirmed}
+                    onCheckedChange={(v) => setDeleteConfirmed(!!v)}
                   />
+                  <Label htmlFor="delete-confirm" className="text-sm cursor-pointer">Tenho certeza que desejo excluir</Label>
                 </div>
               </div>
             </AlertDialogDescription>
@@ -735,7 +735,7 @@ export default function ContractDetail() {
             <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteContract}
-              disabled={isDeleting || deleteConfirmName !== contract.name}
+              disabled={isDeleting || !deleteConfirmed}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}

@@ -3,6 +3,9 @@ import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { ScrollText, Plus, Search, Calendar, CheckCircle, Clock, AlertTriangle, Edit, Pause, Play, Trash2, XCircle } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,6 +37,8 @@ export default function Contracts() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
 
   const filtered = contracts.filter(c => {
     const matchesSearch = fuzzyIncludes(c.name, search) ||
@@ -171,7 +176,7 @@ export default function Contracts() {
                               {contract.status === 'active' ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                             </Button>
                             <Button variant="destructive-ghost" size="icon" className="h-7 w-7"
-                              onClick={() => { if (confirm('Excluir contrato?')) deleteContract.mutate(contract.id); }}>
+                              onClick={() => { setDeleteConfirmed(false); setDeleteTarget(contract.id); }}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
@@ -247,7 +252,7 @@ export default function Contracts() {
                               </Button>
                               <Button
                                 variant="destructive-ghost" size="icon" className="h-8 w-8"
-                                onClick={() => { if (confirm('Excluir contrato?')) deleteContract.mutate(contract.id); }}
+                                onClick={() => { setDeleteConfirmed(false); setDeleteTarget(contract.id); }}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -271,6 +276,34 @@ export default function Contracts() {
         onOpenChange={setDialogOpen}
         onCreated={(id) => navigate(`/contratos/${id}`)}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteConfirmed(false); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Tem certeza? Todas as OSs, ocorrências e transações vinculadas serão excluídas.</p>
+                <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
+                <div className="flex items-center gap-2 pt-2">
+                  <Checkbox id="delete-list-confirm" checked={deleteConfirmed} onCheckedChange={(v) => setDeleteConfirmed(!!v)} />
+                  <Label htmlFor="delete-list-confirm" className="text-sm cursor-pointer">Tenho certeza que desejo excluir</Label>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!deleteConfirmed}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteTarget) deleteContract.mutate(deleteTarget); setDeleteTarget(null); setDeleteConfirmed(false); }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

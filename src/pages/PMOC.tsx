@@ -345,7 +345,7 @@ export default function PMOC() {
                                   <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingContract(contract); setContractDialogOpen(true); }}>
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => { if (confirm('Excluir contrato?')) deleteContract.mutate(contract.id); }}>
+                                  <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => { if (confirm('Excluir contrato PMOC e todas as OSs vinculadas?')) deleteContract.mutate(contract.id); }}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>

@@ -220,7 +220,7 @@ export function useContracts() {
             .select('id')
             .single();
 
-          if (osError) { console.error('Error creating OS:', osError); continue; }
+          if (osError) { console.error('Error creating OS:', osError); toast({ variant: 'destructive', title: `Erro ao criar OS #${i + 1}`, description: osError.message }); continue; }
 
           // Link equipment via junction table
           if (equipmentIds.length > 0) {
