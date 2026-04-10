@@ -53,6 +53,7 @@ export default function Schedule() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
+  const [editingTask, setEditingTask] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [summaryOrder, setSummaryOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | undefined>();
   const [defaultTime, setDefaultTime] = useState<string | undefined>();
@@ -159,6 +160,13 @@ export default function Schedule() {
 
   const handleEditFromSummary = () => {
     if (summaryOrder) {
+      // If it's a task, open the task form for editing
+      if ((summaryOrder as any).entry_type === 'tarefa') {
+        setEditingTask(summaryOrder);
+        setSummaryOrder(null);
+        setIsTaskFormOpen(true);
+        return;
+      }
       setSelectedOrder(summaryOrder);
       setSummaryOrder(null);
       setDefaultDate(undefined);
