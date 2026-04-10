@@ -139,8 +139,16 @@ export default function ServiceOrders() {
 
   const handleDelete = async () => {
     if (osToDelete) {
-      if (deleteMode === 'group' && (osToDelete as any).recurrence_group_id) {
-        const groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === (osToDelete as any).recurrence_group_id);
+      if (deleteMode === 'group') {
+        // Delete all OS in the same recurrence group or contract
+        const recurrenceGroupId = (osToDelete as any).recurrence_group_id;
+        const contractId = (osToDelete as any).contract_id;
+        let groupOrders: ServiceOrder[] = [];
+        if (recurrenceGroupId) {
+          groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === recurrenceGroupId);
+        } else if (contractId) {
+          groupOrders = serviceOrders.filter((o: any) => o.contract_id === contractId);
+        }
         for (const o of groupOrders) {
           await deleteServiceOrder.mutateAsync(o.id);
         }
@@ -155,7 +163,8 @@ export default function ServiceOrders() {
 
   const handleDeleteClick = (os: ServiceOrder) => {
     setOsToDelete(os);
-    setDeleteMode((os as any).recurrence_group_id ? null : 'single');
+    const hasGroup = !!(os as any).recurrence_group_id || !!(os as any).contract_id;
+    setDeleteMode(hasGroup ? null : 'single');
     setDeleteDialogOpen(true);
   };
 
@@ -571,13 +580,13 @@ export default function ServiceOrders() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir OS #{osToDelete?.order_number}</AlertDialogTitle>
             <AlertDialogDescription>
-              {(osToDelete as any)?.recurrence_group_id && !deleteMode
+              {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode
                 ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
                 : 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className={(osToDelete as any)?.recurrence_group_id && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
-            {(osToDelete as any)?.recurrence_group_id && !deleteMode ? (
+          <AlertDialogFooter className={((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
+            {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? (
               <>
                 <Button variant="destructive" onClick={() => setDeleteMode('single')} className="w-full">
                   Excluir apenas esta

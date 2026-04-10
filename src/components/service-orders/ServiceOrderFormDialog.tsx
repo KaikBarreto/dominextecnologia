@@ -109,6 +109,7 @@ export function ServiceOrderFormDialog({
   const { equipment } = useEquipment(selectedCustomerId);
   const { toast: editToast } = useToast();
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
+  const [recurrenceEditDialogOpen, setRecurrenceEditDialogOpen] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -447,11 +448,19 @@ export function ServiceOrderFormDialog({
   const handleEditSubmit = async (data: ServiceOrderFormData) => {
     // Check if this is a contract OS and date changed
     const isContractOS = !!(serviceOrder as any)?.contract_id;
+    const isRecurrenceOS = !!(serviceOrder as any)?.recurrence_group_id;
     const dateChanged = data.scheduled_date !== serviceOrder?.scheduled_date;
 
     if (isContractOS && dateChanged) {
       setPendingEditData(data);
       setContractDateDialogOpen(true);
+      return;
+    }
+
+    // If this OS belongs to a recurrence group, ask if changes should apply to all
+    if (isRecurrenceOS) {
+      setPendingEditData(data);
+      setRecurrenceEditDialogOpen(true);
       return;
     }
 
@@ -509,6 +518,56 @@ export function ServiceOrderFormDialog({
         }
       } catch (err: any) {
         editToast({ variant: 'destructive', title: 'Erro ao ajustar datas futuras', description: err.message });
+      }
+    }
+
+    setPendingEditData(null);
+    form.reset();
+    onOpenChange(false);
+  };
+
+  const handleRecurrenceEditChoice = async (applyToAll: boolean) => {
+    if (!pendingEditData || !serviceOrder) return;
+    setRecurrenceEditDialogOpen(false);
+
+    const cleanedData = buildEditPayload(pendingEditData);
+    await onSubmit(cleanedData);
+
+    if (applyToAll) {
+      try {
+        const groupId = (serviceOrder as any).recurrence_group_id;
+        const { data: groupOrders } = await supabase
+          .from('service_orders')
+          .select('id, scheduled_date')
+          .eq('recurrence_group_id', groupId)
+          .neq('id', serviceOrder.id);
+
+        if (groupOrders && groupOrders.length > 0) {
+          const { scheduled_date, scheduled_time, ...editableFields } = cleanedData;
+          const updatePayload = normalizeOptionalForeignKeys(editableFields, [
+            'technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id',
+          ] as any);
+
+          for (const os of groupOrders) {
+            await supabase
+              .from('service_orders')
+              .update(updatePayload as any)
+              .eq('id', os.id);
+
+            if (cleanedData.assignee_user_ids) {
+              await supabase.from('service_order_assignees').delete().eq('service_order_id', os.id);
+              if (cleanedData.assignee_user_ids.length > 0) {
+                await supabase.from('service_order_assignees').insert(
+                  cleanedData.assignee_user_ids.map((uid: string) => ({ service_order_id: os.id, user_id: uid }))
+                );
+              }
+            }
+          }
+          queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+          editToast({ title: `${groupOrders.length + 1} OS(s) da recorrência atualizadas!` });
+        }
+      } catch (err: any) {
+        editToast({ variant: 'destructive', title: 'Erro ao atualizar recorrência', description: err.message });
       }
     }
 
@@ -855,6 +914,29 @@ export function ServiceOrderFormDialog({
             </AlertDialogAction>
             <AlertDialogAction onClick={() => handleContractDateChoice(true)}>
               Esta e futuras
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Recurrence group edit dialog */}
+      <AlertDialog open={recurrenceEditDialogOpen} onOpenChange={setRecurrenceEditDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar recorrência</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta OS faz parte de uma recorrência. Deseja aplicar as alterações apenas nesta OS ou em todas da recorrência?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => { setPendingEditData(null); }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction className="bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => handleRecurrenceEditChoice(false)}>
+              Apenas esta
+            </AlertDialogAction>
+            <AlertDialogAction onClick={() => handleRecurrenceEditChoice(true)}>
+              Todas da recorrência
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
