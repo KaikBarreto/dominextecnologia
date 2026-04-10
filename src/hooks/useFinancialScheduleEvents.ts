@@ -68,6 +68,7 @@ export function useFinancialScheduleEvents() {
           customer_id: t.customer_id || '',
           os_type: 'visita_tecnica',
           entry_type: 'tarefa',
+          task_title: `${isReceivable ? '💰 A Receber' : '💸 A Pagar'}: ${t.description} — ${amount}`,
           status: 'pendente',
           scheduled_date: t.due_date!,
           scheduled_time: '08:00',
@@ -85,11 +86,7 @@ export function useFinancialScheduleEvents() {
           _installmentGroupId: t.installment_group_id || null,
           _assignee_user_ids: billingIds,
           _assignees: [],
-          service_type: {
-            id: `fin-${t.transaction_type}`,
-            name: isReceivable ? 'A Receber' : 'A Pagar',
-            color: isReceivable ? '#22c55e' : '#ef4444',
-          },
+          service_type: null,
         } as any;
       });
   }, [canView, transactions, hiddenContractIds, contractBillingMap]);
