@@ -140,7 +140,8 @@ export default function ServiceOrders() {
   const handleDelete = async () => {
     if (osToDelete) {
       if (deleteMode === 'group') {
-        // Delete all OS in the same recurrence group or contract
+        // Delete only future OS in the same recurrence group or contract; keep past ones
+        const today = new Date().toISOString().slice(0, 10);
         const recurrenceGroupId = (osToDelete as any).recurrence_group_id;
         const contractId = (osToDelete as any).contract_id;
         let groupOrders: ServiceOrder[] = [];
@@ -149,7 +150,9 @@ export default function ServiceOrders() {
         } else if (contractId) {
           groupOrders = serviceOrders.filter((o: any) => o.contract_id === contractId);
         }
-        for (const o of groupOrders) {
+        // Only delete OS with scheduled_date >= today
+        const futureOrders = groupOrders.filter(o => (o.scheduled_date || '') >= today);
+        for (const o of futureOrders) {
           await deleteServiceOrder.mutateAsync(o.id);
         }
       } else {

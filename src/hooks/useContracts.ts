@@ -306,13 +306,23 @@ export function useContracts() {
   });
 
   const executeDeleteContract = async (id: string) => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
     // Collect service_order IDs linked to this contract (via occurrences)
     const { data: occurrences } = await supabase
       .from('contract_occurrences')
-      .select('service_order_id')
+      .select('service_order_id, scheduled_date')
       .eq('contract_id', id);
 
-    const osIds = (occurrences || [])
+    // Only delete future OS; keep past ones (unlink them from contract)
+    const futureOsIds = (occurrences || [])
+      .filter(o => o.scheduled_date >= todayStr)
+      .map(o => o.service_order_id)
+      .filter(Boolean) as string[];
+
+    const pastOsIds = (occurrences || [])
+      .filter(o => o.scheduled_date < todayStr)
       .map(o => o.service_order_id)
       .filter(Boolean) as string[];
 
@@ -323,18 +333,25 @@ export function useContracts() {
     await supabase.from('contract_occurrences').delete().eq('contract_id', id);
     await supabase.from('contract_items').delete().eq('contract_id', id);
 
-    // Delete linked service orders (and their junction rows)
-    if (osIds.length > 0) {
-      await supabase.from('service_order_assignees').delete().in('service_order_id', osIds);
-      await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
-      await supabase.from('form_responses').delete().in('service_order_id', osIds);
-      await supabase.from('os_photos').delete().in('service_order_id', osIds);
-      await supabase.from('service_ratings').delete().in('service_order_id', osIds);
-      await supabase.from('service_orders').delete().in('id', osIds);
+    // Delete future linked service orders (and their junction rows)
+    if (futureOsIds.length > 0) {
+      await supabase.from('service_order_assignees').delete().in('service_order_id', futureOsIds);
+      await supabase.from('service_order_equipment').delete().in('service_order_id', futureOsIds);
+      await supabase.from('form_responses').delete().in('service_order_id', futureOsIds);
+      await supabase.from('os_photos').delete().in('service_order_id', futureOsIds);
+      await supabase.from('service_ratings').delete().in('service_order_id', futureOsIds);
+      await supabase.from('service_orders').delete().in('id', futureOsIds);
     }
 
-    // Also delete any OS that references this contract directly but wasn't in occurrences
-    await supabase.from('service_orders').delete().eq('contract_id', id);
+    // Unlink past OS from this contract so they remain as standalone records
+    if (pastOsIds.length > 0) {
+      await supabase.from('service_orders').update({ contract_id: null } as any).in('id', pastOsIds);
+    }
+
+    // Delete future OS that reference this contract directly but weren't in occurrences
+    await supabase.from('service_orders').delete().eq('contract_id', id).gte('scheduled_date', todayStr);
+    // Unlink past OS that reference this contract directly
+    await supabase.from('service_orders').update({ contract_id: null } as any).eq('contract_id', id);
 
     const { error } = await supabase.from('contracts').delete().eq('id', id);
     if (error) throw error;
