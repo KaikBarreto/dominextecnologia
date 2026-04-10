@@ -363,9 +363,12 @@ export function useContracts() {
     mutateAsync: async (id: string) => { scheduleDeleteContract(id); },
   };
 
+  // Filter out pending deletions from the visible list
+  const visibleContracts = contracts.filter(c => !pendingDeleteIds.has(c.id));
+
   // Stats
   const now = new Date();
-  const activeContracts = contracts.filter(c => c.status === 'active');
+  const activeContracts = visibleContracts.filter(c => c.status === 'active');
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
@@ -392,7 +395,7 @@ export function useContracts() {
   }).length;
 
   return {
-    contracts,
+    contracts: visibleContracts,
     isLoading,
     createContract,
     updateContractStatus,
