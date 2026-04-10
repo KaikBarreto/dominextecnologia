@@ -71,7 +71,15 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
         .select(`*, customer:customers(id, name, phone, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name)`)
         .eq('id', serviceOrderId).single();
       if (osError) throw osError;
-      setServiceOrder(osData as any);
+      // Use snapshot as fallback when live joins return null (e.g. deleted customer/equipment)
+      const snapshot = (osData as any).snapshot_data;
+      const enriched = {
+        ...osData,
+        customer: osData.customer || snapshot?.customer || null,
+        equipment: osData.equipment || snapshot?.equipment || null,
+        form_template: osData.form_template || snapshot?.form_template || null,
+      };
+      setServiceOrder(enriched as any);
       const { data: photosData } = await supabase.from('os_photos').select('*').eq('service_order_id', serviceOrderId).order('created_at', { ascending: true });
       setPhotos(photosData || []);
       if (osData.form_template_id) {
