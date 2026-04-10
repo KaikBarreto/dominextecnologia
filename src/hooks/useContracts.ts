@@ -84,8 +84,6 @@ export function useContracts() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
-  const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
