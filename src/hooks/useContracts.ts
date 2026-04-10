@@ -208,6 +208,7 @@ export function useContracts() {
 
           const osPayload = normalizeOptionalForeignKeys(
             {
+              company_id: profile.company_id,
               customer_id: input.customer_id,
               equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
               technician_id: input.technician_id || null,
