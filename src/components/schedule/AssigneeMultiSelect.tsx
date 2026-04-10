@@ -32,6 +32,7 @@ interface AssigneeMultiSelectProps {
   onChangeUsers: (ids: string[]) => void;
   onChangeTeams: (ids: string[]) => void;
   label?: string;
+  usersLabel?: string;
 }
 
 function getInitials(name: string) {
@@ -46,6 +47,7 @@ export function AssigneeMultiSelect({
   onChangeUsers,
   onChangeTeams,
   label = 'Responsáveis',
+  usersLabel = 'Técnicos',
 }: AssigneeMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -190,7 +192,7 @@ export function AssigneeMultiSelect({
               {/* Technicians */}
               {filteredTechnicians.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-1">Técnicos</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-1">{usersLabel}</p>
                   {filteredTechnicians.map(tech => (
                     <label
                       key={`user-${tech.user_id}`}
