@@ -585,8 +585,9 @@ export default function Schedule() {
         />
         <TaskFormDialog
           open={isTaskFormOpen}
-          onOpenChange={setIsTaskFormOpen}
+          onOpenChange={(open) => { setIsTaskFormOpen(open); if (!open) setEditingTask(null); }}
           onSubmit={handleTaskSubmit}
+          task={editingTask}
           defaultDate={defaultDate}
           defaultTime={defaultTime}
         />
@@ -691,8 +692,9 @@ export default function Schedule() {
       />
       <TaskFormDialog
         open={isTaskFormOpen}
-        onOpenChange={setIsTaskFormOpen}
+        onOpenChange={(open) => { setIsTaskFormOpen(open); if (!open) setEditingTask(null); }}
         onSubmit={handleTaskSubmit}
+        task={editingTask}
         defaultDate={defaultDate}
         defaultTime={defaultTime}
       />
