@@ -204,7 +204,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setSubmitting(true);
     try {
       const actualTeamId = selectedTeamIds.length > 0 ? selectedTeamIds[0] : null;
-      const actualTechnicianId = selectedUserIds.length > 0 ? selectedUserIds[0] : null;
+      // Only set technician_id when NO team is selected and there are individual users
+      const actualTechnicianId = !actualTeamId && selectedUserIds.length > 0 ? selectedUserIds[0] : null;
 
       if (isEditing) {
         const { error } = await supabase.from('contracts').update({
