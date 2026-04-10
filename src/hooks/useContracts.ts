@@ -175,6 +175,10 @@ export function useContracts() {
         if (itemError) throw itemError;
       }
 
+      let osCreatedCount = 0;
+      let osErrorCount = 0;
+      let expectedOsCount = 0;
+
       // Generate OSs and occurrences
       if (input.status === 'active') {
         const occurrenceDates = generateOccurrences(
@@ -183,6 +187,7 @@ export function useContracts() {
           input.frequency_value,
           input.horizon_months
         );
+        expectedOsCount = occurrenceDates.length;
 
         const equipmentIds = input.items
           .filter(i => i.equipment_id)
@@ -192,9 +197,6 @@ export function useContracts() {
         const assigneeUserIds = input.assignee_user_ids && input.assignee_user_ids.length > 0
           ? input.assignee_user_ids
           : (input.technician_id ? [input.technician_id] : []);
-
-        let osCreatedCount = 0;
-        let osErrorCount = 0;
 
         for (let i = 0; i < occurrenceDates.length; i++) {
           const date = occurrenceDates[i];
@@ -208,7 +210,6 @@ export function useContracts() {
 
           const osPayload = normalizeOptionalForeignKeys(
             {
-              company_id: profile.company_id,
               customer_id: input.customer_id,
               equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
               technician_id: input.technician_id || null,
@@ -280,7 +281,11 @@ export function useContracts() {
         }
       }
 
-      return contract;
+      return {
+        id: (contract as any).id,
+        generatedOsCount: osCreatedCount,
+        expectedOsCount,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
