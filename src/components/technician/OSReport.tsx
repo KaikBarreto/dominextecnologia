@@ -84,7 +84,16 @@ function ReportImage({ src, alt, className, onClick }: { src: string; alt: strin
   );
 }
 
-export function OSReport({ serviceOrder, photos }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProps) {
+  // Apply snapshot fallback for deleted entities
+  const snapshot = (rawServiceOrder as any).snapshot_data;
+  const serviceOrder = {
+    ...rawServiceOrder,
+    customer: rawServiceOrder.customer || snapshot?.customer || null,
+    equipment: rawServiceOrder.equipment || snapshot?.equipment || null,
+    form_template: rawServiceOrder.form_template || snapshot?.form_template || null,
+  };
+
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
