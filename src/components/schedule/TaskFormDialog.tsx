@@ -230,7 +230,8 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           />
         </div>
 
-        {/* Recurrence */}
+        {/* Recurrence - only show when creating */}
+        {!isEditing && (
         <div className="rounded-lg border p-3 space-y-3">
           <div className="flex items-center gap-2">
             <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
@@ -294,12 +295,13 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
             </div>
           )}
         </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button type="submit" disabled={isLoading || !title.trim()}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Criar Tarefa
+            {isEditing ? 'Salvar' : 'Criar Tarefa'}
           </Button>
         </div>
       </form>
