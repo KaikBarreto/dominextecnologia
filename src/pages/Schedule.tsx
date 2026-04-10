@@ -53,6 +53,7 @@ export default function Schedule() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
+  const [editingTask, setEditingTask] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [summaryOrder, setSummaryOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | undefined>();
   const [defaultTime, setDefaultTime] = useState<string | undefined>();
@@ -159,6 +160,13 @@ export default function Schedule() {
 
   const handleEditFromSummary = () => {
     if (summaryOrder) {
+      // If it's a task, open the task form for editing
+      if ((summaryOrder as any).entry_type === 'tarefa') {
+        setEditingTask(summaryOrder);
+        setSummaryOrder(null);
+        setIsTaskFormOpen(true);
+        return;
+      }
       setSelectedOrder(summaryOrder);
       setSummaryOrder(null);
       setDefaultDate(undefined);
@@ -253,6 +261,39 @@ export default function Schedule() {
   };
 
   const handleTaskSubmit = async (data: TaskFormData) => {
+    // If editing an existing task, update it
+    if (editingTask) {
+      const updatePayload = normalizeOptionalForeignKeys({
+        task_title: data.task_title,
+        task_type_id: data.task_type_id || null,
+        service_type_id: data.service_type_id || null,
+        customer_id: data.customer_id || null,
+        technician_id: data.technician_id || null,
+        team_id: data.team_id || null,
+        scheduled_date: data.scheduled_date || null,
+        scheduled_time: data.scheduled_time || null,
+        duration_minutes: data.duration_minutes || 60,
+        description: data.description || null,
+      } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']);
+
+      const { error } = await supabase.from('service_orders').update(updatePayload).eq('id', editingTask.id);
+      if (error) {
+        toast({ variant: 'destructive', title: 'Erro ao atualizar tarefa', description: error.message });
+      } else {
+        // Update assignees
+        await supabase.from('service_order_assignees').delete().eq('service_order_id', editingTask.id);
+        if (data.assignee_user_ids && data.assignee_user_ids.length > 0) {
+          await supabase.from('service_order_assignees').insert(
+            data.assignee_user_ids.map(uid => ({ service_order_id: editingTask.id, user_id: uid }))
+          );
+        }
+        toast({ title: 'Tarefa atualizada!' });
+        queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      }
+      setEditingTask(null);
+      return;
+    }
+
     const groupId = data.recurrence_type ? crypto.randomUUID() : undefined;
 
     // Generate dates for recurrence
@@ -261,7 +302,6 @@ export default function Schedule() {
       const endDate = new Date(data.recurrence_end_date + 'T12:00:00');
 
       if (data.recurrence_type === 'custom' && data.recurrence_weekdays && data.recurrence_weekdays.length > 0) {
-        // Custom: generate dates for each selected weekday within range
         let current = addDays(new Date(dates[0] + 'T12:00:00'), 1);
         while (current <= endDate) {
           if (data.recurrence_weekdays.includes(current.getDay())) {
@@ -310,7 +350,6 @@ export default function Schedule() {
     if (error) {
       toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: error.message });
     } else {
-      // Insert assignees for each created task
       if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
         const assigneeRows = created.flatMap((row: any) =>
           data.assignee_user_ids!.map(uid => ({
@@ -546,8 +585,9 @@ export default function Schedule() {
         />
         <TaskFormDialog
           open={isTaskFormOpen}
-          onOpenChange={setIsTaskFormOpen}
+          onOpenChange={(open) => { setIsTaskFormOpen(open); if (!open) setEditingTask(null); }}
           onSubmit={handleTaskSubmit}
+          task={editingTask}
           defaultDate={defaultDate}
           defaultTime={defaultTime}
         />
@@ -652,8 +692,9 @@ export default function Schedule() {
       />
       <TaskFormDialog
         open={isTaskFormOpen}
-        onOpenChange={setIsTaskFormOpen}
+        onOpenChange={(open) => { setIsTaskFormOpen(open); if (!open) setEditingTask(null); }}
         onSubmit={handleTaskSubmit}
+        task={editingTask}
         defaultDate={defaultDate}
         defaultTime={defaultTime}
       />

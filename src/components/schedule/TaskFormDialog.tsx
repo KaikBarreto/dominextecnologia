@@ -43,6 +43,7 @@ interface TaskFormDialogProps {
   defaultDate?: string;
   defaultTime?: string;
   defaultCustomerId?: string;
+  task?: any | null;
 }
 
 const RECURRENCE_OPTIONS = [
@@ -56,11 +57,13 @@ const RECURRENCE_OPTIONS = [
 
 const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, task }: TaskFormDialogProps) {
   const { data: profiles = [] } = useProfiles();
   const { taskTypes } = useTaskTypes();
   const { teamsWithMembers } = useTeams();
   const { customers } = useCustomers();
+
+  const isEditing = !!task;
 
   const [title, setTitle] = useState('');
   const [customerId, setCustomerId] = useState('');
@@ -79,23 +82,40 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
 
   useEffect(() => {
     if (open) {
-      setTitle('');
-      setCustomerId(defaultCustomerId || '');
-      setTaskTypeId('');
-      setSelectedUserIds([]);
-      setSelectedTeamIds([]);
-      setScheduledDate(defaultDate || format(new Date(), 'yyyy-MM-dd'));
-      setScheduledTime(defaultTime || '08:00');
-      setDuration(60);
-      setDescription('');
-      setRecurrenceEnabled(false);
-      setRecurrenceType('weekly');
-      setRecurrenceInterval(1);
-      setRecurrenceEndDate('');
-      const dayOfWeek = new Date(defaultDate || new Date()).getDay();
-      setRecurrenceWeekdays([dayOfWeek]);
+      if (task) {
+        setTitle(task.task_title || '');
+        setCustomerId(task.customer_id || '');
+        setTaskTypeId(task.task_type_id || '');
+        setSelectedUserIds(task._assignee_user_ids || (task.technician_id ? [task.technician_id] : []));
+        setSelectedTeamIds(task.team_id ? [task.team_id] : []);
+        setScheduledDate(task.scheduled_date || format(new Date(), 'yyyy-MM-dd'));
+        setScheduledTime(task.scheduled_time || '08:00');
+        setDuration(task.duration_minutes || 60);
+        setDescription(task.description || '');
+        setRecurrenceEnabled(false);
+        setRecurrenceType('weekly');
+        setRecurrenceInterval(1);
+        setRecurrenceEndDate('');
+        setRecurrenceWeekdays([]);
+      } else {
+        setTitle('');
+        setCustomerId(defaultCustomerId || '');
+        setTaskTypeId('');
+        setSelectedUserIds([]);
+        setSelectedTeamIds([]);
+        setScheduledDate(defaultDate || format(new Date(), 'yyyy-MM-dd'));
+        setScheduledTime(defaultTime || '08:00');
+        setDuration(60);
+        setDescription('');
+        setRecurrenceEnabled(false);
+        setRecurrenceType('weekly');
+        setRecurrenceInterval(1);
+        setRecurrenceEndDate('');
+        const dayOfWeek = new Date(defaultDate || new Date()).getDay();
+        setRecurrenceWeekdays([dayOfWeek]);
+      }
     }
-  }, [open, defaultDate, defaultTime, defaultCustomerId]);
+  }, [open, defaultDate, defaultTime, defaultCustomerId, task]);
 
   const toggleWeekday = (day: number) => {
     setRecurrenceWeekdays(prev =>
@@ -134,7 +154,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   }));
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Tarefa">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? 'Editar Tarefa' : 'Nova Tarefa'}>
       <form onSubmit={handleSubmit} className="space-y-4 p-1">
         <div className="space-y-2">
           <Label>Título da Tarefa *</Label>
@@ -210,7 +230,8 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
           />
         </div>
 
-        {/* Recurrence */}
+        {/* Recurrence - only show when creating */}
+        {!isEditing && (
         <div className="rounded-lg border p-3 space-y-3">
           <div className="flex items-center gap-2">
             <Switch checked={recurrenceEnabled} onCheckedChange={setRecurrenceEnabled} />
@@ -274,12 +295,13 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
             </div>
           )}
         </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button type="submit" disabled={isLoading || !title.trim()}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Criar Tarefa
+            {isEditing ? 'Salvar' : 'Criar Tarefa'}
           </Button>
         </div>
       </form>

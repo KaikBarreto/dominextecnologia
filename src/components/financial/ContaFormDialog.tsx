@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import type { TransactionType, FinancialTransaction } from '@/types/database';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useContracts } from '@/hooks/useContracts';
+import { useCustomers } from '@/hooks/useCustomers';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ContaFormDialogProps {
@@ -29,6 +30,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const { categories } = useFinancialCategories();
   const { employees } = useEmployees();
   const { contracts } = useContracts();
+  const { customers } = useCustomers();
   
   const [tipo, setTipo] = useState<TransactionType>(defaultType);
   const [description, setDescription] = useState('');
@@ -40,6 +42,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [notes, setNotes] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [contractId, setContractId] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!editingTransaction;
@@ -48,7 +51,6 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   useEffect(() => {
     if (open) {
       if (editingTransaction) {
-        // Populate form with existing data
         setTipo(editingTransaction.transaction_type);
         setDescription(editingTransaction.description);
         setAmount(String(editingTransaction.amount));
@@ -56,9 +58,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setDueDate(editingTransaction.due_date || format(new Date(), 'yyyy-MM-dd'));
         setNotes(editingTransaction.notes || '');
         setContractId(editingTransaction.contract_id || '');
+        setCustomerId(editingTransaction.customer_id || '');
         setRecurrence('unica');
         setOccurrences(12);
-        // Extract employee from notes if present
         const empMatch = editingTransaction.notes?.match(/\[funcionario:([^\]]+)\]/);
         setEmployeeId(empMatch ? empMatch[1] : '');
       } else {
@@ -72,6 +74,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setNotes('');
         setEmployeeId('');
         setContractId('');
+        setCustomerId('');
       }
     }
   }, [open, defaultType, editingTransaction]);
@@ -99,6 +102,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     label: `${c.name} - ${c.customer?.name || 'Sem cliente'}`,
   }));
 
+  const activeCustomers = (customers || []).filter((c: any) => !c.is_deleted);
+  const customerOptions = activeCustomers.map((c: any) => ({ value: c.id, label: c.name }));
+
   const handleSubmit = async () => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
     setIsSubmitting(true);
@@ -121,6 +127,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             contractId && showContractSelector ? `[contrato:${contractId}]` : '',
           ].filter(Boolean).join(' ') || undefined,
           contract_id: contractId && showContractSelector ? contractId : undefined,
+          customer_id: customerId || undefined,
         };
         await updateTransaction.mutateAsync(input);
       } else {
@@ -151,6 +158,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               contractId && showContractSelector ? `[contrato:${contractId}]` : '',
             ].filter(Boolean).join(' ') || undefined,
             contract_id: contractId && showContractSelector ? contractId : undefined,
+            customer_id: customerId || undefined,
           };
 
           await createTransaction.mutateAsync(input);
@@ -241,6 +249,17 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               />
             </div>
           )}
+
+          {/* Customer selector */}
+          <div className="space-y-1.5">
+            <Label>Cliente vinculado</Label>
+            <SearchableSelect
+              options={customerOptions}
+              value={customerId}
+              onValueChange={setCustomerId}
+              placeholder="Selecione um cliente (opcional)"
+            />
+          </div>
 
           {!isEditing && (
             <div className="grid grid-cols-2 gap-3">
