@@ -276,6 +276,34 @@ export default function Contracts() {
         onOpenChange={setDialogOpen}
         onCreated={(id) => navigate(`/contratos/${id}`)}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteConfirmed(false); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir contrato</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Tem certeza? Todas as OSs, ocorrências e transações vinculadas serão excluídas.</p>
+                <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
+                <div className="flex items-center gap-2 pt-2">
+                  <Checkbox id="delete-list-confirm" checked={deleteConfirmed} onCheckedChange={(v) => setDeleteConfirmed(!!v)} />
+                  <Label htmlFor="delete-list-confirm" className="text-sm cursor-pointer">Tenho certeza que desejo excluir</Label>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!deleteConfirmed}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteTarget) deleteContract.mutate(deleteTarget); setDeleteTarget(null); setDeleteConfirmed(false); }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
