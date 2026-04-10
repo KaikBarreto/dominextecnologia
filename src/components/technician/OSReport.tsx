@@ -245,7 +245,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
 
   const fetchContract = async (contractId: string) => {
     const { data } = await supabase.from('contracts').select('id, name').eq('id', contractId).maybeSingle();
-    if (data) setContractInfo(data);
+    if (data) {
+      setContractInfo(data);
+    } else if (snapshot?.contract) {
+      setContractInfo(snapshot.contract);
+    }
   };
 
   const fetchEquipmentItems = async () => {
