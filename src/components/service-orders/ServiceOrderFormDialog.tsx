@@ -109,6 +109,7 @@ export function ServiceOrderFormDialog({
   const { equipment } = useEquipment(selectedCustomerId);
   const { toast: editToast } = useToast();
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
+  const [recurrenceEditDialogOpen, setRecurrenceEditDialogOpen] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
