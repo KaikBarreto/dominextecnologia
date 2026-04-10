@@ -448,11 +448,19 @@ export function ServiceOrderFormDialog({
   const handleEditSubmit = async (data: ServiceOrderFormData) => {
     // Check if this is a contract OS and date changed
     const isContractOS = !!(serviceOrder as any)?.contract_id;
+    const isRecurrenceOS = !!(serviceOrder as any)?.recurrence_group_id;
     const dateChanged = data.scheduled_date !== serviceOrder?.scheduled_date;
 
     if (isContractOS && dateChanged) {
       setPendingEditData(data);
       setContractDateDialogOpen(true);
+      return;
+    }
+
+    // If this OS belongs to a recurrence group, ask if changes should apply to all
+    if (isRecurrenceOS) {
+      setPendingEditData(data);
+      setRecurrenceEditDialogOpen(true);
       return;
     }
 
