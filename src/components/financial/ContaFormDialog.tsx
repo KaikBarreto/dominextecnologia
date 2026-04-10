@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import type { TransactionType, FinancialTransaction } from '@/types/database';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useContracts } from '@/hooks/useContracts';
+import { useCustomers } from '@/hooks/useCustomers';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ContaFormDialogProps {
@@ -29,6 +30,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const { categories } = useFinancialCategories();
   const { employees } = useEmployees();
   const { contracts } = useContracts();
+  const { customers } = useCustomers();
   
   const [tipo, setTipo] = useState<TransactionType>(defaultType);
   const [description, setDescription] = useState('');
@@ -40,6 +42,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [notes, setNotes] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [contractId, setContractId] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!editingTransaction;
