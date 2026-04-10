@@ -186,16 +186,87 @@ export function useServiceOrders() {
       
       if (error) throw error;
 
-      // Auto-create rating token when status changes to concluida
+      // Auto-create rating token and save snapshot when status changes to concluida
       if (input.status === 'concluida') {
         const { error: ratingError } = await supabase
           .from('service_ratings')
           .insert({ service_order_id: id })
           .select()
           .single();
-        // Ignore duplicate constraint error (already exists)
         if (ratingError && ratingError.code !== '23505') {
           console.error('Error creating rating token:', ratingError);
+        }
+
+        // Save snapshot of related data for historical record
+        try {
+          const { data: fullOs } = await supabase
+            .from('service_orders')
+            .select(`
+              *,
+              customer:customers(id, name, phone, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
+              equipment:equipment(id, name, brand, model, serial_number, location, capacity),
+              form_template:form_templates(id, name),
+              service_type:service_types(id, name, color, number_prefix)
+            `)
+            .eq('id', id)
+            .single();
+
+          if (fullOs) {
+            // Fetch technician info
+            let technicianSnapshot = null;
+            const techId = fullOs.technician_id;
+            if (techId) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('user_id', techId)
+                .maybeSingle();
+              if (profile) technicianSnapshot = { user_id: techId, full_name: profile.full_name, avatar_url: profile.avatar_url };
+            }
+
+            // Fetch assignees info
+            const { data: assigneesData } = await supabase
+              .from('service_order_assignees')
+              .select('user_id')
+              .eq('service_order_id', id);
+            let assigneesSnapshot: any[] = [];
+            if (assigneesData && assigneesData.length > 0) {
+              const { data: profiles } = await supabase
+                .from('profiles')
+                .select('user_id, full_name, avatar_url')
+                .in('user_id', assigneesData.map(a => a.user_id));
+              assigneesSnapshot = profiles || [];
+            }
+
+            // Fetch contract info
+            let contractSnapshot = null;
+            if ((fullOs as any).contract_id) {
+              const { data: contract } = await supabase
+                .from('contracts')
+                .select('id, name')
+                .eq('id', (fullOs as any).contract_id)
+                .maybeSingle();
+              if (contract) contractSnapshot = contract;
+            }
+
+            const snapshot = {
+              customer: fullOs.customer,
+              equipment: fullOs.equipment,
+              form_template: fullOs.form_template,
+              service_type: fullOs.service_type,
+              technician: technicianSnapshot,
+              assignees: assigneesSnapshot,
+              contract: contractSnapshot,
+              snapshot_at: new Date().toISOString(),
+            };
+
+            await supabase
+              .from('service_orders')
+              .update({ snapshot_data: snapshot } as any)
+              .eq('id', id);
+          }
+        } catch (snapshotError) {
+          console.error('Error saving snapshot:', snapshotError);
         }
       }
 
