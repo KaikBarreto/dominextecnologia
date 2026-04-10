@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     const { data: serviceOrder } = await supabase
       .from("service_orders")
-      .select(`id, order_number, company_id, customer:customers(name)`)
+      .select(`id, order_number, company_id, snapshot_data, customer:customers(name)`)
       .eq("id", osId)
       .single();
 
@@ -45,7 +45,8 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const companyName = company?.name || "Ordem de Serviço";
-    const customerName = (serviceOrder?.customer as { name?: string } | null)?.name;
+    const customerName = (serviceOrder?.customer as { name?: string } | null)?.name
+      || (serviceOrder?.snapshot_data as any)?.customer?.name;
     const title = `${companyName} — Ordem de Serviço`;
     const description = customerName
       ? `Acompanhe a OS #${serviceOrder?.order_number ?? ""} de ${customerName}`
