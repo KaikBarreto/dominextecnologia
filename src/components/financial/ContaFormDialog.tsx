@@ -127,6 +127,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             contractId && showContractSelector ? `[contrato:${contractId}]` : '',
           ].filter(Boolean).join(' ') || undefined,
           contract_id: contractId && showContractSelector ? contractId : undefined,
+          customer_id: customerId || undefined,
         };
         await updateTransaction.mutateAsync(input);
       } else {
@@ -157,6 +158,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               contractId && showContractSelector ? `[contrato:${contractId}]` : '',
             ].filter(Boolean).join(' ') || undefined,
             contract_id: contractId && showContractSelector ? contractId : undefined,
+            customer_id: customerId || undefined,
           };
 
           await createTransaction.mutateAsync(input);
