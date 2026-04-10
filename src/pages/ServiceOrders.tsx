@@ -580,13 +580,13 @@ export default function ServiceOrders() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir OS #{osToDelete?.order_number}</AlertDialogTitle>
             <AlertDialogDescription>
-              {(osToDelete as any)?.recurrence_group_id && !deleteMode
+              {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode
                 ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
                 : 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className={(osToDelete as any)?.recurrence_group_id && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
-            {(osToDelete as any)?.recurrence_group_id && !deleteMode ? (
+          <AlertDialogFooter className={((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
+            {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? (
               <>
                 <Button variant="destructive" onClick={() => setDeleteMode('single')} className="w-full">
                   Excluir apenas esta
