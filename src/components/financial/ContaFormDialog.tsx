@@ -250,6 +250,17 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             </div>
           )}
 
+          {/* Customer selector */}
+          <div className="space-y-1.5">
+            <Label>Cliente vinculado</Label>
+            <SearchableSelect
+              options={customerOptions}
+              value={customerId}
+              onValueChange={setCustomerId}
+              placeholder="Selecione um cliente (opcional)"
+            />
+          </div>
+
           {!isEditing && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
