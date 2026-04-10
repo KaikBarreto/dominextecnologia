@@ -151,7 +151,9 @@ function OrderDetail({
             ) : (
               <Badge variant="outline" className="text-xs truncate max-w-[140px]">{osTypeLabels[order.os_type]}</Badge>
             )}
-            <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : 'OS #'}{order.order_number}</Badge>
+            {order.order_number > 0 && (
+              <Badge variant="secondary" className="text-xs shrink-0">{isTask ? '' : 'OS #'}{order.order_number}</Badge>
+            )}
           </div>
           {isTask && taskTitle && (
             <p className="text-sm font-medium">{taskTitle}</p>
