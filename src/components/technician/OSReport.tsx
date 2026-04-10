@@ -84,7 +84,16 @@ function ReportImage({ src, alt, className, onClick }: { src: string; alt: strin
   );
 }
 
-export function OSReport({ serviceOrder, photos }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProps) {
+  // Apply snapshot fallback for deleted entities
+  const snapshot = (rawServiceOrder as any).snapshot_data;
+  const serviceOrder = {
+    ...rawServiceOrder,
+    customer: rawServiceOrder.customer || snapshot?.customer || null,
+    equipment: rawServiceOrder.equipment || snapshot?.equipment || null,
+    form_template: rawServiceOrder.form_template || snapshot?.form_template || null,
+  };
+
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
@@ -149,6 +158,8 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     return groups.length > 0 ? groups : [{ label: 'Checklist', responses: otherResponses }];
   })();
 
+  
+
   useEffect(() => {
     fetchCompany();
     fetchAllResponses();
@@ -200,7 +211,12 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
     }
     if (!userId) return;
     const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
-    if (data) setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
+    if (data) {
+      setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
+    } else if (snapshot?.technician) {
+      // Fallback to snapshot if profile was deleted
+      setTechnicianInfo({ full_name: snapshot.technician.full_name, photo_url: snapshot.technician.avatar_url });
+    }
   };
 
   const fetchRating = async () => {
@@ -229,7 +245,11 @@ export function OSReport({ serviceOrder, photos }: OSReportProps) {
 
   const fetchContract = async (contractId: string) => {
     const { data } = await supabase.from('contracts').select('id, name').eq('id', contractId).maybeSingle();
-    if (data) setContractInfo(data);
+    if (data) {
+      setContractInfo(data);
+    } else if (snapshot?.contract) {
+      setContractInfo(snapshot.contract);
+    }
   };
 
   const fetchEquipmentItems = async () => {

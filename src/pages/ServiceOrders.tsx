@@ -395,9 +395,9 @@ export default function ServiceOrders() {
                               </TableCell>
                               <TableCell>
                                 <div>
-                                  <p className="font-medium">{os.customer?.name || 'N/A'}</p>
-                                  {os.equipment && (
-                                    <p className="text-xs text-muted-foreground">{os.equipment.name}</p>
+                                  <p className="font-medium">{os.customer?.name || (os as any).snapshot_data?.customer?.name || 'N/A'}</p>
+                                  {(os.equipment || (os as any).snapshot_data?.equipment) && (
+                                    <p className="text-xs text-muted-foreground">{os.equipment?.name || (os as any).snapshot_data?.equipment?.name}</p>
                                   )}
                                 </div>
                               </TableCell>
