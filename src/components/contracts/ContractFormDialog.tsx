@@ -250,8 +250,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           })),
         });
 
+        const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
+        const expectedOsCount = (result as any)?.expectedOsCount ?? occurrences.length;
+
         toast({
-          title: `✅ Contrato criado com ${occurrences.length} OSs geradas na agenda`,
+          title: isActive
+            ? generatedOsCount === expectedOsCount
+              ? `✅ Contrato criado com ${generatedOsCount} OSs geradas na agenda`
+              : `⚠️ Contrato criado com ${generatedOsCount} de ${expectedOsCount} OSs geradas na agenda`
+            : '✅ Contrato criado com sucesso!',
         });
         onOpenChange(false);
         if (onCreated && result) onCreated((result as any).id);
