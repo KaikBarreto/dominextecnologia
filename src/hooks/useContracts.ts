@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { toast as sonnerToast } from 'sonner';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { addDays, addMonths } from 'date-fns';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
@@ -84,8 +84,6 @@ export function useContracts() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
-  const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
@@ -342,57 +340,27 @@ export function useContracts() {
     if (error) throw error;
   };
 
-  const scheduleDeleteContract = useCallback((id: string) => {
-    // Immediately hide from UI
-    setPendingDeleteIds(prev => new Set(prev).add(id));
+  const deleteContractMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await executeDeleteContract(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['financial'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      toast({ title: 'Contrato excluído com sucesso!' });
+    },
+    onError: (e: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) });
+    },
+  });
 
-    const timer = setTimeout(async () => {
-      pendingTimers.current.delete(id);
-      try {
-        await executeDeleteContract(id);
-        queryClient.invalidateQueries({ queryKey: ['contracts'] });
-        queryClient.invalidateQueries({ queryKey: ['financial'] });
-        queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-      } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) });
-      } finally {
-        setPendingDeleteIds(prev => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }
-    }, 5000);
-
-    pendingTimers.current.set(id, timer);
-
-    sonnerToast('Contrato excluído', {
-      description: 'O contrato e seus dados serão removidos.',
-      duration: 5000,
-      action: {
-        label: 'Desfazer',
-        onClick: () => {
-          clearTimeout(pendingTimers.current.get(id));
-          pendingTimers.current.delete(id);
-          setPendingDeleteIds(prev => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-          sonnerToast.success('Exclusão cancelada');
-        },
-      },
-    });
-  }, [queryClient, toast]);
-
-  // Wrap in a fake mutation-like object for API compatibility
   const deleteContract = {
-    mutate: scheduleDeleteContract,
-    mutateAsync: async (id: string) => { scheduleDeleteContract(id); },
+    mutate: (id: string) => deleteContractMutation.mutate(id),
+    mutateAsync: (id: string) => deleteContractMutation.mutateAsync(id),
   };
 
-  // Filter out pending deletions from the visible list
-  const visibleContracts = contracts.filter(c => !pendingDeleteIds.has(c.id));
+  const visibleContracts = contracts;
 
   // Stats
   const now = new Date();
