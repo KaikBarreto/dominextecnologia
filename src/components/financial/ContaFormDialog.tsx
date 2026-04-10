@@ -102,6 +102,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     label: `${c.name} - ${c.customer?.name || 'Sem cliente'}`,
   }));
 
+  const activeCustomers = (customers || []).filter((c: any) => !c.is_deleted);
+  const customerOptions = activeCustomers.map((c: any) => ({ value: c.id, label: c.name }));
+
   const handleSubmit = async () => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
     setIsSubmitting(true);
