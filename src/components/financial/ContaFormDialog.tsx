@@ -51,7 +51,6 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   useEffect(() => {
     if (open) {
       if (editingTransaction) {
-        // Populate form with existing data
         setTipo(editingTransaction.transaction_type);
         setDescription(editingTransaction.description);
         setAmount(String(editingTransaction.amount));
@@ -59,9 +58,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setDueDate(editingTransaction.due_date || format(new Date(), 'yyyy-MM-dd'));
         setNotes(editingTransaction.notes || '');
         setContractId(editingTransaction.contract_id || '');
+        setCustomerId(editingTransaction.customer_id || '');
         setRecurrence('unica');
         setOccurrences(12);
-        // Extract employee from notes if present
         const empMatch = editingTransaction.notes?.match(/\[funcionario:([^\]]+)\]/);
         setEmployeeId(empMatch ? empMatch[1] : '');
       } else {
@@ -75,6 +74,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setNotes('');
         setEmployeeId('');
         setContractId('');
+        setCustomerId('');
       }
     }
   }, [open, defaultType, editingTransaction]);
