@@ -279,48 +279,89 @@ export function useContracts() {
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao atualizar status', description: getErrorMessage(e) }),
   });
 
-  const deleteContract = useMutation({
-    mutationFn: async (id: string) => {
-      // Collect service_order IDs linked to this contract (via occurrences)
-      const { data: occurrences } = await supabase
-        .from('contract_occurrences')
-        .select('service_order_id')
-        .eq('contract_id', id);
+  const executeDeleteContract = async (id: string) => {
+    // Collect service_order IDs linked to this contract (via occurrences)
+    const { data: occurrences } = await supabase
+      .from('contract_occurrences')
+      .select('service_order_id')
+      .eq('contract_id', id);
 
-      const osIds = (occurrences || [])
-        .map(o => o.service_order_id)
-        .filter(Boolean) as string[];
+    const osIds = (occurrences || [])
+      .map(o => o.service_order_id)
+      .filter(Boolean) as string[];
 
-      // Delete linked financial transactions
-      await supabase.from('financial_transactions').delete().eq('contract_id', id);
+    // Delete linked financial transactions
+    await supabase.from('financial_transactions').delete().eq('contract_id', id);
 
-      // Delete related records
-      await supabase.from('contract_occurrences').delete().eq('contract_id', id);
-      await supabase.from('contract_items').delete().eq('contract_id', id);
+    // Delete related records
+    await supabase.from('contract_occurrences').delete().eq('contract_id', id);
+    await supabase.from('contract_items').delete().eq('contract_id', id);
 
-      // Delete linked service orders (and their junction rows)
-      if (osIds.length > 0) {
-        await supabase.from('service_order_assignees').delete().in('service_order_id', osIds);
-        await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
-        await supabase.from('form_responses').delete().in('service_order_id', osIds);
-        await supabase.from('os_photos').delete().in('service_order_id', osIds);
-        await supabase.from('service_ratings').delete().in('service_order_id', osIds);
-        await supabase.from('service_orders').delete().in('id', osIds);
+    // Delete linked service orders (and their junction rows)
+    if (osIds.length > 0) {
+      await supabase.from('service_order_assignees').delete().in('service_order_id', osIds);
+      await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
+      await supabase.from('form_responses').delete().in('service_order_id', osIds);
+      await supabase.from('os_photos').delete().in('service_order_id', osIds);
+      await supabase.from('service_ratings').delete().in('service_order_id', osIds);
+      await supabase.from('service_orders').delete().in('id', osIds);
+    }
+
+    // Also delete any OS that references this contract directly but wasn't in occurrences
+    await supabase.from('service_orders').delete().eq('contract_id', id);
+
+    const { error } = await supabase.from('contracts').delete().eq('id', id);
+    if (error) throw error;
+  };
+
+  const scheduleDeleteContract = useCallback((id: string) => {
+    // Immediately hide from UI
+    setPendingDeleteIds(prev => new Set(prev).add(id));
+
+    const timer = setTimeout(async () => {
+      pendingTimers.current.delete(id);
+      try {
+        await executeDeleteContract(id);
+        queryClient.invalidateQueries({ queryKey: ['contracts'] });
+        queryClient.invalidateQueries({ queryKey: ['financial'] });
+        queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) });
+      } finally {
+        setPendingDeleteIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       }
+    }, 5000);
 
-      // Also delete any OS that references this contract directly but wasn't in occurrences
-      await supabase.from('service_orders').delete().eq('contract_id', id);
+    pendingTimers.current.set(id, timer);
 
-      const { error } = await supabase.from('contracts').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['financial'] });
-      toast({ title: 'Contrato excluído!' });
-    },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) }),
-  });
+    sonnerToast('Contrato excluído', {
+      description: 'O contrato e seus dados serão removidos.',
+      duration: 5000,
+      action: {
+        label: 'Desfazer',
+        onClick: () => {
+          clearTimeout(pendingTimers.current.get(id));
+          pendingTimers.current.delete(id);
+          setPendingDeleteIds(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          sonnerToast.success('Exclusão cancelada');
+        },
+      },
+    });
+  }, [queryClient, toast]);
+
+  // Wrap in a fake mutation-like object for API compatibility
+  const deleteContract = {
+    mutate: scheduleDeleteContract,
+    mutateAsync: async (id: string) => { scheduleDeleteContract(id); },
+  };
 
   // Stats
   const now = new Date();
