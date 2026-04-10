@@ -372,14 +372,14 @@ export function useContracts() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const osGeneratedThisMonth = contracts.flatMap(c => c.contract_occurrences || []).filter(o => {
+  const osGeneratedThisMonth = visibleContracts.flatMap(c => c.contract_occurrences || []).filter(o => {
     if (!o.service_order_id) return false;
     const d = new Date(o.scheduled_date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   }).length;
 
   const sevenDaysFromNow = addDays(now, 7);
-  const upcomingOccurrences = contracts.flatMap(c => c.contract_occurrences || []).filter(o => {
+  const upcomingOccurrences = visibleContracts.flatMap(c => c.contract_occurrences || []).filter(o => {
     if (o.status !== 'scheduled') return false;
     const d = new Date(o.scheduled_date);
     return d >= now && d <= sevenDaysFromNow;
