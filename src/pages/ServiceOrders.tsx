@@ -139,8 +139,16 @@ export default function ServiceOrders() {
 
   const handleDelete = async () => {
     if (osToDelete) {
-      if (deleteMode === 'group' && (osToDelete as any).recurrence_group_id) {
-        const groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === (osToDelete as any).recurrence_group_id);
+      if (deleteMode === 'group') {
+        // Delete all OS in the same recurrence group or contract
+        const recurrenceGroupId = (osToDelete as any).recurrence_group_id;
+        const contractId = (osToDelete as any).contract_id;
+        let groupOrders: ServiceOrder[] = [];
+        if (recurrenceGroupId) {
+          groupOrders = serviceOrders.filter((o: any) => o.recurrence_group_id === recurrenceGroupId);
+        } else if (contractId) {
+          groupOrders = serviceOrders.filter((o: any) => o.contract_id === contractId);
+        }
         for (const o of groupOrders) {
           await deleteServiceOrder.mutateAsync(o.id);
         }
@@ -155,7 +163,8 @@ export default function ServiceOrders() {
 
   const handleDeleteClick = (os: ServiceOrder) => {
     setOsToDelete(os);
-    setDeleteMode((os as any).recurrence_group_id ? null : 'single');
+    const hasGroup = !!(os as any).recurrence_group_id || !!(os as any).contract_id;
+    setDeleteMode(hasGroup ? null : 'single');
     setDeleteDialogOpen(true);
   };
 
