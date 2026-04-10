@@ -154,7 +154,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmit, isLoading, defaul
   }));
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Nova Tarefa">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? 'Editar Tarefa' : 'Nova Tarefa'}>
       <form onSubmit={handleSubmit} className="space-y-4 p-1">
         <div className="space-y-2">
           <Label>Título da Tarefa *</Label>
