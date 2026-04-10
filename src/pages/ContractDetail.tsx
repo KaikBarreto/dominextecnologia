@@ -67,7 +67,7 @@ export default function ContractDetail() {
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
 
-  const { createContract } = useContracts();
+  const { createContract, deleteContract } = useContracts();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -195,44 +195,12 @@ export default function ContractDetail() {
     }
   };
 
-  const handleDeleteContract = async () => {
+  const handleDeleteContract = () => {
     if (!contract || !id) return;
-    setIsDeleting(true);
-    try {
-      // Delete linked financial transactions
-      await supabase.from('financial_transactions').delete().eq('contract_id', id);
-      // Delete service orders linked to this contract
-      const osIds = (contract.contract_occurrences || []).filter(o => o.service_order_id).map(o => o.service_order_id!);
-      if (osIds.length > 0) {
-        await supabase.from('service_order_assignees').delete().in('service_order_id', osIds);
-        await supabase.from('service_order_equipment').delete().in('service_order_id', osIds);
-        await supabase.from('form_responses').delete().in('service_order_id', osIds);
-        await supabase.from('os_photos').delete().in('service_order_id', osIds);
-        await supabase.from('service_ratings').delete().in('service_order_id', osIds);
-        await supabase.from('service_orders').delete().in('id', osIds);
-      }
-      // Delete occurrences
-      await supabase.from('contract_occurrences').delete().eq('contract_id', id);
-      // Delete items
-      await supabase.from('contract_items').delete().eq('contract_id', id);
-      // Also delete any OS that references this contract directly but wasn't in occurrences
-      await supabase.from('service_orders').delete().eq('contract_id', id);
-      // Delete contract
-      const { error } = await supabase.from('contracts').delete().eq('id', id);
-      if (error) throw error;
-
-      queryClient.invalidateQueries({ queryKey: ['contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['financial'] });
-      toast({ title: 'Contrato excluído com sucesso!' });
-      navigate('/contratos');
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao excluir', description: err.message });
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteDialog(false);
-      setDeleteConfirmed(false);
-    }
+    setShowDeleteDialog(false);
+    setDeleteConfirmed(false);
+    deleteContract.mutate(id);
+    navigate('/contratos');
   };
 
   const handleRenewContract = async () => {
