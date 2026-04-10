@@ -67,7 +67,7 @@ export default function ContractDetail() {
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
 
-  const { createContract } = useContracts();
+  const { createContract, deleteContract } = useContracts();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
