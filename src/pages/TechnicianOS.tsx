@@ -1406,7 +1406,10 @@ export default function TechnicianOS() {
         src={previewPhoto || ''}
         alt="Equipamento"
         open={!!previewPhoto}
-        onClose={() => setPreviewPhoto(null)}
+        onClose={() => { setPreviewPhoto(null); setGalleryImages([]); }}
+        images={galleryImages.length > 1 ? galleryImages : undefined}
+        currentIndex={galleryIndex}
+        onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
       />
     </div>
   );
