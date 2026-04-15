@@ -87,6 +87,8 @@ export default function TechnicianOS() {
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   // Helper to safely extract joined object (Supabase may return array for some joins)
   const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
