@@ -11,7 +11,8 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, generateOccurrences, getFrequencyLabel } from '@/hooks/useContracts';
-import { useCustomers } from '@/hooks/useCustomers';
+import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
+import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
@@ -58,7 +59,7 @@ const QUICK_DAYS = [
 
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { createContract } = useContracts();
-  const { customers } = useCustomers();
+  const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { data: allProfiles } = useProfiles();
   const { teams, teamsWithMembers } = useTeams();
@@ -70,6 +71,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [showQuickCustomer, setShowQuickCustomer] = useState(false);
 
   // Step 1
   const [name, setName] = useState('');
@@ -275,6 +277,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const clientName = customers.find(c => c.id === customerId)?.name || '-';
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-[700px] overflow-y-auto flex flex-col">
         <SheetHeader>
@@ -318,15 +321,29 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <p className="text-xs text-muted-foreground">Dê um nome claro que identifique este contrato</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
+              <div className="space-y-2">
                   <Label>Cliente *</Label>
-                  <SearchableSelect
-                    options={customerOptions}
-                    value={customerId}
-                    onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
-                    placeholder="Selecione o cliente"
-                    searchPlaceholder="Buscar cliente..."
-                  />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <SearchableSelect
+                        options={customerOptions}
+                        value={customerId}
+                        onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
+                        placeholder="Selecione o cliente"
+                        searchPlaceholder="Buscar cliente..."
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0 h-10 w-10"
+                      onClick={() => setShowQuickCustomer(true)}
+                      title="Cadastrar novo cliente"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <AssigneeMultiSelect
@@ -631,5 +648,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         </SheetFooter>
       </SheetContent>
     </Sheet>
+
+    <CustomerFormDialog
+      open={showQuickCustomer}
+      onOpenChange={setShowQuickCustomer}
+      onSubmit={async (data) => {
+        const result = await createCustomer.mutateAsync(data as CustomerInput);
+        if (result?.id) {
+          setCustomerId(result.id);
+          setSelectedItems([]);
+        }
+        setShowQuickCustomer(false);
+      }}
+      isLoading={createCustomer.isPending}
+    />
+    </>
   );
 }

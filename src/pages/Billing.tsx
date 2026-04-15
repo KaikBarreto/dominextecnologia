@@ -245,16 +245,28 @@ export default function Billing() {
             {availableAddons.map((m: any) => {
               const info = MODULE_INFO[m.code];
               return (
-                <Card key={m.code} className="border-dashed hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => navigate('/checkout')}>
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-                      <Lock className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                <Card key={m.code} className="border-dashed hover:border-primary/50 transition-colors group">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                        <Lock className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{info?.name || m.name}</p>
+                        <p className="text-xs text-muted-foreground">R$ {formatBRL(m.price)}/mês</p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{info?.name || m.name}</p>
-                      <p className="text-xs text-muted-foreground">R$ {formatBRL(m.price)}/mês</p>
-                    </div>
-                    <Badge variant="secondary" className="shrink-0 text-xs">Contratar</Badge>
+                    {info?.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{info.description}</p>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => navigate('/checkout')}
+                    >
+                      Contratar
+                    </Button>
                   </CardContent>
                 </Card>
               );
