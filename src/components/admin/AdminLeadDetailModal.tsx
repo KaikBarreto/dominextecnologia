@@ -39,12 +39,15 @@ interface Props {
   lead: AdminLead;
 }
 
-export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
-  const { interactions, createInteraction } = useAdminLeadInteractions(lead.id);
+export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Props) {
+  const { interactions, createInteraction } = useAdminLeadInteractions(leadProp.id);
   const { stages } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
-  const { deleteLead, updateLead } = useAdminLeads();
+  const { deleteLead, updateLead, leads } = useAdminLeads();
   const { user } = useAuth();
+
+  // Use fresh data from query instead of stale prop
+  const lead = leads.find(l => l.id === leadProp.id) || leadProp;
   const stage = stages.find(s => s.id === lead.stage_id);
 
   const [newType, setNewType] = useState('ligacao');
@@ -140,7 +143,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
 
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={v => { if (!v) setIsEditing(false); onOpenChange(v); }} title={isEditing ? 'Editando Lead' : lead.title}>
+      <ResponsiveModal open={open} onOpenChange={v => { if (!v) setIsEditing(false); onOpenChange(v); }} title={isEditing ? 'Editando Lead' : 'Lead'}>
         <ScrollArea className="max-h-[70vh]">
           <div className="space-y-4 pr-2">
             {/* Action buttons */}
@@ -274,6 +277,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
                 {/* Contato */}
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Contato</h3>
+                  <p className="text-base font-bold mb-2">{lead.title}</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <div>
                       <span className="text-[11px] text-muted-foreground/70">Telefone</span>
