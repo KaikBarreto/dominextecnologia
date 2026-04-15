@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Building2, User, Mail, Phone, DollarSign, Calendar, Plus, MessageCircle, Pencil, Trash2 } from 'lucide-react';
+import { phoneMask } from '@/utils/masks';
 import { useAdminLeadInteractions, useAdminCrmStages, useAdminLeads, ADMIN_INTERACTION_TYPES, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
@@ -115,7 +116,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
               )}
               {lead.phone && (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="h-4 w-4" /> {lead.phone}
+                  <Phone className="h-4 w-4" /> {phoneMask(lead.phone)}
                 </div>
               )}
               <div className="flex items-center gap-2 text-muted-foreground">
