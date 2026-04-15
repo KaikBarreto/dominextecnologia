@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Building2, User, Mail, Phone, DollarSign, Calendar, Plus, MessageCircle, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Plus, MessageCircle, Pencil, Trash2, X, Check } from 'lucide-react';
 import { phoneMask } from '@/utils/masks';
 import { useAdminLeadInteractions, useAdminCrmStages, useAdminLeads, ADMIN_INTERACTION_TYPES, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
