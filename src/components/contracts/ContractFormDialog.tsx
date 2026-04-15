@@ -318,15 +318,29 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 <p className="text-xs text-muted-foreground">Dê um nome claro que identifique este contrato</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
+              <div className="space-y-2">
                   <Label>Cliente *</Label>
-                  <SearchableSelect
-                    options={customerOptions}
-                    value={customerId}
-                    onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
-                    placeholder="Selecione o cliente"
-                    searchPlaceholder="Buscar cliente..."
-                  />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <SearchableSelect
+                        options={customerOptions}
+                        value={customerId}
+                        onValueChange={v => { setCustomerId(v); if (!isEditing) setSelectedItems([]); }}
+                        placeholder="Selecione o cliente"
+                        searchPlaceholder="Buscar cliente..."
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0 h-10 w-10"
+                      onClick={() => setShowQuickCustomer(true)}
+                      title="Cadastrar novo cliente"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <AssigneeMultiSelect
