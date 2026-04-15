@@ -6,8 +6,8 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 export type Lead = Tables<'leads'> & {
-  customers?: Tables<'customers'> | null;
-  assigned_profile?: { full_name: string } | null;
+  customers?: Partial<Tables<'customers'>> | null;
+  assigned_profile?: { full_name: string; avatar_url: string | null } | null;
 };
 export type LeadInsert = TablesInsert<'leads'>;
 export type LeadUpdate = TablesUpdate<'leads'>;
@@ -75,7 +75,7 @@ export function useLeads() {
         .order('updated_at', { ascending: false });
       
       if (error) throw error;
-      return data as (Lead & { crm_stages?: { id: string; name: string; color: string } | null })[];
+      return data as unknown as (Lead & { crm_stages?: { id: string; name: string; color: string } | null })[];
     },
   });
 
