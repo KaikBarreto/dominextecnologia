@@ -270,53 +270,82 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
               </div>
             ) : (
               /* ---- VIEW MODE ---- */
-              <>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-4 w-4 shrink-0" /> {lead.company_name || <span className="italic text-muted-foreground/50">—</span>}
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <User className="h-4 w-4 shrink-0" /> {lead.contact_name || <span className="italic text-muted-foreground/50">—</span>}
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-4 w-4 shrink-0" /> {lead.email || <span className="italic text-muted-foreground/50">—</span>}
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-4 w-4 shrink-0" /> {lead.phone ? phoneMask(lead.phone) : <span className="italic text-muted-foreground/50">—</span>}
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <DollarSign className="h-4 w-4 shrink-0" /> {formatCurrency(lead.value)}
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4 shrink-0" /> {lead.expected_close_date ? format(new Date(lead.expected_close_date + 'T12:00:00'), 'dd/MM/yyyy') : <span className="italic text-muted-foreground/50">—</span>}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {stage && (
-                    <Badge style={{ backgroundColor: stage.color, color: '#fff' }}>{stage.name}</Badge>
-                  )}
-                  {lead.source && originInfo && (
-                    <Badge
-                      className="border-0 flex items-center gap-1"
-                      style={{ backgroundColor: originInfo.color || '#6B7280', color: '#fff' }}
-                    >
-                      <OriginIcon name={originInfo.icon || 'Globe'} className="h-3 w-3" />
-                      {lead.source}
-                    </Badge>
-                  )}
-                  {lead.source && !originInfo && (
-                    <Badge variant="outline">{lead.source}</Badge>
-                  )}
-                </div>
-
+              <div className="space-y-4">
+                {/* Contato */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground mb-1">Observações</h4>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Contato</h3>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <span className="text-[11px] text-muted-foreground/70">Telefone</span>
+                      <p className="font-medium">{lead.phone ? phoneMask(lead.phone) : <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-muted-foreground/70">E-mail</span>
+                      <p className="font-medium truncate">{lead.email || <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-[11px] text-muted-foreground/70">Origem</span>
+                      <div className="mt-0.5">
+                        {originInfo ? (
+                          <Badge className="border-0 flex items-center gap-1 w-fit" style={{ backgroundColor: originInfo.color || '#6B7280', color: '#fff' }}>
+                            <OriginIcon name={originInfo.icon || 'Globe'} className="h-3 w-3" />
+                            {lead.source}
+                          </Badge>
+                        ) : lead.source ? (
+                          <Badge variant="outline">{lead.source}</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Negociação */}
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Negociação</h3>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <span className="text-[11px] text-muted-foreground/70">Empresa</span>
+                      <p className="font-medium">{lead.company_name || <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-muted-foreground/70">Contato</span>
+                      <p className="font-medium">{lead.contact_name || <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-muted-foreground/70">Valor</span>
+                      <p className="font-medium text-green-600">{formatCurrency(lead.value)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-muted-foreground/70">Etapa</span>
+                      <div className="mt-0.5">
+                        {stage ? (
+                          <Badge style={{ backgroundColor: stage.color, color: '#fff' }}>{stage.name}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground/40 italic">—</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-muted-foreground/70">Previsão de Fechamento</span>
+                      <p className="font-medium">{lead.expected_close_date ? format(new Date(lead.expected_close_date + 'T12:00:00'), 'dd/MM/yyyy') : <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Observações */}
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Observações</h3>
                   <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">
                     {lead.notes || 'Nenhuma observação registrada.'}
                   </p>
                 </div>
-              </>
+              </div>
             )}
 
             <Separator />
