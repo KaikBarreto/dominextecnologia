@@ -1,19 +1,18 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, DollarSign, TrendingUp, Users, Filter, Pencil, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, DollarSign, TrendingUp, Users, Pencil, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 
 export default function AdminCRM() {
-  const { leads, isLoading, updateLead, deleteLead } = useAdminLeads();
+  const { leads, isLoading, updateLead } = useAdminLeads();
   const { stages, isLoading: stagesLoading } = useAdminCrmStages();
 
   const [dialogOpen, setDialogOpen] = useState(false);

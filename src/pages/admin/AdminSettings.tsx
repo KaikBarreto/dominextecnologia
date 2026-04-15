@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Settings2, Target } from 'lucide-react';
+import { MapPin, Target } from 'lucide-react';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { AdminOriginsTab } from '@/components/admin/AdminOriginsTab';
 import { AdminCrmStagesTab } from '@/components/admin/AdminCrmStagesTab';
