@@ -69,13 +69,29 @@ export function useLeads() {
         .select(`
           *,
           customers (id, name, phone, email),
-          crm_stages (id, name, color),
-          assigned_profile:profiles!leads_assigned_to_fkey (full_name, avatar_url)
+          crm_stages (id, name, color)
         `)
         .order('updated_at', { ascending: false });
       
       if (error) throw error;
-      return data as unknown as (Lead & { crm_stages?: { id: string; name: string; color: string } | null })[];
+
+      // Fetch assigned profiles
+      const assignedIds = [...new Set((data || []).map(l => l.assigned_to).filter(Boolean))] as string[];
+      let profilesMap: Record<string, { full_name: string; avatar_url: string | null }> = {};
+      if (assignedIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, avatar_url')
+          .in('user_id', assignedIds);
+        if (profiles) {
+          profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url }]));
+        }
+      }
+
+      return (data || []).map(lead => ({
+        ...lead,
+        assigned_profile: lead.assigned_to ? profilesMap[lead.assigned_to] || null : null,
+      })) as unknown as (Lead & { crm_stages?: { id: string; name: string; color: string } | null })[];
     },
   });
 
