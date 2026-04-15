@@ -39,12 +39,15 @@ interface Props {
   lead: AdminLead;
 }
 
-export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
-  const { interactions, createInteraction } = useAdminLeadInteractions(lead.id);
+export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Props) {
+  const { interactions, createInteraction } = useAdminLeadInteractions(leadProp.id);
   const { stages } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
-  const { deleteLead, updateLead } = useAdminLeads();
+  const { deleteLead, updateLead, leads } = useAdminLeads();
   const { user } = useAuth();
+
+  // Use fresh data from query instead of stale prop
+  const lead = leads.find(l => l.id === leadProp.id) || leadProp;
   const stage = stages.find(s => s.id === lead.stage_id);
 
   const [newType, setNewType] = useState('ligacao');
