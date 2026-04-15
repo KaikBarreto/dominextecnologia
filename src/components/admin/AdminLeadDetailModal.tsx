@@ -140,7 +140,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
 
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={v => { if (!v) setIsEditing(false); onOpenChange(v); }} title={isEditing ? 'Editando Lead' : lead.title}>
+      <ResponsiveModal open={open} onOpenChange={v => { if (!v) setIsEditing(false); onOpenChange(v); }} title={isEditing ? 'Editando Lead' : 'Lead'}>
         <ScrollArea className="max-h-[70vh]">
           <div className="space-y-4 pr-2">
             {/* Action buttons */}
