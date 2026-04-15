@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import * as LucideIcons from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +11,14 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Building2, User, Mail, Phone, DollarSign, Calendar, Plus, MessageCircle } from 'lucide-react';
 import { useAdminLeadInteractions, useAdminCrmStages, ADMIN_INTERACTION_TYPES, type AdminLead } from '@/hooks/useAdminCrm';
+import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
+
+function OriginIcon({ name, className }: { name: string; className?: string }) {
+  const LucideIcon = (LucideIcons as any)[name];
+  if (!LucideIcon) return null;
+  return <LucideIcon className={className || 'h-3 w-3'} />;
+}
 
 interface Props {
   open: boolean;
@@ -21,6 +29,7 @@ interface Props {
 export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
   const { interactions, createInteraction } = useAdminLeadInteractions(lead.id);
   const { stages } = useAdminCrmStages();
+  const { origins } = useCompanyOrigins();
   const { user } = useAuth();
   const stage = stages.find(s => s.id === lead.stage_id);
 
@@ -39,6 +48,8 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
     setNewDesc('');
     setShowForm(false);
   };
+
+  const originInfo = lead.source ? origins.find(o => o.name === lead.source) : null;
 
   const formatCurrency = (v: number | null) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
 
@@ -78,10 +89,23 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
             )}
           </div>
 
-          {stage && (
-            <Badge style={{ backgroundColor: stage.color, color: '#fff' }}>{stage.name}</Badge>
-          )}
-          {lead.source && <Badge variant="outline">{lead.source}</Badge>}
+          <div className="flex flex-wrap gap-2">
+            {stage && (
+              <Badge style={{ backgroundColor: stage.color, color: '#fff' }}>{stage.name}</Badge>
+            )}
+            {lead.source && originInfo && (
+              <Badge
+                className="border-0 flex items-center gap-1"
+                style={{ backgroundColor: originInfo.color || '#6B7280', color: '#fff' }}
+              >
+                <OriginIcon name={originInfo.icon || 'Globe'} className="h-3 w-3" />
+                {lead.source}
+              </Badge>
+            )}
+            {lead.source && !originInfo && (
+              <Badge variant="outline">{lead.source}</Badge>
+            )}
+          </div>
 
           {lead.notes && (
             <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">{lead.notes}</p>
