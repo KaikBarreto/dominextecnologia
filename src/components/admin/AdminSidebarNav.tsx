@@ -20,7 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import logoWhiteHorizontal from '@/assets/logo-white-horizontal.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
 
-const ADMIN_MENU_ITEMS = [
+const ADMIN_MENU_ITEMS: { label: string; path: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'CRM', path: '/admin/crm', icon: Target },
   { label: 'Empresas', path: '/admin/empresas', icon: Building2 },
