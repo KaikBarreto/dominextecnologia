@@ -137,12 +137,13 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
             <div className="sm:col-span-2">
               <Label>Origem</Label>
               <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
-                <SelectTrigger>
+                <SelectTrigger
+                  className={selectedOrigin ? 'text-white font-medium border-transparent' : ''}
+                  style={selectedOrigin ? { backgroundColor: selectedOrigin.color || '#6B7280' } : undefined}
+                >
                   {selectedOrigin ? (
                     <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: selectedOrigin.color || '#6B7280' }}>
-                        <OriginIcon name={selectedOrigin.icon || 'Globe'} className="h-2.5 w-2.5 text-white" />
-                      </div>
+                      <OriginIcon name={selectedOrigin.icon || 'Globe'} className="h-3.5 w-3.5 text-white" />
                       <span>{selectedOrigin.name}</span>
                     </div>
                   ) : (
@@ -151,12 +152,15 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
                 </SelectTrigger>
                 <SelectContent>
                   {origins.map(o => (
-                    <SelectItem key={o.id} value={o.name} className="cursor-pointer [&[data-highlighted]]:text-white" style={{ ['--highlight-bg' as any]: o.color || '#6B7280' }}>
+                    <SelectItem
+                      key={o.id}
+                      value={o.name}
+                      className="cursor-pointer rounded-md my-0.5 text-white [&>span>div]:flex [&>span>div]:items-center [&>span>div]:gap-2"
+                      style={{ backgroundColor: o.color || '#6B7280' }}
+                    >
                       <div className="flex items-center gap-2">
-                        <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: o.color || '#6B7280' }}>
-                          <OriginIcon name={o.icon || 'Globe'} className="h-2.5 w-2.5 text-white" />
-                        </div>
-                        <span>{o.name}</span>
+                        <OriginIcon name={o.icon || 'Globe'} className="h-3.5 w-3.5 text-white" />
+                        <span className="text-white font-medium">{o.name}</span>
                       </div>
                     </SelectItem>
                   ))}

@@ -1,0 +1,1 @@
+DELETE FROM company_origins WHERE id IN ('5921b4a4-b62f-4cee-b228-e9e22da0d4c5', '8531d906-3e65-4b91-a7bb-3fdff3234f6d');
