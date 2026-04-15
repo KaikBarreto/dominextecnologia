@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,8 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, generateOccurrences, getFrequencyLabel } from '@/hooks/useContracts';
-import { useCustomers } from '@/hooks/useCustomers';
+import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
+import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
@@ -58,7 +59,7 @@ const QUICK_DAYS = [
 
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { createContract } = useContracts();
-  const { customers } = useCustomers();
+  const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { data: allProfiles } = useProfiles();
   const { teams, teamsWithMembers } = useTeams();
@@ -70,6 +71,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [showQuickCustomer, setShowQuickCustomer] = useState(false);
 
   // Step 1
   const [name, setName] = useState('');
