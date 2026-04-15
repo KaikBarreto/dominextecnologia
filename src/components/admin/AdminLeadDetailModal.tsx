@@ -147,9 +147,12 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
               )}
             </div>
 
-            {lead.notes && (
-              <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">{lead.notes}</p>
-            )}
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground mb-1">Observações</h4>
+              <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">
+                {lead.notes || 'Nenhuma observação registrada.'}
+              </p>
+            </div>
 
             <Separator />
 
