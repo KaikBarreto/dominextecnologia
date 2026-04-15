@@ -274,6 +274,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
                 {/* Contato */}
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Contato</h3>
+                  <p className="text-base font-bold mb-2">{lead.title}</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <div>
                       <span className="text-[11px] text-muted-foreground/70">Telefone</span>
