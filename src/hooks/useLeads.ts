@@ -69,7 +69,8 @@ export function useLeads() {
         .select(`
           *,
           customers (id, name, phone, email),
-          crm_stages (id, name, color)
+          crm_stages (id, name, color),
+          assigned_profile:profiles!leads_assigned_to_fkey (full_name, avatar_url)
         `)
         .order('updated_at', { ascending: false });
       
