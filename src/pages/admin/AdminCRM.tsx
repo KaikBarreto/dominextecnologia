@@ -35,7 +35,7 @@ export default function AdminCRM() {
   }, [leads, search]);
 
   const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
-  const unstagedLeads = filteredLeads.filter(l => !l.stage_id || !stages.find(s => s.id === l.stage_id));
+  
 
   const totalValue = leads.reduce((s, l) => s + Number(l.value || 0), 0);
   const activeLeads = leads.filter(l => {
