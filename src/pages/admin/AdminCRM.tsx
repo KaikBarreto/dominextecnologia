@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, DollarSign, TrendingUp, Users, MessageCircleMore } from 'lucide-react';
+import { Plus, Search, DollarSign, TrendingUp, Users } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

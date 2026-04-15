@@ -115,7 +115,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead }: Props) {
               )}
               {lead.phone && (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="h-4 w-4" /> {lead.phone}
+                  <Phone className="h-4 w-4" /> {phoneMask(lead.phone)}
                 </div>
               )}
               <div className="flex items-center gap-2 text-muted-foreground">
