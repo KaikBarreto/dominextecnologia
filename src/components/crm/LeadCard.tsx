@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { User, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Lead } from '@/hooks/useLeads';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -24,6 +25,8 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
     return 'text-destructive';
   };
 
+  const assignee = lead.assigned_profile;
+
   return (
     <Card 
       onClick={onClick}
@@ -42,6 +45,19 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
             </div>
           )}
         </div>
+
+        {/* Assigned user */}
+        {assignee && (
+          <div className="flex items-center gap-2 mb-3">
+            <Avatar className="h-5 w-5">
+              <AvatarImage src={assignee.avatar_url || undefined} />
+              <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                {assignee.full_name?.charAt(0)?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-muted-foreground truncate">{assignee.full_name}</span>
+          </div>
+        )}
 
         {/* Value */}
         {lead.value && lead.value > 0 && (
