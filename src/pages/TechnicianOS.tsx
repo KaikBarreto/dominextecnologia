@@ -872,14 +872,16 @@ export default function TechnicianOS() {
                                         ) : (
                                           <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
                                         )}
-                                        {r.response_photo_url && (
-                                          <img
-                                            src={r.response_photo_url}
-                                            alt=""
-                                            className="mt-1 rounded max-h-32 object-cover cursor-pointer"
-                                            onClick={() => setPreviewPhoto(r.response_photo_url)}
-                                          />
-                                        )}
+                                        {r.response_photo_url && (() => {
+                                          const urls = r.response_photo_url!.split(',').filter(Boolean).map((u: string) => u.trim());
+                                          return (
+                                            <div className="flex flex-wrap gap-2 mt-1">
+                                              {urls.map((url: string, i: number) => (
+                                                <img key={i} src={url} alt="" className="rounded max-h-32 object-cover cursor-pointer" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewPhoto(url); }} />
+                                              ))}
+                                            </div>
+                                          );
+                                        })()}
                                       </div>
                                     );
                                   })}
@@ -930,14 +932,16 @@ export default function TechnicianOS() {
                             ) : (
                               <p className="text-xs text-muted-foreground/60 mt-0.5 italic">Aguardando resposta...</p>
                             )}
-                            {r.response_photo_url && (
-                              <img
-                                src={r.response_photo_url}
-                                alt=""
-                                className="mt-1 rounded max-h-32 object-cover cursor-pointer"
-                                onClick={() => setPreviewPhoto(r.response_photo_url)}
-                              />
-                            )}
+                            {r.response_photo_url && (() => {
+                              const urls = r.response_photo_url!.split(',').filter(Boolean).map((u: string) => u.trim());
+                              return (
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {urls.map((url: string, i: number) => (
+                                    <img key={i} src={url} alt="" className="rounded max-h-32 object-cover cursor-pointer" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewPhoto(url); }} />
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}
@@ -976,7 +980,10 @@ export default function TechnicianOS() {
           src={previewPhoto || ''}
           alt="Foto"
           open={!!previewPhoto}
-          onClose={() => setPreviewPhoto(null)}
+          onClose={() => { setPreviewPhoto(null); setGalleryImages([]); }}
+          images={galleryImages.length > 1 ? galleryImages : undefined}
+          currentIndex={galleryIndex}
+          onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
         />
       </div>
     );
