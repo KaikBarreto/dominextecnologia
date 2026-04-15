@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronsUpDown,
   MessageCircle,
+  Target,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +22,11 @@ import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
 
 const ADMIN_MENU_ITEMS = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'CRM', path: '/admin/crm', icon: Target },
   { label: 'Empresas', path: '/admin/empresas', icon: Building2 },
   { label: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
   { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet },
+  { label: 'Configurações', path: '/admin/configuracoes', icon: Settings },
 ];
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
