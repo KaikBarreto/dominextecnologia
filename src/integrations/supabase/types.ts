@@ -41,6 +41,39 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_crm_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_financial_transactions: {
         Row: {
           amount: number
@@ -82,6 +115,112 @@ export type Database = {
           type?: string
         }
         Relationships: []
+      }
+      admin_lead_interactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          interaction_type: string
+          lead_id: string
+          next_action: string | null
+          next_action_date: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          interaction_type: string
+          lead_id: string
+          next_action?: string | null
+          next_action_date?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          interaction_type?: string
+          lead_id?: string
+          next_action?: string | null
+          next_action_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_lead_interactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "admin_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_leads: {
+        Row: {
+          company_name: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          expected_close_date: string | null
+          id: string
+          loss_reason: string | null
+          notes: string | null
+          phone: string | null
+          probability: number | null
+          source: string | null
+          stage_id: string | null
+          title: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          company_name?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expected_close_date?: string | null
+          id?: string
+          loss_reason?: string | null
+          notes?: string | null
+          phone?: string | null
+          probability?: number | null
+          source?: string | null
+          stage_id?: string | null
+          title: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          company_name?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expected_close_date?: string | null
+          id?: string
+          loss_reason?: string | null
+          notes?: string | null
+          phone?: string | null
+          probability?: number | null
+          source?: string | null
+          stage_id?: string | null
+          title?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "admin_crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {
