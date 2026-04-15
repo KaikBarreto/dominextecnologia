@@ -18,6 +18,7 @@ import {
   CreditCard,
   Building2,
   Map,
+  Target,
   FolderOpen,
   Boxes,
   ScrollText,
@@ -45,9 +46,6 @@ import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
-import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
@@ -105,23 +103,15 @@ const menuItems: MenuItem[] = [
 
 const adminMenuItems: MenuItem[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
+  { title: 'CRM', icon: Target, path: '/admin/crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas' },
   { title: 'Assinaturas', icon: CreditCard, path: '/admin/assinaturas' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
+  { title: 'Configurações', icon: Settings, path: '/admin/configuracoes' },
 ];
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
 const ICON_SIZE = 'h-[20px] w-[20px] shrink-0';
-
-const PLAN_LABELS: Record<string, string> = {
-  starter: 'Starter',
-  essencial: 'Essencial',
-  avancado: 'Avançado',
-  master: 'Master',
-  personalizado: 'Personalizado',
-  enterprise: 'Enterprise',
-  pro: 'Pro',
-};
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={cn('h-4 w-4 fill-current shrink-0', className)}>
@@ -133,7 +123,6 @@ export function AppSidebar() {
   const { user, profile, roles, hasScreenAccess, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
-  const { settings: companySettings } = useCompanySettings();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
@@ -181,6 +170,7 @@ export function AppSidebar() {
   }, [collapsed]);
 
   const isSuperAdmin = roles.includes('super_admin');
+  const showLogoLoading = logoLoading && !isSuperAdmin;
 
   const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
     return items.filter(item => {
@@ -221,17 +211,23 @@ export function AppSidebar() {
     toggleSidebar();
   };
 
-  const companyName = companySettings?.name || '';
-  const planLabel = PLAN_LABELS[companyData?.subscription_plan || ''] || companyData?.subscription_plan || '';
+  const userMenuItems = isSuperAdmin
+    ? [
+        { label: 'Dashboard', icon: LayoutDashboard, action: () => navigate('/admin/dashboard') },
+        { label: 'CRM', icon: Target, action: () => navigate('/admin/crm') },
+        { label: 'Empresas', icon: Building2, action: () => navigate('/admin/empresas') },
+        { label: 'Configurações', icon: Settings, action: () => navigate('/admin/configuracoes') },
+      ]
+    : [
+        { label: 'Perfil', icon: UserCircle, action: () => navigate('/perfil') },
+        { label: 'Assinatura', icon: CreditCard, action: () => navigate('/assinatura') },
+        { label: 'Tutoriais', icon: GraduationCap, action: () => navigate('/tutoriais') },
+        { label: 'Configurações', icon: Settings, action: () => navigate('/configuracoes'), screenKey: 'screen:settings' },
+      ];
 
-  const userMenuItems = [
-    { label: 'Perfil', icon: UserCircle, action: () => navigate('/perfil') },
-    { label: 'Assinatura', icon: CreditCard, action: () => navigate('/assinatura') },
-    { label: 'Tutoriais', icon: GraduationCap, action: () => navigate('/tutoriais') },
-    { label: 'Configurações', icon: Settings, action: () => navigate('/configuracoes'), screenKey: 'screen:settings' },
-  ];
-
-  const visibleUserMenuItems = userMenuItems.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
+  const visibleUserMenuItems = isSuperAdmin
+    ? userMenuItems
+    : userMenuItems.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
 
   const themeOptionClass = (active: boolean) =>
     cn(
@@ -245,15 +241,15 @@ export function AppSidebar() {
         <div className="relative h-full">
           <SidebarContent className="flex h-full flex-col p-0 overflow-hidden">
             <NavLink
-              to="/dashboard"
+              to={isSuperAdmin ? '/admin/dashboard' : '/dashboard'}
               className="h-14 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
             >
-              {logoLoading ? (
+              {showLogoLoading ? (
                 collapsed
                   ? <div className="h-7 w-7 rounded bg-muted animate-pulse" />
                   : <div className="h-8 w-28 rounded bg-muted animate-pulse" />
               ) : collapsed ? (
-                wlEnabled ? (
+                !isSuperAdmin && wlEnabled ? (
                   iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
                 ) : (
                   <>
@@ -263,11 +259,17 @@ export function AppSidebar() {
                 )
               ) : (
                 <>
-                  <img src={logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain dark:hidden" />
-                  <img src={logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain hidden dark:block" />
+                  <img src={isSuperAdmin ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain dark:hidden" />
+                  <img src={isSuperAdmin ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain hidden dark:block" />
                 </>
               )}
             </NavLink>
+
+            {isSuperAdmin && !collapsed && (
+              <div className="flex items-center justify-center border-b border-border py-2">
+                <span className="text-xs font-semibold text-destructive">Painel Administrativo</span>
+              </div>
+            )}
 
 
             <div ref={menuScrollRef} className={cn('flex-1 overflow-y-auto pt-2', collapsed ? 'px-1.5' : 'px-4')}>
@@ -425,45 +427,49 @@ export function AppSidebar() {
                       </button>
                     ))}
 
-                    <div className="group/theme relative">
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
-                      >
-                        <Sun className="h-4 w-4 shrink-0" />
-                        <span>Tema</span>
-                        <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
-                      </button>
+                    {!isSuperAdmin && (
+                      <>
+                        <div className="group/theme relative">
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Sun className="h-4 w-4 shrink-0" />
+                            <span>Tema</span>
+                            <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
+                          </button>
 
-                      <div className="pointer-events-none invisible absolute left-full top-0 z-50 ml-1 w-40 rounded-md border bg-popover p-1 text-popover-foreground opacity-0 shadow-md transition-all duration-150 group-hover/theme:pointer-events-auto group-hover/theme:visible group-hover/theme:opacity-100 group-focus-within/theme:pointer-events-auto group-focus-within/theme:visible group-focus-within/theme:opacity-100">
-                        <button type="button" onClick={() => applyTheme('dark')} className={themeOptionClass(theme === 'dark')}>
-                          <Moon className="h-4 w-4 shrink-0" />
-                          <span>Escuro</span>
+                          <div className="pointer-events-none invisible absolute left-full top-0 z-50 ml-1 w-40 rounded-md border bg-popover p-1 text-popover-foreground opacity-0 shadow-md transition-all duration-150 group-hover/theme:pointer-events-auto group-hover/theme:visible group-hover/theme:opacity-100 group-focus-within/theme:pointer-events-auto group-focus-within/theme:visible group-focus-within/theme:opacity-100">
+                            <button type="button" onClick={() => applyTheme('dark')} className={themeOptionClass(theme === 'dark')}>
+                              <Moon className="h-4 w-4 shrink-0" />
+                              <span>Escuro</span>
+                            </button>
+                            <button type="button" onClick={() => applyTheme('light')} className={themeOptionClass(theme === 'light')}>
+                              <Sun className="h-4 w-4 shrink-0" />
+                              <span>Claro</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setHelpOpen(true)}
+                          className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                        >
+                          <HelpCircle className="h-4 w-4 shrink-0" />
+                          <span>Central de Ajuda</span>
                         </button>
-                        <button type="button" onClick={() => applyTheme('light')} className={themeOptionClass(theme === 'light')}>
-                          <Sun className="h-4 w-4 shrink-0" />
-                          <span>Claro</span>
-                        </button>
-                      </div>
-                    </div>
 
-                    <button
-                      onClick={() => setHelpOpen(true)}
-                      className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
-                    >
-                      <HelpCircle className="h-4 w-4 shrink-0" />
-                      <span>Central de Ajuda</span>
-                    </button>
-
-                    <a
-                      href={WHATSAPP_SUPPORT_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-success hover:text-success-foreground"
-                    >
-                      <WhatsAppIcon />
-                      <span>Suporte</span>
-                    </a>
+                        <a
+                          href={WHATSAPP_SUPPORT_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-success hover:text-success-foreground"
+                        >
+                          <WhatsAppIcon />
+                          <span>Suporte</span>
+                        </a>
+                      </>
+                    )}
                   </div>
 
                   <div className="border-t py-1">
