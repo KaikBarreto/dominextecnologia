@@ -15,10 +15,12 @@ import logoGreen from '@/assets/logo-horizontal-verde.png';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 
 function HeaderContent() {
-  const { user, signOut } = useAuth();
+  const { roles } = useAuth();
   const { toggleSidebar, isMobile, state } = useSidebar();
   const { isLoading: logoLoading } = useWhiteLabel();
   const navigate = useNavigate();
+  const isSuperAdmin = roles.includes('super_admin');
+  const adminTarget = isSuperAdmin ? '/admin/dashboard' : '/dashboard';
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
@@ -41,7 +43,7 @@ function HeaderContent() {
           {logoLoading ? (
             <div className="h-6 w-24 rounded bg-muted animate-pulse" />
           ) : (
-            <img src={document.documentElement.classList.contains('dark') ? logoGreen : logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+            <img src={document.documentElement.classList.contains('dark') ? logoGreen : logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate(adminTarget)} />
           )}
         </div>
       )}
@@ -76,10 +78,12 @@ function SidebarAppLayout() {
 }
 
 function TopbarAppLayout() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, roles } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isLoading: logoLoading } = useWhiteLabel();
+  const isSuperAdmin = roles.includes('super_admin');
+  const adminTarget = isSuperAdmin ? '/admin/dashboard' : '/dashboard';
 
   // On mobile, fallback to sidebar layout
   if (isMobile) {
@@ -93,12 +97,18 @@ function TopbarAppLayout() {
         {logoLoading ? (
           <div className="h-6 w-24 rounded bg-muted animate-pulse" />
         ) : (
-          <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate('/dashboard')} />
+          <img src={logoDark} alt="Dominex" className="h-6 w-auto cursor-pointer" onClick={() => navigate(adminTarget)} />
         )}
         <div className="flex items-center gap-1">
           {user && (
             <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/perfil')} title="Meu Perfil">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => navigate(isSuperAdmin ? '/admin/configuracoes' : '/perfil')}
+                title={isSuperAdmin ? 'Configurações do Admin' : 'Meu Perfil'}
+              >
                 <UserCircle className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-white" onClick={signOut} title="Sair">
@@ -122,12 +132,14 @@ function TopbarAppLayout() {
 
 export function AppLayout() {
   const { navigationStyle } = useNavigationPreference();
+  const { roles } = useAuth();
+  const isSuperAdmin = roles.includes('super_admin');
   useKeyboardShortcuts(true);
 
   return (
     <>
       <VersionUpdateNotification />
-      {navigationStyle === 'topbar' ? <TopbarAppLayout /> : <SidebarAppLayout />}
+      {isSuperAdmin ? <SidebarAppLayout /> : navigationStyle === 'topbar' ? <TopbarAppLayout /> : <SidebarAppLayout />}
     </>
   );
 }

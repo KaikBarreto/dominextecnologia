@@ -3,7 +3,6 @@ import {
   ClipboardList,
   Calendar,
   Users,
-  UsersRound,
   Package,
   DollarSign,
   FileText,
@@ -146,22 +145,6 @@ export function AppSidebar() {
     document.documentElement.classList.toggle('dark', next === 'dark');
     localStorage.setItem('theme', next);
   };
-
-  const companyId = profile?.company_id;
-  const { data: companyData } = useQuery({
-    queryKey: ['company-plan', companyId],
-    queryFn: async () => {
-      if (!companyId) return null;
-      const { data } = await supabase
-        .from('companies')
-        .select('subscription_plan, subscription_status')
-        .eq('id', companyId)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!companyId,
-    staleTime: 5 * 60 * 1000,
-  });
 
   useEffect(() => {
     if (collapsed && menuScrollRef.current) {
