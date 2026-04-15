@@ -277,6 +277,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const clientName = customers.find(c => c.id === customerId)?.name || '-';
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-[700px] overflow-y-auto flex flex-col">
         <SheetHeader>
@@ -647,5 +648,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         </SheetFooter>
       </SheetContent>
     </Sheet>
+
+    <CustomerFormDialog
+      open={showQuickCustomer}
+      onOpenChange={setShowQuickCustomer}
+      onSubmit={async (data) => {
+        const result = await createCustomer.mutateAsync(data as CustomerInput);
+        if (result?.id) {
+          setCustomerId(result.id);
+          setSelectedItems([]);
+        }
+        setShowQuickCustomer(false);
+      }}
+      isLoading={createCustomer.isPending}
+    />
+    </>
   );
 }

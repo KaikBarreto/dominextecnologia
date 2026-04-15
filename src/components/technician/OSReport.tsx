@@ -100,6 +100,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [ratingData, setRatingData] = useState<any>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const [contractInfo, setContractInfo] = useState<{ name: string; id: string } | null>(null);
   const [headerConfig, setHeaderConfig] = useState<ReportHeaderConfig>(DEFAULT_HEADER_CONFIG);
@@ -378,9 +380,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
                 )}
                 {hasPhoto && (
                   <div className="flex flex-wrap gap-2">
-                    {response.response_photo_url!.split(',').filter(Boolean).map((url, i) => (
-                      <ReportImage key={i} src={url.trim()} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setPreviewImage(url.trim())} />
-                    ))}
+                    {(() => {
+                      const urls = response.response_photo_url!.split(',').filter(Boolean).map(u => u.trim());
+                      return urls.map((url, i) => (
+                        <ReportImage key={i} src={url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewImage(url); }} />
+                      ));
+                    })()}
                   </div>
                 )}
               </>
@@ -876,7 +881,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
       <ImagePreviewModal
         src={previewImage || ''}
         open={!!previewImage}
-        onClose={() => setPreviewImage(null)}
+        onClose={() => { setPreviewImage(null); setGalleryImages([]); }}
+        images={galleryImages.length > 1 ? galleryImages : undefined}
+        currentIndex={galleryIndex}
+        onNavigate={(i) => { setGalleryIndex(i); setPreviewImage(galleryImages[i]); }}
       />
     </>
   );
