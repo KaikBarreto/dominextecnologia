@@ -108,18 +108,20 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
     clone.style.borderRadius = '0';
     clone.style.overflow = 'visible';
 
-    // Force all accordions open in the clone
-    clone.querySelectorAll('[data-state="closed"]').forEach(el => {
+    // Force ALL accordions / collapsible regions open in the clone
+    clone.querySelectorAll('[data-state]').forEach(el => {
       el.setAttribute('data-state', 'open');
     });
-    clone.querySelectorAll('[role="region"]').forEach(el => {
+    // Force every region / hidden content area to be fully visible
+    clone.querySelectorAll('[role="region"], [data-radix-collapsible-content], [data-radix-accordion-content]').forEach(el => {
       const htmlEl = el as HTMLElement;
-      htmlEl.style.display = 'block';
-      htmlEl.style.height = 'auto';
-      htmlEl.style.maxHeight = 'none';
-      htmlEl.style.overflow = 'visible';
-      htmlEl.style.opacity = '1';
-      htmlEl.style.visibility = 'visible';
+      htmlEl.style.cssText += ';display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;opacity:1!important;visibility:visible!important;animation:none!important;transition:none!important;';
+    });
+    // Also force any element with hidden/animating styles
+    clone.querySelectorAll('[hidden], [style*="display: none"], [style*="height: 0"]').forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.removeAttribute('hidden');
+      htmlEl.style.cssText += ';display:block!important;height:auto!important;overflow:visible!important;';
     });
 
     // Remove print:hidden elements
@@ -131,41 +133,19 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
     // Wait for images and styles to settle
     await new Promise(r => setTimeout(r, 200));
 
-    // 3. Collect blocks — the header sections come first (no data-pdf-section wrapper for
-    //    the overall header/status bar), then the padded content area sections.
-    //    We'll walk top-level children of the clone.
+    // 3. Collect all [data-pdf-section] blocks from anywhere in the clone.
+    //    We use a deep querySelectorAll so nested accordion items are always found.
     const blocks: HTMLElement[] = [];
+    const allSections = clone.querySelectorAll('[data-pdf-section]');
     
-    // The clone structure is:
-    // - header div (data-pdf-section) 
-    // - status bar div (data-pdf-section)
-    // - content div (p-4 sm:p-6) containing [data-pdf-section] children
-    
-    const topChildren = Array.from(clone.children) as HTMLElement[];
-    for (const child of topChildren) {
-      if (child.hasAttribute('data-pdf-section')) {
-        blocks.push(child);
-      } else {
-        // This is the content wrapper — extract its data-pdf-section children
-        const sections = child.querySelectorAll(':scope > [data-pdf-section], :scope > .space-y-2 > [data-pdf-section], :scope > div > [data-pdf-section]');
-        if (sections.length > 0) {
-          sections.forEach(s => blocks.push(s as HTMLElement));
-        } else {
-          // Also grab the Accordion groups directly
-          const innerChildren = Array.from(child.children) as HTMLElement[];
-          for (const inner of innerChildren) {
-            if (inner.hasAttribute('data-pdf-section')) {
-              blocks.push(inner);
-            } else {
-              // Could be the accordion wrapper — get its children
-              const accordionItems = inner.querySelectorAll('[data-pdf-section]');
-              if (accordionItems.length > 0) {
-                accordionItems.forEach(ai => blocks.push(ai as HTMLElement));
-              } else if (inner.children.length > 0 || inner.textContent?.trim()) {
-                blocks.push(inner);
-              }
-            }
-          }
+    if (allSections.length > 0) {
+      allSections.forEach(s => blocks.push(s as HTMLElement));
+    } else {
+      // Fallback: grab every direct child of the content wrapper
+      const topChildren = Array.from(clone.children) as HTMLElement[];
+      for (const child of topChildren) {
+        if (child.children.length > 0 || child.textContent?.trim()) {
+          blocks.push(child);
         }
       }
     }
