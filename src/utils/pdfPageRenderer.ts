@@ -133,41 +133,19 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
     // Wait for images and styles to settle
     await new Promise(r => setTimeout(r, 200));
 
-    // 3. Collect blocks — the header sections come first (no data-pdf-section wrapper for
-    //    the overall header/status bar), then the padded content area sections.
-    //    We'll walk top-level children of the clone.
+    // 3. Collect all [data-pdf-section] blocks from anywhere in the clone.
+    //    We use a deep querySelectorAll so nested accordion items are always found.
     const blocks: HTMLElement[] = [];
+    const allSections = clone.querySelectorAll('[data-pdf-section]');
     
-    // The clone structure is:
-    // - header div (data-pdf-section) 
-    // - status bar div (data-pdf-section)
-    // - content div (p-4 sm:p-6) containing [data-pdf-section] children
-    
-    const topChildren = Array.from(clone.children) as HTMLElement[];
-    for (const child of topChildren) {
-      if (child.hasAttribute('data-pdf-section')) {
-        blocks.push(child);
-      } else {
-        // This is the content wrapper — extract its data-pdf-section children
-        const sections = child.querySelectorAll(':scope > [data-pdf-section], :scope > .space-y-2 > [data-pdf-section], :scope > div > [data-pdf-section]');
-        if (sections.length > 0) {
-          sections.forEach(s => blocks.push(s as HTMLElement));
-        } else {
-          // Also grab the Accordion groups directly
-          const innerChildren = Array.from(child.children) as HTMLElement[];
-          for (const inner of innerChildren) {
-            if (inner.hasAttribute('data-pdf-section')) {
-              blocks.push(inner);
-            } else {
-              // Could be the accordion wrapper — get its children
-              const accordionItems = inner.querySelectorAll('[data-pdf-section]');
-              if (accordionItems.length > 0) {
-                accordionItems.forEach(ai => blocks.push(ai as HTMLElement));
-              } else if (inner.children.length > 0 || inner.textContent?.trim()) {
-                blocks.push(inner);
-              }
-            }
-          }
+    if (allSections.length > 0) {
+      allSections.forEach(s => blocks.push(s as HTMLElement));
+    } else {
+      // Fallback: grab every direct child of the content wrapper
+      const topChildren = Array.from(clone.children) as HTMLElement[];
+      for (const child of topChildren) {
+        if (child.children.length > 0 || child.textContent?.trim()) {
+          blocks.push(child);
         }
       }
     }
