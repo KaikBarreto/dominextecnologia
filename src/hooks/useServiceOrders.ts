@@ -79,15 +79,28 @@ export function useServiceOrders() {
         from += pageSize;
       }
 
-      // Fetch all assignees in one query
+      // Fetch all assignees with pagination (Supabase has 1000 row default limit)
       const orderIds = allData.map((o: any) => o.id);
       let allAssignees: any[] = [];
       if (orderIds.length > 0) {
-        const { data: assignees } = await supabase
-          .from('service_order_assignees')
-          .select('service_order_id, user_id')
-          .in('service_order_id', orderIds);
-        allAssignees = assignees || [];
+        // Paginate in chunks to avoid both URL length issues and the 1000 row limit
+        const chunkSize = 200; // chunk of order IDs per query
+        for (let i = 0; i < orderIds.length; i += chunkSize) {
+          const chunk = orderIds.slice(i, i + chunkSize);
+          let aFrom = 0;
+          const aPageSize = 1000;
+          while (true) {
+            const { data: assignees, error: aErr } = await supabase
+              .from('service_order_assignees')
+              .select('service_order_id, user_id')
+              .in('service_order_id', chunk)
+              .range(aFrom, aFrom + aPageSize - 1);
+            if (aErr) break;
+            allAssignees = allAssignees.concat(assignees || []);
+            if (!assignees || assignees.length < aPageSize) break;
+            aFrom += aPageSize;
+          }
+        }
       }
 
       // Attach assignees to each order
