@@ -335,7 +335,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
     try {
       const { generateReportPDF } = await import('@/utils/pdfPageRenderer');
       const orderNum = String(serviceOrder.order_number).padStart(6, '0');
-      await generateReportPDF(reportRef.current, `OS-${orderNum}.pdf`);
+      const companyName = company?.name ? ` | ${company.name}` : '';
+      await generateReportPDF(reportRef.current, `OS-${orderNum}${companyName}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
       toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Não foi possível montar o relatório em PDF. Tente novamente.' });

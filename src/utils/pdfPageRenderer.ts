@@ -108,18 +108,20 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
     clone.style.borderRadius = '0';
     clone.style.overflow = 'visible';
 
-    // Force all accordions open in the clone
-    clone.querySelectorAll('[data-state="closed"]').forEach(el => {
+    // Force ALL accordions / collapsible regions open in the clone
+    clone.querySelectorAll('[data-state]').forEach(el => {
       el.setAttribute('data-state', 'open');
     });
-    clone.querySelectorAll('[role="region"]').forEach(el => {
+    // Force every region / hidden content area to be fully visible
+    clone.querySelectorAll('[role="region"], [data-radix-collapsible-content], [data-radix-accordion-content]').forEach(el => {
       const htmlEl = el as HTMLElement;
-      htmlEl.style.display = 'block';
-      htmlEl.style.height = 'auto';
-      htmlEl.style.maxHeight = 'none';
-      htmlEl.style.overflow = 'visible';
-      htmlEl.style.opacity = '1';
-      htmlEl.style.visibility = 'visible';
+      htmlEl.style.cssText += ';display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;opacity:1!important;visibility:visible!important;animation:none!important;transition:none!important;';
+    });
+    // Also force any element with hidden/animating styles
+    clone.querySelectorAll('[hidden], [style*="display: none"], [style*="height: 0"]').forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.removeAttribute('hidden');
+      htmlEl.style.cssText += ';display:block!important;height:auto!important;overflow:visible!important;';
     });
 
     // Remove print:hidden elements
