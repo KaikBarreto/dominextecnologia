@@ -351,7 +351,7 @@ export function AppSidebar() {
                         >
                           <div className="flex items-center gap-3">
                             <item.icon className={ICON_SIZE} />
-                            <span>{item.title}</span>
+                            <span className="transition-opacity duration-200 ease-in-out whitespace-nowrap">{item.title}</span>
                           </div>
                           <ChevronDown
                             className={cn(
@@ -400,7 +400,7 @@ export function AppSidebar() {
                       }
                     >
                       <item.icon className={ICON_SIZE} />
-                      {!collapsed && <span>{item.title}</span>}
+                      <span className={cn('transition-opacity duration-200 ease-in-out whitespace-nowrap overflow-hidden', collapsed ? 'opacity-0 w-0' : 'opacity-100')}>{item.title}</span>
                     </NavLink>
                   );
                 })}
