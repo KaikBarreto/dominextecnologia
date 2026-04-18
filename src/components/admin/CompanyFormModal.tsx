@@ -464,7 +464,16 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                       <SelectItem value="start" disabled>Carregando...</SelectItem>
                     ) : (
                       plans.map((p: any) => (
-                        <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
+                        <SelectItem key={p.code} value={p.code}>
+                          <span className="flex items-center gap-2">
+                            {p.name}
+                            {p.price > 0 && (
+                              <span className="text-muted-foreground text-sm">
+                                — R$ {Number(p.price).toFixed(2)}/mês
+                              </span>
+                            )}
+                          </span>
+                        </SelectItem>
                       ))
                     )}
                   </SelectContent>
