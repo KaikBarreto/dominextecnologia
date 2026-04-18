@@ -199,11 +199,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         </Badge>
       </div>
       {isTask ? (
-        <p className={cn('text-xs font-medium', bgColor ? 'text-white/90' : 'text-violet-600 dark:text-violet-400')}>
+        <p className={cn('text-xs font-medium break-words line-clamp-2', bgColor ? 'text-white/90' : 'text-violet-600 dark:text-violet-400')}>
           {taskTitle || 'Tarefa'}
         </p>
       ) : (
-        <p className={cn('text-xs font-medium', bgColor ? 'text-white/90' : 'text-primary')}>{osTypeLabels[order.os_type]}</p>
+        <p className={cn('text-xs font-medium truncate', bgColor ? 'text-white/90' : 'text-primary')}>{osTypeLabels[order.os_type]}</p>
       )}
       {!isTask && (
         <div className={cn('flex items-center gap-1.5 text-xs', bgColor ? 'text-white/80' : 'text-muted-foreground')}>
@@ -218,7 +218,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         </div>
       )}
       {isTask && order.description && (
-        <div className={cn('text-xs truncate', bgColor ? 'text-white/70' : 'text-muted-foreground')}>
+        <div className={cn('text-xs break-words line-clamp-2', bgColor ? 'text-white/70' : 'text-muted-foreground')}>
           {order.description}
         </div>
       )}
