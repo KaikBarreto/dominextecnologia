@@ -3046,6 +3046,8 @@ export type Database = {
           displacement_cost: number | null
           distance_km: number | null
           final_price: number | null
+          financial_generated_at: string | null
+          financial_transaction_id: string | null
           id: string
           include_gifts: boolean
           km_cost: number
@@ -3085,6 +3087,8 @@ export type Database = {
           displacement_cost?: number | null
           distance_km?: number | null
           final_price?: number | null
+          financial_generated_at?: string | null
+          financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
           km_cost?: number
@@ -3124,6 +3128,8 @@ export type Database = {
           displacement_cost?: number | null
           distance_km?: number | null
           final_price?: number | null
+          financial_generated_at?: string | null
+          financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
           km_cost?: number
@@ -3166,6 +3172,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
           {
@@ -4546,6 +4559,8 @@ export type Database = {
           displacement_cost: number | null
           distance_km: number | null
           final_price: number | null
+          financial_generated_at: string | null
+          financial_transaction_id: string | null
           id: string
           include_gifts: boolean
           km_cost: number
