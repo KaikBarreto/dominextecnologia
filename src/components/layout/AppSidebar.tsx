@@ -109,7 +109,7 @@ const adminMenuItems: MenuItem[] = [
   { title: 'Configurações', icon: Settings, path: '/admin/configuracoes' },
 ];
 
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
 const ICON_SIZE = 'h-[20px] w-[20px] shrink-0';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (

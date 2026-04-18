@@ -29,7 +29,7 @@ const ADMIN_MENU_ITEMS: { label: string; path: string; icon: React.ComponentType
   { label: 'Configurações', path: '/admin/configuracoes', icon: Settings },
 ];
 
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/5500000000000';
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={cn("h-4 w-4 fill-current shrink-0", className)}>
