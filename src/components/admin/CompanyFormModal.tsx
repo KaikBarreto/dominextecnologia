@@ -16,12 +16,14 @@ import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import {
   Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check,
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
-  Tag, Briefcase,
+  Tag, Briefcase, Link2,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { addDays, format } from 'date-fns';
 import { CepLookup } from '@/components/CepLookup';
+import { GenerateLinkModal } from './GenerateLinkModal';
 
 interface Props {
   open: boolean;
@@ -197,10 +199,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     updateField('subscription_plan', v);
     const p = plans.find((pl: any) => pl.code === v);
     if (p) {
-      if (p.price != null) updateField('subscription_value', String(p.price));
+      // Só sobrescreve o valor se NÃO estiver usando preço customizado
+      if (p.price != null && !formData.use_custom_price) updateField('subscription_value', String(p.price));
       if (p.max_users != null) updateField('max_users', String(p.max_users));
     }
-  }, [plans, updateField]);
+  }, [plans, updateField, formData.use_custom_price]);
 
   // ========== Mutation ==========
   const mutation = useMutation({
