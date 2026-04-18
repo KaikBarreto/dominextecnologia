@@ -212,6 +212,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           probability: number | null
+          segment: string | null
           source: string | null
           stage_id: string | null
           title: string
@@ -230,6 +231,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           probability?: number | null
+          segment?: string | null
           source?: string | null
           stage_id?: string | null
           title: string
@@ -248,6 +250,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           probability?: number | null
+          segment?: string | null
           source?: string | null
           stage_id?: string | null
           title?: string
