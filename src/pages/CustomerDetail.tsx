@@ -782,6 +782,8 @@ export default function CustomerDetail() {
         onSubmit={async (data: TaskFormData) => {
           setCreatingTask(true);
           try {
+            const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+            const company_id = await getCurrentUserCompanyId();
             const payload = normalizeOptionalForeignKeys({
               entry_type: 'tarefa',
               task_title: data.task_title,
@@ -796,6 +798,7 @@ export default function CustomerDetail() {
               description: data.description || null,
               os_type: 'visita_tecnica',
               status: 'pendente',
+              company_id,
             } as any, ['task_type_id', 'service_type_id', 'customer_id', 'technician_id', 'team_id']);
 
             const { data: created, error } = await supabase.from('service_orders').insert(payload as any).select('id');
