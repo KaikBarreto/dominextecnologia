@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,19 +14,31 @@ import {
 import { SalespersonFormDialog } from '@/components/admin/salesperson/SalespersonFormDialog';
 import { SalespersonDashboardStats } from '@/components/admin/salesperson/SalespersonDashboardStats';
 import { SalespersonPerformanceTable } from '@/components/admin/salesperson/SalespersonPerformanceTable';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function AdminSalespeople() {
+  const navigate = useNavigate();
+  const { hasFunctionAccess, linkedSalespersonId, isLoading: permsLoading } = useAdminPermissions();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<Salesperson | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  const canSeeAll = hasFunctionAccess('admin_vendedores_ver_todos');
+
+  // Vendedor restrito → redireciona para a própria página de detalhes
+  useEffect(() => {
+    if (!permsLoading && !canSeeAll && linkedSalespersonId) {
+      navigate(`/admin/vendedores/${linkedSalespersonId}`, { replace: true });
+    }
+  }, [permsLoading, canSeeAll, linkedSalespersonId, navigate]);
 
   const { data: salespeople = [], isLoading: loadingS } = useSalespeople();
   const { data: sales = [], isLoading: loadingSa } = useAllSalespersonSales();
   const { data: advances = [], isLoading: loadingA } = useAllSalespersonAdvances();
   const deleteMutation = useDeleteSalesperson();
 
-  const isLoading = loadingS || loadingSa || loadingA;
+  const isLoading = loadingS || loadingSa || loadingA || permsLoading;
   const filtered = salespeople.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.email || '').toLowerCase().includes(search.toLowerCase())
@@ -45,9 +58,11 @@ export default function AdminSalespeople() {
           <h1 className="text-xl lg:text-2xl font-bold text-foreground">Vendedores</h1>
           <p className="text-sm text-muted-foreground">Dashboard de controle gerencial da equipe comercial</p>
         </div>
-        <Button onClick={() => { setEditing(null); setIsFormOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Novo Vendedor
-        </Button>
+        {canSeeAll && (
+          <Button onClick={() => { setEditing(null); setIsFormOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Novo Vendedor
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
