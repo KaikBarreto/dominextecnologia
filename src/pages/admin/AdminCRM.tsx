@@ -359,26 +359,21 @@ export default function AdminCRM() {
         {isMobile ? (
           <Drawer open={filtersOpen} onOpenChange={setFiltersOpen}>
             <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle>Filtros</DrawerTitle>
-              </DrawerHeader>
+              <DrawerHeader><DrawerTitle>Filtros</DrawerTitle></DrawerHeader>
               <div className="px-4 pb-4 overflow-y-auto">
                 <FiltersForm
                   origins={origins}
-                  filterOrigin={filterOrigin}
-                  setFilterOrigin={setFilterOrigin}
-                  filterSegment={filterSegment}
-                  setFilterSegment={setFilterSegment}
-                  filterDateFrom={filterDateFrom}
-                  setFilterDateFrom={setFilterDateFrom}
-                  filterDateTo={filterDateTo}
-                  setFilterDateTo={setFilterDateTo}
+                  filterOrigin={filterOrigin} setFilterOrigin={setFilterOrigin}
+                  filterSegment={filterSegment} setFilterSegment={setFilterSegment}
+                  filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
+                  filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
+                  filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
                 />
               </div>
               <DrawerFooter>
                 <Button variant="outline" onClick={() => {
                   setFilterOrigin('all'); setFilterSegment('all');
-                  setFilterDateFrom(''); setFilterDateTo('');
+                  setFilterDatePreset('this_month'); setFilterDateFrom(''); setFilterDateTo('');
                 }}>Limpar</Button>
                 <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
               </DrawerFooter>
@@ -387,26 +382,21 @@ export default function AdminCRM() {
         ) : (
           <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
             <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-              <SheetHeader>
-                <SheetTitle>Filtros</SheetTitle>
-              </SheetHeader>
+              <SheetHeader><SheetTitle>Filtros</SheetTitle></SheetHeader>
               <div className="flex-1 overflow-y-auto py-4">
                 <FiltersForm
                   origins={origins}
-                  filterOrigin={filterOrigin}
-                  setFilterOrigin={setFilterOrigin}
-                  filterSegment={filterSegment}
-                  setFilterSegment={setFilterSegment}
-                  filterDateFrom={filterDateFrom}
-                  setFilterDateFrom={setFilterDateFrom}
-                  filterDateTo={filterDateTo}
-                  setFilterDateTo={setFilterDateTo}
+                  filterOrigin={filterOrigin} setFilterOrigin={setFilterOrigin}
+                  filterSegment={filterSegment} setFilterSegment={setFilterSegment}
+                  filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
+                  filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
+                  filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
                 />
               </div>
               <SheetFooter className="gap-2">
                 <Button variant="outline" onClick={() => {
                   setFilterOrigin('all'); setFilterSegment('all');
-                  setFilterDateFrom(''); setFilterDateTo('');
+                  setFilterDatePreset('this_month'); setFilterDateFrom(''); setFilterDateTo('');
                 }}>Limpar</Button>
                 <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
               </SheetFooter>
