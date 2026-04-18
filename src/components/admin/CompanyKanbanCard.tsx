@@ -1,8 +1,8 @@
-import { useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Edit, Trash2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Edit, Trash2, User as UserIcon, Gift, Tag } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -21,12 +21,13 @@ const PLAN_LABELS: Record<string, string> = {
 interface CompanyKanbanCardProps {
   company: any;
   origins: any[] | undefined;
+  salespeople?: any[];
   onEdit: (company: any) => void;
   onDelete: (company: any) => void;
   isDragging?: boolean;
 }
 
-export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDragging = false }: CompanyKanbanCardProps) {
+export function CompanyKanbanCard({ company, origins, salespeople, onEdit, onDelete, isDragging = false }: CompanyKanbanCardProps) {
   const navigate = useNavigate();
 
   const getExpirationInfo = (expirationDate: string | null) => {
@@ -42,63 +43,116 @@ export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDraggi
   };
 
   const originData = origins?.find(o => o.name === company.origin) || null;
+  const salesperson = salespeople?.find(s => s.id === company.salesperson_id) || null;
   const expirationInfo = getExpirationInfo(company.subscription_expires_at);
   const formatCurrency = (v: number | null) => !v ? 'R$ 0,00' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getInitials = (name: string) => name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
   const avatarColors = ['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-pink-500'];
   const avatarColor = avatarColors[company.name.charCodeAt(0) % avatarColors.length];
 
+  // Indicadores de promo / preço custom
+  const hasCustomPrice = company.custom_price != null && Number(company.custom_price) > 0;
+  const isPromoActive = hasCustomPrice && (
+    company.custom_price_permanent ||
+    (company.custom_price_months && (company.custom_price_payments_made || 0) < company.custom_price_months)
+  );
+
+  const valueShown = isPromoActive ? Number(company.custom_price) : (company.subscription_value || 0);
+  const cycleLabel = company.billing_cycle === 'yearly' ? '/ano' : '/mês';
+
   return (
-    <div
-      className={cn('bg-card rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing group w-full relative', isDragging && 'shadow-xl ring-2 ring-primary rotate-2 scale-105')}
-      onClick={() => navigate(`/admin/empresas/${company.id}`)}
-    >
-      <div className="p-2.5 sm:p-3 pb-1.5 sm:pb-2">
-        <div className="flex items-start gap-2.5 sm:gap-3">
-          <Avatar className={cn('h-9 w-9 sm:h-10 sm:w-10 shrink-0', avatarColor)}>
-            <AvatarFallback className="text-white text-[11px] sm:text-xs font-medium bg-transparent">{getInitials(company.name)}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-sm text-foreground truncate">{company.name}</h4>
-            <p className="text-primary text-sm font-medium truncate">{PLAN_LABELS[company.subscription_plan] || company.subscription_plan || '—'}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-2.5 sm:px-3 pb-2 space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Valor Mensal:</span>
-          <span className="text-sm font-semibold text-foreground">{formatCurrency(company.subscription_value)}</span>
-        </div>
-        {originData && (
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Origem:</span>
-            <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[55%]" style={{ backgroundColor: originData.color || '#6B7280' }}>
-              <span className="truncate">{originData.name}</span>
-            </Badge>
-          </div>
+    <TooltipProvider delayDuration={200}>
+      <div
+        className={cn(
+          'bg-card rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing group w-full relative',
+          isDragging && 'shadow-xl ring-2 ring-primary rotate-2 scale-105'
         )}
-      </div>
+        onClick={() => navigate(`/admin/empresas/${company.id}`)}
+      >
+        {/* Indicador promo no canto sup-direito */}
+        {isPromoActive && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="absolute top-2 right-2 z-10 flex items-center justify-center h-6 w-6 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-600">
+                <Gift className="h-3 w-3" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p className="text-xs">
+                Promo ativa: {formatCurrency(Number(company.custom_price))}
+                {company.custom_price_permanent
+                  ? ' (permanente)'
+                  : ` (${company.custom_price_payments_made || 0}/${company.custom_price_months} pagamentos)`}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
-      <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 flex items-center justify-between border-t pt-2 mt-1">
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          {company.phone && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-primary hover:text-white" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/55${company.phone.replace(/\D/g, '')}`, '_blank'); }}>
-              <WhatsAppIcon className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(company); }}>
-            <Edit className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive hover:text-white" onClick={(e) => { e.stopPropagation(); onDelete(company); }}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+        <div className="p-2.5 sm:p-3 pb-1.5 sm:pb-2">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <Avatar className={cn('h-9 w-9 sm:h-10 sm:w-10 shrink-0', avatarColor)}>
+              <AvatarFallback className="text-white text-[11px] sm:text-xs font-medium bg-transparent">{getInitials(company.name)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0 pr-6">
+              <h4 className="font-bold text-sm text-foreground truncate">{company.name}</h4>
+              <p className="text-primary text-sm font-medium truncate">{PLAN_LABELS[company.subscription_plan] || company.subscription_plan || '—'}</p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className={cn('text-xs font-medium', expirationInfo.color)}>{expirationInfo.text}</span>
-          <span className={cn('h-2 w-2 rounded-full animate-pulse shrink-0', expirationInfo.dotColor)} />
+
+        <div className="px-2.5 sm:px-3 pb-2 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Valor:</span>
+            <div className="flex items-center gap-1.5">
+              {isPromoActive && Number(company.subscription_value || 0) > 0 && (
+                <span className="text-[11px] line-through text-muted-foreground/60">
+                  {formatCurrency(company.subscription_value)}
+                </span>
+              )}
+              <span className={cn('text-sm font-semibold', isPromoActive ? 'text-amber-600' : 'text-foreground')}>
+                {formatCurrency(valueShown)}<span className="text-[10px] text-muted-foreground ml-0.5">{cycleLabel}</span>
+              </span>
+            </div>
+          </div>
+          {originData && (
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Origem:</span>
+              <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[55%]" style={{ backgroundColor: originData.color || '#6B7280' }}>
+                <span className="truncate">{originData.name}</span>
+              </Badge>
+            </div>
+          )}
+          {salesperson && (
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Vendedor:</span>
+              <Badge variant="outline" className="text-xs px-2 py-0.5 h-5 font-normal max-w-[55%] gap-1 border-primary/40 text-primary">
+                <UserIcon className="h-3 w-3 shrink-0" />
+                <span className="truncate">{salesperson.name}</span>
+              </Badge>
+            </div>
+          )}
+        </div>
+
+        <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 flex items-center justify-between border-t pt-2 mt-1">
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {company.phone && (
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-primary hover:text-white" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/55${company.phone.replace(/\D/g, '')}`, '_blank'); }}>
+                <WhatsAppIcon className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(company); }}>
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive hover:text-white" onClick={(e) => { e.stopPropagation(); onDelete(company); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={cn('text-xs font-medium', expirationInfo.color)}>{expirationInfo.text}</span>
+            <span className={cn('h-2 w-2 rounded-full animate-pulse shrink-0', expirationInfo.dotColor)} />
+          </div>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
