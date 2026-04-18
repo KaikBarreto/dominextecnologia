@@ -30,7 +30,9 @@ export function useEquipmentCategories() {
 
   const createCategory = useMutation({
     mutationFn: async (input: { name: string; description?: string; color?: string }) => {
-      const { data, error } = await supabase.from('equipment_categories').insert(input).select().single();
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+      const { data, error } = await supabase.from('equipment_categories').insert({ ...input, company_id } as any).select().single();
       if (error) throw error;
       return data;
     },

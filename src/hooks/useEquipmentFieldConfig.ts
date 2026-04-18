@@ -48,7 +48,9 @@ export function useEquipmentFieldConfig() {
 
   const createField = useMutation({
     mutationFn: async (input: Omit<EquipmentFieldConfig, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase.from('equipment_field_config').insert(input).select().single();
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+      const { data, error } = await supabase.from('equipment_field_config').insert({ ...input, company_id } as any).select().single();
       if (error) throw error;
       return data;
     },

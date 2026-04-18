@@ -54,9 +54,11 @@ export function useEquipment(customerId?: string) {
 
   const createEquipment = useMutation({
     mutationFn: async (input: EquipmentInput) => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('equipment')
-        .insert(input)
+        .insert({ ...input, company_id } as any)
         .select()
         .single();
       

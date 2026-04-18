@@ -318,6 +318,8 @@ export function useQuotes() {
 
   const createFinancialFromQuote = useMutation({
     mutationFn: async (q: Quote) => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { error } = await supabase.from('financial_transactions').insert({
         transaction_type: 'receita' as any,
         amount: q.total_value ?? 0,
@@ -325,7 +327,8 @@ export function useQuotes() {
         customer_id: q.customer_id,
         is_paid: false,
         created_by: user?.id,
-      });
+        company_id,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {

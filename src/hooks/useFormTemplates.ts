@@ -64,9 +64,11 @@ export function useFormTemplates() {
   const createTemplate = useMutation({
     mutationFn: async (template: FormTemplateInsert) => {
       const { data: userData } = await supabase.auth.getUser();
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('form_templates')
-        .insert({ ...template, created_by: userData.user?.id })
+        .insert({ ...template, created_by: userData.user?.id, company_id } as any)
         .select()
         .single();
       

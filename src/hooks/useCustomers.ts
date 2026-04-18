@@ -49,9 +49,11 @@ export function useCustomers() {
 
   const createCustomer = useMutation({
     mutationFn: async (input: CustomerInput) => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('customers')
-        .insert(input)
+        .insert({ ...input, company_id } as any)
         .select()
         .single();
       

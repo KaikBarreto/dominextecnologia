@@ -71,9 +71,11 @@ export function useCrmStages() {
       // Get max position
       const maxPosition = stages.length > 0 ? Math.max(...stages.map(s => s.position)) + 1 : 0;
       
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('crm_stages')
-        .insert({ ...stage, position: stage.position ?? maxPosition })
+        .insert({ ...stage, position: stage.position ?? maxPosition, company_id } as any)
         .select()
         .single();
       
