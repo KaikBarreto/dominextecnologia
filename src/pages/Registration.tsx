@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  ArrowLeft, ArrowRight, Loader2, Check, PartyPopper,
-  Phone, Mail, Building2, User, Lock, Eye, EyeOff,
+  ArrowLeft, ArrowRight, Loader2, Check,
+  Phone, Mail, Building2, User, Lock,
   Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
@@ -14,11 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { phoneMask, cpfCnpjMask } from '@/utils/masks';
+import { phoneMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
+import { PasswordInput } from '@/components/PasswordInput';
+import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 
 const ORIGIN_ICONS: Record<string, LucideIcon> = {
   Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
@@ -43,7 +45,6 @@ export default function Registration() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [selectedOrigin, setSelectedOrigin] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   const originFromUrl = searchParams.get('origem') || 'Site/Google';
 
@@ -53,6 +54,8 @@ export default function Registration() {
 
   const { register, handleSubmit, watch, formState: { errors }, trigger } = useForm<RegistrationFormData>();
   const emailValue = watch('company_email');
+  const passwordValue = watch('password') || '';
+  const confirmValue = watch('confirm_password') || '';
 
   // Fetch origins
   const { data: origins = [] } = useQuery({
@@ -140,8 +143,8 @@ export default function Registration() {
         toast({ variant: 'destructive', title: 'Senhas não coincidem' });
         return;
       }
-      if (data.password.length < 6) {
-        toast({ variant: 'destructive', title: 'Senha deve ter no mínimo 6 caracteres' });
+      if (!isPasswordStrong(data.password)) {
+        toast({ variant: 'destructive', title: 'Senha fraca', description: 'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.' });
         return;
       }
       registerMutation.mutate(data);
