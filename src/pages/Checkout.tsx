@@ -102,16 +102,27 @@ export default function Checkout() {
   });
 
   const isRenewal = companyData?.subscription_status === 'active';
+  const isPendingPayment = companyData?.subscription_status === 'pending_payment';
+  const skipPlanSelection = isRenewal || isPendingPayment;
 
-  // For renewal, build plan info from existing company data and skip to checkout
-  const renewalPlanInfo = isRenewal && companyData ? {
-    name: companyData.subscription_plan
-      ? companyData.subscription_plan.charAt(0).toUpperCase() + companyData.subscription_plan.slice(1)
-      : 'Atual',
-    price: companyData.subscription_value || 0,
-    features: [],
-    maxUsers: companyData.max_users || 5,
-  } : null;
+  // For renewal/pending payment, build plan info from existing company data
+  const lockedPlanInfo = skipPlanSelection && companyData ? (() => {
+    const planMap: Record<string, { name: string; maxUsers: number; features: string[] }> = {
+      start: { name: 'Start', maxUsers: 5, features: PREBUILT_PLANS[0].features },
+      starter: { name: 'Start', maxUsers: 5, features: PREBUILT_PLANS[0].features },
+      avancado: { name: 'Avançado', maxUsers: 5, features: PREBUILT_PLANS[1].features },
+      pro: { name: 'Avançado', maxUsers: 5, features: PREBUILT_PLANS[1].features },
+      master: { name: 'Master', maxUsers: 15, features: PREBUILT_PLANS[2].features },
+      enterprise: { name: 'Master', maxUsers: 15, features: PREBUILT_PLANS[2].features },
+    };
+    const meta = planMap[companyData.subscription_plan as string] || { name: 'Atual', maxUsers: companyData.max_users || 5, features: [] };
+    return {
+      name: meta.name,
+      price: companyData.subscription_value || 0,
+      features: meta.features,
+      maxUsers: companyData.max_users || meta.maxUsers,
+    };
+  })() : null;
 
   const trialDaysLeft = companyData?.subscription_expires_at
     ? differenceInDays(new Date(companyData.subscription_expires_at), new Date())
@@ -130,24 +141,24 @@ export default function Checkout() {
   }, [selectedModules, extraUsers, moduleCatalog]);
 
   const toggleModule = (code: string) => {
-    if (code === 'basic') return; // basic is always included
+    if (code === 'basic') return;
     setSelectedModules(prev =>
       prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
     );
   };
 
   // Get current selected plan info
-  const currentPlanInfo = isRenewal && renewalPlanInfo
-    ? renewalPlanInfo
+  const currentPlanInfo = skipPlanSelection && lockedPlanInfo
+    ? lockedPlanInfo
     : mode === 'custom'
       ? { name: 'Personalizado', price: customPlanPrice, features: selectedModules.map(code => moduleCatalog.find((m: any) => m.code === code)?.name || code), maxUsers: 5 + extraUsers }
       : PREBUILT_PLANS.find(p => p.code === selectedPlan);
 
   const planPrice = currentPlanInfo?.price || 0;
   const yearlyPrice = calculateYearlyPrice(planPrice);
-  const finalPrice = isRenewal ? planPrice : (billingCycle === 'yearly' ? yearlyPrice : planPrice);
+  const finalPrice = skipPlanSelection ? planPrice : (billingCycle === 'yearly' ? yearlyPrice : planPrice);
   const renewalCycle = companyData?.billing_cycle === 'yearly' ? 'yearly' : 'monthly';
-  const effectiveCycle = isRenewal ? renewalCycle as BillingCycle : billingCycle;
+  const effectiveCycle = skipPlanSelection ? renewalCycle as BillingCycle : billingCycle;
   const nextDueDate = addMonths(new Date(), effectiveCycle === 'yearly' ? 12 : 1).toISOString();
 
   if (companyLoading) {
