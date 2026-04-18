@@ -6,6 +6,7 @@ import { AdminDashboardStats } from '@/components/admin/AdminDashboardStats';
 import { AdminDashboardCharts } from '@/components/admin/AdminDashboardCharts';
 import { AdminTopClientsLTV } from '@/components/admin/AdminTopClientsLTV';
 import { AdminClientsByPlanChart } from '@/components/admin/AdminClientsByPlanChart';
+import { AdminBrazilMapChart } from '@/components/admin/AdminBrazilMapChart';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 export default function AdminDashboard() {
@@ -69,9 +70,10 @@ export default function AdminDashboard() {
       </div>
 
       <AdminDashboardStats companies={companies} payments={payments} income={income} />
+      <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} />
+      <AdminBrazilMapChart companies={companies} />
       <AdminTopClientsLTV companies={companies} />
       <AdminClientsByPlanChart companies={companies} />
-      <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} />
     </div>
   );
 }
