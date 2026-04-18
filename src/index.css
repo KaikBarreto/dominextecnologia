@@ -243,16 +243,18 @@ Design Premium com Verde da Marca #00C597
   }
 }
 
-/* Scroll reveal animations */
+/* Scroll reveal animations - escala suave entre seções */
 .scroll-reveal {
-  opacity: 0;
-  transform: translateY(30px);
+  opacity: 0.4;
+  transform: scale(0.85);
   transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transform-origin: center center;
+  will-change: transform, opacity;
 }
 
 .scroll-revealed {
   opacity: 1;
-  transform: translateY(0);
+  transform: scale(1);
 }
 
 /* Hide scrollbar for mobile feature pills */
