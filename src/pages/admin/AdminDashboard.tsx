@@ -1,26 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminDashboardStats } from '@/components/admin/AdminDashboardStats';
 import { AdminDashboardCharts } from '@/components/admin/AdminDashboardCharts';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { startOfMonth, subDays, startOfYear } from 'date-fns';
+import { AdminTopClientsLTV } from '@/components/admin/AdminTopClientsLTV';
+import { AdminClientsByPlanChart } from '@/components/admin/AdminClientsByPlanChart';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
   const firstName = profile?.full_name?.split(' ')[0] || 'Admin';
-  const [dateRange, setDateRange] = useState('thisMonth');
 
-  const { startDate, endDate } = useMemo(() => {
-    const now = new Date();
-    switch (dateRange) {
-      case '7days': return { startDate: subDays(now, 7), endDate: now };
-      case 'thisMonth': return { startDate: startOfMonth(now), endDate: now };
-      case 'thisYear': return { startDate: startOfYear(now), endDate: now };
-      default: return { startDate: startOfMonth(now), endDate: now };
-    }
-  }, [dateRange]);
+  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
+  const startDate = range.from ?? new Date(0);
+  const endDate = range.to ?? new Date();
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ['admin-companies'],
@@ -50,14 +44,10 @@ export default function AdminDashboard() {
   });
 
   const income = useMemo(() => {
-    return (transactions || [])
-      .filter((t: any) => {
-        if (t.type !== 'income') return false;
-        const d = new Date(t.transaction_date);
-        return d >= startDate && d <= endDate;
-      })
+    return filterByDate(transactions as any[], 'transaction_date')
+      .filter((t: any) => t.type === 'income')
       .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
-  }, [transactions, startDate, endDate]);
+  }, [transactions, filterByDate]);
 
   if (isLoading) {
     return (
@@ -75,19 +65,12 @@ export default function AdminDashboard() {
           <p className="text-sm text-muted-foreground">Visão geral do sistema</p>
         </div>
 
-        <Select value={dateRange} onValueChange={setDateRange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7days">Últimos 7 dias</SelectItem>
-            <SelectItem value="thisMonth">Este mês</SelectItem>
-            <SelectItem value="thisYear">Este ano</SelectItem>
-          </SelectContent>
-        </Select>
+        <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
       </div>
 
       <AdminDashboardStats companies={companies} payments={payments} income={income} />
+      <AdminTopClientsLTV companies={companies} />
+      <AdminClientsByPlanChart companies={companies} />
       <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} />
     </div>
   );

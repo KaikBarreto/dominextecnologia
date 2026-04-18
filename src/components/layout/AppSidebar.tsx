@@ -167,11 +167,11 @@ export function AppSidebar() {
   const handleMouseLeave = useCallback(() => {
     if (isMobile) return;
     if (!isHoverOpenRef.current) return;
-    // small delay prevents flicker when crossing borders / popovers
+    // delay prevents flicker when crossing borders / popovers and feels smoother
     hoverLeaveTimerRef.current = window.setTimeout(() => {
       isHoverOpenRef.current = false;
       setOpen(false);
-    }, 120);
+    }, 250);
   }, [isMobile, setOpen]);
 
   const applyTheme = (next: 'light' | 'dark') => {
@@ -274,7 +274,7 @@ export function AppSidebar() {
                   {/* Collapsed icon — fades out when expanded */}
                   <div
                     className={cn(
-                      'absolute inset-0 flex items-center justify-center transition-opacity duration-300 ease-in-out',
+                      'absolute inset-0 flex items-center justify-center transition-opacity duration-500 ease-out',
                       collapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     )}
                   >
@@ -290,7 +290,7 @@ export function AppSidebar() {
                   {/* Expanded full logo — fades in when expanded */}
                   <div
                     className={cn(
-                      'absolute inset-0 flex items-center justify-center px-2 transition-opacity duration-300 ease-in-out',
+                      'absolute inset-0 flex items-center justify-center px-2 transition-opacity duration-500 ease-out',
                       collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
                     )}
                   >
@@ -349,9 +349,9 @@ export function AppSidebar() {
                               : 'text-sidebar-foreground hover:bg-primary hover:text-primary-foreground'
                           )}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
                             <item.icon className={ICON_SIZE} />
-                            <span className="transition-opacity duration-200 ease-in-out whitespace-nowrap">{item.title}</span>
+                            <span className={cn('transition-opacity duration-500 ease-out whitespace-nowrap overflow-hidden', collapsed ? 'opacity-0' : 'opacity-100')}>{item.title}</span>
                           </div>
                           <ChevronDown
                             className={cn(
@@ -400,7 +400,7 @@ export function AppSidebar() {
                       }
                     >
                       <item.icon className={ICON_SIZE} />
-                      <span className={cn('transition-opacity duration-200 ease-in-out whitespace-nowrap overflow-hidden', collapsed ? 'opacity-0 w-0' : 'opacity-100')}>{item.title}</span>
+                      <span className={cn('transition-opacity duration-500 ease-out whitespace-nowrap overflow-hidden', collapsed ? 'opacity-0 w-0' : 'opacity-100')}>{item.title}</span>
                     </NavLink>
                   );
                 })}
