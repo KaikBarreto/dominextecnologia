@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminDashboardStats } from '@/components/admin/AdminDashboardStats';
 import { AdminDashboardCharts } from '@/components/admin/AdminDashboardCharts';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { startOfMonth, subDays, startOfYear } from 'date-fns';
+import { AdminTopClientsLTV } from '@/components/admin/AdminTopClientsLTV';
+import { AdminClientsByPlanChart } from '@/components/admin/AdminClientsByPlanChart';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
