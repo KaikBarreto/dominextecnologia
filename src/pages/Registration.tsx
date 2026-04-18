@@ -338,33 +338,28 @@ export default function Registration() {
                     <div>
                       <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Senha*</Label>
                       <div className="relative mt-1">
-                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
-                          {...register('password', { required: 'Senha é obrigatória', minLength: { value: 6, message: 'Mínimo 6 caracteres' } })}
-                          placeholder="Mínimo 6 caracteres"
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
+                        <PasswordInput
+                          {...register('password', { required: 'Senha é obrigatória', validate: (v) => isPasswordStrong(v) || 'Senha não atende aos requisitos mínimos' })}
+                          placeholder="Crie sua senha"
                           className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white">
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                       </div>
+                      <PasswordStrengthIndicator password={passwordValue} />
                       {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
                     </div>
 
                     <div>
                       <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Confirmar Senha*</Label>
                       <div className="relative mt-1">
-                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
+                        <PasswordInput
                           {...register('confirm_password', { required: 'Confirme a senha' })}
                           placeholder="Repita a senha"
+                          matchAgainst={passwordValue}
+                          value={confirmValue}
                           className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white">
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                       </div>
                       {errors.confirm_password && <p className="text-sm text-destructive mt-1">{errors.confirm_password.message}</p>}
                     </div>

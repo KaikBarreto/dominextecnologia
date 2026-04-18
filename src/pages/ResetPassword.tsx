@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Lock, Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Lock, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
@@ -13,9 +12,12 @@ import { supabase } from '@/integrations/supabase/client';
 import logoWhite from '@/assets/logo-white.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
+import { PasswordInput } from '@/components/PasswordInput';
+import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
+import { mapPasswordError } from '@/utils/passwordHelpers';
 
 const schema = z.object({
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').refine(isPasswordStrong, 'Senha não atende aos requisitos mínimos'),
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, {
   message: 'Senhas não conferem',
@@ -24,7 +26,6 @@ const schema = z.object({
 
 export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -33,6 +34,8 @@ export default function ResetPassword() {
     resolver: zodResolver(schema),
     defaultValues: { password: '', confirmPassword: '' },
   });
+
+  const passwordValue = form.watch('password') || '';
 
   useEffect(() => {
     // Supabase handles the token from the URL hash automatically
@@ -49,7 +52,7 @@ export default function ResetPassword() {
       toast({
         variant: 'destructive',
         title: 'Erro',
-        description: error.message || 'Erro ao redefinir senha',
+        description: mapPasswordError(error.message) || 'Erro ao redefinir senha',
       });
     } finally {
       setIsLoading(false);
