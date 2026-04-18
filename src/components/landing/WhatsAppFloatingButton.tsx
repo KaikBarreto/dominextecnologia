@@ -21,7 +21,7 @@ export default function WhatsAppFloatingButton() {
       {/* Onda 1 - brilho pulsante atrás */}
       <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping-wave opacity-70 group-hover:animation-none" aria-hidden />
       {/* Onda 2 - delay para efeito sequencial */}
-      <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping-wave opacity-50 [animation-delay:1s]" aria-hidden />
+      <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping-wave opacity-50 [animation-delay:2s]" aria-hidden />
       <span className="relative flex items-center justify-center h-14 w-14 rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-110">
         <WhatsAppIcon className="h-7 w-7" />
         <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
