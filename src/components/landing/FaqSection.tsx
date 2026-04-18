@@ -8,28 +8,52 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const faqs = [
   {
-    q: 'O Dominex funciona sem internet no campo?',
-    a: 'Sim. O app do técnico tem modo offline. As informações são sincronizadas automaticamente quando a conexão é restabelecida.',
+    q: 'O Dominex serve para qual tipo de empresa?',
+    a: 'Para empresas que prestam serviços técnicos em campo: refrigeração e climatização, PMOC, manutenção predial, elétrica, dedetização, telecom, segurança eletrônica, instalações, assistência técnica e qualquer operação que envolva equipes externas e ordens de serviço.',
   },
   {
-    q: 'Em quanto tempo consigo configurar tudo?',
-    a: 'A maioria dos clientes está operando em menos de 1 dia. Nosso onboarding é guiado e simples.',
+    q: 'Funciona em celular? Tem app para o técnico?',
+    a: 'Sim. A plataforma é 100% web e responsiva (funciona em qualquer navegador) e o técnico acessa por um app PWA instalável no Android e iOS, com check-in/out, fotos, assinatura digital e questionários.',
   },
   {
-    q: 'Tenho integração com ERP/financeiro?',
-    a: 'Sim. Temos integração com Omie, Conta Azul e API aberta para conectar com qualquer sistema.',
+    q: 'Como funciona o teste grátis?',
+    a: 'São 7 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
   },
   {
-    q: 'Preciso instalar algum software?',
-    a: 'Não. O painel do gestor é 100% web. O técnico usa o app mobile disponível para Android e iOS.',
+    q: 'Os dados das ordens de serviço ficam guardados para sempre?',
+    a: 'Sim. Mantemos o histórico completo de OS, equipamentos, clientes e relatórios sem limite de retenção enquanto sua assinatura estiver ativa, garantindo rastreabilidade para garantias, auditorias e PMOC.',
   },
   {
-    q: 'Posso personalizar os formulários de OS?',
-    a: 'Sim. Crie checklists, campos customizados e formulários específicos para cada tipo de serviço.',
+    q: 'Consigo controlar PMOC e contratos recorrentes?',
+    a: 'Sim. O Dominex gera automaticamente as ordens de serviço dos contratos de manutenção (mensal, bimestral, trimestral etc.) e mantém o calendário PMOC organizado por equipamento e cliente.',
   },
   {
-    q: 'Como funciona o período grátis?',
-    a: '14 dias com acesso completo ao plano Pro, sem cartão de crédito. Cancele a qualquer momento.',
+    q: 'Posso personalizar formulários, checklists e relatórios?',
+    a: 'Sim. Você cria templates de questionários por tipo de serviço, define campos obrigatórios, fotos e assinatura. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
+  },
+  {
+    q: 'Tem CRM e funil de vendas integrado?',
+    a: 'Sim. O plano Master inclui um CRM completo com funil Kanban, etapas customizáveis, webhooks para captação de leads e conversão direta em orçamentos e ordens de serviço.',
+  },
+  {
+    q: 'Consigo controlar o financeiro, contas a pagar e DRE?',
+    a: 'Sim. A partir do plano Avançado você tem contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria e DRE para análise de resultado.',
+  },
+  {
+    q: 'Como funciona o controle de ponto e folha dos funcionários?',
+    a: 'O módulo de RH permite registro de ponto pelo próprio funcionário, controle de horas, faltas, vales, bônus e geração de extratos individuais com cálculo proporcional à jornada.',
+  },
+  {
+    q: 'Posso ter mais usuários do que o plano permite?',
+    a: 'Sim. Você pode adicionar usuários extras a qualquer plano por uma taxa mensal adicional, ou migrar para um plano superior quando precisar de mais recursos.',
+  },
+  {
+    q: 'Como é o suporte? Falo com gente de verdade?',
+    a: 'Sim. Atendimento humano via WhatsApp e e-mail em horário comercial. Os planos Master e Personalizado contam com suporte prioritário e gestor de conta dedicado.',
+  },
+  {
+    q: 'Meus dados estão seguros? E a LGPD?',
+    a: 'Sim. Utilizamos infraestrutura em nuvem com criptografia, backups automáticos e isolamento total entre empresas (multi-tenant). Cumprimos integralmente a LGPD e você é o titular dos seus dados.',
   },
 ];
 
