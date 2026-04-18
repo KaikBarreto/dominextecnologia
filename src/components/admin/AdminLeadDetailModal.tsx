@@ -16,6 +16,7 @@ import { phoneMask } from '@/utils/masks';
 import { useAdminLeadInteractions, useAdminCrmStages, useAdminLeads, ADMIN_INTERACTION_TYPES, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
+import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 import {
   AlertDialog,
   AlertDialogAction,
