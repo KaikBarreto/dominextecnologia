@@ -104,6 +104,7 @@ const adminMenuItems: MenuItem[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
   { title: 'CRM', icon: Target, path: '/admin/crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas' },
+  { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores' },
   { title: 'Assinaturas', icon: CreditCard, path: '/admin/assinaturas' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
   { title: 'Configurações', icon: Settings, path: '/admin/configuracoes' },

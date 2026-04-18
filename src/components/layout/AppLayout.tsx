@@ -3,6 +3,7 @@ import { AppSidebar } from './AppSidebar';
 import { TopbarLayout } from './TopbarLayout';
 import { SystemFooter } from './SystemFooter';
 import { Outlet, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { PanelLeftClose, PanelLeft, Menu, UserCircle, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -135,6 +136,13 @@ export function AppLayout() {
   const { roles } = useAuth();
   const isSuperAdmin = roles.includes('super_admin');
   useKeyboardShortcuts(true);
+
+  // Super admin sempre usa tema claro (UX consistente do painel administrativo)
+  useEffect(() => {
+    if (isSuperAdmin) {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isSuperAdmin]);
 
   return (
     <>
