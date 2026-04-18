@@ -63,10 +63,30 @@ export function useEmployees() {
 
   const deleteEmployee = useMutation({
     mutationFn: async (id: string) => {
+      // Get linked user_id (if any) to clean up team memberships and assignees
+      const { data: emp } = await supabase
+        .from('employees')
+        .select('user_id')
+        .eq('id', id)
+        .maybeSingle();
+      const linkedUserId = emp?.user_id;
+
+      if (linkedUserId) {
+        // Remove from all teams
+        await supabase.from('team_members').delete().eq('user_id', linkedUserId);
+        // Remove from all OS assignees
+        await supabase.from('service_order_assignees').delete().eq('user_id', linkedUserId);
+      }
+
       const { error } = await supabase.from('employees').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário excluído!' }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      qc.invalidateQueries({ queryKey: ['team-members'] });
+      qc.invalidateQueries({ queryKey: ['service-orders'] });
+      toast({ title: 'Funcionário excluído!', description: 'Removido também das equipes e ordens de serviço.' });
+    },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao excluir funcionário', description: getErrorMessage(e) }),
   });
 

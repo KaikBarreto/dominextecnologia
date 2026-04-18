@@ -4,6 +4,16 @@ import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+// Plan pricing fallback (synced with subscription_plans table)
+const PLAN_DEFAULTS: Record<string, { price: number; max_users: number; name: string }> = {
+  start: { price: 200, max_users: 5, name: 'Start' },
+  starter: { price: 200, max_users: 5, name: 'Start' },
+  avancado: { price: 350, max_users: 5, name: 'Avançado' },
+  pro: { price: 350, max_users: 5, name: 'Avançado' },
+  master: { price: 650, max_users: 15, name: 'Master' },
+  enterprise: { price: 650, max_users: 15, name: 'Master' },
+};
+
 Deno.serve(async (req) => {
   const corsResp = handleCors(req);
   if (corsResp) return corsResp;
@@ -37,6 +47,17 @@ Deno.serve(async (req) => {
     const password = typeof raw.password === 'string' ? raw.password : '';
     const origin = trim(raw.origin, 100);
 
+    // Affiliate/sales link params
+    const linkType = trim(raw.link_type, 20); // 'teste' | 'venda'
+    const lockedPlanRaw = trim(raw.locked_plan, 30).toLowerCase();
+    const lockedPlan = lockedPlanRaw && PLAN_DEFAULTS[lockedPlanRaw] ? lockedPlanRaw : null;
+    const isLocked = !!raw.is_locked;
+    const lockedPrice = typeof raw.locked_price === 'number' && raw.locked_price > 0 ? raw.locked_price : null;
+    const billingCycle = (raw.billing_cycle === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
+    const promoMonths = typeof raw.promo_months === 'number' && raw.promo_months > 0 ? raw.promo_months : null;
+    const trialDaysOverride = typeof raw.trial_days === 'number' && raw.trial_days > 0 ? raw.trial_days : null;
+    const referralCode = trim(raw.referral_code, 50);
+
     if (!company_name || !contact_name || !company_email || !password) {
       return new Response(
         JSON.stringify({ error: 'Campos obrigatórios: nome da empresa, contato, e-mail e senha' }),
@@ -67,9 +88,35 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Calculate trial expiration (14 days)
+    // Resolve plan/price/status from link params
+    const planCode = lockedPlan || 'start';
+    const planDefaults = PLAN_DEFAULTS[planCode] || PLAN_DEFAULTS.start;
+    const isSale = linkType === 'venda';
+    const subscription_status = isSale ? 'pending_payment' : 'testing';
+    const planPrice = planDefaults.price;
+    const finalPrice = lockedPrice ?? planPrice;
+
+    // Trial expiration
     const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + 14);
+    if (isSale) {
+      // Pending payment: short window (3 dias) until payment confirmation
+      expirationDate.setDate(expirationDate.getDate() + 3);
+    } else {
+      const trialDays = trialDaysOverride || 14;
+      expirationDate.setDate(expirationDate.getDate() + trialDays);
+    }
+
+    // Lookup salesperson via referral_code
+    let salespersonId: string | null = null;
+    if (referralCode) {
+      const { data: sp } = await supabaseAdmin
+        .from('salespeople')
+        .select('id')
+        .eq('referral_code', referralCode)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (sp?.id) salespersonId = sp.id;
+    }
 
     // Create company
     const { data: company, error: companyError } = await supabaseAdmin
@@ -81,12 +128,17 @@ Deno.serve(async (req) => {
         phone: company_phone || null,
         contact_name,
         origin: origin || null,
-        subscription_status: 'testing',
-        subscription_plan: 'starter',
-        subscription_value: 0,
+        subscription_status,
+        subscription_plan: planCode,
+        subscription_value: finalPrice,
         subscription_expires_at: expirationDate.toISOString(),
-        max_users: 5,
-        trial_days: 14,
+        billing_cycle: billingCycle,
+        max_users: planDefaults.max_users,
+        trial_days: isSale ? 0 : (trialDaysOverride || 14),
+        salesperson_id: salespersonId,
+        custom_price: lockedPrice && lockedPrice !== planPrice ? lockedPrice : null,
+        custom_price_permanent: lockedPrice ? !promoMonths : true,
+        custom_price_months: promoMonths || null,
       })
       .select()
       .single();
@@ -168,7 +220,12 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        company: { id: company.id, name: company.name },
+        company: {
+          id: company.id,
+          name: company.name,
+          subscription_status,
+          requires_payment: isSale,
+        },
         user: { id: newUser.user.id, email: newUser.user.email },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -47,6 +47,16 @@ export default function Registration() {
   const [selectedOrigin, setSelectedOrigin] = useState('');
 
   const originFromUrl = searchParams.get('origem') || 'Site/Google';
+  // Sales-link params
+  const linkType = searchParams.get('tipo'); // 'teste' | 'venda'
+  const lockedPlan = searchParams.get('plano') || null;
+  const isLocked = searchParams.get('bloqueado') === '1';
+  const lockedPrice = searchParams.get('preco');
+  const lockedCycle = (searchParams.get('ciclo') as 'monthly' | 'yearly' | null) || null;
+  const promoMonths = searchParams.get('meses_promo');
+  const trialDaysParam = searchParams.get('dias');
+  const referrer = searchParams.get('vendedor'); // referral_code
+  const isSale = linkType === 'venda';
 
   useEffect(() => {
     setSelectedOrigin(originFromUrl);
@@ -81,6 +91,15 @@ export default function Registration() {
           contact_name: data.contact_name,
           password: data.password,
           origin: selectedOrigin || null,
+          // Link/affiliate params
+          link_type: linkType || null,
+          locked_plan: lockedPlan,
+          is_locked: isLocked,
+          locked_price: lockedPrice ? parseFloat(lockedPrice) : null,
+          billing_cycle: lockedCycle,
+          promo_months: promoMonths ? parseInt(promoMonths) : null,
+          trial_days: trialDaysParam ? parseInt(trialDaysParam) : null,
+          referral_code: referrer || null,
         },
       });
 
@@ -99,7 +118,10 @@ export default function Registration() {
       return result;
     },
     onSuccess: async (_, variables) => {
-      toast({ title: 'Cadastro realizado!', description: 'Redirecionando...' });
+      toast({
+        title: 'Cadastro realizado!',
+        description: isSale ? 'Redirecionando para o pagamento...' : 'Redirecionando...',
+      });
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email: variables.company_email,
         password: variables.password,
@@ -107,7 +129,9 @@ export default function Registration() {
       if (loginError) {
         navigate('/login');
       } else {
-        setTimeout(() => navigate('/dashboard'), 500);
+        // Sales link → go straight to checkout to finalize payment
+        const target = isSale ? '/checkout' : '/dashboard';
+        setTimeout(() => navigate(target), 500);
       }
     },
     onError: (error: any) => {
