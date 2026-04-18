@@ -15,6 +15,8 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
+import { getSegment } from '@/utils/companySegments';
+import { cn } from '@/lib/utils';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
