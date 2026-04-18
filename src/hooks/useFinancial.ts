@@ -203,21 +203,61 @@ export function useFinancial() {
     },
   });
 
+  interface MarkAsPaidParams {
+    id: string;
+    account_id?: string;
+    payment_method?: string;
+    paid_date?: string;
+    fee_amount?: number;
+    notes?: string;
+    customer_id?: string | null;
+  }
+
   const markAsPaid = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (params: string | MarkAsPaidParams) => {
+      const cfg: MarkAsPaidParams = typeof params === 'string' ? { id: params } : params;
+      const paidDate = cfg.paid_date || new Date().toISOString().split('T')[0];
+
+      const updatePayload: any = { is_paid: true, paid_date: paidDate };
+      if (cfg.account_id) updatePayload.account_id = cfg.account_id;
+      if (cfg.payment_method) updatePayload.payment_method = cfg.payment_method;
+
       const { data, error } = await supabase
         .from('financial_transactions')
-        .update({ is_paid: true, paid_date: new Date().toISOString().split('T')[0] })
-        .eq('id', id)
-        .select()
+        .update(updatePayload)
+        .eq('id', cfg.id)
+        .select('*, transaction_type, description')
         .single();
-      
       if (error) throw error;
+
+      // If a fee was reported, create a "Tarifas e Taxas" expense
+      if (cfg.fee_amount && cfg.fee_amount > 0) {
+        const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+        const company_id = await getCurrentUserCompanyId();
+        const feePayload = normalizeOptionalForeignKeys({
+          transaction_type: 'saida',
+          amount: cfg.fee_amount,
+          description: `Tarifa do recebimento — ${data.description || 'transação'}`,
+          category: 'Tarifas e Taxas',
+          customer_id: cfg.customer_id ?? (data as any).customer_id ?? null,
+          account_id: cfg.account_id,
+          payment_method: cfg.payment_method,
+          transaction_date: paidDate,
+          paid_date: paidDate,
+          is_paid: true,
+          notes: cfg.notes,
+          created_by: user?.id,
+          company_id,
+        } as any, ['customer_id', 'account_id']);
+        const { error: feeErr } = await supabase.from('financial_transactions').insert(feePayload as any);
+        if (feeErr) throw feeErr;
+      }
+
       return data;
     },
     onSuccess: () => {
       invalidateAll();
-      toast({ title: 'Transação marcada como paga!' });
+      toast({ title: 'Recebimento confirmado!' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
