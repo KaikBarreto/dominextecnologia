@@ -65,6 +65,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
     phone: '',
     value: '',
     source: '',
+    segment: '',
     stage_id: '',
     expected_close_date: '',
     notes: '',
@@ -79,6 +80,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
       phone: lead.phone || '',
       value: lead.value ? String(lead.value) : '',
       source: lead.source || '',
+      segment: lead.segment || '',
       stage_id: lead.stage_id || '',
       expected_close_date: lead.expected_close_date || '',
       notes: lead.notes || '',
@@ -114,6 +116,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
       phone: form.phone || null,
       value: form.value ? Number(form.value) : 0,
       source: form.source || null,
+      segment: form.segment || null,
       stage_id: form.stage_id || null,
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,
@@ -130,6 +133,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
       phone: lead.phone || '',
       value: lead.value ? String(lead.value) : '',
       source: lead.source || '',
+      segment: lead.segment || '',
       stage_id: lead.stage_id || '',
       expected_close_date: lead.expected_close_date || '',
       notes: lead.notes || '',
@@ -139,6 +143,8 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
 
   const originInfo = lead.source ? origins.find(o => o.name === lead.source) : null;
   const selectedOriginEdit = origins.find(o => o.name === form.source);
+  const segmentInfo = getSegment(lead.segment);
+  const selectedSegmentEdit = getSegment(form.segment);
 
   const formatCurrency = (v: number | null) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
 
