@@ -26,7 +26,7 @@ export default function LandingNavbar() {
   // Track active section: pick the last section whose top has crossed the header line
   useEffect(() => {
     const updateActive = () => {
-      const offset = 120; // header height + small buffer
+      const offset = window.innerHeight * 0.4; // ativa quando a seção cruza ~40% do viewport
       let current = '';
       for (const link of navLinks) {
         const el = document.getElementById(link.id);
