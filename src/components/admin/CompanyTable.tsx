@@ -27,17 +27,30 @@ interface CompanyTableProps {
   companies: any[];
   masterUserMap: Map<string, string>;
   origins: any[] | undefined;
+  salespersonMap?: Map<string, string>;
   onEdit: (company: any) => void;
   onRefetch: () => void;
 }
 
 const PLAN_LABELS: Record<string, string> = {
-  starter: 'Starter',
-  pro: 'Pro',
-  enterprise: 'Enterprise',
+  start: 'Start',
+  starter: 'Start',
+  avancado: 'Avançado',
+  pro: 'Avançado',
+  master: 'Master',
+  enterprise: 'Master',
 };
 
-export function CompanyTable({ companies, masterUserMap, origins, onEdit, onRefetch }: CompanyTableProps) {
+const PLAN_COLORS: Record<string, string> = {
+  start: 'bg-sky-500 hover:bg-sky-600 text-white border-0',
+  starter: 'bg-sky-500 hover:bg-sky-600 text-white border-0',
+  avancado: 'bg-violet-600 hover:bg-violet-700 text-white border-0',
+  pro: 'bg-violet-600 hover:bg-violet-700 text-white border-0',
+  master: 'bg-amber-500 hover:bg-amber-600 text-white border-0',
+  enterprise: 'bg-amber-500 hover:bg-amber-600 text-white border-0',
+};
+
+export function CompanyTable({ companies, masterUserMap, origins, salespersonMap, onEdit, onRefetch }: CompanyTableProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
