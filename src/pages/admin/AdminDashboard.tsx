@@ -83,10 +83,8 @@ export default function AdminDashboard() {
       <AdminBrazilMapChart companies={companies} />
 
       {/* 5. Top 3 LTV + Clientes por Plano */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AdminTopClientsLTV companies={companies} />
-        <AdminClientsByPlanChart companies={companies} />
-      </div>
+      <AdminTopClientsLTV companies={companies} />
+      <AdminClientsByPlanChart companies={companies} />
 
       {/* 6. Evolução da Receita */}
       <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} sections={['revenue']} />
