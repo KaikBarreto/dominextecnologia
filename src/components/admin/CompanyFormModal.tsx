@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -55,9 +55,22 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const { data: plans = [] } = useQuery({
+    queryKey: ['subscription-plans-active'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('code, name, price, max_users')
+        .eq('is_active', true)
+        .order('price', { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const [formData, setFormData] = useState({
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
-    subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
+    subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '', origin: '',
     admin_email: '', admin_password: '',
   });
@@ -78,7 +91,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         name: company.name || '', cnpj: company.cnpj || '', email: company.email || '',
         phone: company.phone || '', contact_name: company.contact_name || '',
         subscription_status: company.subscription_status || 'testing',
-        subscription_plan: company.subscription_plan || 'starter',
+        subscription_plan: company.subscription_plan || 'start',
         subscription_value: String(company.subscription_value || 0),
         subscription_expires_at: company.subscription_expires_at ? company.subscription_expires_at.split('T')[0] : '',
         billing_cycle: company.billing_cycle || 'monthly',
@@ -91,7 +104,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const defaultExpires = format(addDays(new Date(), 14), 'yyyy-MM-dd');
       setFormData({
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
-        subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
+        subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
         notes: '', origin: '', admin_email: '', admin_password: generatePassword(),
       });
@@ -294,12 +307,26 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   </div>
                   <div>
                     <Label>Plano</Label>
-                    <Select value={formData.subscription_plan} onValueChange={v => updateField('subscription_plan', v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select
+                      value={formData.subscription_plan}
+                      onValueChange={v => {
+                        updateField('subscription_plan', v);
+                        const p = plans.find((pl: any) => pl.code === v);
+                        if (p) {
+                          if (p.price != null) updateField('subscription_value', String(p.price));
+                          if (p.max_users != null) updateField('max_users', String(p.max_users));
+                        }
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione o plano" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="starter">Starter</SelectItem>
-                        <SelectItem value="pro">Pro</SelectItem>
-                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                        {plans.length === 0 ? (
+                          <SelectItem value="start" disabled>Carregando...</SelectItem>
+                        ) : (
+                          plans.map((p: any) => (
+                            <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
