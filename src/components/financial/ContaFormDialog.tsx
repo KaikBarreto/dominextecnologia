@@ -15,6 +15,8 @@ import { useEmployees } from '@/hooks/useEmployees';
 import { useContracts } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 
 interface ContaFormDialogProps {
   open: boolean;
