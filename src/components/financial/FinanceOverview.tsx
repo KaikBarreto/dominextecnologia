@@ -93,23 +93,8 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards - 3 columns */}
+      {/* Summary Cards - 3 columns: Receitas → Despesas → Saldo do Período */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-        <Card className={`border-0 ${summary.saldo >= 0 ? 'bg-info' : 'bg-destructive'}`}>
-          <CardContent className="p-3 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo</p>
-                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">
-                  {formatCurrency(summary.saldo)}
-                </p>
-              </div>
-              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
-                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
         <Card className="bg-success border-0">
           <CardContent className="p-3 sm:p-5">
             <div className="flex items-center justify-between">
@@ -132,6 +117,21 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               </div>
               <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
                 <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={`border-0 ${summary.saldo >= 0 ? 'bg-info' : 'bg-destructive'}`}>
+          <CardContent className="p-3 sm:p-5">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo do Período</p>
+                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">
+                  {formatCurrency(summary.saldo)}
+                </p>
+              </div>
+              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
             </div>
           </CardContent>

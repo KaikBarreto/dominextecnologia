@@ -11,6 +11,9 @@ export interface FinancialAccount {
   name: string;
   type: string;
   bank_name?: string | null;
+  institution_code?: number | null;
+  institution_name?: string | null;
+  institution_ispb?: string | null;
   initial_balance: number;
   color: string;
   icon: string;
@@ -24,6 +27,9 @@ export interface AccountInput {
   name: string;
   type: string;
   bank_name?: string;
+  institution_code?: number | null;
+  institution_name?: string | null;
+  institution_ispb?: string | null;
   initial_balance?: number;
   color?: string;
   icon?: string;

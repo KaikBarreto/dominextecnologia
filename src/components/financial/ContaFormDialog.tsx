@@ -15,6 +15,8 @@ import { useEmployees } from '@/hooks/useEmployees';
 import { useContracts } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -31,7 +33,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const { employees } = useEmployees();
   const { contracts } = useContracts();
   const { customers } = useCustomers();
-  
+  const { accounts } = useFinancialAccounts();
+
   const [tipo, setTipo] = useState<TransactionType>(defaultType);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -43,6 +46,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [employeeId, setEmployeeId] = useState('');
   const [contractId, setContractId] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!editingTransaction;
@@ -59,6 +63,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setNotes(editingTransaction.notes || '');
         setContractId(editingTransaction.contract_id || '');
         setCustomerId(editingTransaction.customer_id || '');
+        setAccountId((editingTransaction as any).account_id || '');
         setRecurrence('unica');
         setOccurrences(12);
         const empMatch = editingTransaction.notes?.match(/\[funcionario:([^\]]+)\]/);
@@ -75,6 +80,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setEmployeeId('');
         setContractId('');
         setCustomerId('');
+        setAccountId(localStorage.getItem('fin_last_account_id') || '');
       }
     }
   }, [open, defaultType, editingTransaction]);
@@ -107,11 +113,12 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
 
   const handleSubmit = async () => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
+    if (!accountId) return;
     setIsSubmitting(true);
 
     try {
+      localStorage.setItem('fin_last_account_id', accountId);
       if (isEditing && editingTransaction) {
-        // Update existing transaction
         const input: TransactionInput & { id: string } = {
           id: editingTransaction.id,
           transaction_type: tipo,
@@ -128,10 +135,10 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           ].filter(Boolean).join(' ') || undefined,
           contract_id: contractId && showContractSelector ? contractId : undefined,
           customer_id: customerId || undefined,
-        };
+          account_id: accountId,
+        } as any;
         await updateTransaction.mutateAsync(input);
       } else {
-        // Create new transactions
         const baseDate = new Date(dueDate + 'T12:00:00');
         const count = recurrence === 'unica' ? 1 : occurrences;
 
@@ -159,7 +166,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             ].filter(Boolean).join(' ') || undefined,
             contract_id: contractId && showContractSelector ? contractId : undefined,
             customer_id: customerId || undefined,
-          };
+            account_id: accountId,
+          } as any;
 
           await createTransaction.mutateAsync(input);
         }
@@ -261,6 +269,35 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             />
           </div>
 
+          {/* Account selector — required */}
+          {accounts.length === 0 ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">Nenhuma conta cadastrada</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                É necessário cadastrar uma conta ou caixa.{' '}
+                <a href="/financeiro/caixas-bancos" className="underline font-medium">Cadastrar agora</a>
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Conta Bancária / Caixa <span className="text-destructive">*</span></Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger>
+                <SelectContent>
+                  {accounts.filter(a => a.is_active).map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <span className="flex items-center gap-2">
+                        <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                        {a.type === 'caixa' ? `${a.name} (em dinheiro)` : a.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {!isEditing && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -291,7 +328,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount}>
+            <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount || !accountId}>
               {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? 'Salvando...' : 'Criando...'}</> : (isEditing ? 'Salvar' : 'Criar Conta')}
             </Button>
           </div>

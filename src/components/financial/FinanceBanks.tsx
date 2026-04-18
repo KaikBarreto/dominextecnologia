@@ -11,10 +11,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Plus, Pencil, Trash2, ArrowLeftRight, Landmark, Wallet, CreditCard } from 'lucide-react';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
 import { TransferFormDialog } from './TransferFormDialog';
+import { BankInstitutionCombobox, BankLogo } from './BankInstitutionCombobox';
+import { cn } from '@/lib/utils';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -27,7 +30,10 @@ const ACCOUNT_TYPES = [
 ];
 
 const ACCOUNT_COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316',
+  '#0F172A', '#1E293B', '#334155', '#0EA5E9', '#0284C7', '#1D4ED8',
+  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
+  '#10b981', '#14b8a6', '#06b6d4',
 ];
 
 function getTypeIcon(type: string) {
@@ -45,25 +51,38 @@ export function FinanceBanks() {
   // Form state
   const [name, setName] = useState('');
   const [type, setType] = useState('banco');
-  const [bankName, setBankName] = useState('');
+  const [institution, setInstitution] = useState<{ code: number | null; name: string; ispb?: string | null } | null>(null);
   const [initialBalance, setInitialBalance] = useState(0);
   const [color, setColor] = useState('#3b82f6');
 
   const openNew = () => {
     setEditing(null);
-    setName(''); setType('banco'); setBankName(''); setInitialBalance(0); setColor('#3b82f6');
+    setName(''); setType('banco'); setInstitution(null); setInitialBalance(0); setColor('#3b82f6');
     setFormOpen(true);
   };
 
   const openEdit = (a: FinancialAccount) => {
     setEditing(a);
-    setName(a.name); setType(a.type); setBankName(a.bank_name || ''); setInitialBalance(a.initial_balance); setColor(a.color);
+    setName(a.name);
+    setType(a.type);
+    setInstitution(a.institution_name ? { code: a.institution_code ?? null, name: a.institution_name, ispb: a.institution_ispb } : (a.bank_name ? { code: null, name: a.bank_name } : null));
+    setInitialBalance(a.initial_balance);
+    setColor(a.color);
     setFormOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const input: AccountInput = { name, type, bank_name: bankName || undefined, initial_balance: initialBalance, color };
+    const input: AccountInput = {
+      name,
+      type,
+      bank_name: institution?.name || undefined,
+      institution_code: institution?.code ?? null,
+      institution_name: institution?.name ?? null,
+      institution_ispb: institution?.ispb ?? null,
+      initial_balance: initialBalance,
+      color,
+    };
     if (editing) {
       await updateAccount.mutateAsync({ ...input, id: editing.id });
     } else {
@@ -119,17 +138,27 @@ export function FinanceBanks() {
         {accounts.map(a => {
           const Icon = getTypeIcon(a.type);
           const balance = balances[a.id] ?? a.initial_balance;
+          const hasInst = !!(a.institution_name || a.bank_name);
           return (
-            <Card key={a.id} className="relative group">
+            <Card key={a.id} className="relative group overflow-hidden">
+              <div className="h-1.5 w-full" style={{ backgroundColor: a.color }} />
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
-                      <Icon className="h-4 w-4 text-white" />
-                    </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {hasInst ? (
+                      <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
+                        <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
+                      </div>
+                    ) : (
+                      <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
+                        <Icon className="h-4 w-4 text-white" />
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">{a.name}</p>
-                      {a.bank_name && <p className="text-xs text-muted-foreground truncate">{a.bank_name}</p>}
+                      {(a.institution_name || a.bank_name) && (
+                        <p className="text-xs text-muted-foreground truncate">{a.institution_name || a.bank_name}</p>
+                      )}
                       <Badge variant="outline" className="text-[10px] mt-1">
                         {ACCOUNT_TYPES.find(t => t.value === a.type)?.label || a.type}
                       </Badge>
@@ -165,43 +194,98 @@ export function FinanceBanks() {
       )}
 
       {/* Account form modal */}
-      <ResponsiveModal open={formOpen} onOpenChange={setFormOpen} title={editing ? 'Editar Conta' : 'Nova Conta'} className="sm:max-w-[420px]">
+      <ResponsiveModal open={formOpen} onOpenChange={setFormOpen} title={editing ? 'Editar Conta' : 'Nova Conta'} className="sm:max-w-[480px]">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Nome da Conta</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Conta Bradesco" required />
+            <Label>Nome da Conta *</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Conta Corrente Principal" required />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Tipo</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ACCOUNT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Saldo Inicial (R$)</Label>
-              <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} inputMode="numeric" />
-            </div>
+
+          <div className="space-y-1.5">
+            <Label>Tipo</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ACCOUNT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          {type === 'banco' && (
+
+          {(type === 'banco' || type === 'cartao') && (
             <div className="space-y-1.5">
-              <Label>Nome do Banco</Label>
-              <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Ex: Bradesco, Itaú..." />
+              <Label>Instituição</Label>
+              <BankInstitutionCombobox value={institution} onChange={setInstitution} />
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <Label>Saldo Inicial (R$)</Label>
+            <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} inputMode="numeric" />
+            {editing && (
+              <p className="text-xs text-muted-foreground">⚠️ Editar o saldo inicial recalcula o saldo atual da conta.</p>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <Label>Cor</Label>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap items-center">
               {ACCOUNT_COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setColor(c)}
-                  className={`h-8 w-8 rounded-full border-2 transition-all ${color === c ? 'border-foreground scale-110' : 'border-transparent'}`}
-                  style={{ backgroundColor: c }} />
+                  className={cn(
+                    'h-7 w-7 rounded-full border-2 transition-all',
+                    color === c ? 'border-foreground scale-110 ring-2 ring-foreground/20' : 'border-transparent'
+                  )}
+                  style={{ backgroundColor: c }} aria-label={`Cor ${c}`} />
               ))}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-7 w-7 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center text-muted-foreground hover:border-foreground hover:text-foreground transition-all"
+                    aria-label="Cor personalizada"
+                  >
+                    +
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Cor personalizada</Label>
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={e => setColor(e.target.value)}
+                      className="h-10 w-full cursor-pointer rounded border"
+                    />
+                    <Input value={color} onChange={e => setColor(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
+
+          {/* Pré-visualização */}
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Pré-visualização</Label>
+            <Card className="overflow-hidden">
+              <div className="h-1.5 w-full" style={{ backgroundColor: color }} />
+              <CardContent className="p-3 flex items-center gap-3">
+                {institution ? (
+                  <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: color }}>
+                    <BankLogo code={institution.code} name={institution.name} size={32} />
+                  </div>
+                ) : (
+                  <div className="rounded-full p-2 shrink-0" style={{ backgroundColor: color }}>
+                    {(() => { const I = getTypeIcon(type); return <I className="h-4 w-4 text-white" />; })()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{name || 'Nome da conta'}</p>
+                  {institution?.name && <p className="text-xs text-muted-foreground truncate">{institution.name}</p>}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button>
             <Button type="submit" disabled={!name || createAccount.isPending || updateAccount.isPending}>

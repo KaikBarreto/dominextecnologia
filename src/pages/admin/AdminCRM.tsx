@@ -22,6 +22,24 @@ import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
+
+type DatePreset = 'all' | 'today' | 'this_week' | 'this_month' | 'this_year' | 'custom';
+
+function computeDateRange(preset: DatePreset, from: string, to: string): { from: Date | null; to: Date | null } {
+  const now = new Date();
+  switch (preset) {
+    case 'today': return { from: startOfDay(now), to: endOfDay(now) };
+    case 'this_week': return { from: startOfWeek(now, { weekStartsOn: 0 }), to: endOfWeek(now, { weekStartsOn: 0 }) };
+    case 'this_month': return { from: startOfMonth(now), to: endOfMonth(now) };
+    case 'this_year': return { from: startOfYear(now), to: endOfYear(now) };
+    case 'custom': return {
+      from: from ? new Date(from + 'T00:00:00') : null,
+      to: to ? new Date(to + 'T23:59:59') : null,
+    };
+    default: return { from: null, to: null };
+  }
+}
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
@@ -50,17 +68,18 @@ export default function AdminCRM() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterOrigin, setFilterOrigin] = useState<string>('all');
   const [filterSegment, setFilterSegment] = useState<string>('all');
+  const [filterDatePreset, setFilterDatePreset] = useState<DatePreset>('this_month');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
 
   const activeFilterCount =
     (filterOrigin !== 'all' ? 1 : 0) +
     (filterSegment !== 'all' ? 1 : 0) +
-    (filterDateFrom ? 1 : 0) +
-    (filterDateTo ? 1 : 0);
+    (filterDatePreset !== 'this_month' ? 1 : 0);
 
   const filteredLeads = useMemo(() => {
     const q = search.toLowerCase();
+    const { from, to } = computeDateRange(filterDatePreset, filterDateFrom, filterDateTo);
     return leads.filter(l => {
       if (search && !(
         l.title.toLowerCase().includes(q) ||
@@ -69,11 +88,14 @@ export default function AdminCRM() {
       )) return false;
       if (filterOrigin !== 'all' && l.source !== filterOrigin) return false;
       if (filterSegment !== 'all' && l.segment !== filterSegment) return false;
-      if (filterDateFrom && new Date(l.created_at) < new Date(filterDateFrom + 'T00:00:00')) return false;
-      if (filterDateTo && new Date(l.created_at) > new Date(filterDateTo + 'T23:59:59')) return false;
+      if (from || to) {
+        const created = new Date(l.created_at);
+        if (from && created < from) return false;
+        if (to && created > to) return false;
+      }
       return true;
     });
-  }, [leads, search, filterOrigin, filterSegment, filterDateFrom, filterDateTo]);
+  }, [leads, search, filterOrigin, filterSegment, filterDatePreset, filterDateFrom, filterDateTo]);
 
   const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
 
@@ -337,26 +359,21 @@ export default function AdminCRM() {
         {isMobile ? (
           <Drawer open={filtersOpen} onOpenChange={setFiltersOpen}>
             <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle>Filtros</DrawerTitle>
-              </DrawerHeader>
+              <DrawerHeader><DrawerTitle>Filtros</DrawerTitle></DrawerHeader>
               <div className="px-4 pb-4 overflow-y-auto">
                 <FiltersForm
                   origins={origins}
-                  filterOrigin={filterOrigin}
-                  setFilterOrigin={setFilterOrigin}
-                  filterSegment={filterSegment}
-                  setFilterSegment={setFilterSegment}
-                  filterDateFrom={filterDateFrom}
-                  setFilterDateFrom={setFilterDateFrom}
-                  filterDateTo={filterDateTo}
-                  setFilterDateTo={setFilterDateTo}
+                  filterOrigin={filterOrigin} setFilterOrigin={setFilterOrigin}
+                  filterSegment={filterSegment} setFilterSegment={setFilterSegment}
+                  filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
+                  filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
+                  filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
                 />
               </div>
               <DrawerFooter>
                 <Button variant="outline" onClick={() => {
                   setFilterOrigin('all'); setFilterSegment('all');
-                  setFilterDateFrom(''); setFilterDateTo('');
+                  setFilterDatePreset('this_month'); setFilterDateFrom(''); setFilterDateTo('');
                 }}>Limpar</Button>
                 <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
               </DrawerFooter>
@@ -365,26 +382,21 @@ export default function AdminCRM() {
         ) : (
           <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
             <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-              <SheetHeader>
-                <SheetTitle>Filtros</SheetTitle>
-              </SheetHeader>
+              <SheetHeader><SheetTitle>Filtros</SheetTitle></SheetHeader>
               <div className="flex-1 overflow-y-auto py-4">
                 <FiltersForm
                   origins={origins}
-                  filterOrigin={filterOrigin}
-                  setFilterOrigin={setFilterOrigin}
-                  filterSegment={filterSegment}
-                  setFilterSegment={setFilterSegment}
-                  filterDateFrom={filterDateFrom}
-                  setFilterDateFrom={setFilterDateFrom}
-                  filterDateTo={filterDateTo}
-                  setFilterDateTo={setFilterDateTo}
+                  filterOrigin={filterOrigin} setFilterOrigin={setFilterOrigin}
+                  filterSegment={filterSegment} setFilterSegment={setFilterSegment}
+                  filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
+                  filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
+                  filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
                 />
               </div>
               <SheetFooter className="gap-2">
                 <Button variant="outline" onClick={() => {
                   setFilterOrigin('all'); setFilterSegment('all');
-                  setFilterDateFrom(''); setFilterDateTo('');
+                  setFilterDatePreset('this_month'); setFilterDateFrom(''); setFilterDateTo('');
                 }}>Limpar</Button>
                 <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
               </SheetFooter>
@@ -402,6 +414,8 @@ interface FiltersFormProps {
   setFilterOrigin: (v: string) => void;
   filterSegment: string;
   setFilterSegment: (v: string) => void;
+  filterDatePreset: DatePreset;
+  setFilterDatePreset: (v: DatePreset) => void;
   filterDateFrom: string;
   setFilterDateFrom: (v: string) => void;
   filterDateTo: string;
@@ -410,8 +424,78 @@ interface FiltersFormProps {
 
 function FiltersForm({
   origins, filterOrigin, setFilterOrigin, filterSegment, setFilterSegment,
+  filterDatePreset, setFilterDatePreset,
   filterDateFrom, setFilterDateFrom, filterDateTo, setFilterDateTo,
 }: FiltersFormProps) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Origem</Label>
+        <Select value={filterOrigin} onValueChange={setFilterOrigin}>
+          <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {origins.map(o => (
+              <SelectItem key={o.id} value={o.name}>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded" style={{ backgroundColor: o.color || '#6B7280' }} />
+                  <span>{o.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Segmento</Label>
+        <Select value={filterSegment} onValueChange={setFilterSegment}>
+          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {COMPANY_SEGMENTS.map(s => (
+              <SelectItem key={s.value} value={s.value}>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: s.color }}>
+                    <s.icon className="h-2.5 w-2.5 text-white" />
+                  </div>
+                  <span>{s.label}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de Geração</Label>
+        <Select value={filterDatePreset} onValueChange={(v) => setFilterDatePreset(v as DatePreset)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os períodos</SelectItem>
+            <SelectItem value="today">Hoje</SelectItem>
+            <SelectItem value="this_week">Esta semana</SelectItem>
+            <SelectItem value="this_month">Este mês</SelectItem>
+            <SelectItem value="this_year">Este ano</SelectItem>
+            <SelectItem value="custom">Personalizado</SelectItem>
+          </SelectContent>
+        </Select>
+        {filterDatePreset === 'custom' && (
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">De</Label>
+              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Até</Label>
+              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
   return (
     <div className="space-y-4">
       <div className="space-y-2">
