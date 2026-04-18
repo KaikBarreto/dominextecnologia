@@ -209,6 +209,10 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const cleanCnpj = formData.cnpj.replace(/\D/g, '');
 
+      const customPriceVal = formData.use_custom_price ? parseFloat(formData.subscription_value) || 0 : null;
+      const planObj = plans.find((p: any) => p.code === formData.subscription_plan);
+      const originalPlanPrice = planObj?.price ?? null;
+
       if (isEditing) {
         const { error } = await supabase.from('companies').update({
           name: formData.name,
@@ -226,6 +230,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           notes: formData.notes || null,
           origin: formData.origin || null,
           salesperson_id: formData.salesperson_id || null,
+          custom_price: customPriceVal,
+          custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
+          custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
+            ? parseInt(formData.custom_price_months) || null
+            : null,
         }).eq('id', company.id);
         if (error) throw error;
       } else {
@@ -252,6 +261,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             max_users: parseInt(formData.max_users) || 5,
             origin: formData.origin || null,
             salesperson_id: formData.salesperson_id || null,
+            custom_price: customPriceVal,
+            custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
+            custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
+              ? parseInt(formData.custom_price_months) || null
+              : null,
+            original_plan_price: originalPlanPrice,
           },
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
