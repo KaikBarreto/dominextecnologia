@@ -182,6 +182,7 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
   return (
     <div className="space-y-4">
       {/* Pizzas: Origem + Forma de Pagamento */}
+      {visible.has('pies') && (
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-base sm:text-lg">Origem dos Novos Clientes</CardTitle></CardHeader>
@@ -251,8 +252,10 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Funil de retenção */}
+      {visible.has('funnel') && (
       <Card>
         <CardHeader><CardTitle className="text-base sm:text-lg">Funil de Retenção de Clientes</CardTitle></CardHeader>
         <CardContent>
@@ -302,8 +305,10 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Receita evolução */}
+      {visible.has('revenue') && (
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -337,8 +342,10 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
           </ResponsiveContainer>
         </CardContent>
       </Card>
+      )}
 
       {/* Churn */}
+      {visible.has('churn') && (
       <Card>
         <CardHeader><CardTitle className="text-base sm:text-lg">Taxa de Churn Mensal ({new Date().getFullYear()})</CardTitle></CardHeader>
         <CardContent>
@@ -357,6 +364,7 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
           </ResponsiveContainer>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
