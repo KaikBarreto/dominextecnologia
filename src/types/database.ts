@@ -189,7 +189,26 @@ export interface FinancialTransaction {
   installment_total?: number;
   account_id?: string | null;
   transfer_pair_id?: string | null;
+  parent_transaction_id?: string | null;
+  credit_card_bill_date?: string | null;
   created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CreditCardBillStatus = 'open' | 'closed' | 'paid' | 'partial';
+
+export interface CreditCardBill {
+  id: string;
+  company_id: string;
+  account_id: string;
+  reference_month: string;
+  closing_date: string;
+  due_date: string;
+  status: CreditCardBillStatus;
+  amount_paid: number;
+  payment_transaction_id?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
 }

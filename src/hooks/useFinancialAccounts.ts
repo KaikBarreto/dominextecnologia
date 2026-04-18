@@ -19,6 +19,9 @@ export interface FinancialAccount {
   icon: string;
   is_active: boolean;
   sort_order: number;
+  closing_day?: number | null;
+  payment_due_days?: number | null;
+  credit_limit?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +38,9 @@ export interface AccountInput {
   icon?: string;
   is_active?: boolean;
   sort_order?: number;
+  closing_day?: number | null;
+  payment_due_days?: number | null;
+  credit_limit?: number | null;
 }
 
 export interface TransferInput {
@@ -71,37 +77,62 @@ export function useFinancialAccounts() {
   });
 
   // Calculate balances based on transactions
+  // Credit card (cartao) accounts are excluded from real cash balance;
+  // their "balance" is the open bill amount (total of uncommitted card spend).
   const balancesQuery = useQuery({
     queryKey: ['account-balances'],
     queryFn: async () => {
       const { data: accounts, error: accErr } = await supabase
         .from('financial_accounts')
-        .select('id, initial_balance');
+        .select('id, initial_balance, type');
       if (accErr) throw accErr;
 
-      const txns = await fetchAllPaginated<{ account_id: string | null; transaction_type: string; amount: number; is_paid: boolean }>(
+      const txns = await fetchAllPaginated<{ account_id: string | null; transaction_type: string; amount: number; is_paid: boolean; credit_card_bill_date: string | null }>(
         () => supabase
           .from('financial_transactions')
-          .select('account_id, transaction_type, amount, is_paid')
+          .select('account_id, transaction_type, amount, is_paid, credit_card_bill_date')
           .not('account_id', 'is', null)
       );
 
-      const balances: Record<string, number> = {};
+      const accountTypeMap: Record<string, string> = {};
       for (const acc of (accounts || [])) {
-        balances[acc.id] = Number(acc.initial_balance);
+        accountTypeMap[acc.id] = acc.type;
       }
 
-      for (const t of (txns || [])) {
-        if (!t.account_id || !t.is_paid) continue;
-        const amount = Number(t.amount);
-        if (t.transaction_type === 'entrada') {
-          balances[t.account_id] = (balances[t.account_id] || 0) + amount;
-        } else {
-          balances[t.account_id] = (balances[t.account_id] || 0) - amount;
+      // Real balances (only for caixa/banco)
+      const balances: Record<string, number> = {};
+      for (const acc of (accounts || [])) {
+        if (acc.type !== 'cartao') {
+          balances[acc.id] = Number(acc.initial_balance);
         }
       }
 
-      return balances;
+      // Open bill totals for credit cards (sum of saida transactions with credit_card_bill_date)
+      const cardBillTotals: Record<string, number> = {};
+
+      for (const t of (txns || [])) {
+        if (!t.account_id) continue;
+        const accountType = accountTypeMap[t.account_id];
+        const amount = Number(t.amount);
+
+        if (accountType === 'cartao') {
+          // For cards, accumulate saida in bill total (entrada = payment/refund)
+          if (t.transaction_type === 'saida') {
+            cardBillTotals[t.account_id] = (cardBillTotals[t.account_id] || 0) + amount;
+          } else {
+            cardBillTotals[t.account_id] = (cardBillTotals[t.account_id] || 0) - amount;
+          }
+        } else {
+          if (!t.is_paid) continue;
+          if (t.transaction_type === 'entrada') {
+            balances[t.account_id] = (balances[t.account_id] || 0) + amount;
+          } else {
+            balances[t.account_id] = (balances[t.account_id] || 0) - amount;
+          }
+        }
+      }
+
+      return { balances, cardBillTotals };
     },
   });
 
@@ -203,7 +234,8 @@ export function useFinancialAccounts() {
 
   return {
     accounts: accountsQuery.data ?? [],
-    balances: balancesQuery.data ?? {},
+    balances: balancesQuery.data?.balances ?? {},
+    cardBillTotals: balancesQuery.data?.cardBillTotals ?? {},
     isLoading: accountsQuery.isLoading,
     createAccount,
     updateAccount,

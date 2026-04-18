@@ -24,6 +24,7 @@ export interface TransactionInput {
   receipt_url?: string;
   installment_count?: number;
   account_id?: string | null;
+  credit_card_bill_date?: string | null;
 }
 
 export function useFinancial() {
@@ -148,12 +149,38 @@ export function useFinancial() {
         .insert(sanitized as any)
         .select()
         .single();
-      
+
       if (error) throw error;
+
+      // If this is a credit card expense, auto-create the bill record
+      if (rest.credit_card_bill_date && rest.account_id && rest.transaction_type === 'saida') {
+        const { data: account } = await supabase
+          .from('financial_accounts')
+          .select('id, closing_day, payment_due_days, type')
+          .eq('id', rest.account_id)
+          .single();
+        if (account?.type === 'cartao') {
+          const { computeBillDates } = await import('@/hooks/useCreditCardBills');
+          const { closing_date, due_date } = computeBillDates(account, rest.credit_card_bill_date);
+          await supabase
+            .from('credit_card_bills')
+            .upsert({
+              company_id,
+              account_id: rest.account_id,
+              reference_month: rest.credit_card_bill_date,
+              closing_date,
+              due_date,
+              status: 'open',
+              amount_paid: 0,
+            }, { onConflict: 'account_id,reference_month', ignoreDuplicates: true });
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
       toast({ title: 'Transação criada com sucesso!' });
     },
     onError: (error: Error) => {

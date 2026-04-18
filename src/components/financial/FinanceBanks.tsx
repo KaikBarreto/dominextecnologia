@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -11,22 +12,35 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { Plus, Pencil, Trash2, ArrowLeftRight, Landmark, Wallet, CreditCard } from 'lucide-react';
+import {
+  Plus, Pencil, Trash2, ArrowLeftRight, Landmark, Wallet, CreditCard,
+  ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle,
+} from 'lucide-react';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
+import { useCreditCardBills, computeBillDate, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { TransferFormDialog } from './TransferFormDialog';
 import { BankInstitutionCombobox, BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
+function formatMonth(dateStr: string) {
+  return format(parseISO(dateStr + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
+}
+
 const ACCOUNT_TYPES = [
   { value: 'caixa', label: 'Caixa', icon: Wallet },
   { value: 'banco', label: 'Conta Bancária', icon: Landmark },
-  { value: 'cartao', label: 'Cartão', icon: CreditCard },
+  { value: 'cartao', label: 'Cartão de Crédito', icon: CreditCard },
 ];
 
 const ACCOUNT_COLORS = [
@@ -36,17 +50,278 @@ const ACCOUNT_COLORS = [
   '#10b981', '#14b8a6', '#06b6d4',
 ];
 
+const CLOSING_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+
+const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  open: { label: 'Aberta', color: 'text-blue-600', icon: Clock },
+  closed: { label: 'Fechada', color: 'text-orange-600', icon: AlertCircle },
+  partial: { label: 'Parcial', color: 'text-yellow-600', icon: AlertCircle },
+  paid: { label: 'Paga', color: 'text-green-600', icon: CheckCircle2 },
+};
+
 function getTypeIcon(type: string) {
   const found = ACCOUNT_TYPES.find(t => t.value === type);
   return found?.icon || Landmark;
 }
 
+// ─── Painel de Faturas ──────────────────────────────────────────────────────
+
+interface BillPanelProps {
+  account: FinancialAccount;
+  accounts: FinancialAccount[];
+  onClose: () => void;
+}
+
+function BillPanel({ account, accounts, onClose }: BillPanelProps) {
+  const { bills, isLoading, payBill } = useCreditCardBills(account.id);
+  const [expandedBill, setExpandedBill] = useState<string | null>(null);
+  const [payingBill, setPayingBill] = useState<CreditCardBillWithTransactions | null>(null);
+  const [payAccountId, setPayAccountId] = useState('');
+  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [payAmount, setPayAmount] = useState(0);
+  const [payNotes, setPayNotes] = useState('');
+
+  const cashBankAccounts = accounts.filter(a => a.type !== 'cartao' && a.is_active);
+
+  const openPayModal = (bill: CreditCardBillWithTransactions) => {
+    const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
+    setPayingBill(bill);
+    setPayAmount(remaining);
+    setPayDate(new Date().toISOString().split('T')[0]);
+    setPayAccountId(cashBankAccounts[0]?.id ?? '');
+    setPayNotes('');
+  };
+
+  const handlePay = async () => {
+    if (!payingBill || !payAccountId || payAmount <= 0) return;
+    await payBill.mutateAsync({
+      bill: payingBill,
+      paymentAccountId: payAccountId,
+      paymentDate: payDate,
+      amountToPay: payAmount,
+      notes: payNotes || undefined,
+    });
+    setPayingBill(null);
+  };
+
+  const handlePayAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setPayAmount(parseInt(raw || '0', 10) / 100);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-primary" />
+          <div>
+            <h3 className="font-semibold">{account.name}</h3>
+            {account.institution_name && (
+              <p className="text-xs text-muted-foreground">{account.institution_name}</p>
+            )}
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose}>Fechar</Button>
+      </div>
+
+      {account.closing_day && (
+        <div className="flex gap-4 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30">
+          <span>Fecha dia <strong>{account.closing_day}</strong></span>
+          <span>Vencimento <strong>{account.payment_due_days ?? 10} dias</strong> após</span>
+          {account.credit_limit && <span>Limite <strong>{formatCurrency(account.credit_limit)}</strong></span>}
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">Carregando faturas...</p>
+      ) : bills.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Receipt className="h-10 w-10 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">Nenhuma fatura registrada</p>
+          <p className="text-xs mt-1">As faturas aparecem automaticamente quando você lança despesas neste cartão</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {bills.map(bill => {
+            const statusCfg = BILL_STATUS_CONFIG[bill.status] ?? BILL_STATUS_CONFIG.open;
+            const StatusIcon = statusCfg.icon;
+            const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
+            const isExpanded = expandedBill === bill.id;
+
+            return (
+              <Card key={bill.id} className="overflow-hidden">
+                <Collapsible open={isExpanded} onOpenChange={(v) => setExpandedBill(v ? bill.id : null)}>
+                  <CollapsibleTrigger className="w-full">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {isExpanded
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          }
+                          <div className="text-left">
+                            <p className="font-medium capitalize text-sm">{formatMonth(bill.reference_month)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Fecha {format(parseISO(bill.closing_date + 'T12:00:00'), 'dd/MM')} · Vence {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="font-bold text-sm">{formatCurrency(bill.total_amount ?? 0)}</p>
+                          <Badge variant="outline" className={cn('text-[10px] gap-1', statusCfg.color)}>
+                            <StatusIcon className="h-3 w-3" />
+                            {statusCfg.label}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {bill.status !== 'paid' && (
+                        <div className="mt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7 gap-1"
+                            onClick={(e) => { e.stopPropagation(); openPayModal(bill); }}
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                            Pagar Fatura
+                          </Button>
+                        </div>
+                      )}
+
+                      {bill.status === 'partial' && (
+                        <p className="text-xs text-yellow-600 mt-1 text-right">
+                          Pago: {formatCurrency(Number(bill.amount_paid ?? 0))} · Restante: {formatCurrency(remaining)}
+                        </p>
+                      )}
+                    </CardContent>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    <div className="border-t mx-4 mb-4">
+                      {(bill.transactions ?? []).length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-3 text-center">Sem transações nesta fatura</p>
+                      ) : (
+                        <div className="space-y-1 pt-3">
+                          {(bill.transactions ?? []).map(t => (
+                            <div key={t.id} className="flex items-center justify-between text-sm py-1">
+                              <div>
+                                <p className="text-sm">{t.description}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(parseISO(t.transaction_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                                  {t.category && ` · ${t.category}`}
+                                </p>
+                              </div>
+                              <p className="font-medium text-destructive">{formatCurrency(Number(t.amount))}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal Pagar Fatura */}
+      <ResponsiveModal
+        open={!!payingBill}
+        onOpenChange={(v) => { if (!v) setPayingBill(null); }}
+        title="Pagar Fatura"
+        className="sm:max-w-[440px]"
+      >
+        {payingBill && (
+          <div className="space-y-4">
+            <div className="border rounded-lg p-3 bg-muted/30 text-sm">
+              <p className="font-medium capitalize">{formatMonth(payingBill.reference_month)}</p>
+              <p className="text-muted-foreground">Total da fatura: {formatCurrency(payingBill.total_amount ?? 0)}</p>
+              {Number(payingBill.amount_paid ?? 0) > 0 && (
+                <p className="text-muted-foreground">Já pago: {formatCurrency(Number(payingBill.amount_paid ?? 0))}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Pagar com *</Label>
+              <Select value={payAccountId} onValueChange={setPayAccountId}>
+                <SelectTrigger><SelectValue placeholder="Selecione conta/caixa" /></SelectTrigger>
+                <SelectContent>
+                  {cashBankAccounts.map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <div className="flex items-center gap-2">
+                        {a.institution_name
+                          ? <BankLogo code={a.institution_code} name={a.institution_name} size={16} />
+                          : <div className="h-4 w-4 rounded-full" style={{ backgroundColor: a.color }} />
+                        }
+                        {a.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Data do pagamento *</Label>
+              <Input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Valor a pagar (R$)</Label>
+              <Input
+                placeholder="0,00"
+                value={payAmount > 0 ? payAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                onChange={handlePayAmountChange}
+                inputMode="numeric"
+              />
+              {(() => {
+                const remaining = (payingBill.total_amount ?? 0) - Number(payingBill.amount_paid ?? 0);
+                const diff = remaining - payAmount;
+                if (diff > 0.01) {
+                  return <p className="text-xs text-yellow-600">Pagamento parcial — Saldo devedor: {formatCurrency(diff)}</p>;
+                }
+                return null;
+              })()}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Observações</Label>
+              <Textarea
+                value={payNotes}
+                onChange={e => setPayNotes(e.target.value)}
+                placeholder="Opcional"
+                rows={2}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setPayingBill(null)}>Cancelar</Button>
+              <Button
+                onClick={handlePay}
+                disabled={!payAccountId || payAmount <= 0 || payBill.isPending}
+              >
+                {payBill.isPending ? 'Registrando...' : 'Confirmar Pagamento'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </ResponsiveModal>
+    </div>
+  );
+}
+
+// ─── Componente Principal ────────────────────────────────────────────────────
+
 export function FinanceBanks() {
-  const { accounts, balances, isLoading, createAccount, updateAccount, deleteAccount, transfer } = useFinancialAccounts();
+  const { accounts, balances, cardBillTotals, isLoading, createAccount, updateAccount, deleteAccount, transfer } = useFinancialAccounts();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialAccount | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<FinancialAccount | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -54,10 +329,20 @@ export function FinanceBanks() {
   const [institution, setInstitution] = useState<{ code: number | null; name: string; ispb?: string | null } | null>(null);
   const [initialBalance, setInitialBalance] = useState(0);
   const [color, setColor] = useState('#3b82f6');
+  const [closingDay, setClosingDay] = useState<number>(10);
+  const [paymentDueDays, setPaymentDueDays] = useState<number>(10);
+  const [creditLimit, setCreditLimit] = useState<number>(0);
+
+  const cashBankAccounts = accounts.filter(a => a.type !== 'cartao');
+  const cardAccounts = accounts.filter(a => a.type === 'cartao');
+
+  const totalCashBalance = cashBankAccounts.reduce((sum, a) => sum + (balances[a.id] ?? a.initial_balance), 0);
+  const totalOpenBills = cardAccounts.reduce((sum, a) => sum + (cardBillTotals[a.id] ?? 0), 0);
 
   const openNew = () => {
     setEditing(null);
     setName(''); setType('banco'); setInstitution(null); setInitialBalance(0); setColor('#3b82f6');
+    setClosingDay(10); setPaymentDueDays(10); setCreditLimit(0);
     setFormOpen(true);
   };
 
@@ -68,6 +353,9 @@ export function FinanceBanks() {
     setInstitution(a.institution_name ? { code: a.institution_code ?? null, name: a.institution_name, ispb: a.institution_ispb } : (a.bank_name ? { code: null, name: a.bank_name } : null));
     setInitialBalance(a.initial_balance);
     setColor(a.color);
+    setClosingDay(a.closing_day ?? 10);
+    setPaymentDueDays(a.payment_due_days ?? 10);
+    setCreditLimit(a.credit_limit ?? 0);
     setFormOpen(true);
   };
 
@@ -82,6 +370,15 @@ export function FinanceBanks() {
       institution_ispb: institution?.ispb ?? null,
       initial_balance: initialBalance,
       color,
+      ...(type === 'cartao' ? {
+        closing_day: closingDay,
+        payment_due_days: paymentDueDays,
+        credit_limit: creditLimit > 0 ? creditLimit : null,
+      } : {
+        closing_day: null,
+        payment_due_days: null,
+        credit_limit: null,
+      }),
     };
     if (editing) {
       await updateAccount.mutateAsync({ ...input, id: editing.id });
@@ -102,21 +399,41 @@ export function FinanceBanks() {
     setInitialBalance(parseInt(raw || '0', 10) / 100);
   };
 
+  const handleCreditLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setCreditLimit(parseInt(raw || '0', 10) / 100);
+  };
+
   const balanceDisplay = initialBalance
     ? initialBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
-  const totalBalance = accounts.reduce((sum, a) => sum + (balances[a.id] ?? a.initial_balance), 0);
+  const creditLimitDisplay = creditLimit
+    ? creditLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+
+  if (selectedCard) {
+    return (
+      <div className="space-y-5">
+        <BillPanel
+          account={selectedCard}
+          accounts={accounts}
+          onClose={() => setSelectedCard(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h2 className="text-xl font-bold">Caixas e Bancos</h2>
-          <p className="text-sm text-muted-foreground">Gerencie suas contas bancárias e controle saldos</p>
+          <p className="text-sm text-muted-foreground">Gerencie suas contas bancárias, caixas e cartões</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => setTransferOpen(true)} disabled={accounts.length < 2}>
+          <Button variant="outline" className="gap-2" onClick={() => setTransferOpen(true)} disabled={cashBankAccounts.length < 2}>
             <ArrowLeftRight className="h-4 w-4" /> Transferir
           </Button>
           <Button className="gap-2" onClick={openNew}>
@@ -125,80 +442,186 @@ export function FinanceBanks() {
         </div>
       </div>
 
-      {/* Total balance */}
-      <Card className="bg-primary border-0">
-        <CardContent className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-primary-foreground/80 uppercase tracking-wider">Saldo Total</p>
-          <p className="text-2xl font-bold text-primary-foreground mt-1">{formatCurrency(totalBalance)}</p>
-        </CardContent>
-      </Card>
-
-      {/* Account cards */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {accounts.map(a => {
-          const Icon = getTypeIcon(a.type);
-          const balance = balances[a.id] ?? a.initial_balance;
-          const hasInst = !!(a.institution_name || a.bank_name);
-          return (
-            <Card key={a.id} className="relative group overflow-hidden">
-              <div className="h-1.5 w-full" style={{ backgroundColor: a.color }} />
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {hasInst ? (
-                      <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
-                        <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
-                      </div>
-                    ) : (
-                      <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
-                        <Icon className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate">{a.name}</p>
-                      {(a.institution_name || a.bank_name) && (
-                        <p className="text-xs text-muted-foreground truncate">{a.institution_name || a.bank_name}</p>
-                      )}
-                      <Badge variant="outline" className="text-[10px] mt-1">
-                        {ACCOUNT_TYPES.find(t => t.value === a.type)?.label || a.type}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeletingId(a.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs text-muted-foreground">Saldo atual</p>
-                  <p className={`text-lg font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {formatCurrency(balance)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {accounts.length === 0 && !isLoading && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Landmark className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p className="font-medium">Nenhuma conta cadastrada</p>
-          <p className="text-sm">Crie contas para controlar seus saldos bancários</p>
+      {/* ── Seção 1: Caixas e Contas Bancárias ── */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Landmark className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Caixas e Contas Bancárias</h3>
         </div>
-      )}
+
+        <Card className="bg-primary border-0">
+          <CardContent className="p-4 sm:p-5">
+            <p className="text-xs font-medium text-primary-foreground/80 uppercase tracking-wider">Saldo Total</p>
+            <p className="text-2xl font-bold text-primary-foreground mt-1">{formatCurrency(totalCashBalance)}</p>
+          </CardContent>
+        </Card>
+
+        {cashBankAccounts.length === 0 && !isLoading ? (
+          <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+            <Landmark className="h-10 w-10 mx-auto mb-2 opacity-40" />
+            <p className="text-sm font-medium">Nenhuma conta bancária cadastrada</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {cashBankAccounts.map(a => {
+              const Icon = getTypeIcon(a.type);
+              const balance = balances[a.id] ?? a.initial_balance;
+              const hasInst = !!(a.institution_name || a.bank_name);
+              return (
+                <Card key={a.id} className="relative group overflow-hidden">
+                  <div className="h-1.5 w-full" style={{ backgroundColor: a.color }} />
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {hasInst ? (
+                          <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
+                            <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
+                          </div>
+                        ) : (
+                          <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
+                            <Icon className="h-4 w-4 text-white" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate">{a.name}</p>
+                          {(a.institution_name || a.bank_name) && (
+                            <p className="text-xs text-muted-foreground truncate">{a.institution_name || a.bank_name}</p>
+                          )}
+                          <Badge variant="outline" className="text-[10px] mt-1">
+                            {ACCOUNT_TYPES.find(t => t.value === a.type)?.label || a.type}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeletingId(a.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-muted-foreground">Saldo atual</p>
+                      <p className={`text-lg font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(balance)}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Seção 2: Cartões de Crédito ── */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Cartões de Crédito</h3>
+        </div>
+
+        {cardAccounts.length > 0 && (
+          <Card className="bg-violet-600 border-0">
+            <CardContent className="p-4 sm:p-5">
+              <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Total de Faturas Abertas</p>
+              <p className="text-2xl font-bold text-white mt-1">{formatCurrency(totalOpenBills)}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {cardAccounts.length === 0 && !isLoading ? (
+          <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+            <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-40" />
+            <p className="text-sm font-medium">Nenhum cartão cadastrado</p>
+            <p className="text-xs mt-1">Clique em "Nova Conta" e selecione Cartão de Crédito</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {cardAccounts.map(a => {
+              const billTotal = cardBillTotals[a.id] ?? 0;
+              const availableLimit = a.credit_limit ? a.credit_limit - billTotal : null;
+              const hasInst = !!(a.institution_name || a.bank_name);
+
+              return (
+                <Card key={a.id} className="relative group overflow-hidden">
+                  <div className="h-1.5 w-full" style={{ backgroundColor: a.color }} />
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {hasInst ? (
+                          <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
+                            <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
+                          </div>
+                        ) : (
+                          <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
+                            <CreditCard className="h-4 w-4 text-white" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate">{a.name}</p>
+                          {(a.institution_name || a.bank_name) && (
+                            <p className="text-xs text-muted-foreground truncate">{a.institution_name || a.bank_name}</p>
+                          )}
+                          <Badge variant="outline" className="text-[10px] mt-1 text-violet-600 border-violet-300">
+                            Cartão de Crédito
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeletingId(a.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t space-y-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Fatura aberta</p>
+                        <p className={`text-lg font-bold ${billTotal > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          {formatCurrency(billTotal)}
+                        </p>
+                      </div>
+                      {availableLimit !== null && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Limite disponível</p>
+                          <p className={`text-sm font-medium ${availableLimit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {formatCurrency(availableLimit)}
+                          </p>
+                        </div>
+                      )}
+                      {a.closing_day && (
+                        <p className="text-xs text-muted-foreground">Fecha dia {a.closing_day}</p>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3 gap-2 text-xs h-8"
+                      onClick={() => setSelectedCard(a)}
+                    >
+                      <Receipt className="h-3.5 w-3.5" />
+                      Ver Faturas
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* Account form modal */}
       <ResponsiveModal open={formOpen} onOpenChange={setFormOpen} title={editing ? 'Editar Conta' : 'Nova Conta'} className="sm:max-w-[480px]">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Nome da Conta *</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Conta Corrente Principal" required />
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Nubank Crédito" required />
           </div>
 
           <div className="space-y-1.5">
@@ -218,13 +641,49 @@ export function FinanceBanks() {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label>Saldo Inicial (R$)</Label>
-            <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} inputMode="numeric" />
-            {editing && (
-              <p className="text-xs text-muted-foreground">⚠️ Editar o saldo inicial recalcula o saldo atual da conta.</p>
-            )}
-          </div>
+          {type === 'cartao' ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Dia de fechamento *</Label>
+                  <Select value={String(closingDay)} onValueChange={v => setClosingDay(Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CLOSING_DAYS.map(d => <SelectItem key={d} value={String(d)}>Dia {d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Vencimento (dias após fechamento)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={40}
+                    value={paymentDueDays}
+                    onChange={e => setPaymentDueDays(Number(e.target.value))}
+                    placeholder="10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Limite de crédito (R$) <span className="text-muted-foreground font-normal">opcional</span></Label>
+                <Input
+                  placeholder="0,00"
+                  value={creditLimitDisplay}
+                  onChange={handleCreditLimitChange}
+                  inputMode="numeric"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Saldo Inicial (R$)</Label>
+              <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} inputMode="numeric" />
+              {editing && (
+                <p className="text-xs text-muted-foreground">⚠️ Editar o saldo inicial recalcula o saldo atual da conta.</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Cor</Label>
@@ -281,6 +740,9 @@ export function FinanceBanks() {
                 <div className="min-w-0">
                   <p className="font-semibold text-sm truncate">{name || 'Nome da conta'}</p>
                   {institution?.name && <p className="text-xs text-muted-foreground truncate">{institution.name}</p>}
+                  {type === 'cartao' && closingDay && (
+                    <p className="text-xs text-muted-foreground">Fecha dia {closingDay}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -298,7 +760,7 @@ export function FinanceBanks() {
       <TransferFormDialog
         open={transferOpen}
         onOpenChange={setTransferOpen}
-        accounts={accounts}
+        accounts={cashBankAccounts}
         onSubmit={async (d) => { await transfer.mutateAsync(d); }}
         isLoading={transfer.isPending}
       />

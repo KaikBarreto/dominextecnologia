@@ -29,8 +29,12 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
 
-  // Filter out inter-account transfers and unpaid transactions from DRE
-  const transactions = useMemo(() => rawTransactions.filter(t => !t.transfer_pair_id && t.is_paid), [rawTransactions]);
+  // Filter out inter-account transfers, unpaid transactions, and credit card bill payments from DRE
+  // (bill payments are balance sheet items, not P&L)
+  const transactions = useMemo(
+    () => rawTransactions.filter(t => !t.transfer_pair_id && t.is_paid && t.category !== 'Pagamento de Fatura'),
+    [rawTransactions]
+  );
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
   const [showOpex, setShowOpex] = useState(false);

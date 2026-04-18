@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, TrendingUp, TrendingDown, Upload, X, Paperclip } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Upload, X, Paperclip, CreditCard, Info } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,9 @@ import { SignedLink } from '@/components/ui/SignedLink';
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
+import { computeBillDate } from '@/hooks/useCreditCardBills';
+import { format, parseISO, addMonths, startOfMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 
@@ -38,6 +41,7 @@ const transactionSchema = z.object({
   payment_method: z.string().optional(),
   installment_count: z.coerce.number().min(1).default(1),
   account_id: z.string().min(1, 'Selecione uma conta ou caixa'),
+  credit_card_bill_date: z.string().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -114,6 +118,23 @@ export function TransactionFormDialog({
 
   const transactionType = form.watch('transaction_type');
   const isPaid = form.watch('is_paid');
+  const watchedAccountId = form.watch('account_id');
+  const watchedDate = form.watch('transaction_date');
+
+  const selectedAccount = accounts.find(a => a.id === watchedAccountId);
+  const isCardAccount = selectedAccount?.type === 'cartao';
+
+  // Auto-calculate bill month when card account is selected
+  useEffect(() => {
+    if (isCardAccount && watchedDate && selectedAccount) {
+      const billDate = computeBillDate(selectedAccount, watchedDate);
+      form.setValue('credit_card_bill_date', billDate);
+      // Card transactions are always "paid" (committed to the card)
+      form.setValue('is_paid', true);
+    } else if (!isCardAccount) {
+      form.setValue('credit_card_bill_date', undefined);
+    }
+  }, [isCardAccount, watchedDate, watchedAccountId]);
 
   const uploadReceipt = async (): Promise<string | null> => {
     if (!receiptFile) return (transaction as any)?.receipt_url || null;
@@ -141,6 +162,7 @@ export function TransactionFormDialog({
       receipt_url: receiptUrl,
       payment_method: data.payment_method || null,
       account_id: data.account_id || null,
+      credit_card_bill_date: data.credit_card_bill_date || null,
     };
     if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
     if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
@@ -285,6 +307,50 @@ export function TransactionFormDialog({
             )} />
           )}
 
+          {/* Credit card bill info */}
+          {isCardAccount && transactionType === 'saida' && (() => {
+            const billDate = form.watch('credit_card_bill_date');
+            const billLabel = billDate
+              ? format(parseISO(billDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR })
+              : null;
+            const MONTHS = Array.from({ length: 12 }, (_, i) => {
+              const d = addMonths(startOfMonth(new Date()), i - 3);
+              return { value: format(d, 'yyyy-MM-dd'), label: format(d, 'MMMM yyyy', { locale: ptBR }) };
+            });
+
+            return (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300">
+                  <CreditCard className="h-4 w-4 shrink-0" />
+                  <p className="text-sm font-medium">Despesa no Cartão de Crédito</p>
+                </div>
+                {billLabel && (
+                  <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Esta despesa será acumulada na <strong>fatura de {billLabel}</strong> do cartão {selectedAccount?.name}
+                  </p>
+                )}
+                <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs text-violet-700 dark:text-violet-300">Mês da fatura</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger className="h-8 text-sm border-violet-300 dark:border-violet-700">
+                          <SelectValue placeholder="Selecione o mês" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {MONTHS.map(m => (
+                          <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+              </div>
+            );
+          })()}
+
           {/* Description */}
           <FormField control={form.control} name="description" render={({ field }) => (
             <FormItem>
@@ -371,21 +437,23 @@ export function TransactionFormDialog({
             )}
           </div>
 
-          {/* Is Paid toggle */}
-          <FormField control={form.control} name="is_paid" render={({ field }) => (
-            <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <FormLabel className="!mt-0 font-medium">Já foi {isEntrada ? 'recebido' : 'pago'}</FormLabel>
-                <p className="text-xs text-muted-foreground">
-                  {field.value
-                    ? (isEntrada ? 'Será registrado como recebido' : 'Será registrado como pago')
-                    : (isEntrada ? 'Irá para contas a receber' : 'Irá para contas a pagar')
-                  }
-                </p>
-              </div>
-              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-            </FormItem>
-          )} />
+          {/* Is Paid toggle — hidden for credit card expenses (always committed) */}
+          {!(isCardAccount && transactionType === 'saida') && (
+            <FormField control={form.control} name="is_paid" render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <FormLabel className="!mt-0 font-medium">Já foi {isEntrada ? 'recebido' : 'pago'}</FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    {field.value
+                      ? (isEntrada ? 'Será registrado como recebido' : 'Será registrado como pago')
+                      : (isEntrada ? 'Irá para contas a receber' : 'Irá para contas a pagar')
+                    }
+                  </p>
+                </div>
+                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+              </FormItem>
+            )} />
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
