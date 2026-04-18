@@ -25,6 +25,7 @@ function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
 }
 import { ContaFormDialog } from './ContaFormDialog';
+import { ReceivePaymentModal } from './ReceivePaymentModal';
 import type { TransactionType } from '@/types/database';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useDataPagination } from '@/hooks/useDataPagination';
@@ -256,7 +257,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 </div>
                 {!t.is_paid && (
                   <div className="flex justify-end pt-1 border-t">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs text-success gap-1" onClick={() => onMarkAsPaid(t.id)}>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-success gap-1" onClick={() => handleMarkAsPaidClick(t)}>
                       <Check className="h-3 w-3" /> Marcar pago
                     </Button>
                   </div>
@@ -320,7 +321,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                       <TableCell>
                         <div className="flex items-center gap-1">
                           {!t.is_paid && (
-                            <Button variant="ghost" size="icon" className="text-success h-8 w-8" onClick={() => onMarkAsPaid(t.id)} title="Marcar como pago">
+                            <Button variant="ghost" size="icon" className="text-success h-8 w-8" onClick={() => handleMarkAsPaidClick(t)} title="Marcar como pago">
                               <Check className="h-4 w-4" />
                             </Button>
                           )}
@@ -374,6 +375,27 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReceivePaymentModal
+        open={!!receivingTxn}
+        onOpenChange={(v) => { if (!v) setReceivingTxn(null); }}
+        amount={Number(receivingTxn?.amount ?? 0)}
+        title="Como foi recebido?"
+        description={receivingTxn?.description}
+        onConfirm={async (payment) => {
+          if (!receivingTxn) return;
+          await onMarkAsPaid({
+            id: receivingTxn.id,
+            account_id: payment.account_id,
+            payment_method: payment.payment_method,
+            paid_date: payment.paid_date,
+            fee_amount: payment.fee_amount,
+            notes: payment.notes,
+            customer_id: (receivingTxn as any).customer_id,
+          });
+          setReceivingTxn(null);
+        }}
+      />
     </div>
   );
 }

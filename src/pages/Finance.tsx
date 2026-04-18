@@ -150,7 +150,7 @@ export default function Finance() {
             onNew={() => handleNew('entrada')}
             onEdit={handleEdit}
             onDelete={(id) => deleteTransaction.mutateAsync(id)}
-            onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
+            onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
           />
         )}
 
@@ -158,7 +158,7 @@ export default function Finance() {
           <FinanceContas
             transactions={filterByDate(transactions, 'due_date', 'transaction_date')}
             isLoading={isLoading}
-            onMarkAsPaid={(id) => markAsPaid.mutateAsync(id)}
+            onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
           />
         )}
 
