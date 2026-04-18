@@ -25,6 +25,7 @@ function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
 }
 import { ContaFormDialog } from './ContaFormDialog';
+import { ReceivePaymentModal } from './ReceivePaymentModal';
 import type { TransactionType } from '@/types/database';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useDataPagination } from '@/hooks/useDataPagination';
