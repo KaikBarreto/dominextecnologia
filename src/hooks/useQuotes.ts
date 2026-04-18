@@ -84,6 +84,8 @@ export interface Quote {
   created_at: string;
   updated_at: string;
   converted_to_os_id: string | null;
+  financial_generated_at?: string | null;
+  financial_transaction_id?: string | null;
   final_price: number | null;
   // BDI fields (optional for backward compatibility in older UI mocks)
   tax_rate?: number | null;
