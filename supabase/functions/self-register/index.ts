@@ -1,10 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
 Deno.serve(async (req) => {
   const corsResp = handleCors(req);
   if (corsResp) return corsResp;
   const corsHeaders = getCorsHeaders(req);
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Método não permitido' }), {
+      status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
     const supabaseAdmin = createClient(
@@ -13,21 +22,36 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const {
-      company_name,
-      company_cnpj,
-      company_email,
-      company_phone,
-      contact_name,
-      password,
-      origin,
-    } = await req.json();
+    let raw: any;
+    try { raw = await req.json(); } catch {
+      return new Response(JSON.stringify({ error: 'JSON inválido' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const company_name = trim(raw.company_name, 200);
+    const company_cnpj = trim(raw.company_cnpj, 20);
+    const company_email = trim(raw.company_email, 255).toLowerCase();
+    const company_phone = trim(raw.company_phone, 30);
+    const contact_name = trim(raw.contact_name, 200);
+    const password = typeof raw.password === 'string' ? raw.password : '';
+    const origin = trim(raw.origin, 100);
 
     if (!company_name || !contact_name || !company_email || !password) {
       return new Response(
-        JSON.stringify({ error: 'Campos obrigatórios: company_name, contact_name, company_email, password' }),
+        JSON.stringify({ error: 'Campos obrigatórios: nome da empresa, contato, e-mail e senha' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    if (!EMAIL_RE.test(company_email)) {
+      return new Response(JSON.stringify({ error: 'E-mail inválido' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (password.length < 8 || password.length > 128) {
+      return new Response(JSON.stringify({ error: 'Senha deve ter entre 8 e 128 caracteres' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Check if email already exists
