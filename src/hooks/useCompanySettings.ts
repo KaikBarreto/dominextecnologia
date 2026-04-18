@@ -90,10 +90,14 @@ export function useCompanySettings() {
           if (input.email !== undefined) companyUpdate.email = input.email;
           if (input.logo_url !== undefined) companyUpdate.logo_url = input.logo_url;
           if (input.document !== undefined) companyUpdate.cnpj = input.document;
-          if (input.address !== undefined || input.city !== undefined || input.state !== undefined) {
-            const addr = [input.address || row?.address, input.city || row?.city, input.state || row?.state].filter(Boolean).join(', ');
-            companyUpdate.address = addr;
-          }
+          // Sync structured address fields (used by Asaas and other integrations)
+          if (input.address !== undefined) companyUpdate.address = input.address;
+          if (input.address_number !== undefined) companyUpdate.address_number = input.address_number;
+          if (input.neighborhood !== undefined) companyUpdate.neighborhood = input.neighborhood;
+          if (input.complement !== undefined) companyUpdate.complement = input.complement;
+          if (input.city !== undefined) companyUpdate.city = input.city;
+          if (input.state !== undefined) companyUpdate.state = input.state;
+          if (input.zip_code !== undefined) companyUpdate.zip_code = input.zip_code;
           if (Object.keys(companyUpdate).length > 0) {
             await supabase.from('companies').update(companyUpdate).eq('id', profile.company_id);
           }
