@@ -508,15 +508,101 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Valor (R$)</Label>
-                <Input type="number" step="0.01" value={formData.subscription_value} onChange={e => updateField('subscription_value', e.target.value)} />
+            {/* Switch + valor personalizado */}
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="use-custom-price"
+                  checked={formData.use_custom_price}
+                  onCheckedChange={(v) => {
+                    setFormData(prev => ({ ...prev, use_custom_price: v }));
+                    if (!v) {
+                      // restaurar preço do plano
+                      const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+                      if (p?.price != null) updateField('subscription_value', String(p.price));
+                    }
+                  }}
+                />
+                <Label htmlFor="use-custom-price" className="text-sm cursor-pointer">
+                  Usar valor personalizado
+                </Label>
               </div>
-              <div className="space-y-2">
-                <Label>Máx. Usuários</Label>
-                <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
-              </div>
+
+              {formData.use_custom_price && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Valor (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.subscription_value}
+                        onChange={e => updateField('subscription_value', e.target.value)}
+                      />
+                      {(() => {
+                        const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+                        return p?.price != null ? (
+                          <p className="text-xs text-muted-foreground">
+                            Valor original do plano: R$ {Number(p.price).toFixed(2)}/mês
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Máx. Usuários</Label>
+                      <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="is-permanent"
+                        checked={formData.custom_price_permanent}
+                        onCheckedChange={(v) => setFormData(prev => ({ ...prev, custom_price_permanent: v }))}
+                      />
+                      <Label htmlFor="is-permanent" className="text-sm cursor-pointer">
+                        Permanentemente
+                      </Label>
+                    </div>
+
+                    {!formData.custom_price_permanent && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Por quantos meses?</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="3"
+                          value={formData.custom_price_months}
+                          onChange={(e) => setFormData(prev => ({ ...prev, custom_price_months: e.target.value }))}
+                          className="w-24"
+                        />
+                        {(() => {
+                          const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+                          return p?.price != null && formData.subscription_value ? (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Os primeiros {formData.custom_price_months || 'X'} pagamentos serão de R$ {Number(formData.subscription_value).toFixed(2)}, depois volta para R$ {Number(p.price).toFixed(2)}/mês
+                            </p>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!formData.use_custom_price && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Valor (R$)</Label>
+                    <Input type="number" step="0.01" value={formData.subscription_value} disabled />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Máx. Usuários</Label>
+                    <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
