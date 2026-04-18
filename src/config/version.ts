@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.7.6";
+export const APP_VERSION = "1.7.7";
 
-export const VERSION_NOTES = "Movimentações financeiras agora ficam vinculadas: ao excluir ou desmarcar pagamento de uma receita oriunda de orçamento, o sistema lista todos os lançamentos relacionados (CMV materiais, mão de obra avulsa, tarifas) e pergunta se quer apagar/reverter tudo ou só o lançamento clicado. Excluir todos restaura o orçamento ao status 'enviado'. Categorias movidas para 'Configurações do Financeiro' (rota antiga ainda funciona).";
+export const VERSION_NOTES = "Cartões de crédito no Financeiro: cadastre cartões com dia de fechamento, dias para vencimento e limite. Despesas em cartão geram automaticamente faturas mensais (aberta/fechada/paga/parcial). Tela 'Caixas e Bancos' agora separa Caixas/Contas Bancárias dos Cartões — cards de cartão mostram fatura aberta + limite disponível. Botão 'Ver Faturas' abre painel com lista colapsável de transações por fatura e modal 'Pagar Fatura' (suporta pagamento parcial). Saldo total real exclui cartões; faturas de cartão não entram no DRE (são liquidação de dívida).";
