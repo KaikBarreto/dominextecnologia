@@ -50,8 +50,14 @@ interface TransactionListPanelProps {
   onNew?: () => void;
   onEdit: (t: FinancialTransaction) => void;
   onDelete: (id: string) => Promise<any>;
-  onMarkAsPaid: (id: string) => Promise<any>;
+  onMarkAsPaid: (params: any) => Promise<any>;
   buttonColor?: string;
+}
+
+function getAccIcon(type: string) {
+  if (type === 'caixa') return Wallet;
+  if (type === 'cartao') return CreditCard;
+  return Landmark;
 }
 
 export function TransactionListPanel({
@@ -66,7 +72,10 @@ export function TransactionListPanel({
   const [statusFilter, setStatusFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
   const isMobile = useIsMobile();
+  const { accounts: allAccounts } = useFinancialAccounts();
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -74,14 +83,32 @@ export function TransactionListPanel({
     return Array.from(cats).sort();
   }, [transactions]);
 
+  // Combine accounts from transactions + master list (so empty accounts also show)
   const accountNames = useMemo(() => {
     const map = new Map<string, { name: string; type: string; color: string }>();
+    allAccounts.filter(a => a.is_active).forEach((a) => {
+      map.set(a.id, { name: a.name, type: a.type, color: a.color });
+    });
     transactions.forEach((t) => {
       const acc = (t as any).account;
-      if (acc) map.set(acc.id, { name: acc.name, type: acc.type, color: acc.color });
+      if (acc && !map.has(acc.id)) map.set(acc.id, { name: acc.name, type: acc.type, color: acc.color });
     });
     return map;
-  }, [transactions]);
+  }, [transactions, allAccounts]);
+
+  const activeFiltersCount = [
+    categoryFilter !== 'all',
+    statusFilter !== 'all',
+    accountFilter !== 'all',
+    type === 'all' && typeFilter !== 'all',
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setAccountFilter('all');
+    setTypeFilter('all');
+  };
 
   const effectiveType = type === 'all' ? typeFilter : type;
 
