@@ -114,6 +114,10 @@ export default {
           "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0.4)" },
           "50%": { boxShadow: "0 0 20px 8px hsl(var(--primary) / 0.15)" },
         },
+        "ping-wave": {
+          "0%": { transform: "scale(1)", opacity: "0.7" },
+          "80%, 100%": { transform: "scale(1.9)", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -121,6 +125,7 @@ export default {
         shimmer: "shimmer 2s infinite",
         marquee: "marquee 30s linear infinite",
         "glow-pulse": "glow-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
+        "ping-wave": "ping-wave 2s cubic-bezier(0,0,0.2,1) infinite",
       },
     },
   },
