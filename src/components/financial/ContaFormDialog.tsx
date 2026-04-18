@@ -33,7 +33,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const { employees } = useEmployees();
   const { contracts } = useContracts();
   const { customers } = useCustomers();
-  
+  const { accounts } = useFinancialAccounts();
+
   const [tipo, setTipo] = useState<TransactionType>(defaultType);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -45,6 +46,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [employeeId, setEmployeeId] = useState('');
   const [contractId, setContractId] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!editingTransaction;
@@ -61,6 +63,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setNotes(editingTransaction.notes || '');
         setContractId(editingTransaction.contract_id || '');
         setCustomerId(editingTransaction.customer_id || '');
+        setAccountId((editingTransaction as any).account_id || '');
         setRecurrence('unica');
         setOccurrences(12);
         const empMatch = editingTransaction.notes?.match(/\[funcionario:([^\]]+)\]/);
@@ -77,6 +80,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setEmployeeId('');
         setContractId('');
         setCustomerId('');
+        setAccountId(localStorage.getItem('fin_last_account_id') || '');
       }
     }
   }, [open, defaultType, editingTransaction]);
