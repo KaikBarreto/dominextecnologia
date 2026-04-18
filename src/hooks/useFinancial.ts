@@ -109,10 +109,32 @@ export function useFinancial() {
         const baseDate = new Date(rest.transaction_date + 'T12:00:00');
         const rows = [];
 
+        // For card accounts, compute the bill date per installment from its due date
+        const isCardInstallment = !!rest.credit_card_bill_date && rest.transaction_type === 'saida';
+        let cardAccount: { id: string; closing_day?: number | null; payment_due_days?: number | null; type: string } | null = null;
+        if (isCardInstallment && rest.account_id) {
+          const { data } = await supabase
+            .from('financial_accounts')
+            .select('id, closing_day, payment_due_days, type')
+            .eq('id', rest.account_id)
+            .single();
+          cardAccount = data?.type === 'cartao' ? data : null;
+        }
+
+        const { computeBillDate, computeBillDates } = await import('@/hooks/useCreditCardBills');
+        const billMonthsToCreate = new Set<string>();
+
         for (let i = 0; i < n; i++) {
           const dueDate = new Date(baseDate);
           dueDate.setMonth(dueDate.getMonth() + i);
           const dueDateStr = dueDate.toISOString().split('T')[0];
+
+          // Each installment belongs to its own bill month based on its own due date
+          const installmentBillDate = cardAccount
+            ? computeBillDate(cardAccount, dueDateStr)
+            : rest.credit_card_bill_date ?? undefined;
+
+          if (installmentBillDate) billMonthsToCreate.add(installmentBillDate);
 
           const sanitized = normalizeOptionalForeignKeys(
             {
@@ -123,6 +145,7 @@ export function useFinancial() {
               due_date: dueDateStr,
               is_paid: i === 0 ? rest.is_paid : false,
               paid_date: i === 0 && rest.is_paid ? dueDateStr : undefined,
+              credit_card_bill_date: installmentBillDate ?? null,
               created_by: user?.id,
               company_id,
               installment_group_id: groupId,
@@ -136,6 +159,23 @@ export function useFinancial() {
 
         const { error } = await supabase.from('financial_transactions').insert(rows as any);
         if (error) throw error;
+
+        // Upsert a bill record for each unique month touched by installments
+        if (cardAccount && billMonthsToCreate.size > 0) {
+          for (const month of billMonthsToCreate) {
+            const { closing_date, due_date } = computeBillDates(cardAccount, month);
+            await supabase.from('credit_card_bills').upsert({
+              company_id,
+              account_id: cardAccount.id,
+              reference_month: month,
+              closing_date,
+              due_date,
+              status: 'open',
+              amount_paid: 0,
+            }, { onConflict: 'account_id,reference_month', ignoreDuplicates: true });
+          }
+        }
+
         return null;
       }
 
@@ -230,6 +270,60 @@ export function useFinancial() {
 
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
+      // Fetch the transaction before deleting so we can react to its category/amount
+      const { data: txn } = await supabase
+        .from('financial_transactions')
+        .select('category, amount, account_id, credit_card_bill_date')
+        .eq('id', id)
+        .maybeSingle();
+
+      // If this is a credit card bill payment, revert the corresponding bill
+      if (txn?.category === 'Pagamento de Fatura' && txn.account_id) {
+        // Find bill that references this payment transaction
+        const { data: bill } = await supabase
+          .from('credit_card_bills')
+          .select('id, amount_paid, status, payment_transaction_id')
+          .eq('payment_transaction_id', id)
+          .maybeSingle();
+
+        if (bill) {
+          const newAmountPaid = Math.max(0, Number(bill.amount_paid ?? 0) - Number(txn.amount));
+          await supabase
+            .from('credit_card_bills')
+            .update({
+              status: newAmountPaid > 0 ? 'partial' : 'open',
+              amount_paid: newAmountPaid,
+              payment_transaction_id: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', bill.id);
+        } else {
+          // Payment may be partial — find bill by account + period and reduce amount_paid
+          if (txn.credit_card_bill_date) {
+            const { data: billByPeriod } = await supabase
+              .from('credit_card_bills')
+              .select('id, amount_paid')
+              .eq('account_id', txn.account_id)
+              .not('status', 'eq', 'open')
+              .order('reference_month', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (billByPeriod) {
+              const newAmountPaid = Math.max(0, Number(billByPeriod.amount_paid ?? 0) - Number(txn.amount));
+              await supabase
+                .from('credit_card_bills')
+                .update({
+                  status: newAmountPaid > 0 ? 'partial' : 'open',
+                  amount_paid: newAmountPaid,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', billByPeriod.id);
+            }
+          }
+        }
+      }
+
       // Cascade delete children + clear quote link if root
       await supabase.from('financial_transactions').delete().eq('parent_transaction_id', id);
       await supabase
@@ -240,11 +334,12 @@ export function useFinancial() {
         .from('financial_transactions')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
       toast({ title: 'Transação excluída com sucesso!' });
     },
     onError: (error: Error) => {
