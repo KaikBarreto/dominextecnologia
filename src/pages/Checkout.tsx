@@ -199,6 +199,17 @@ export default function Checkout() {
         due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
       });
     } else if (method === 'card') {
+      // Activate company → status active + push expiration to next billing cycle
+      if (companyData?.id) {
+        const newExpiration = addMonths(new Date(), effectiveCycle === 'yearly' ? 12 : 1);
+        await supabase
+          .from('companies')
+          .update({
+            subscription_status: 'active',
+            subscription_expires_at: newExpiration.toISOString(),
+          })
+          .eq('id', companyData.id);
+      }
       setPaymentData({ status: 'CONFIRMED' });
       toast.success('Pagamento processado com sucesso!');
       setPaymentSuccess(true);
