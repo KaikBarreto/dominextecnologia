@@ -4,6 +4,7 @@ import type { Equipment } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface EquipmentInput {
   customer_id: string;
@@ -31,22 +32,20 @@ export function useEquipment(customerId?: string) {
   const equipmentQuery = useQuery({
     queryKey: ['equipment', user?.id ?? 'anon', customerId],
     queryFn: async () => {
-      let query = supabase
-        .from('equipment')
-        .select(`
-          *,
-          customer:customers(id, name)
-        `)
-        .order('name');
-      
-      if (customerId) {
-        query = query.eq('customer_id', customerId);
-      }
-
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      return data as (Equipment & { customer: any })[];
+      const data = await fetchAllPaginated<Equipment & { customer: any }>(
+        () => {
+          let q = supabase
+            .from('equipment')
+            .select(`
+              *,
+              customer:customers(id, name)
+            `)
+            .order('name');
+          if (customerId) q = q.eq('customer_id', customerId);
+          return q;
+        }
+      );
+      return data;
     },
     enabled: !loading,
     retry: 3,

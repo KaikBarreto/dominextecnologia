@@ -72,11 +72,12 @@ export function useFinancialAccounts() {
         .select('id, initial_balance');
       if (accErr) throw accErr;
 
-      const { data: txns, error: txnErr } = await supabase
-        .from('financial_transactions')
-        .select('account_id, transaction_type, amount, is_paid')
-        .not('account_id', 'is', null);
-      if (txnErr) throw txnErr;
+      const txns = await fetchAllPaginated<{ account_id: string | null; transaction_type: string; amount: number; is_paid: boolean }>(
+        () => supabase
+          .from('financial_transactions')
+          .select('account_id, transaction_type, amount, is_paid')
+          .not('account_id', 'is', null)
+      );
 
       const balances: Record<string, number> = {};
       for (const acc of (accounts || [])) {
