@@ -42,7 +42,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -123,7 +123,7 @@ export function AppSidebar() {
   const { user, profile, roles, hasScreenAccess, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, open, setOpen, toggleSidebar, isMobile } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const navigate = useNavigate();
@@ -140,6 +140,39 @@ export function AppSidebar() {
     }
     return 'light';
   });
+
+  // Hover-expand: when collapsed by user preference, hovering temporarily expands the sidebar
+  // without changing the persisted state.
+  const isHoverOpenRef = useRef(false);
+  const persistedOpenRef = useRef(open);
+  const hoverLeaveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Track real persisted state only when not in hover mode
+    if (!isHoverOpenRef.current) persistedOpenRef.current = open;
+  }, [open]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (isMobile) return;
+    if (hoverLeaveTimerRef.current) {
+      window.clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
+    if (!persistedOpenRef.current && !open) {
+      isHoverOpenRef.current = true;
+      setOpen(true);
+    }
+  }, [isMobile, open, setOpen]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (isMobile) return;
+    if (!isHoverOpenRef.current) return;
+    // small delay prevents flicker when crossing borders / popovers
+    hoverLeaveTimerRef.current = window.setTimeout(() => {
+      isHoverOpenRef.current = false;
+      setOpen(false);
+    }, 120);
+  }, [isMobile, setOpen]);
 
   const applyTheme = (next: 'light' | 'dark') => {
     setTheme(next);
@@ -222,29 +255,48 @@ export function AppSidebar() {
   return (
     <>
       <Sidebar collapsible="icon" className="border-r border-border bg-background">
-        <div className="relative h-full">
+        <div
+          className="relative h-full"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <SidebarContent className="flex h-full flex-col p-0 overflow-hidden">
             <NavLink
               to={isSuperAdmin ? '/admin/dashboard' : '/dashboard'}
-              className="h-14 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
+              className="relative h-14 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
             >
               {showLogoLoading ? (
                 collapsed
                   ? <div className="h-7 w-7 rounded bg-muted animate-pulse" />
                   : <div className="h-8 w-28 rounded bg-muted animate-pulse" />
-              ) : collapsed ? (
-                !isSuperAdmin && wlEnabled ? (
-                  iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
-                ) : (
-                  <>
-                    <img src={iconePreto} alt="Logo" className="h-7 w-7 object-contain dark:hidden" />
-                    <img src={iconeVerde} alt="Logo" className="h-7 w-7 object-contain hidden dark:block" />
-                  </>
-                )
               ) : (
                 <>
-                  <img src={isSuperAdmin ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain dark:hidden" />
-                  <img src={isSuperAdmin ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full mx-auto object-contain hidden dark:block" />
+                  {/* Collapsed icon — fades out when expanded */}
+                  <div
+                    className={cn(
+                      'absolute inset-0 flex items-center justify-center transition-opacity duration-300 ease-in-out',
+                      collapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    )}
+                  >
+                    {!isSuperAdmin && wlEnabled ? (
+                      iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
+                    ) : (
+                      <>
+                        <img src={iconePreto} alt="Logo" className="h-7 w-7 object-contain dark:hidden" />
+                        <img src={iconeVerde} alt="Logo" className="h-7 w-7 object-contain hidden dark:block" />
+                      </>
+                    )}
+                  </div>
+                  {/* Expanded full logo — fades in when expanded */}
+                  <div
+                    className={cn(
+                      'absolute inset-0 flex items-center justify-center px-2 transition-opacity duration-300 ease-in-out',
+                      collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                    )}
+                  >
+                    <img src={isSuperAdmin ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full object-contain dark:hidden" />
+                    <img src={isSuperAdmin ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+                  </div>
                 </>
               )}
             </NavLink>

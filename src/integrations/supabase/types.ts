@@ -288,8 +288,11 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          address_number: string | null
           billing_cycle: string | null
+          city: string | null
           cnpj: string | null
+          complement: string | null
           contact_name: string | null
           created_at: string | null
           custom_price: number | null
@@ -302,21 +305,27 @@ export type Database = {
           logo_url: string | null
           max_users: number | null
           name: string
+          neighborhood: string | null
           notes: string | null
           origin: string | null
           phone: string | null
           salesperson_id: string | null
+          state: string | null
           subscription_expires_at: string | null
           subscription_plan: string | null
           subscription_status: string
           subscription_value: number | null
           trial_days: number | null
           updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
           address?: string | null
+          address_number?: string | null
           billing_cycle?: string | null
+          city?: string | null
           cnpj?: string | null
+          complement?: string | null
           contact_name?: string | null
           created_at?: string | null
           custom_price?: number | null
@@ -329,21 +338,27 @@ export type Database = {
           logo_url?: string | null
           max_users?: number | null
           name: string
+          neighborhood?: string | null
           notes?: string | null
           origin?: string | null
           phone?: string | null
           salesperson_id?: string | null
+          state?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
           subscription_value?: number | null
           trial_days?: number | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
           address?: string | null
+          address_number?: string | null
           billing_cycle?: string | null
+          city?: string | null
           cnpj?: string | null
+          complement?: string | null
           contact_name?: string | null
           created_at?: string | null
           custom_price?: number | null
@@ -356,16 +371,19 @@ export type Database = {
           logo_url?: string | null
           max_users?: number | null
           name?: string
+          neighborhood?: string | null
           notes?: string | null
           origin?: string | null
           phone?: string | null
           salesperson_id?: string | null
+          state?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
           subscription_value?: number | null
           trial_days?: number | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Relationships: [
           {
