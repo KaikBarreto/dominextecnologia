@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { useTimeSettings, useTimeSchedules } from '@/hooks/useTimeRecords';
 import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -156,7 +157,7 @@ export function TimeSettingsPanel() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-7 w-7">
-                            <AvatarImage src={emp.photo_url || undefined} />
+                            <SignedAvatarImage src={emp.photo_url} />
                             <AvatarFallback className="text-xs">{emp.name[0]}</AvatarFallback>
                           </Avatar>
                           <span className="text-sm truncate max-w-[120px]">{emp.name}</span>
@@ -211,7 +212,7 @@ export function TimeSettingsPanel() {
                   <CardContent className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={emp.photo_url || undefined} />
+                        <SignedAvatarImage src={emp.photo_url} />
                         <AvatarFallback className="text-xs">{emp.name[0]}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
