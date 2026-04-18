@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
-import { Loader2, Building2, CreditCard, KeyRound, Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react';
+import { Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check } from 'lucide-react';
+import { PasswordInput } from '@/components/PasswordInput';
+import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { addDays, format } from 'date-fns';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
@@ -55,9 +57,22 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const { data: plans = [] } = useQuery({
+    queryKey: ['subscription-plans-active'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('code, name, price, max_users')
+        .eq('is_active', true)
+        .order('price', { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const [formData, setFormData] = useState({
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
-    subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
+    subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '', origin: '',
     admin_email: '', admin_password: '',
   });
@@ -78,7 +93,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         name: company.name || '', cnpj: company.cnpj || '', email: company.email || '',
         phone: company.phone || '', contact_name: company.contact_name || '',
         subscription_status: company.subscription_status || 'testing',
-        subscription_plan: company.subscription_plan || 'starter',
+        subscription_plan: company.subscription_plan || 'start',
         subscription_value: String(company.subscription_value || 0),
         subscription_expires_at: company.subscription_expires_at ? company.subscription_expires_at.split('T')[0] : '',
         billing_cycle: company.billing_cycle || 'monthly',
@@ -91,7 +106,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const defaultExpires = format(addDays(new Date(), 14), 'yyyy-MM-dd');
       setFormData({
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
-        subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
+        subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
         notes: '', origin: '', admin_email: '', admin_password: generatePassword(),
       });
@@ -162,7 +177,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (!formData.name) { setActiveTab('basic'); toast({ variant: 'destructive', title: 'Nome da empresa é obrigatório' }); return; }
     if (!isEditing) {
       if (!formData.admin_email) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Email do administrador é obrigatório' }); return; }
-      if (!formData.admin_password || formData.admin_password.length < 6) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Senha deve ter no mínimo 6 caracteres' }); return; }
+      if (!isPasswordStrong(formData.admin_password)) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Senha fraca', description: 'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.' }); return; }
     }
     mutation.mutate();
   };
@@ -294,12 +309,26 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   </div>
                   <div>
                     <Label>Plano</Label>
-                    <Select value={formData.subscription_plan} onValueChange={v => updateField('subscription_plan', v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select
+                      value={formData.subscription_plan}
+                      onValueChange={v => {
+                        updateField('subscription_plan', v);
+                        const p = plans.find((pl: any) => pl.code === v);
+                        if (p) {
+                          if (p.price != null) updateField('subscription_value', String(p.price));
+                          if (p.max_users != null) updateField('max_users', String(p.max_users));
+                        }
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione o plano" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="starter">Starter</SelectItem>
-                        <SelectItem value="pro">Pro</SelectItem>
-                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                        {plans.length === 0 ? (
+                          <SelectItem value="start" disabled>Carregando...</SelectItem>
+                        ) : (
+                          plans.map((p: any) => (
+                            <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -346,16 +375,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   <div>
                     <Label>Senha *</Label>
                     <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input type={showPassword ? 'text' : 'password'} value={formData.admin_password} onChange={e => updateField('admin_password', e.target.value)} placeholder="Mínimo 6 caracteres" className="pr-10" />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
+                      <div className="flex-1">
+                        <PasswordInput value={formData.admin_password} onChange={e => updateField('admin_password', e.target.value)} placeholder="Crie uma senha segura" />
                       </div>
-                      <Button type="button" variant="outline" size="icon" onClick={() => { updateField('admin_password', generatePassword()); setShowPassword(true); }} title="Gerar senha">
+                      <Button type="button" variant="outline" size="icon" onClick={() => { updateField('admin_password', generatePassword()); }} title="Gerar senha">
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
+                    <PasswordStrengthIndicator password={formData.admin_password} />
                   </div>
                   {formData.admin_email && formData.admin_password && (
                     <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="w-full">

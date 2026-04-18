@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
-import { Loader2, Camera, Link2, Unlink, Eye, EyeOff, Calculator } from 'lucide-react';
+import { Loader2, Camera, Link2, Unlink, Calculator } from 'lucide-react';
+import { PasswordInput } from '@/components/PasswordInput';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -286,12 +288,10 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                       <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>Gerar</Button>
                     </div>
                   ) : (
-                    <div className="relative">
-                      <Input type={showPasswordField ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
-                      <button type="button" onClick={() => setShowPasswordField(!showPasswordField)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                        {showPasswordField ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                    <>
+                      <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder="Crie uma senha segura" />
+                      <PasswordStrengthIndicator password={password} />
+                    </>
                   )}
                   <p className="text-xs text-muted-foreground">
                     {useTemporaryPassword ? 'Anote a senha — ela será exibida apenas uma vez' : 'Defina a senha que o funcionário usará para acessar o sistema'}

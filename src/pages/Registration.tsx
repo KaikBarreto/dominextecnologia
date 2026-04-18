@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  ArrowLeft, ArrowRight, Loader2, Check, PartyPopper,
-  Phone, Mail, Building2, User, Lock, Eye, EyeOff,
+  ArrowLeft, ArrowRight, Loader2, Check,
+  Phone, Mail, Building2, User, Lock,
   Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
@@ -14,11 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { phoneMask, cpfCnpjMask } from '@/utils/masks';
+import { phoneMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
+import { PasswordInput } from '@/components/PasswordInput';
+import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 
 const ORIGIN_ICONS: Record<string, LucideIcon> = {
   Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
@@ -43,7 +45,6 @@ export default function Registration() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [selectedOrigin, setSelectedOrigin] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   const originFromUrl = searchParams.get('origem') || 'Site/Google';
 
@@ -53,6 +54,8 @@ export default function Registration() {
 
   const { register, handleSubmit, watch, formState: { errors }, trigger } = useForm<RegistrationFormData>();
   const emailValue = watch('company_email');
+  const passwordValue = watch('password') || '';
+  const confirmValue = watch('confirm_password') || '';
 
   // Fetch origins
   const { data: origins = [] } = useQuery({
@@ -140,8 +143,8 @@ export default function Registration() {
         toast({ variant: 'destructive', title: 'Senhas não coincidem' });
         return;
       }
-      if (data.password.length < 6) {
-        toast({ variant: 'destructive', title: 'Senha deve ter no mínimo 6 caracteres' });
+      if (!isPasswordStrong(data.password)) {
+        toast({ variant: 'destructive', title: 'Senha fraca', description: 'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.' });
         return;
       }
       registerMutation.mutate(data);
@@ -335,33 +338,28 @@ export default function Registration() {
                     <div>
                       <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Senha*</Label>
                       <div className="relative mt-1">
-                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
-                          {...register('password', { required: 'Senha é obrigatória', minLength: { value: 6, message: 'Mínimo 6 caracteres' } })}
-                          placeholder="Mínimo 6 caracteres"
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
+                        <PasswordInput
+                          {...register('password', { required: 'Senha é obrigatória', validate: (v) => isPasswordStrong(v) || 'Senha não atende aos requisitos mínimos' })}
+                          placeholder="Crie sua senha"
                           className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white">
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                       </div>
+                      <PasswordStrengthIndicator password={passwordValue} />
                       {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
                     </div>
 
                     <div>
                       <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">Confirmar Senha*</Label>
                       <div className="relative mt-1">
-                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
+                        <PasswordInput
                           {...register('confirm_password', { required: 'Confirme a senha' })}
                           placeholder="Repita a senha"
+                          matchAgainst={passwordValue}
+                          value={confirmValue}
                           className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white">
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                       </div>
                       {errors.confirm_password && <p className="text-sm text-destructive mt-1">{errors.confirm_password.message}</p>}
                     </div>
