@@ -22,6 +22,24 @@ import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
+
+type DatePreset = 'all' | 'today' | 'this_week' | 'this_month' | 'this_year' | 'custom';
+
+function computeDateRange(preset: DatePreset, from: string, to: string): { from: Date | null; to: Date | null } {
+  const now = new Date();
+  switch (preset) {
+    case 'today': return { from: startOfDay(now), to: endOfDay(now) };
+    case 'this_week': return { from: startOfWeek(now, { weekStartsOn: 0 }), to: endOfWeek(now, { weekStartsOn: 0 }) };
+    case 'this_month': return { from: startOfMonth(now), to: endOfMonth(now) };
+    case 'this_year': return { from: startOfYear(now), to: endOfYear(now) };
+    case 'custom': return {
+      from: from ? new Date(from + 'T00:00:00') : null,
+      to: to ? new Date(to + 'T23:59:59') : null,
+    };
+    default: return { from: null, to: null };
+  }
+}
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
