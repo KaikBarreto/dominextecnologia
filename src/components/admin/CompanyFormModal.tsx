@@ -16,7 +16,7 @@ import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import {
   Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check,
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
-  Tag, UserCheck, Briefcase,
+  Tag, Briefcase,
 } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
