@@ -96,12 +96,12 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
           </Button>
         </CardHeader>
         <CardContent className="p-0 divide-y">
-          <DRERow label="Receita Bruta" value={dre.grossRevenue} bold positive expanded={expanded.revenue} onToggle={() => toggle('revenue')} children={dre.revenueLines} />
-          <DRERow label="(-) Impostos e Taxas" value={-dre.taxes} expanded={expanded.tax} onToggle={() => toggle('tax')} children={dre.taxLines.map((l) => ({ ...l, value: -l.value }))} />
+          <DRERow label="Receita Bruta" value={dre.grossRevenue} bold positive expanded={expanded.revenue} onToggle={() => toggle('revenue')} lines={dre.revenueLines} />
+          <DRERow label="(-) Impostos e Taxas" value={-dre.taxes} expanded={expanded.tax} onToggle={() => toggle('tax')} lines={dre.taxLines.map((l) => ({ ...l, value: -l.value }))} />
           <DRERow label="= Receita Líquida" value={dre.netRevenue} bold accent />
-          {dre.cpv > 0 && <DRERow label="(-) CPV" value={-dre.cpv} expanded={expanded.cpv} onToggle={() => toggle('cpv')} children={dre.cpvLines.map((l) => ({ ...l, value: -l.value }))} />}
+          {dre.cpv > 0 && <DRERow label="(-) CPV" value={-dre.cpv} expanded={expanded.cpv} onToggle={() => toggle('cpv')} lines={dre.cpvLines.map((l) => ({ ...l, value: -l.value }))} />}
           {dre.cpv > 0 && <DRERow label="= Lucro Bruto" value={dre.grossProfit} bold />}
-          <DRERow label="(-) Despesas Operacionais" value={-dre.opex} expanded={expanded.opex} onToggle={() => toggle('opex')} children={dre.opexLines.map((l) => ({ ...l, value: -l.value }))} />
+          <DRERow label="(-) Despesas Operacionais" value={-dre.opex} expanded={expanded.opex} onToggle={() => toggle('opex')} lines={dre.opexLines.map((l) => ({ ...l, value: -l.value }))} />
           <DRERow label="= EBITDA" value={dre.ebitda} bold accent />
         </CardContent>
       </Card>
@@ -109,7 +109,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
   );
 }
 
-function DRERow({ label, value, bold, positive, accent, expanded, onToggle, children }: {
+function DRERow({ label, value, bold, positive, accent, expanded, onToggle, lines }: {
   label: string;
   value: number;
   bold?: boolean;
@@ -117,7 +117,7 @@ function DRERow({ label, value, bold, positive, accent, expanded, onToggle, chil
   accent?: boolean;
   expanded?: boolean;
   onToggle?: () => void;
-  children?: DRELine[];
+  lines?: DRELine[];
 }) {
   return (
     <div>
@@ -131,9 +131,9 @@ function DRERow({ label, value, bold, positive, accent, expanded, onToggle, chil
           {fmt(value)}
         </span>
       </button>
-      {expanded && children && children.length > 0 && (
+      {expanded && lines && lines.length > 0 && (
         <div className="bg-muted/20 px-8 py-2 space-y-1">
-          {children.map((c, i) => (
+          {lines.map((c, i) => (
             <div key={i} className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">{c.name}</span>
               <span className="tabular-nums">{fmt(c.value)}</span>
