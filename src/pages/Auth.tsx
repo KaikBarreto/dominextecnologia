@@ -119,7 +119,7 @@ export default function Auth() {
     }
     await registerSession(userId);
     toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
-    
+
     // Check if super_admin → redirect to admin dashboard
     const { data: roleData } = await supabase
       .from('user_roles')
@@ -127,8 +127,38 @@ export default function Auth() {
       .eq('user_id', userId)
       .eq('role', 'super_admin')
       .maybeSingle();
-    
-    navigate(roleData ? '/admin/dashboard' : '/dashboard');
+
+    if (roleData) {
+      navigate('/admin/dashboard');
+      loginInProgressRef.current = false;
+      return;
+    }
+
+    // Check company status — pending_payment redirects to checkout
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profileData?.company_id) {
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('subscription_status')
+        .eq('id', profileData.company_id)
+        .maybeSingle();
+      if (companyData?.subscription_status === 'pending_payment') {
+        toast({
+          title: 'Pagamento pendente',
+          description: 'Finalize o pagamento para acessar a plataforma.',
+        });
+        navigate('/checkout');
+        loginInProgressRef.current = false;
+        return;
+      }
+    }
+
+    navigate('/dashboard');
     loginInProgressRef.current = false;
   };
 
