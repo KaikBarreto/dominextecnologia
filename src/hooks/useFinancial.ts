@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface TransactionInput {
   transaction_type: TransactionType;
@@ -41,28 +42,28 @@ export function useFinancial() {
   const transactionsQuery = useQuery({
     queryKey: ['financial-transactions'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('financial_transactions')
-        .select(`
-          *,
-          customer:customers(id, name),
-          account:financial_accounts(id, name, type, color)
-        `)
-        .order('transaction_date', { ascending: false });
-      
-      if (error) throw error;
-      return data as (FinancialTransaction & { customer: any; account: any })[];
+      const data = await fetchAllPaginated<FinancialTransaction & { customer: any; account: any }>(
+        () => supabase
+          .from('financial_transactions')
+          .select(`
+            *,
+            customer:customers(id, name),
+            account:financial_accounts(id, name, type, color)
+          `)
+          .order('transaction_date', { ascending: false })
+      );
+      return data;
     },
   });
 
   const summaryQuery = useQuery({
     queryKey: ['financial-summary'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('financial_transactions')
-        .select('transaction_type, amount, is_paid');
-      
-      if (error) throw error;
+      const data = await fetchAllPaginated<{ transaction_type: string; amount: number; is_paid: boolean }>(
+        () => supabase
+          .from('financial_transactions')
+          .select('transaction_type, amount, is_paid')
+      );
       
       const summary = {
         totalEntradas: 0,
