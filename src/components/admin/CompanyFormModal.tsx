@@ -177,7 +177,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (!formData.name) { setActiveTab('basic'); toast({ variant: 'destructive', title: 'Nome da empresa é obrigatório' }); return; }
     if (!isEditing) {
       if (!formData.admin_email) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Email do administrador é obrigatório' }); return; }
-      if (!formData.admin_password || formData.admin_password.length < 6) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Senha deve ter no mínimo 6 caracteres' }); return; }
+      if (!isPasswordStrong(formData.admin_password)) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Senha fraca', description: 'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.' }); return; }
     }
     mutation.mutate();
   };
