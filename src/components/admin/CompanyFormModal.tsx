@@ -161,7 +161,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
         notes: '', origin: '', salesperson_id: '',
-        admin_email: '', admin_password: generatePassword(),
+        admin_email: '', admin_password: '',
       });
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
     }

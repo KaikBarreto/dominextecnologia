@@ -277,7 +277,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  <Switch checked={useTemporaryPassword} onCheckedChange={(v) => { setUseTemporaryPassword(v); if (v) setPassword(generatePassword()); else setPassword(''); }} />
+                  <Switch checked={useTemporaryPassword} onCheckedChange={(v) => { setUseTemporaryPassword(v); setPassword(''); }} />
                   <Label className="text-xs cursor-pointer">Senha temporária (gerada automaticamente)</Label>
                 </div>
                 <div className="space-y-1.5">
