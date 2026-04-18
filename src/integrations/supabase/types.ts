@@ -4202,7 +4202,86 @@ export type Database = {
       can_bootstrap_admin: { Args: never; Returns: boolean }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      get_portal_by_token: {
+        Args: { _token: string }
+        Returns: {
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
+        }[]
+      }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
+      get_quote_by_token: {
+        Args: { _token: string }
+        Returns: {
+          admin_indirect_rate: number
+          assigned_to: string | null
+          bdi: number
+          card_discount_rate: number
+          card_installments: number
+          company_id: string
+          converted_to_os_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          discount_amount: number | null
+          discount_type: string | null
+          discount_value: number | null
+          displacement_cost: number | null
+          distance_km: number | null
+          final_price: number | null
+          id: string
+          include_gifts: boolean
+          km_cost: number
+          notes: string | null
+          price_override: number | null
+          profit_rate: number
+          proposal_template_id: string | null
+          prospect_email: string | null
+          prospect_name: string | null
+          prospect_phone: string | null
+          quote_number: number
+          status: string
+          subtotal: number | null
+          tax_rate: number
+          terms: string | null
+          token: string
+          total_cost: number
+          total_price: number
+          total_value: number | null
+          updated_at: string
+          valid_until: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "quotes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_rating_by_token: {
+        Args: { _token: string }
+        Returns: {
+          comment: string | null
+          created_at: string
+          id: string
+          nps_score: number | null
+          professionalism_rating: number | null
+          punctuality_rating: number | null
+          quality_rating: number | null
+          rated_at: string | null
+          rated_by_name: string | null
+          service_order_id: string
+          token: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "service_ratings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }
       has_full_permissions: { Args: { _user_id: string }; Returns: boolean }
