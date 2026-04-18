@@ -1,13 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
+
+  // Exigir token secreto de autorização (apenas cron/scheduler pode chamar)
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const authHeader = req.headers.get('Authorization');
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -17,7 +22,6 @@ Deno.serve(async (req) => {
 
     const today = new Date().toISOString().split('T')[0]
 
-    // Update all scheduled orders whose date has arrived to pendente
     const { data, error } = await supabase
       .from('service_orders')
       .update({ status: 'pendente' })
@@ -32,13 +36,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ message: `${count} orders activated`, date: today }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Error activating scheduled orders:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })

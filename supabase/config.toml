@@ -1,19 +1,26 @@
 project_id = "lhfejzqgeqgppfremxeq"
 
-[functions.create-user]
-verify_jwt = false
-
-[functions.cep-lookup]
-verify_jwt = false
-
+# self-register: público por design (cadastro de novas empresas)
+# O JWT não existe ainda neste fluxo — protegido por validação de campos e (futuramente) CAPTCHA
 [functions.self-register]
 verify_jwt = false
 
-[functions.manage-user]
-verify_jwt = false
-
+# generate-pmoc-orders: protegido por CRON_SECRET no header Authorization
 [functions.generate-pmoc-orders]
 verify_jwt = false
 
+# crm-lead-webhook: protegido por token de webhook na tabela crm_webhooks
 [functions.crm-lead-webhook]
 verify_jwt = false
+
+# bootstrap-admin: protegido por BOOTSTRAP_SECRET no header x-bootstrap-secret
+# Remover esta seção (ou a função) após o setup inicial
+[functions.bootstrap-admin]
+verify_jwt = false
+
+# activate-scheduled-orders: protegido por CRON_SECRET no header Authorization
+[functions.activate-scheduled-orders]
+verify_jwt = false
+
+# Todas as outras funções usam verify_jwt = true (padrão)
+# create-user, manage-user, cep-lookup, og-image, os-share, create-company

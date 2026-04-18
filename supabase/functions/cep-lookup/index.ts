@@ -1,14 +1,8 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+Deno.serve(async (req) => {
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
 
   try {
     const { cep } = await req.json();
@@ -17,7 +11,7 @@ serve(async (req) => {
     if (!cleanCep || cleanCep.length !== 8) {
       return new Response(JSON.stringify({ error: 'CEP inválido' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -27,7 +21,7 @@ serve(async (req) => {
     if (data.erro) {
       return new Response(JSON.stringify({ error: 'CEP não encontrado' }), {
         status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -37,12 +31,12 @@ serve(async (req) => {
       cidade: data.localidade || '',
       estado: data.uf || '',
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
-  } catch (error) {
+  } catch (_error) {
     return new Response(JSON.stringify({ error: 'Erro ao buscar CEP' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });

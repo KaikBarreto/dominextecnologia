@@ -1,13 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
+
+  // Exigir segredo one-time de bootstrap — sem ele, recusar
+  const bootstrapSecret = Deno.env.get('BOOTSTRAP_SECRET');
+  if (!bootstrapSecret) {
+    return new Response(JSON.stringify({ error: 'Bootstrap não disponível neste ambiente' }), {
+      status: 503,
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    });
+  }
+
+  const providedSecret = req.headers.get('x-bootstrap-secret');
+  if (providedSecret !== bootstrapSecret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -22,7 +34,7 @@ Deno.serve(async (req) => {
     if (!email || !password) {
       return new Response(JSON.stringify({ error: 'email and password required' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -36,11 +48,10 @@ Deno.serve(async (req) => {
     if (existingRole) {
       return new Response(JSON.stringify({ error: 'Super admin already exists' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
-    // Create user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -52,7 +63,6 @@ Deno.serve(async (req) => {
 
     const userId = authData.user.id;
 
-    // Assign super_admin role
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({ user_id: userId, role: 'super_admin' });
@@ -60,12 +70,12 @@ Deno.serve(async (req) => {
     if (roleError) throw roleError;
 
     return new Response(JSON.stringify({ success: true, user_id: userId }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });

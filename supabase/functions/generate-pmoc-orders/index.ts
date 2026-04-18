@@ -1,13 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
+
+  // Exigir token secreto de autorização (apenas cron/scheduler pode chamar)
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const authHeader = req.headers.get('Authorization');
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -17,7 +22,6 @@ Deno.serve(async (req) => {
 
     const today = new Date().toISOString().split('T')[0]
 
-    // Find active plans due for generation
     const { data: plans, error: plansError } = await supabase
       .from('pmoc_plans')
       .select(`
@@ -30,26 +34,23 @@ Deno.serve(async (req) => {
     if (plansError) throw plansError
     if (!plans || plans.length === 0) {
       return new Response(JSON.stringify({ message: 'No plans due', generated: 0 }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       })
     }
 
     let totalGenerated = 0
 
     for (const plan of plans) {
-      // Filter only active equipment
       const activeItems = (plan.pmoc_items || []).filter(
         (item: any) => item.equipment?.status === 'active'
       )
 
       if (activeItems.length === 0) {
-        // Still advance the date even if no equipment
         const nextDate = addMonths(plan.next_generation_date, plan.frequency_months)
         await supabase.from('pmoc_plans').update({ next_generation_date: nextDate } as any).eq('id', plan.id)
         continue
       }
 
-      // Create one OS per equipment
       for (const item of activeItems) {
         const { data: os, error: osError } = await supabase
           .from('service_orders')
@@ -73,7 +74,6 @@ Deno.serve(async (req) => {
           continue
         }
 
-        // Create assignee so the technician can see the OS
         if (plan.technician_id) {
           await supabase.from('service_order_assignees').insert({
             service_order_id: os.id,
@@ -81,7 +81,6 @@ Deno.serve(async (req) => {
           })
         }
 
-        // Record in history
         await supabase.from('pmoc_generated_os').insert({
           plan_id: plan.id,
           service_order_id: os.id,
@@ -91,19 +90,18 @@ Deno.serve(async (req) => {
         totalGenerated++
       }
 
-      // Advance next_generation_date
       const nextDate = addMonths(plan.next_generation_date, plan.frequency_months)
       await supabase.from('pmoc_plans').update({ next_generation_date: nextDate } as any).eq('id', plan.id)
     }
 
     return new Response(JSON.stringify({ message: 'PMOC orders generated', generated: totalGenerated }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     })
   } catch (error) {
     console.error('Error in generate-pmoc-orders:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     })
   }
 })

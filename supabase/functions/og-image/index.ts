@@ -1,15 +1,48 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+const PRIVATE_IP_PATTERNS = [
+  /^127\./,
+  /^10\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^169\.254\./,
+  /^::1$/,
+  /^fc00:/,
+  /^fd[0-9a-f]{2}:/i,
+  /^localhost$/i,
+  /^metadata\.google\.internal$/i,
+];
+
+function isSafeLogoUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== 'https:') return false;
+    const hostname = url.hostname;
+    return !PRIVATE_IP_PATTERNS.some(pattern => pattern.test(hostname));
+  } catch {
+    return false;
+  }
+}
+
+function fallbackSvg(companyName: string): Response {
+  const safe = companyName
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    <rect width="1200" height="630" fill="white"/>
+    <text x="600" y="315" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="48" fill="#1e293b">${safe || "Ordem de Serviço"}</text>
+  </svg>`;
+  return new Response(svg, {
+    headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=3600" },
+  });
+}
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
 
   try {
     const url = new URL(req.url);
@@ -48,43 +81,39 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!logoUrl) {
-      // Generate a simple white SVG with company name as fallback
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-        <rect width="1200" height="630" fill="white"/>
-        <text x="600" y="315" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="48" fill="#1e293b">${companyName || "Ordem de Serviço"}</text>
-      </svg>`;
-      return new Response(svg, {
-        headers: { ...corsHeaders, "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=3600" },
-      });
+    if (!logoUrl || !isSafeLogoUrl(logoUrl)) {
+      return fallbackSvg(companyName);
     }
 
-    // Fetch the logo and generate an OG image with logo centered on white background
     try {
-      const logoResponse = await fetch(logoUrl);
-      if (!logoResponse.ok) throw new Error("Failed to fetch logo");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const logoResponse = await fetch(logoUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (!logoResponse.ok) return fallbackSvg(companyName);
+
       const logoBase64 = btoa(String.fromCharCode(...new Uint8Array(await logoResponse.arrayBuffer())));
       const logoMime = logoResponse.headers.get("content-type") || "image/png";
+      const safeMime = /^image\/(png|jpeg|jpg|svg\+xml|webp|gif)$/.test(logoMime) ? logoMime : "image/png";
 
-      // Generate an SVG with the logo centered on white background
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630">
         <rect width="1200" height="630" fill="white"/>
-        <image x="300" y="115" width="600" height="400" preserveAspectRatio="xMidYMid meet" href="data:${logoMime};base64,${logoBase64}"/>
+        <image x="300" y="115" width="600" height="400" preserveAspectRatio="xMidYMid meet" href="data:${safeMime};base64,${logoBase64}"/>
       </svg>`;
 
       return new Response(svg, {
         headers: {
-          ...corsHeaders,
+          ...getCorsHeaders(req),
           "Content-Type": "image/svg+xml",
           "Cache-Control": "public, max-age=3600",
         },
       });
     } catch {
-      // If logo fetch fails, redirect to the logo URL directly
-      return Response.redirect(logoUrl, 302);
+      return fallbackSvg(companyName);
     }
   } catch (error) {
     console.error("Error generating OG image:", error);
-    return new Response("Error", { status: 500, headers: corsHeaders });
+    return fallbackSvg("");
   }
 });

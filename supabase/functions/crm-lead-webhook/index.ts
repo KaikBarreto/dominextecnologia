@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 
 const pickString = (payload: Record<string, unknown>, keys: string[]) => {
   for (const key of keys) {
@@ -27,14 +23,13 @@ const pickNumber = (payload: Record<string, unknown>, keys: string[]) => {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const corsResp = handleCors(req);
+  if (corsResp) return corsResp;
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Método não permitido' }), {
       status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 
@@ -52,12 +47,13 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const tokenFromBody = pickString(payload, ['token', 'webhook_token']);
+    // Não logar o token — redigi-lo do payload antes de qualquer persistência
     const token = url.searchParams.get('token') || req.headers.get('x-webhook-token') || tokenFromBody;
 
     if (!token) {
       return new Response(JSON.stringify({ error: 'Token do webhook é obrigatório' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -72,7 +68,7 @@ Deno.serve(async (req) => {
     if (!webhook) {
       return new Response(JSON.stringify({ error: 'Webhook inválido ou inativo' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -111,13 +107,13 @@ Deno.serve(async (req) => {
       stageId = defaultStage?.id ?? null;
     }
 
+    // Persistir apenas campos mapeados — nunca payload bruto nem token
     const notes = [
       details,
       name ? `Nome: ${name}` : null,
       phone ? `Telefone: ${phone}` : null,
       email ? `Email: ${email}` : null,
-      `Origem webhook: ${webhook.name}`,
-      `Payload bruto: ${JSON.stringify(body)}`,
+      `Origem: ${webhook.name}`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -139,13 +135,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, lead }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('crm-lead-webhook error:', error);
+    console.error('crm-lead-webhook error');
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Erro interno' }),
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 });

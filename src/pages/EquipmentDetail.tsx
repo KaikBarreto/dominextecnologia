@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useRef, useCallback } from 'react';
+import { escapeHtml, safeImageUrl } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
@@ -143,15 +144,15 @@ export default function EquipmentDetail() {
     const svgEl = labelRef.current.querySelector('svg');
     const svgData = svgEl ? new XMLSerializer().serializeToString(svgEl) : '';
     printWindow.document.write(`
-      <!DOCTYPE html><html><head><title>Etiqueta - ${equipment.name}</title>
+      <!DOCTYPE html><html><head><title>Etiqueta - ${escapeHtml(equipment.name)}</title>
       <style>@page{size:${labelSize.width}px ${labelSize.height}px;margin:0}body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Arial,sans-serif}.label{width:${labelSize.width}px;height:${labelSize.height}px;border:1px solid #ccc;border-radius:8px;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}.company-name{font-size:11px;font-weight:bold}.company-info{font-size:8px;color:#666}.eq-label{font-size:8px;color:#888}.eq-name{font-size:12px;font-weight:bold}.eq-id{font-size:10px;font-weight:bold}@media print{body{margin:0}.label{border:none}}</style></head><body>
       <div class="label">
-        ${selectedLabelSize === '5x8' && companySettings ? `<div class="company-name">${companySettings.name || 'Empresa'}</div>${companySettings.phone ? `<div class="company-info">${companySettings.phone}</div>` : ''}${companySettings.email ? `<div class="company-info">${companySettings.email}</div>` : ''}` : ''}
+        ${selectedLabelSize === '5x8' && companySettings ? `<div class="company-name">${escapeHtml(companySettings.name) || 'Empresa'}</div>${companySettings.phone ? `<div class="company-info">${escapeHtml(companySettings.phone)}</div>` : ''}${companySettings.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}` : ''}
         ${svgData}
         <div class="eq-label">Nome do equipamento</div>
-        <div class="eq-name">${equipment.name}</div>
+        <div class="eq-name">${escapeHtml(equipment.name)}</div>
         <div class="eq-label">Identificador</div>
-        <div class="eq-id">${equipment.identifier || '-'}</div>
+        <div class="eq-id">${escapeHtml(equipment.identifier) || '-'}</div>
       </div>
       <script>setTimeout(()=>window.print(),300)</script></body></html>
     `);

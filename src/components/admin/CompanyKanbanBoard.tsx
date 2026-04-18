@@ -45,7 +45,10 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, onEdit, 
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', company.id);
     if (dragImageRef.current) {
-      dragImageRef.current.innerHTML = `<span>${company.name}</span>`;
+      dragImageRef.current.textContent = '';
+      const span = document.createElement('span');
+      span.textContent = company.name;
+      dragImageRef.current.appendChild(span);
       e.dataTransfer.setDragImage(dragImageRef.current, 20, 20);
     }
   };

@@ -58,6 +58,10 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+const SAFE_ID_RE = /^[a-z0-9_-]+$/i;
+const SAFE_COLOR_RE = /^(#[0-9a-f]{3,8}|rgb\(|rgba\(|hsl\(|hsla\(|oklch\(|transparent|inherit|currentcolor)/i;
+const SAFE_KEY_RE = /^[a-z0-9_-]+$/i;
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
@@ -65,17 +69,22 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
+  const safeId = SAFE_ID_RE.test(id) ? id : '';
+  if (!safeId) return null;
+
   return (
     <style
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${safeId}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
+    if (!SAFE_KEY_RE.test(key)) return null;
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    if (!color || !SAFE_COLOR_RE.test(color)) return null;
+    return `  --color-${key}: ${color};`;
   })
   .join("\n")}
 }

@@ -131,6 +131,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('session_token');
     }
     await supabase.auth.signOut();
+    // Invalidar cache do PWA para não vazar PII após logout
+    if ('caches' in window) {
+      try {
+        const cache = await caches.open('supabase-cache');
+        const keys = await cache.keys();
+        await Promise.all(keys.map(key => cache.delete(key)));
+      } catch (_) { /* service worker pode não estar disponível */ }
+    }
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -141,8 +149,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasRole = (role: AppRole) => roles.includes(role);
   const isAdminOrGestor = () => hasRole('admin') || hasRole('gestor');
   
-  // "Acesso total" = user has 27+ permissions stored, grant everything dynamically
-  const isFullAccess = permissions.length >= 27;
+  // "Acesso total" = user has admin or super_admin role
+  const isFullAccess = roles.includes('admin' as AppRole) || roles.includes('super_admin' as AppRole);
 
   // Permission check: admin role or full access always has full access.
   const hasPermission = (key: string) => {

@@ -21,15 +21,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  password: z.string().min(10, 'Senha deve ter no mínimo 10 caracteres'),
   rememberMe: z.boolean().default(false),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-const generateSessionToken = () => {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-};
+const generateSessionToken = () => crypto.randomUUID();
 
 const getDeviceInfo = () => {
   const ua = navigator.userAgent;

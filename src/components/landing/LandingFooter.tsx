@@ -1,4 +1,11 @@
+import { Link } from 'react-router-dom';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
+
+const LEGAL_LINKS: Record<string, string> = {
+  'Termos': '/termos',
+  'Privacidade': '/privacidade',
+  'LGPD': '/privacidade#lgpd',
+};
 
 const columns = [
   {
@@ -36,9 +43,18 @@ export default function LandingFooter() {
               <ul className="space-y-2">
                 {col.links.map((link) => (
                   <li key={link}>
-                    <span className="text-sm text-white/30 hover:text-white/60 cursor-pointer transition-colors">
-                      {link}
-                    </span>
+                    {LEGAL_LINKS[link] ? (
+                      <Link
+                        to={LEGAL_LINKS[link]}
+                        className="text-sm text-white/30 hover:text-white/60 transition-colors"
+                      >
+                        {link}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-white/30 hover:text-white/60 cursor-pointer transition-colors">
+                        {link}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

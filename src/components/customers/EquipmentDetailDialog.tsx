@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { escapeHtml } from '@/utils/escapeHtml';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -102,7 +103,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Etiqueta - ${equipment.name}</title>
+        <title>Etiqueta - ${escapeHtml(equipment.name)}</title>
         <style>
           @page { size: ${labelSize.width}px ${labelSize.height}px; margin: 0; }
           body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: Arial, sans-serif; }
@@ -118,15 +119,15 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
       <body>
         <div class="label">
           ${selectedLabelSize === '5x8' && companySettings ? `
-            <div class="company-name">${companySettings.name || 'Empresa'}</div>
-            ${companySettings.phone ? `<div class="company-info">${companySettings.phone}</div>` : ''}
-            ${companySettings.email ? `<div class="company-info">${companySettings.email}</div>` : ''}
+            <div class="company-name">${escapeHtml(companySettings.name) || 'Empresa'}</div>
+            ${companySettings.phone ? `<div class="company-info">${escapeHtml(companySettings.phone)}</div>` : ''}
+            ${companySettings.email ? `<div class="company-info">${escapeHtml(companySettings.email)}</div>` : ''}
           ` : ''}
           ${svgData}
           <div class="eq-label">Nome do equipamento</div>
-          <div class="eq-name">${equipment.name}</div>
+          <div class="eq-name">${escapeHtml(equipment.name)}</div>
           <div class="eq-label">Identificador</div>
-          <div class="eq-id">${equipment.identifier || '-'}</div>
+          <div class="eq-id">${escapeHtml(equipment.identifier) || '-'}</div>
         </div>
         <script>setTimeout(() => window.print(), 300);</script>
       </body>

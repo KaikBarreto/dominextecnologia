@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { escapeHtml, safeImageUrl } from "./escapeHtml";
 
 const formatCurrencyBR = (value: number): string => {
   return new Intl.NumberFormat("pt-BR", {
@@ -50,8 +51,8 @@ export const generateDreHtml = (data: DreReportData) => {
   const renderCategories = (categories: ExpenseCategory[]) => categories.map(c => `
     <div class="row">
       <span class="row-label">
-        <span class="color-dot" style="background: ${c.color}"></span>
-        ${c.name}
+        <span class="color-dot" style="background: ${escapeHtml(c.color)}"></span>
+        ${escapeHtml(c.name)}
       </span>
       <span class="negative">-${formatCurrencyBR(c.value)}</span>
     </div>
@@ -65,7 +66,7 @@ export const generateDreHtml = (data: DreReportData) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DRE - ${data.company.name}</title>
+  <title>DRE - ${escapeHtml(data.company.name)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page { size: A4 portrait; margin: 10mm; }
@@ -108,13 +109,13 @@ export const generateDreHtml = (data: DreReportData) => {
 <body>
   <div class="page">
     <div class="header">
-      ${data.company.logo_url ? `<div class="header-logo"><img src="${data.company.logo_url}" alt="Logo" onerror="this.style.display='none'"></div>` : ''}
+      ${safeImageUrl(data.company.logo_url) ? `<div class="header-logo"><img src="${safeImageUrl(data.company.logo_url)}" alt="Logo" onerror="this.style.display='none'"></div>` : ''}
       <div class="header-info">
-        <div class="company-name">${data.company.name}</div>
+        <div class="company-name">${escapeHtml(data.company.name)}</div>
         <div class="company-details">
-          ${companyAddress ? `${companyAddress}<br>` : ''}
-          ${data.company.phone ? `Tel: ${data.company.phone}` : ''}${data.company.phone && data.company.email ? ' | ' : ''}${data.company.email || ''}
-          ${data.company.document ? `<br>CNPJ/CPF: ${data.company.document}` : ''}
+          ${companyAddress ? `${escapeHtml(companyAddress)}<br>` : ''}
+          ${data.company.phone ? `Tel: ${escapeHtml(data.company.phone)}` : ''}${data.company.phone && data.company.email ? ' | ' : ''}${escapeHtml(data.company.email) || ''}
+          ${data.company.document ? `<br>CNPJ/CPF: ${escapeHtml(data.company.document)}` : ''}
         </div>
       </div>
     </div>

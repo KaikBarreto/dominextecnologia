@@ -53,7 +53,7 @@ const faqs = [
   },
   {
     q: 'Meus dados estão seguros? E a LGPD?',
-    a: 'Sim. Utilizamos infraestrutura em nuvem com criptografia, backups automáticos e isolamento total entre empresas (multi-tenant). Cumprimos integralmente a LGPD e você é o titular dos seus dados.',
+    a: 'Utilizamos infraestrutura em nuvem (Supabase) com criptografia em trânsito e em repouso, backups automáticos e isolamento entre empresas (multi-tenant). Estamos em processo de adequação contínua à LGPD — você pode acessar nossa Política de Privacidade para detalhes sobre coleta, uso e seus direitos como titular.',
   },
 ];
 
