@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.5.24";
+export const APP_VERSION = "1.6.0";
 
-export const VERSION_NOTES = "Exclusão de tarefas financeiras na agenda, respostas completas de questionários (texto + foto), responsáveis financeiros nos contratos";
+export const VERSION_NOTES = "Painel admin avançado: vendedores com gráficos e controle de pagamento, links de venda com checkout direto, preços personalizados nas empresas, limpeza automática de funcionários ao excluir";
