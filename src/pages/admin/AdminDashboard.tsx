@@ -7,6 +7,7 @@ import { AdminDashboardCharts } from '@/components/admin/AdminDashboardCharts';
 import { AdminTopClientsLTV } from '@/components/admin/AdminTopClientsLTV';
 import { AdminClientsByPlanChart } from '@/components/admin/AdminClientsByPlanChart';
 import { AdminBrazilMapChart } from '@/components/admin/AdminBrazilMapChart';
+import { AdminSegmentDistributionChart } from '@/components/admin/AdminSegmentDistributionChart';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 export default function AdminDashboard() {
@@ -69,11 +70,32 @@ export default function AdminDashboard() {
         <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
       </div>
 
+      {/* 1. Stats */}
       <AdminDashboardStats companies={companies} payments={payments} income={income} />
-      <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} />
+
+      {/* 2. Pies (Origem + Forma de Pagamento) */}
+      <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} sections={['pies']} />
+
+      {/* 3. Funil de Retenção */}
+      <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} sections={['funnel']} />
+
+      {/* 4. Mapa do Brasil */}
       <AdminBrazilMapChart companies={companies} />
-      <AdminTopClientsLTV companies={companies} />
-      <AdminClientsByPlanChart companies={companies} />
+
+      {/* 5. Top 3 LTV + Clientes por Plano */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AdminTopClientsLTV companies={companies} />
+        <AdminClientsByPlanChart companies={companies} />
+      </div>
+
+      {/* 6. Evolução da Receita */}
+      <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} sections={['revenue']} />
+
+      {/* 7. Taxa de Churn */}
+      <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} sections={['churn']} />
+
+      {/* 8. Clientes por Segmento */}
+      <AdminSegmentDistributionChart companies={companies} />
     </div>
   );
 }
