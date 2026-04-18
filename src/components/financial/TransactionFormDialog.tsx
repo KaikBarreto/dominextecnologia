@@ -30,6 +30,12 @@ import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 
+// Billing months: 3 months back to 8 months ahead
+const CARD_BILL_MONTHS = Array.from({ length: 12 }, (_, i) => {
+  const d = addMonths(startOfMonth(new Date()), i - 3);
+  return { value: format(d, 'yyyy-MM-dd'), label: format(d, 'MMMM yyyy', { locale: ptBR }) };
+});
+
 const transactionSchema = z.object({
   transaction_type: z.enum(['entrada', 'saida']),
   category: z.string().optional(),
@@ -50,6 +56,50 @@ const fallbackCategories = {
   entrada: ['Serviços', 'Venda de peças', 'Contratos PMOC', 'Outros recebimentos'],
   saida: ['Fornecedores', 'Peças e materiais', 'Combustível', 'Salários', 'Aluguel', 'Impostos', 'Outras despesas'],
 };
+
+interface CreditCardBillSectionProps {
+  form: ReturnType<typeof useForm<any>>;
+  cardName: string;
+}
+
+function CreditCardBillSection({ form, cardName }: CreditCardBillSectionProps) {
+  const billDate = form.watch('credit_card_bill_date');
+  const billLabel = billDate
+    ? format(parseISO(billDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR })
+    : null;
+
+  return (
+    <div className="rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800 p-3 space-y-2">
+      <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300">
+        <CreditCard className="h-4 w-4 shrink-0" />
+        <p className="text-sm font-medium">Despesa no Cartão de Crédito</p>
+      </div>
+      {billLabel && (
+        <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+          <Info className="h-3 w-3" />
+          Esta despesa será acumulada na <strong>fatura de {billLabel}</strong> do cartão {cardName}
+        </p>
+      )}
+      <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-xs text-violet-700 dark:text-violet-300">Mês da fatura</FormLabel>
+          <Select onValueChange={field.onChange} value={field.value || ''}>
+            <FormControl>
+              <SelectTrigger className="h-8 text-sm border-violet-300 dark:border-violet-700">
+                <SelectValue placeholder="Selecione o mês" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {CARD_BILL_MONTHS.map(m => (
+                <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormItem>
+      )} />
+    </div>
+  );
+}
 
 interface TransactionFormDialogProps {
   open: boolean;
@@ -124,17 +174,17 @@ export function TransactionFormDialog({
   const selectedAccount = accounts.find(a => a.id === watchedAccountId);
   const isCardAccount = selectedAccount?.type === 'cartao';
 
-  // Auto-calculate bill month when card account is selected
+  // Auto-calculate bill month when card account or date changes
   useEffect(() => {
+    if (!open) return;
     if (isCardAccount && watchedDate && selectedAccount) {
-      const billDate = computeBillDate(selectedAccount, watchedDate);
-      form.setValue('credit_card_bill_date', billDate);
-      // Card transactions are always "paid" (committed to the card)
+      form.setValue('credit_card_bill_date', computeBillDate(selectedAccount, watchedDate));
       form.setValue('is_paid', true);
     } else if (!isCardAccount) {
       form.setValue('credit_card_bill_date', undefined);
     }
-  }, [isCardAccount, watchedDate, watchedAccountId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCardAccount, watchedDate, watchedAccountId, open]);
 
   const uploadReceipt = async (): Promise<string | null> => {
     if (!receiptFile) return (transaction as any)?.receipt_url || null;
@@ -308,48 +358,12 @@ export function TransactionFormDialog({
           )}
 
           {/* Credit card bill info */}
-          {isCardAccount && transactionType === 'saida' && (() => {
-            const billDate = form.watch('credit_card_bill_date');
-            const billLabel = billDate
-              ? format(parseISO(billDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR })
-              : null;
-            const MONTHS = Array.from({ length: 12 }, (_, i) => {
-              const d = addMonths(startOfMonth(new Date()), i - 3);
-              return { value: format(d, 'yyyy-MM-dd'), label: format(d, 'MMMM yyyy', { locale: ptBR }) };
-            });
-
-            return (
-              <div className="rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300">
-                  <CreditCard className="h-4 w-4 shrink-0" />
-                  <p className="text-sm font-medium">Despesa no Cartão de Crédito</p>
-                </div>
-                {billLabel && (
-                  <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
-                    <Info className="h-3 w-3" />
-                    Esta despesa será acumulada na <strong>fatura de {billLabel}</strong> do cartão {selectedAccount?.name}
-                  </p>
-                )}
-                <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs text-violet-700 dark:text-violet-300">Mês da fatura</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                      <FormControl>
-                        <SelectTrigger className="h-8 text-sm border-violet-300 dark:border-violet-700">
-                          <SelectValue placeholder="Selecione o mês" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {MONTHS.map(m => (
-                          <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
-              </div>
-            );
-          })()}
+          {isCardAccount && transactionType === 'saida' && (
+            <CreditCardBillSection
+              form={form}
+              cardName={selectedAccount?.name ?? ''}
+            />
+          )}
 
           {/* Description */}
           <FormField control={form.control} name="description" render={({ field }) => (

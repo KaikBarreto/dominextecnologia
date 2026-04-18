@@ -22,7 +22,7 @@ export interface CreditCardBillWithTransactions extends CreditCardBill {
 }
 
 export interface PayBillInput {
-  bill: CreditCardBill;
+  bill: CreditCardBillWithTransactions;
   paymentAccountId: string;
   paymentDate: string;
   amountToPay: number;
@@ -82,29 +82,34 @@ export function useCreditCardBills(accountId?: string) {
     queryKey: ['credit-card-bills', accountId],
     enabled: !!accountId,
     queryFn: async () => {
-      const { data: bills, error } = await supabase
-        .from('credit_card_bills')
-        .select('*')
-        .eq('account_id', accountId!)
-        .order('reference_month', { ascending: false });
-      if (error) throw error;
+      const [billsResult, txnsResult] = await Promise.all([
+        supabase
+          .from('credit_card_bills')
+          .select('*')
+          .eq('account_id', accountId!)
+          .order('reference_month', { ascending: false }),
+        supabase
+          .from('financial_transactions')
+          .select('id, description, amount, transaction_date, category, is_paid, credit_card_bill_date')
+          .eq('account_id', accountId!)
+          .eq('transaction_type', 'saida')
+          .not('credit_card_bill_date', 'is', null)
+          .order('transaction_date', { ascending: false }),
+      ]);
 
-      const billsWithTxns: CreditCardBillWithTransactions[] = await Promise.all(
-        (bills as CreditCardBill[]).map(async (bill) => {
-          const { data: txns } = await supabase
-            .from('financial_transactions')
-            .select('id, description, amount, transaction_date, category, is_paid')
-            .eq('account_id', accountId!)
-            .eq('credit_card_bill_date', bill.reference_month)
-            .eq('transaction_type', 'saida')
-            .order('transaction_date', { ascending: false });
+      if (billsResult.error) throw billsResult.error;
 
-          const total = (txns || []).reduce((s, t) => s + Number(t.amount), 0);
-          return { ...bill, transactions: txns || [], total_amount: total };
-        })
-      );
+      const txnsByMonth: Record<string, typeof txnsResult.data> = {};
+      for (const t of (txnsResult.data ?? [])) {
+        if (!t.credit_card_bill_date) continue;
+        (txnsByMonth[t.credit_card_bill_date] ??= []).push(t);
+      }
 
-      return billsWithTxns;
+      return (billsResult.data as CreditCardBill[]).map((bill) => {
+        const transactions = txnsByMonth[bill.reference_month] ?? [];
+        const total_amount = transactions.reduce((s, t) => s + Number(t.amount), 0);
+        return { ...bill, transactions, total_amount } as CreditCardBillWithTransactions;
+      });
     },
   });
 
@@ -156,15 +161,7 @@ export function useCreditCardBills(accountId?: string) {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
 
-      // Total accumulated on the bill
-      const { data: txns } = await supabase
-        .from('financial_transactions')
-        .select('amount')
-        .eq('account_id', bill.account_id)
-        .eq('credit_card_bill_date', bill.reference_month)
-        .eq('transaction_type', 'saida');
-
-      const billTotal = (txns || []).reduce((s, t) => s + Number(t.amount), 0);
+      const billTotal = Number(bill.total_amount ?? 0);
       const previouslyPaid = Number(bill.amount_paid ?? 0);
       const remaining = billTotal - previouslyPaid;
       const isFullPayment = amountToPay >= remaining - 0.01;

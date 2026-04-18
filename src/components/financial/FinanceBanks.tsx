@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -22,16 +22,13 @@ import {
   ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle,
 } from 'lucide-react';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
-import { useCreditCardBills, computeBillDate, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { useCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { TransferFormDialog } from './TransferFormDialog';
 import { BankInstitutionCombobox, BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
+import { formatBRL } from '@/utils/currency';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
 
 function formatMonth(dateStr: string) {
   return format(parseISO(dateStr + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
@@ -128,7 +125,7 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
         <div className="flex gap-4 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30">
           <span>Fecha dia <strong>{account.closing_day}</strong></span>
           <span>Vencimento <strong>{account.payment_due_days ?? 10} dias</strong> após</span>
-          {account.credit_limit && <span>Limite <strong>{formatCurrency(account.credit_limit)}</strong></span>}
+          {account.credit_limit && <span>Limite <strong>{formatBRL(account.credit_limit)}</strong></span>}
         </div>
       )}
 
@@ -167,7 +164,7 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <p className="font-bold text-sm">{formatCurrency(bill.total_amount ?? 0)}</p>
+                          <p className="font-bold text-sm">{formatBRL(bill.total_amount ?? 0)}</p>
                           <Badge variant="outline" className={cn('text-[10px] gap-1', statusCfg.color)}>
                             <StatusIcon className="h-3 w-3" />
                             {statusCfg.label}
@@ -191,7 +188,7 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
 
                       {bill.status === 'partial' && (
                         <p className="text-xs text-yellow-600 mt-1 text-right">
-                          Pago: {formatCurrency(Number(bill.amount_paid ?? 0))} · Restante: {formatCurrency(remaining)}
+                          Pago: {formatBRL(Number(bill.amount_paid ?? 0))} · Restante: {formatBRL(remaining)}
                         </p>
                       )}
                     </CardContent>
@@ -212,7 +209,7 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
                                   {t.category && ` · ${t.category}`}
                                 </p>
                               </div>
-                              <p className="font-medium text-destructive">{formatCurrency(Number(t.amount))}</p>
+                              <p className="font-medium text-destructive">{formatBRL(Number(t.amount))}</p>
                             </div>
                           ))}
                         </div>
@@ -237,9 +234,9 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
           <div className="space-y-4">
             <div className="border rounded-lg p-3 bg-muted/30 text-sm">
               <p className="font-medium capitalize">{formatMonth(payingBill.reference_month)}</p>
-              <p className="text-muted-foreground">Total da fatura: {formatCurrency(payingBill.total_amount ?? 0)}</p>
+              <p className="text-muted-foreground">Total da fatura: {formatBRL(payingBill.total_amount ?? 0)}</p>
               {Number(payingBill.amount_paid ?? 0) > 0 && (
-                <p className="text-muted-foreground">Já pago: {formatCurrency(Number(payingBill.amount_paid ?? 0))}</p>
+                <p className="text-muted-foreground">Já pago: {formatBRL(Number(payingBill.amount_paid ?? 0))}</p>
               )}
             </div>
 
@@ -280,7 +277,7 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
                 const remaining = (payingBill.total_amount ?? 0) - Number(payingBill.amount_paid ?? 0);
                 const diff = remaining - payAmount;
                 if (diff > 0.01) {
-                  return <p className="text-xs text-yellow-600">Pagamento parcial — Saldo devedor: {formatCurrency(diff)}</p>;
+                  return <p className="text-xs text-yellow-600">Pagamento parcial — Saldo devedor: {formatBRL(diff)}</p>;
                 }
                 return null;
               })()}
@@ -452,7 +449,7 @@ export function FinanceBanks() {
         <Card className="bg-primary border-0">
           <CardContent className="p-4 sm:p-5">
             <p className="text-xs font-medium text-primary-foreground/80 uppercase tracking-wider">Saldo Total</p>
-            <p className="text-2xl font-bold text-primary-foreground mt-1">{formatCurrency(totalCashBalance)}</p>
+            <p className="text-2xl font-bold text-primary-foreground mt-1">{formatBRL(totalCashBalance)}</p>
           </CardContent>
         </Card>
 
@@ -504,7 +501,7 @@ export function FinanceBanks() {
                     <div className="mt-3 pt-3 border-t">
                       <p className="text-xs text-muted-foreground">Saldo atual</p>
                       <p className={`text-lg font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {formatCurrency(balance)}
+                        {formatBRL(balance)}
                       </p>
                     </div>
                   </CardContent>
@@ -526,7 +523,7 @@ export function FinanceBanks() {
           <Card className="bg-violet-600 border-0">
             <CardContent className="p-4 sm:p-5">
               <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Total de Faturas Abertas</p>
-              <p className="text-2xl font-bold text-white mt-1">{formatCurrency(totalOpenBills)}</p>
+              <p className="text-2xl font-bold text-white mt-1">{formatBRL(totalOpenBills)}</p>
             </CardContent>
           </Card>
         )}
@@ -583,14 +580,14 @@ export function FinanceBanks() {
                       <div>
                         <p className="text-xs text-muted-foreground">Fatura aberta</p>
                         <p className={`text-lg font-bold ${billTotal > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                          {formatCurrency(billTotal)}
+                          {formatBRL(billTotal)}
                         </p>
                       </div>
                       {availableLimit !== null && (
                         <div>
                           <p className="text-xs text-muted-foreground">Limite disponível</p>
                           <p className={`text-sm font-medium ${availableLimit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                            {formatCurrency(availableLimit)}
+                            {formatBRL(availableLimit)}
                           </p>
                         </div>
                       )}
