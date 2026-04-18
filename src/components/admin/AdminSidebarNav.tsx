@@ -12,6 +12,7 @@ import {
   ChevronsUpDown,
   MessageCircle,
   Target,
+  Briefcase,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ const ADMIN_MENU_ITEMS: { label: string; path: string; icon: React.ComponentType
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'CRM', path: '/admin/crm', icon: Target },
   { label: 'Empresas', path: '/admin/empresas', icon: Building2 },
+  { label: 'Vendedores', path: '/admin/vendedores', icon: Briefcase },
   { label: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
   { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet },
   { label: 'Configurações', path: '/admin/configuracoes', icon: Settings },
