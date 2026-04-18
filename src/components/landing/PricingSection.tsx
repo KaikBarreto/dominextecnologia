@@ -217,7 +217,7 @@ export default function PricingSection() {
                 size="lg"
                 asChild
               >
-                <Link to={customPlan.ctaLink}>{customPlan.cta}</Link>
+                <a href={customPlan.ctaLink} target="_blank" rel="noopener noreferrer">{customPlan.cta}</a>
               </Button>
             </div>
           </div>
