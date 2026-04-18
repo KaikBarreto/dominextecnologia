@@ -193,6 +193,11 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                 </Button>
               </TableHead>
               <TableHead>
+                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('salesperson_id')}>
+                  Vendedor <SortIcon column="salesperson_id" />
+                </Button>
+              </TableHead>
+              <TableHead>
                 <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('subscription_expires_at')}>
                   Vencimento <SortIcon column="subscription_expires_at" />
                 </Button>
@@ -208,7 +213,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
           <TableBody>
             {paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma empresa encontrada</TableCell>
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma empresa encontrada</TableCell>
               </TableRow>
             ) : (
               paginated.map((company) => {
