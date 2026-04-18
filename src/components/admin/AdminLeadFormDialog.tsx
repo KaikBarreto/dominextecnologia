@@ -138,7 +138,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
               />
               {emailError && <p className="text-xs text-destructive mt-1">{emailError}</p>}
             </div>
-            <div className="sm:col-span-2">
+            <div>
               <Label>Origem</Label>
               <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
                 <SelectTrigger
@@ -174,6 +174,41 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Segmento</Label>
+              {(() => {
+                const selectedSeg = getSegment(form.segment);
+                return (
+                  <Select value={form.segment} onValueChange={v => setForm(f => ({ ...f, segment: v }))}>
+                    <SelectTrigger
+                      className={selectedSeg ? 'text-white font-medium border-transparent' : ''}
+                      style={selectedSeg ? { backgroundColor: selectedSeg.color } : undefined}
+                    >
+                      {selectedSeg ? (
+                        <div className="flex items-center gap-2">
+                          <selectedSeg.icon className="h-3.5 w-3.5 text-white" />
+                          <span className="truncate">{selectedSeg.label}</span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Selecione o segmento" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_SEGMENTS.map(s => (
+                        <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>
+                              <s.icon className="h-2.5 w-2.5 text-white" />
+                            </div>
+                            <span>{s.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
             </div>
           </div>
         </div>
