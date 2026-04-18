@@ -11,6 +11,7 @@ import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdm
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
 import { phoneMask } from '@/utils/masks';
+import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
@@ -39,6 +40,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
     phone: '',
     value: '',
     source: '',
+    segment: '',
     stage_id: '',
     expected_close_date: '',
     notes: '',
@@ -56,6 +58,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
         phone: editingLead.phone || '',
         value: editingLead.value ? String(editingLead.value) : '',
         source: editingLead.source || '',
+        segment: editingLead.segment || '',
         stage_id: editingLead.stage_id || '',
         expected_close_date: editingLead.expected_close_date || '',
         notes: editingLead.notes || '',
@@ -64,7 +67,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       const firstStage = stages.find(s => !s.is_won && !s.is_lost);
       setForm({
         title: '', company_name: '', contact_name: '', email: '', phone: '',
-        value: '', source: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
+        value: '', source: '', segment: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
       });
     }
     setEmailError('');
@@ -89,6 +92,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       phone: form.phone || null,
       value: form.value ? Number(form.value) : 0,
       source: form.source || null,
+      segment: form.segment || null,
       stage_id: form.stage_id || null,
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,

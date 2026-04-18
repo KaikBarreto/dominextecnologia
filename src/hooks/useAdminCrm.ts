@@ -24,6 +24,7 @@ export interface AdminLead {
   probability: number | null;
   expected_close_date: string | null;
   source: string | null;
+  segment: string | null;
   stage_id: string | null;
   notes: string | null;
   loss_reason: string | null;
