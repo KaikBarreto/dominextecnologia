@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
-import { Loader2, Building2, CreditCard, KeyRound, Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react';
+import { Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check } from 'lucide-react';
+import { PasswordInput } from '@/components/PasswordInput';
+import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { addDays, format } from 'date-fns';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
@@ -373,16 +375,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   <div>
                     <Label>Senha *</Label>
                     <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input type={showPassword ? 'text' : 'password'} value={formData.admin_password} onChange={e => updateField('admin_password', e.target.value)} placeholder="Mínimo 6 caracteres" className="pr-10" />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
+                      <div className="flex-1">
+                        <PasswordInput value={formData.admin_password} onChange={e => updateField('admin_password', e.target.value)} placeholder="Crie uma senha segura" />
                       </div>
-                      <Button type="button" variant="outline" size="icon" onClick={() => { updateField('admin_password', generatePassword()); setShowPassword(true); }} title="Gerar senha">
+                      <Button type="button" variant="outline" size="icon" onClick={() => { updateField('admin_password', generatePassword()); }} title="Gerar senha">
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
+                    <PasswordStrengthIndicator password={formData.admin_password} />
                   </div>
                   {formData.admin_email && formData.admin_password && (
                     <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="w-full">

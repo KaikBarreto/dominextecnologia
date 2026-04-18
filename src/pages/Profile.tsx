@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { phoneMask } from '@/utils/masks';
-import { Camera, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
+import { Camera, Loader2, ArrowLeft } from 'lucide-react';
+import { PasswordInput } from '@/components/PasswordInput';
+import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
+import { getFriendlyPasswordError } from '@/utils/passwordHelpers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,8 +86,8 @@ export default function Profile() {
   };
 
   const handleChangePassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' });
+    if (!isPasswordStrong(newPassword)) {
+      toast({ variant: 'destructive', title: 'Senha fraca', description: 'Use ao menos 8 caracteres com letras maiúsculas, minúsculas, números e/ou caracteres especiais.' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -100,7 +103,7 @@ export default function Profile() {
       setConfirmPassword('');
       setShowPasswordForm(false);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao alterar senha', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao alterar senha', description: getFriendlyPasswordError(err) });
     } finally {
       setChangingPassword(false);
     }
@@ -184,41 +187,23 @@ export default function Profile() {
             <Separator />
             <div className="space-y-2">
               <Label htmlFor="new-password">Nova Senha</Label>
-              <div className="relative">
-                <Input
-                  id="new-password"
-                  type={showNewPass ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowNewPass(!showNewPass)}
-                >
-                  {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <PasswordInput
+                id="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Crie uma senha segura"
+              />
+              <PasswordStrengthIndicator password={newPassword} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
-              <div className="relative">
-                <Input
-                  id="confirm-password"
-                  type={showConfirmPass ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repita a nova senha"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowConfirmPass(!showConfirmPass)}
-                >
-                  {showConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <PasswordInput
+                id="confirm-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repita a nova senha"
+                matchAgainst={newPassword}
+              />
             </div>
             <div className="flex gap-2">
               <Button onClick={handleChangePassword} disabled={changingPassword}>
