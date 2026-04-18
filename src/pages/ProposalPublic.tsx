@@ -68,20 +68,20 @@ export default function ProposalPublic() {
     if (!token) return;
     (async () => {
       const [quoteRes, companyRes] = await Promise.all([
-        supabase
-          .from('quotes')
-          .select('*, customers(name, email, phone), quote_items(*)')
-          .eq('token', token)
-          .single(),
-        supabase
-          .from('company_settings')
-          .select('*')
-          .limit(1)
-          .single(),
+        supabase.rpc('get_quote_by_token', { _token: token }),
+        supabase.from('company_settings').select('*').limit(1).single(),
       ]);
 
-      if (quoteRes.data) {
-        const q = quoteRes.data as any;
+      const quoteRow = Array.isArray(quoteRes.data) ? quoteRes.data[0] : quoteRes.data;
+      if (quoteRow) {
+        // Carregar itens e cliente separadamente (RPC retorna apenas a quote)
+        const [itemsRes, customerRes] = await Promise.all([
+          supabase.from('quote_items').select('*').eq('quote_id', (quoteRow as any).id),
+          (quoteRow as any).customer_id
+            ? supabase.from('customers').select('name, email, phone').eq('id', (quoteRow as any).customer_id).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+        const q = { ...(quoteRow as any), quote_items: itemsRes.data || [], customers: customerRes.data };
         setQuote(q);
         if (q.proposal_template_id) {
           const { data: tpl } = await supabase

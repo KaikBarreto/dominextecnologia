@@ -115,12 +115,10 @@ export default function CustomerPortal() {
     setLoading(true);
     setError(null);
     try {
-      const { data: portalData, error: portalError } = await supabase
-        .from('customer_portals')
-        .select('*')
-        .eq('token', token!)
-        .eq('is_active', true)
-        .single();
+      const { data: portalRows, error: portalError } = await supabase
+        .rpc('get_portal_by_token', { _token: token! });
+
+      const portalData = Array.isArray(portalRows) ? portalRows[0] : portalRows;
 
       if (portalError || !portalData) {
         setError('Portal não encontrado ou desativado.');
