@@ -1,0 +1,1 @@
+ALTER TABLE public.admin_leads ADD COLUMN IF NOT EXISTS segment text;

@@ -137,12 +137,14 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
     return data;
   }, [companies]);
 
-  // Receita mensal + meta
+  // Receita mensal + meta (rampa Abr=0 → Dez=R$40k)
   const monthlyRevenueData = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
-    const metaInicial = 12000, metaFinal = 60000;
-    const inc = (metaFinal - metaInicial) / 11;
+    const META_START_MONTH = 3; // Abril (0-indexed)
+    const META_END_MONTH = 11; // Dezembro
+    const META_FINAL = 40000;
+    const totalSteps = META_END_MONTH - META_START_MONTH; // 8 incrementos de Abr→Dez
     return Array.from({ length: 12 }, (_, m) => {
       const d = new Date(year, m, 1);
       const ms = startOfMonth(d), me = endOfMonth(d);
@@ -152,7 +154,13 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
         const td = new Date(t.transaction_date);
         return td >= ms && td <= me;
       }).reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-      return { month: format(d, 'MMM/yy', { locale: ptBR }), receita, meta: metaInicial + inc * m };
+      // Meta: 0 antes de abril, rampa linear de Abril (0) até Dezembro (40k)
+      let meta = 0;
+      if (m >= META_START_MONTH) {
+        const step = m - META_START_MONTH;
+        meta = (META_FINAL / totalSteps) * step;
+      }
+      return { month: format(d, 'MMM/yy', { locale: ptBR }), receita, meta };
     });
   }, [transactions]);
 

@@ -11,6 +11,7 @@ import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdm
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
 import { phoneMask } from '@/utils/masks';
+import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
@@ -39,6 +40,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
     phone: '',
     value: '',
     source: '',
+    segment: '',
     stage_id: '',
     expected_close_date: '',
     notes: '',
@@ -56,6 +58,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
         phone: editingLead.phone || '',
         value: editingLead.value ? String(editingLead.value) : '',
         source: editingLead.source || '',
+        segment: editingLead.segment || '',
         stage_id: editingLead.stage_id || '',
         expected_close_date: editingLead.expected_close_date || '',
         notes: editingLead.notes || '',
@@ -64,7 +67,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       const firstStage = stages.find(s => !s.is_won && !s.is_lost);
       setForm({
         title: '', company_name: '', contact_name: '', email: '', phone: '',
-        value: '', source: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
+        value: '', source: '', segment: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
       });
     }
     setEmailError('');
@@ -89,6 +92,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       phone: form.phone || null,
       value: form.value ? Number(form.value) : 0,
       source: form.source || null,
+      segment: form.segment || null,
       stage_id: form.stage_id || null,
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,
@@ -134,7 +138,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
               />
               {emailError && <p className="text-xs text-destructive mt-1">{emailError}</p>}
             </div>
-            <div className="sm:col-span-2">
+            <div>
               <Label>Origem</Label>
               <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
                 <SelectTrigger
@@ -170,6 +174,41 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Segmento</Label>
+              {(() => {
+                const selectedSeg = getSegment(form.segment);
+                return (
+                  <Select value={form.segment} onValueChange={v => setForm(f => ({ ...f, segment: v }))}>
+                    <SelectTrigger
+                      className={selectedSeg ? 'text-white font-medium border-transparent' : ''}
+                      style={selectedSeg ? { backgroundColor: selectedSeg.color } : undefined}
+                    >
+                      {selectedSeg ? (
+                        <div className="flex items-center gap-2">
+                          <selectedSeg.icon className="h-3.5 w-3.5 text-white" />
+                          <span className="truncate">{selectedSeg.label}</span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Selecione o segmento" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_SEGMENTS.map(s => (
+                        <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>
+                              <s.icon className="h-2.5 w-2.5 text-white" />
+                            </div>
+                            <span>{s.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
             </div>
           </div>
         </div>
