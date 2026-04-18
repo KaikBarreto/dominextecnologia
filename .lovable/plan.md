@@ -1,94 +1,103 @@
 
-## Plano: CRUD de Usuários Admin + Vendedor vinculado + Financeiro Admin completo
 
-### Bloco 1 — Tabelas e seed (1 migration)
+## Plano: Segmento de empresa + correção planos Master + dashboard com ordem do Eco + zoom map
 
-**Novas tabelas:**
-- `admin_permissions(id, user_id uuid, permission text, created_at)` — RLS: somente super_admin lê/escreve.
-- `admin_financial_categories(id, name, label, type 'income'|'expense', color, icon, is_system, created_at, updated_at)` — RLS: super_admin gerencia.
-- Coluna `user_id uuid` em `salespeople` (FK lógica para auth.users, único parcial onde não nulo).
-- Coluna `created_at` em `admin_financial_transactions` (já existe).
+### 1. Banco — adicionar coluna `segment`
 
-**Constantes de permissões admin** (referenciadas em código):
-- Telas: `admin_dashboard`, `admin_crm`, `admin_empresas`, `admin_vendedores`, `admin_assinaturas`, `admin_financeiro`, `admin_configuracoes`, `admin_usuarios`.
-- Funções: `admin_financeiro_lancamentos`, `admin_financeiro_totais`, `admin_vendedores_ver_todos`.
+Migration: `ALTER TABLE companies ADD COLUMN segment text` + corrigir valor de empresas Master:
+```sql
+UPDATE companies SET subscription_value = 650
+WHERE subscription_plan = 'master' AND subscription_value = 199;
+```
+(2 empresas afetadas: ArcTech Refrigeração e Minha Empresa Tutorial.)
 
-**Seed categorias (espelha Eco):** sale (Vendas), renewal (Renovações), partner_contribution (Aporte de Sócios), other_income (Outras Receitas) — income. salary, marketing, commission, advance, development, infrastructure, administrative, impostos, asaas_fee, other_expense — expense. Todas com `is_system=true`.
+### 2. Lista de segmentos (constante compartilhada)
 
-### Bloco 2 — Hook `useAdminPermissions`
+Novo arquivo `src/utils/companySegments.ts` com:
+- Refrigeração e Climatização
+- Instalações Elétricas
+- Energia Solar
+- Telecomunicações / Provedores
+- CFTV e Segurança Eletrônica
+- Construção Civil
+- Engenharia
+- Elevadores
+- Automação Industrial
+- Limpeza e Conservação
+- Dedetização
+- Manutenção Predial
+- Outro
 
-`src/hooks/useAdminPermissions.ts` retorna `{ hasMasterAccess, hasFullAccess, hasScreenAccess(key), hasFunctionAccess(key), linkedSalespersonId, isLoading }`. Master = super_admin role. Demais usuários admin lêem `admin_permissions`. Se vinculado a salesperson sem `admin_vendedores_ver_todos`, vê apenas seus próprios dados.
+Cada segmento com cor (paleta variada: emerald, blue, amber, violet, rose, cyan, etc.) e ícone (Lucide) — usados no card kanban e gráfico.
 
-### Bloco 3 — CRUD Usuários Admin nas Configurações
+### 3. Cadastro/Edição de empresa (`CompanyFormModal.tsx`)
 
-- Adicionar aba **"Usuários Admin"** em `AdminSettings.tsx` (ícone `UserCog`).
-- Novo componente `AdminUsersSettings.tsx` (porte do Eco):
-  - Listagem com email, badge Master, badge "Vendedor: X", chips de permissões.
-  - Modal **Criar**: email, nome, senha (vazia até gerar/digitar — segue regra do projeto), select para vincular a vendedor disponível (salesperson com `user_id IS NULL`).
-  - Modal **Editar permissões**: checkboxes agrupados (Telas / Funções), com ScrollArea.
-  - Modal **Resetar senha** + botão Excluir (oculto para Master).
-- Edge Function `manage-admin-users` (criar/listar emails/resetar senha/deletar) — só super_admin pode invocar.
-- Proteção de rota: cada página admin checa `hasScreenAccess` e redireciona ao dashboard.
+- Adicionar `segment: ''` no `formData` inicial e ao carregar empresa existente.
+- Incluir no payload de `update` e `invoke('create-company')`.
+- Na aba **Comercial**, dentro do grid `Origem / Vendedor`, adicionar um terceiro Select **Segmento** ao lado de Origem (transformando em grid com 3 colunas no desktop / 1 no mobile), com itens da constante.
 
-### Bloco 4 — Vincular Vendedor a Usuário
+Edge function `create-company` (`supabase/functions/create-company/index.ts`): ler `segment` do body e gravar na inserção da `companies`.
 
-- `SalespersonFormDialog` ganha campo opcional **"Vincular a usuário admin"** (select de admins sem vendedor vinculado) — também ajustável via aba Usuários Admin.
-- `useSalespersonData` filtra resultados por `user_id` se o usuário logado tem permissão de vendedor mas não `admin_vendedores_ver_todos`.
-- `AdminSalespeople.tsx` e `AdminSalespersonDetail.tsx`: se o usuário é vendedor restrito, esconde lista geral e força navegação para `/admin/vendedores/:linkedId`.
+### 4. Card do Kanban (`CompanyKanbanCard.tsx`)
 
-### Bloco 5 — Financeiro Admin (UI/lógica espelhada do Eco)
+Logo abaixo do badge "Origem" exibir uma linha "Segmento:" com Badge colorido conforme a constante (mesma estética de Origem).
 
-**Refatorar `AdminFinancial.tsx`** mantendo `admin_financial_transactions` atual:
+### 5. Tabela de Empresas (`CompanyTable.tsx`)
 
-- Adicionar abas **Resultado** (DRE) e **Configurações** ao `SettingsSidebarLayout`.
-- Trocar Select de período por `DateRangeFilter` (componente já existente).
-- Para usuários sem `admin_financeiro_totais`: mostra somente abas Receitas/Despesas (sem totais/gráficos/DRE).
+Adicionar coluna **Segmento** entre "Origem" e "Plano":
+- Inline `Select` (mesmo padrão do `origin`) que atualiza `segment` via `updateCompanyMutation`.
+- Renderiza Badge colorido com ícone do segmento.
 
-**Novos componentes (em `src/components/admin/financial/`):**
-- `FinancialSummaryCards.tsx` — cards Saldo do Período + Receitas/Despesas + botões clicáveis.
-- `FinancialCharts.tsx` — donut Pizza por categoria com toggle Receitas/Despesas (recharts, já no projeto).
-- `FinancialIncomeSection.tsx` / `FinancialExpenseSection.tsx` — seções dedicadas com filtros, mini-stats (vendas, renovações para receitas) e tabela.
-- `FinancialDRESection.tsx` — DRE colapsável (Receita Bruta → Impostos → Receita Líquida → CPV → Lucro Bruto → OPEX → EBITDA), cards de Margem/Receita Líquida/Resultado, botão Exportar HTML (`utils/adminDreHtmlGenerator.ts` novo).
-- `FinancialSettingsSection.tsx` — CRUD de `admin_financial_categories` com ColorPicker e seleção de ícone.
-- `RecentTransactionsList.tsx` — usado em "Visão Geral".
-- `AdminFinancialMovementModal.tsx` — atualizar para usar categorias dinâmicas em vez de lista hardcoded.
+### 6. Dashboard Admin — ordem espelhada do Eco
 
-**Visão de Vendas e Renovações:** dentro de Receitas, agrupa contadores `first_sale`/`sale` e `renewal` no topo (cards com totais e número de transações).
+Reordenar `AdminDashboard.tsx` exatamente como o EcoSistema:
+1. `AdminDashboardStats`
+2. **Pies (Origem + Forma de Pagamento)** — dentro de `AdminDashboardCharts`
+3. *(Pular NPS — não existe no admin do Dominex)*
+4. **Funil de Retenção** — dentro de `AdminDashboardCharts`
+5. **Mapa do Brasil** (`AdminBrazilMapChart`)
+6. **Top 3 Clientes LTV** + **Clientes por Plano** (lado a lado)
+7. **Evolução da Receita** (Mensal/Semanal)
+8. **Taxa de Churn Mensal**
+9. **NOVO: Clientes por Segmento** (último — pizza/donut igual aos demais)
 
-**O que NÃO incluir** (específico Eco que não se aplica): integração Asaas, sync, alerta Asaas Pro, IA para DRE.
+Em `AdminDashboardCharts.tsx`, garantir que a ordem interna seja: Pies → Funil → Receita → Churn (separar Receita+Churn em renders condicionais ou reorganizar). Adicionar prop/seção para colocar TopLTV + ClientsByPlan **entre** Mapa e Receita (esses já estão no `AdminDashboard.tsx` — basta reordenar a chamada lá).
 
-### Bloco 6 — Versão e changelog
+### 7. Novo componente `AdminSegmentDistributionChart.tsx`
 
-Bump para `1.7.0` com entrada descrevendo CRUD usuários admin, vínculo vendedor↔usuário, e financeiro admin (DRE, gráficos, configuração de categorias).
+Card pizza/donut com Recharts, agrupando `companies` por `segment` (filtrando ativas + testing). Cores da constante. Legenda lateral com contadores e percentuais. Renderiza placeholder vazio se não houver dados (igual aos outros).
 
-### Arquivos principais
+### 8. Mapa Brasil — drilldown com zoom in/out
+
+Refatorar `AdminBrazilMapChart.tsx` para espelhar a lógica do Eco:
+- Adicionar estados `zoomTarget` e `zoomOutFrom`.
+- Função `getStateZoomOrigin(stateCode)` que calcula `transformOrigin` em % usando `STATE_LABEL_POSITIONS`.
+- `handleStateClick`: setar `zoomTarget`, esperar 450ms (animação `scale: 2.2 + opacity: 0` com `transformOrigin` no estado clicado), depois trocar para `selectedState`.
+- `handleBackToMap`: setar `zoomOutFrom`, animar entrada do mapa com `initial={{ scale: 2.2, opacity: 0 }} → { scale: 1, opacity: 1 }` no `transformOrigin` do estado anterior.
+- Toggle Map/List no drilldown (botões `Map` e `List`).
+- Lista de cidades com barras gradientes verde-claro→verde-escuro (índice 0 = mais escuro).
+- Manter compatível com `companies` que possuem `state` e `city` estruturados (já temos via migração anterior).
+
+*Não vou portar `StateMapView.tsx` (mapa municipal por IBGE) porque é complexo (370 linhas + carregamento dinâmico de geojson IBGE) e o usuário pediu "mesma lógica de zoom in/out" — a view de cidades já mostra as cidades em barras, com toggle Map/List. Se quiser o mapa municipal real depois, abro como follow-up.*
+
+### 9. Versão e changelog
+
+Bump para `1.7.2` com entrada: "Campo Segmento em empresas, gráfico de Clientes por Segmento, drilldown do mapa com zoom animado, correção de valores Master".
+
+### Arquivos
 
 **Novos:**
-- `supabase/migrations/<ts>_admin_users_financeiro.sql`
-- `supabase/functions/manage-admin-users/index.ts`
-- `src/hooks/useAdminPermissions.ts`
-- `src/components/admin/AdminUsersSettings.tsx`
-- `src/components/admin/financial/{FinancialSummaryCards,FinancialCharts,FinancialIncomeSection,FinancialExpenseSection,FinancialDRESection,FinancialSettingsSection,RecentTransactionsList}.tsx`
-- `src/utils/adminDreHtmlGenerator.ts`
+- `src/utils/companySegments.ts`
+- `src/components/admin/AdminSegmentDistributionChart.tsx`
+- `supabase/migrations/<ts>_companies_segment_and_master_fix.sql`
 
 **Editados:**
-- `src/pages/admin/AdminSettings.tsx` (+aba Usuários)
-- `src/pages/admin/AdminFinancial.tsx` (refator completo)
-- `src/pages/admin/AdminSalespeople.tsx` + `AdminSalespersonDetail.tsx` (filtro por vínculo)
-- `src/components/admin/salesperson/SalespersonFormDialog.tsx` (+select usuário)
-- `src/hooks/useSalespersonData.ts` (filtro por usuário)
-- `src/components/admin/AdminFinancialMovementModal.tsx` (categorias dinâmicas)
-- `src/config/version.ts`, `src/pages/Changelog.tsx`
+- `src/components/admin/CompanyFormModal.tsx` (campo segmento na aba Comercial)
+- `src/components/admin/CompanyKanbanCard.tsx` (linha Segmento)
+- `src/components/admin/CompanyTable.tsx` (coluna Segmento inline-editável)
+- `src/components/admin/AdminBrazilMapChart.tsx` (zoom in/out + toggle Map/List)
+- `src/components/admin/AdminDashboardCharts.tsx` (reordenar internamente)
+- `src/pages/admin/AdminDashboard.tsx` (reordenar componentes + adicionar SegmentChart no fim)
+- `supabase/functions/create-company/index.ts` (aceitar `segment`)
+- `src/config/version.ts` + `src/pages/Changelog.tsx`
 
-### Observações
-
-- Senhas em todos os modais novos respeitam a regra: campo vazio inicial, só preenche se digitar ou clicar em "Gerar".
-- DRE usa o mesmo mapeamento de categorias do Eco (REVENUE/TAX/CPV/OPEX) — categorias custom criadas pelo admin caem em "other_income" ou "other_expense" para o cálculo até serem mapeadas (futuro).
-- Tudo responsivo seguindo padrão admin já estabelecido.
-
-<lov-actions>
-<lov-suggestion message="Implemente o plano completo (Blocos 1 a 6)">Implementar tudo</lov-suggestion>
-<lov-suggestion message="Implemente apenas os Blocos 1, 2 e 3 (CRUD de usuários admin com permissões) primeiro, depois revisamos antes do Financeiro.">Só CRUD usuários primeiro</lov-suggestion>
-<lov-suggestion message="Implemente apenas o Bloco 5 (refator do Financeiro Admin com DRE, gráficos e categorias) primeiro.">Só Financeiro primeiro</lov-suggestion>
-<lov-suggestion message="Antes de implementar, ajuste o plano para também portar a aba 'Avisos/Banners' e 'Tasks' do EcoSistema para o admin do Dominex.">Adicionar Avisos e Tasks</lov-suggestion>
-</lov-actions>
