@@ -272,7 +272,20 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="whitespace-nowrap">{PLAN_LABELS[company.subscription_plan] || company.subscription_plan || 'N/A'}</Badge>
+                      {company.subscription_plan ? (
+                        <Badge className={cn('whitespace-nowrap', PLAN_COLORS[company.subscription_plan] || 'bg-muted text-foreground')}>
+                          {PLAN_LABELS[company.subscription_plan] || company.subscription_plan}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {company.salesperson_id && salespersonMap?.get(company.salesperson_id) ? (
+                        <span className="text-sm">{salespersonMap.get(company.salesperson_id)}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
                     </TableCell>
                     {/* Expiration - inline calendar */}
                     <TableCell onClick={(e) => e.stopPropagation()} className={cn('py-6', getExpirationColor(company.subscription_expires_at))}>
