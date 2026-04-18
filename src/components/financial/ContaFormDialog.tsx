@@ -113,11 +113,12 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
 
   const handleSubmit = async () => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
+    if (!accountId) return;
     setIsSubmitting(true);
 
     try {
+      localStorage.setItem('fin_last_account_id', accountId);
       if (isEditing && editingTransaction) {
-        // Update existing transaction
         const input: TransactionInput & { id: string } = {
           id: editingTransaction.id,
           transaction_type: tipo,
@@ -134,10 +135,10 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           ].filter(Boolean).join(' ') || undefined,
           contract_id: contractId && showContractSelector ? contractId : undefined,
           customer_id: customerId || undefined,
-        };
+          account_id: accountId,
+        } as any;
         await updateTransaction.mutateAsync(input);
       } else {
-        // Create new transactions
         const baseDate = new Date(dueDate + 'T12:00:00');
         const count = recurrence === 'unica' ? 1 : occurrences;
 
@@ -165,7 +166,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             ].filter(Boolean).join(' ') || undefined,
             contract_id: contractId && showContractSelector ? contractId : undefined,
             customer_id: customerId || undefined,
-          };
+            account_id: accountId,
+          } as any;
 
           await createTransaction.mutateAsync(input);
         }
