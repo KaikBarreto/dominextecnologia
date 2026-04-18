@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { useTimeHistory, formatMinutes } from '@/hooks/useTimeRecords';
 import { useAdminTimeSheet } from '@/hooks/useTimeRecords';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
@@ -105,7 +106,7 @@ export function TimeReport() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={employee.photo_url || undefined} />
+                <SignedAvatarImage src={employee.photo_url} />
                 <AvatarFallback>{employee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>

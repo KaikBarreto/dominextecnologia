@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SignedLink } from '@/components/ui/SignedLink';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -135,9 +136,9 @@ export function TransactionListPanel({
   const renderReceiptLink = (t: any) => {
     if (!t.receipt_url) return null;
     return (
-      <a href={t.receipt_url} target="_blank" rel="noopener" className="text-primary hover:text-primary/80" title="Ver comprovante">
+      <SignedLink src={t.receipt_url} className="text-primary hover:text-primary/80" title="Ver comprovante">
         <Paperclip className="h-3.5 w-3.5" />
-      </a>
+      </SignedLink>
     );
   };
 

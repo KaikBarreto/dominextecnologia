@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Phone, Mail, MapPin, Calendar, Edit, Trash2, FileText, Banknote, Gift, AlertCircle, CreditCard } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
+import { useSignedUrl } from '@/hooks/useSignedUrl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -26,6 +28,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const previewUrl = useSignedUrl(employee.photo_url);
 
   return (
     <Card className="overflow-hidden">
@@ -37,7 +40,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
             onClick={() => employee.photo_url && setPhotoPreviewOpen(true)}
           >
             <Avatar className="h-12 w-12">
-              <AvatarImage src={employee.photo_url || undefined} />
+              <SignedAvatarImage src={employee.photo_url} />
               <AvatarFallback className="bg-primary text-primary-foreground font-bold">{initials}</AvatarFallback>
             </Avatar>
           </div>
@@ -116,7 +119,7 @@ export function EmployeeCard({ employee, balance, onEdit, onDelete, onDeleteWith
           </Button>
         </div>
         <ImagePreviewModal
-          src={employee.photo_url || ''}
+          src={previewUrl || ''}
           alt={employee.name}
           open={photoPreviewOpen}
           onClose={() => setPhotoPreviewOpen(false)}

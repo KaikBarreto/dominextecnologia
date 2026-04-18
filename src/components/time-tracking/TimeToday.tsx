@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, UserX, Coffee, CheckCircle2, Eye, PenLine, Clock } from 'lucide-react';
 import { useAdminTimeSheet, calculateWorkedMinutes, formatMinutes } from '@/hooks/useTimeRecords';
@@ -74,7 +75,7 @@ export function TimeToday() {
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={emp.photo_url || undefined} />
+                      <SignedAvatarImage src={emp.photo_url} />
                       <AvatarFallback className="text-xs bg-muted">
                         {emp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                       </AvatarFallback>
@@ -143,7 +144,7 @@ export function TimeToday() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={emp.photo_url || undefined} />
+                              <SignedAvatarImage src={emp.photo_url} />
                               <AvatarFallback className="text-xs bg-muted">
                                 {emp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                               </AvatarFallback>

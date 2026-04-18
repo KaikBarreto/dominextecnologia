@@ -1,26 +1,37 @@
-User-agent: Googlebot
-Allow: /
-Disallow: /portal/
-Disallow: /avaliacao/
-Disallow: /orcamento/
-Disallow: /proposta/
-
-User-agent: Bingbot
-Allow: /
-Disallow: /portal/
-Disallow: /avaliacao/
-Disallow: /orcamento/
-Disallow: /proposta/
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+Allow: /privacidade
+Allow: /termos
+Disallow: /auth
+Disallow: /cadastro
+Disallow: /checkout
 Disallow: /portal/
 Disallow: /avaliacao/
 Disallow: /orcamento/
 Disallow: /proposta/
+Disallow: /os-tecnico/
+Disallow: /tecnico/
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /clientes
+Disallow: /equipamentos
+Disallow: /servicos
+Disallow: /contratos
+Disallow: /financeiro
+Disallow: /funcionarios
+Disallow: /equipes
+Disallow: /agenda
+Disallow: /pmoc
+Disallow: /crm
+Disallow: /orcamentos
+Disallow: /estoque
+Disallow: /ponto
+Disallow: /usuarios
+Disallow: /perfil
+Disallow: /meus-dados
+Disallow: /configuracoes
+Disallow: /mapa
+Disallow: /questionarios
+Disallow: /cobranca
+
+Sitemap: https://dominex.app/sitemap.xml

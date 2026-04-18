@@ -20,6 +20,7 @@ import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { SignedLink } from '@/components/ui/SignedLink';
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
@@ -343,9 +344,9 @@ export function TransactionFormDialog({
                 {receiptPreview && receiptPreview.startsWith('data:image') ? (
                   <img src={receiptPreview} alt="Comprovante" className="h-12 w-12 rounded object-cover" />
                 ) : receiptPreview ? (
-                  <a href={receiptPreview} target="_blank" rel="noopener" className="flex items-center gap-1 text-xs text-primary hover:underline">
+                  <SignedLink src={receiptPreview} className="flex items-center gap-1 text-xs text-primary hover:underline">
                     <Paperclip className="h-3.5 w-3.5" /> Ver comprovante
-                  </a>
+                  </SignedLink>
                 ) : (
                   <span className="text-xs text-muted-foreground flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" /> {receiptFile?.name}</span>
                 )}
