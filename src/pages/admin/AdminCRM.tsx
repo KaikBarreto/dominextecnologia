@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { Plus, Search, DollarSign, TrendingUp, Users, Filter, X } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,13 +9,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useProfiles } from '@/hooks/useProfiles';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
-import { getSegment } from '@/utils/companySegments';
+import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
