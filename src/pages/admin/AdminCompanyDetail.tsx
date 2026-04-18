@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, User as UserIcon, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +15,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState } from 'react';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
+import { CompanyPaymentHistory } from '@/components/admin/CompanyPaymentHistory';
 import { cn } from '@/lib/utils';
 import { cpfCnpjMask } from '@/utils/masks';
 
@@ -39,18 +41,11 @@ export default function AdminCompanyDetail() {
     enabled: !!id,
   });
 
-  // Master user (first user with admin role or first created)
   const { data: masterUser } = useQuery({
     queryKey: ['admin-company-master-user', id],
     queryFn: async () => {
-      // Try admin role first
-      const { data } = await supabase
-        .from('profiles')
-        .select('full_name, user_id')
-        .eq('company_id', id!)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
+      const { data } = await supabase.from('profiles').select('full_name, user_id')
+        .eq('company_id', id!).order('created_at', { ascending: true }).limit(1).maybeSingle();
       return data;
     },
     enabled: !!id,
@@ -60,10 +55,20 @@ export default function AdminCompanyDetail() {
     queryKey: ['company-origin', company?.origin],
     queryFn: async () => {
       if (!company?.origin) return null;
-      const { data } = await supabase.from('company_origins').select('*').eq('name', company.origin).single();
+      const { data } = await supabase.from('company_origins').select('*').eq('name', company.origin).maybeSingle();
       return data;
     },
     enabled: !!company?.origin,
+  });
+
+  const { data: salesperson } = useQuery({
+    queryKey: ['admin-company-salesperson', company?.salesperson_id],
+    queryFn: async () => {
+      if (!company?.salesperson_id) return null;
+      const { data } = await supabase.from('salespeople').select('id, name, referral_code').eq('id', company.salesperson_id).maybeSingle();
+      return data;
+    },
+    enabled: !!company?.salesperson_id,
   });
 
   const deleteMutation = useMutation({
@@ -102,22 +107,25 @@ export default function AdminCompanyDetail() {
     );
   }
 
+  const formatBRL = (v: number | null | undefined) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v || 0));
+
+  const hasPromo = company.custom_price != null && Number(company.custom_price) > 0;
+  const promoActive = hasPromo && (
+    company.custom_price_permanent ||
+    (company.custom_price_months && (company.custom_price_payments_made || 0) < company.custom_price_months)
+  );
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <Button variant="ghost" onClick={() => navigate('/admin/empresas')} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> Voltar para Empresas
         </Button>
         <div className="flex items-center gap-2">
           {company.phone && (
-            <Button
-              className="bg-[#25D366] hover:bg-[#25D366]/90 text-white gap-2"
-              onClick={() => window.open(`https://wa.me/55${company.phone!.replace(/\D/g, '')}`, '_blank')}
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-              </svg>
+            <Button className="bg-[#25D366] hover:bg-[#25D366]/90 text-white gap-2"
+              onClick={() => window.open(`https://wa.me/55${company.phone!.replace(/\D/g, '')}`, '_blank')}>
               WhatsApp
             </Button>
           )}
@@ -130,142 +138,190 @@ export default function AdminCompanyDetail() {
         </div>
       </div>
 
-      {/* Title */}
       <div>
         <h1 className="text-3xl font-bold">{company.name}</h1>
         <p className="text-muted-foreground break-all">{company.email}</p>
       </div>
 
-      {/* Info cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Informações Gerais</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">CNPJ/CPF</span>
-                <p className="font-medium">{company.cnpj ? cpfCnpjMask(company.cnpj) : 'N/A'}</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</span>
-                <p className="font-medium">{company.phone || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Email</span>
-                <p className="font-medium break-all">{company.email || 'N/A'}</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Responsável</span>
-                <p className="font-medium">{company.contact_name || masterUser?.full_name || 'N/A'}</p>
-              </div>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</span>
-              <p className="font-medium">{company.address || 'N/A'}</p>
-            </div>
-            <div className="border-t pt-3 mt-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Data de Cadastro</span>
-                  <p className="font-medium">
-                    {company.created_at ? format(new Date(company.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span>
-                  {originData ? (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge className="text-xs text-white border-0" style={{ backgroundColor: originData.color || undefined }}>
-                        {originData.name}
-                      </Badge>
-                    </div>
-                  ) : (
-                    <p className="font-medium">{company.origin || 'N/A'}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-            {/* Notes */}
-            <div>
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Observações</span>
-              {isEditingNotes ? (
-                <div className="space-y-2 mt-1">
-                  <Textarea value={notesValue} onChange={(e) => setNotesValue(e.target.value)} placeholder="Adicione observações..." className="resize-none text-sm" rows={3} autoFocus />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="h-7 px-2 gap-1">
-                      {isSavingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Salvar
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditingNotes(false)} className="h-7 px-2 gap-1">
-                      <X className="h-3 w-3" /> Cancelar
-                    </Button>
+      <Tabs defaultValue="info" className="w-full">
+        <TabsList className="grid grid-cols-2 max-w-md">
+          <TabsTrigger value="info">Informações</TabsTrigger>
+          <TabsTrigger value="payments">Histórico de Pagamentos</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="info" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader><CardTitle>Informações Gerais</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">CNPJ/CPF</span>
+                    <p className="font-medium">{company.cnpj ? cpfCnpjMask(company.cnpj) : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</span>
+                    <p className="font-medium">{company.phone || 'N/A'}</p>
                   </div>
                 </div>
-              ) : (
-                <div className="flex items-start gap-1">
-                  <p className="font-medium text-sm">{company.notes || 'Nenhuma'}</p>
-                  <button onClick={() => { setNotesValue(company.notes || ''); setIsEditingNotes(true); }} className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Editar">
-                    <Pencil className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Informações Financeiras</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Status</span>
-                <div className="mt-0.5">
-                  <Badge className={cn('text-xs text-white border-0',
-                    company.subscription_status === 'active' ? 'bg-emerald-500 hover:bg-emerald-500'
-                      : company.subscription_status === 'testing' ? 'bg-amber-500 hover:bg-amber-500'
-                      : 'bg-rose-500 hover:bg-rose-500'
-                  )}>
-                    {company.subscription_status === 'active' ? 'Ativo' : company.subscription_status === 'testing' ? 'Testando' : 'Desativado'}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Plano</span>
-                <p className="font-medium capitalize">{company.subscription_plan || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Valor Mensal</span>
-                <p className="font-semibold text-lg text-primary">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(company.subscription_value || 0)}
-                </p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Ciclo</span>
-                <p className="font-medium">{company.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}</p>
-              </div>
-            </div>
-            <div className="border-t pt-3 mt-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Vencimento</span>
-                  <p className="font-medium">
-                    {company.subscription_expires_at ? format(new Date(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
-                  </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Email</span>
+                    <p className="font-medium break-all">{company.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Responsável</span>
+                    <p className="font-medium">{company.contact_name || masterUser?.full_name || 'N/A'}</p>
+                  </div>
                 </div>
                 <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Usuários</span>
-                  <p className="font-medium">{company.max_users || 5}</p>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</span>
+                  <p className="font-medium">{company.address || 'N/A'}</p>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                <div className="border-t pt-3 mt-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground uppercase tracking-wider">Cadastro</span>
+                      <p className="font-medium">
+                        {company.created_at ? format(new Date(company.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span>
+                      {originData ? (
+                        <div className="mt-0.5">
+                          <Badge className="text-xs text-white border-0" style={{ backgroundColor: originData.color || undefined }}>
+                            {originData.name}
+                          </Badge>
+                        </div>
+                      ) : <p className="font-medium">{company.origin || 'N/A'}</p>}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Vendedor</span>
+                  <div className="mt-0.5">
+                    {salesperson ? (
+                      <Badge variant="outline" className="gap-1.5 border-primary/40 text-primary">
+                        <UserIcon className="h-3 w-3" /> {salesperson.name}
+                        {salesperson.referral_code && <span className="text-muted-foreground/70 ml-1">({salesperson.referral_code})</span>}
+                      </Badge>
+                    ) : (
+                      <p className="font-medium text-sm text-muted-foreground">Sem vendedor</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Observações</span>
+                  {isEditingNotes ? (
+                    <div className="space-y-2 mt-1">
+                      <Textarea value={notesValue} onChange={(e) => setNotesValue(e.target.value)} placeholder="Adicione observações..." className="resize-none text-sm" rows={3} autoFocus />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes} className="h-7 px-2 gap-1">
+                          {isSavingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Salvar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setIsEditingNotes(false)} className="h-7 px-2 gap-1">
+                          <X className="h-3 w-3" /> Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-1">
+                      <p className="font-medium text-sm">{company.notes || 'Nenhuma'}</p>
+                      <button onClick={() => { setNotesValue(company.notes || ''); setIsEditingNotes(true); }} className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Editar">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Delete confirmation */}
+            <Card>
+              <CardHeader><CardTitle>Informações Financeiras</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Status</span>
+                    <div className="mt-0.5">
+                      <Badge className={cn('text-xs text-white border-0',
+                        company.subscription_status === 'active' ? 'bg-emerald-500 hover:bg-emerald-500'
+                          : company.subscription_status === 'testing' ? 'bg-amber-500 hover:bg-amber-500'
+                            : 'bg-rose-500 hover:bg-rose-500'
+                      )}>
+                        {company.subscription_status === 'active' ? 'Ativo' : company.subscription_status === 'testing' ? 'Testando' : 'Desativado'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Plano</span>
+                    <p className="font-medium capitalize">{company.subscription_plan || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Valor</span>
+                    <div className="mt-0.5">
+                      {promoActive ? (
+                        <>
+                          <p className="font-semibold text-lg text-amber-600">
+                            {formatBRL(Number(company.custom_price))}
+                            <span className="text-xs text-muted-foreground ml-1">{company.billing_cycle === 'yearly' ? '/ano' : '/mês'}</span>
+                          </p>
+                          {Number(company.subscription_value || 0) > 0 && (
+                            <p className="text-xs line-through text-muted-foreground">{formatBRL(company.subscription_value)}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="font-semibold text-lg text-primary">
+                          {formatBRL(company.subscription_value)}
+                          <span className="text-xs text-muted-foreground ml-1">{company.billing_cycle === 'yearly' ? '/ano' : '/mês'}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Ciclo</span>
+                    <p className="font-medium">{company.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}</p>
+                  </div>
+                </div>
+                {promoActive && (
+                  <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 flex items-start gap-2">
+                    <Gift className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-amber-700">Promoção ativa</p>
+                      <p className="text-muted-foreground">
+                        {company.custom_price_permanent
+                          ? 'Preço permanente'
+                          : `${company.custom_price_payments_made || 0} de ${company.custom_price_months} pagamentos promocionais realizados`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="border-t pt-3 mt-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground uppercase tracking-wider">Vencimento</span>
+                      <p className="font-medium">
+                        {company.subscription_expires_at ? format(new Date(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground uppercase tracking-wider">Usuários</span>
+                      <p className="font-medium">{company.max_users || 5}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="payments" className="mt-6">
+          <CompanyPaymentHistory companyId={company.id} companyName={company.name} />
+        </TabsContent>
+      </Tabs>
+
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmText(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
