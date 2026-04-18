@@ -721,37 +721,58 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     </form>
   );
 
+  const HeaderActions = !isEditing && (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => setShowGenerateLink(true)}
+      className="gap-2"
+    >
+      <Link2 className="h-4 w-4" />
+      Gerar Link
+    </Button>
+  );
+
   // ========== Mobile: Drawer ==========
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} dismissible={false}>
-        <DrawerContent className="max-h-[90dvh]">
-          <DrawerHeader className="border-b pb-4">
-            <DrawerTitle>{title}</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4 overflow-y-auto flex-1 flex flex-col">
-            {FormContent}
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={open} onOpenChange={onOpenChange} dismissible={false}>
+          <DrawerContent className="max-h-[90dvh]">
+            <DrawerHeader className="border-b pb-4 flex flex-row items-center justify-between">
+              <DrawerTitle>{title}</DrawerTitle>
+              {HeaderActions}
+            </DrawerHeader>
+            <div className="p-4 overflow-y-auto flex-1 flex flex-col">
+              {FormContent}
+            </div>
+          </DrawerContent>
+        </Drawer>
+        <GenerateLinkModal open={showGenerateLink} onOpenChange={setShowGenerateLink} />
+      </>
     );
   }
 
   // ========== Desktop: Dialog ==========
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-2xl max-h-[90vh] flex flex-col"
-        onPointerDownOutside={(e) => { if (!isEditing) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (!isEditing) e.preventDefault(); }}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 min-h-0 flex flex-col">
-          {FormContent}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] flex flex-col"
+          onPointerDownOutside={(e) => { if (!isEditing) e.preventDefault(); }}
+          onEscapeKeyDown={(e) => { if (!isEditing) e.preventDefault(); }}
+        >
+          <DialogHeader className="flex flex-row items-center justify-between gap-4 pr-8">
+            <DialogTitle>{title}</DialogTitle>
+            {HeaderActions}
+          </DialogHeader>
+          <div className="flex-1 min-h-0 flex flex-col">
+            {FormContent}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <GenerateLinkModal open={showGenerateLink} onOpenChange={setShowGenerateLink} />
+    </>
   );
 }
