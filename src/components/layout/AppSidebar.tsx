@@ -365,6 +365,7 @@ export function AppSidebar() {
                             <NavLink
                               key={child.path}
                               to={child.path}
+                              end={child.path === '/financeiro'}
                               className={({ isActive }) =>
                                 cn(
                                   'flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-normal transition-all duration-200',

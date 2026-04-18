@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,6 +41,20 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       dre_group: (category as any)?.dre_group ?? 'opex',
     },
   });
+
+  // Resync form when opening or switching category
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: category?.name ?? '',
+        type: category?.type ?? 'ambos',
+        color: category?.color ?? '#00C597',
+        icon: category?.icon ?? 'Tag',
+        dre_group: (category as any)?.dre_group ?? 'opex',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, category?.id]);
 
   const selectedColor = form.watch('color');
 

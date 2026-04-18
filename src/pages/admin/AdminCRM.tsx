@@ -143,8 +143,8 @@ export default function AdminCRM() {
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar leads..." className="pl-9" />
         </div>
 
-        {/* Kanban */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
+        {/* Kanban — rolagem horizontal sempre, colunas com largura fixa */}
+        <div className="flex gap-3 sm:gap-4 lg:gap-6 overflow-x-auto pb-4 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
           {stages.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
             const stageTotal = stageLeads.reduce((s, l) => s + Number(l.value || 0), 0);
@@ -152,7 +152,7 @@ export default function AdminCRM() {
             return (
               <div
                 key={stage.id}
-                className="w-full"
+                className="w-[300px] shrink-0"
                 onDragOver={e => { e.preventDefault(); setDropTargetStageId(stage.id); }}
                 onDragLeave={() => setDropTargetStageId(null)}
                 onDrop={() => handleDrop(stage.id)}
