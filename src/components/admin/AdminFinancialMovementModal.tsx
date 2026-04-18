@@ -15,20 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const INCOME_CATEGORIES = [
-  { value: 'renewal', label: 'Renovação' },
-  { value: 'first_sale', label: 'Venda Nova' },
-  { value: 'upgrade', label: 'Upgrade' },
-  { value: 'other_income', label: 'Outra Receita' },
-];
-
-const EXPENSE_CATEGORIES = [
-  { value: 'infrastructure', label: 'Infraestrutura' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'salary', label: 'Salários' },
-  { value: 'tools', label: 'Ferramentas' },
-  { value: 'other_expense', label: 'Outra Despesa' },
-];
+import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
 
 interface AdminFinancialMovementModalProps {
   open: boolean;
@@ -39,6 +26,7 @@ interface AdminFinancialMovementModalProps {
 export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 'income' }: AdminFinancialMovementModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: allCategories = [] } = useAdminFinancialCategories();
   const [type, setType] = useState<'income' | 'expense'>(defaultType);
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
@@ -49,7 +37,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
     if (open) { setType(defaultType); setCategory(''); setAmount(''); setDescription(''); setDate(new Date()); }
   }, [open, defaultType]);
 
-  const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories = allCategories.filter((c) => c.type === type).map((c) => ({ value: c.name, label: c.label }));
 
   const mutation = useMutation({
     mutationFn: async () => {

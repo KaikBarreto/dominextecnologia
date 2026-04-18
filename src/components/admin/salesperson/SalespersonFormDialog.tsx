@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useSaveSalesperson, type Salesperson } from '@/hooks/useSalespersonData';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface Props {
@@ -25,6 +28,19 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     is_active: true,
     no_commission: false,
     notes: '',
+    user_id: 'none' as string,
+  });
+
+  // Buscar usuários admin disponíveis (super_admin ou com admin_permissions) que não estão vinculados a outro vendedor
+  const { data: availableUsers = [] } = useQuery({
+    queryKey: ['admin-users-for-link', editingSalesperson?.id],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('manage-admin-users', { body: { action: 'list' } });
+      if (error) return [];
+      const users = (data?.users ?? []) as { id: string; email: string; full_name: string | null; salesperson: { id: string } | null }[];
+      return users.filter((u) => !u.salesperson || u.salesperson.id === editingSalesperson?.id);
+    },
   });
 
   useEffect(() => {
@@ -38,9 +54,10 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         is_active: editingSalesperson.is_active ?? true,
         no_commission: editingSalesperson.no_commission ?? false,
         notes: editingSalesperson.notes || '',
+        user_id: (editingSalesperson as any).user_id || 'none',
       });
     } else {
-      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: 30, is_active: true, no_commission: false, notes: '' });
+      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: 30, is_active: true, no_commission: false, notes: '', user_id: 'none' });
     }
   }, [editingSalesperson, open]);
 
@@ -61,10 +78,11 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         is_active: formData.is_active,
         no_commission: formData.no_commission,
         notes: formData.notes.trim() || null,
-      });
+        user_id: formData.user_id === 'none' ? null : formData.user_id,
+      } as any);
       onOpenChange(false);
     } catch (e: any) {
-      if (e?.code === '23505') toast.error('Já existe um vendedor com este email');
+      if (e?.code === '23505') toast.error('Já existe um vendedor com este email ou usuário vinculado');
     }
   };
 
@@ -96,6 +114,19 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           <div className="space-y-2">
             <Label htmlFor="sp-goal">Meta Mensal (vendas)</Label>
             <Input id="sp-goal" type="number" min="0" value={formData.monthly_goal} onChange={(e) => setFormData({ ...formData, monthly_goal: parseInt(e.target.value) || 0 })} />
+          </div>
+          <div className="sm:col-span-2 space-y-2">
+            <Label>Vincular a usuário admin (opcional)</Label>
+            <Select value={formData.user_id} onValueChange={(v) => setFormData({ ...formData, user_id: v })}>
+              <SelectTrigger><SelectValue placeholder="— Nenhum —" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Nenhum —</SelectItem>
+                {availableUsers.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">Vendedor vinculado vê apenas os próprios dados (a menos que tenha "ver todos os vendedores").</p>
           </div>
           <div className="sm:col-span-2 space-y-2">
             <Label htmlFor="sp-notes">Observações</Label>

@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.7.0',
+    date: '18 de abril de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'CRUD de usuários admin com permissões',
+        description: 'Nova aba em Configurações do admin para criar, editar permissões e remover usuários do painel administrativo. Permissões granulares por tela (Dashboard, CRM, Empresas, Vendedores, Assinaturas, Financeiro, Configurações, Usuários) e por função (lançamentos, totais, ver todos os vendedores).',
+        category: 'recurso',
+      },
+      {
+        title: 'Vendedor vinculado a usuário admin',
+        description: 'No formulário de vendedor é possível vincular um usuário admin. Quando vinculado e sem a permissão "ver todos os vendedores", o usuário acessa diretamente o próprio dashboard, sem ver os demais.',
+        category: 'recurso',
+      },
+      {
+        title: 'Financeiro admin completo (DRE, gráficos e categorias)',
+        description: 'Novo financeiro com filtro de período padronizado, gráfico de pizza por categoria (receitas/despesas), seções dedicadas com mini-stats de Vendas e Renovações, DRE colapsável (Receita Bruta → Impostos → Receita Líquida → OPEX → EBITDA) com exportação HTML, e CRUD de categorias dinâmicas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Categorias financeiras admin dinâmicas',
+        description: 'O modal de nova movimentação agora usa as categorias cadastradas pelo admin, permitindo personalizar receitas e despesas usadas no DRE e nos gráficos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '18 de abril de 2026',
     type: 'minor',

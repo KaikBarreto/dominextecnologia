@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { MapPin, Target } from 'lucide-react';
+import { MapPin, Target, UserCog } from 'lucide-react';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { AdminOriginsTab } from '@/components/admin/AdminOriginsTab';
 import { AdminCrmStagesTab } from '@/components/admin/AdminCrmStagesTab';
+import { AdminUsersSettings } from '@/components/admin/AdminUsersSettings';
 
 const TABS: SettingsTab[] = [
   { value: 'origens', label: 'Origens', icon: MapPin, group: 'Cadastros' },
   { value: 'etapas-crm', label: 'Etapas do CRM', icon: Target, group: 'Cadastros' },
+  { value: 'usuarios', label: 'Usuários Admin', icon: UserCog, group: 'Acesso' },
 ];
 
 export default function AdminSettings() {
@@ -22,6 +24,7 @@ export default function AdminSettings() {
       <SettingsSidebarLayout tabs={TABS} activeTab={tab} onTabChange={setTab}>
         {tab === 'origens' && <AdminOriginsTab />}
         {tab === 'etapas-crm' && <AdminCrmStagesTab />}
+        {tab === 'usuarios' && <AdminUsersSettings />}
       </SettingsSidebarLayout>
     </div>
   );
