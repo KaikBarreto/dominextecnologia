@@ -34,8 +34,8 @@ interface AdminPermissionsResult {
 }
 
 export function useAdminPermissions(): AdminPermissionsResult {
-  const { user, profile } = useAuth();
-  const isMaster = profile?.role === 'super_admin';
+  const { user, roles } = useAuth();
+  const isMaster = roles?.includes('super_admin' as any) ?? false;
 
   const { data: permissions = [], isLoading: permsLoading } = useQuery({
     queryKey: ['admin-permissions', user?.id],
