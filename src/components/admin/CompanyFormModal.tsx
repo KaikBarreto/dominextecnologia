@@ -115,7 +115,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '',
     origin: '', salesperson_id: '',
     admin_email: '', admin_password: '',
+    use_custom_price: false,
+    custom_price_permanent: true,
+    custom_price_months: '3',
   });
+
+  const [showGenerateLink, setShowGenerateLink] = useState(false);
 
   const [addr, setAddr] = useState({
     logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '',
