@@ -269,6 +269,8 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                </div>
 
                 <Separator />
 
