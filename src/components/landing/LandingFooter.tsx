@@ -28,13 +28,6 @@ export default function LandingFooter() {
             <p className="text-sm text-white/30 mb-4">
               Gestão de equipes de campo e ordens de serviço.
             </p>
-            <div className="flex gap-3">
-              {['LinkedIn', 'Instagram', 'YouTube'].map((s) => (
-                <div key={s} className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center text-xs text-white/30 hover:text-white/60 transition-colors cursor-pointer">
-                  {s[0]}
-                </div>
-              ))}
-            </div>
           </div>
 
           {columns.map((col) => (
