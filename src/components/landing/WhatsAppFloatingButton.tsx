@@ -1,5 +1,5 @@
 const WHATSAPP_NUMBER = "5521966885044";
-const WHATSAPP_MESSAGE = "Olá! Gostaria de saber mais sobre o Dominex.";
+const WHATSAPP_MESSAGE = "Olá! Vim pelo site do Dominex e gostaria de saber mais sobre a plataforma.";
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
