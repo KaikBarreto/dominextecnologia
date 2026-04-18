@@ -28,6 +28,8 @@ import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
 import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
 import { PricingTab } from '@/components/pricing/PricingTab';
+import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
+import { GlobalCostsTab } from '@/components/service-orders/GlobalCostsTab';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,9 +38,12 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { Boxes } from 'lucide-react';
 
 const ALL_SIDEBAR_TABS = [
   { value: 'quotes', label: 'Orçamentos', icon: FileText },
+  { value: 'service-costs', label: 'Custos dos Serviços', icon: DollarSign },
+  { value: 'global-costs', label: 'Custos Globais', icon: Boxes, module: 'pricing_advanced' as const },
   { value: 'pricing', label: 'Precificação', icon: Settings2, module: 'pricing_advanced' as const },
 ];
 
@@ -413,7 +418,6 @@ function QuotesList() {
 export default function Quotes() {
   const [activeTab, setActiveTab] = useState('quotes');
   const { hasModule } = useCompanyModules();
-  const hasPricing = hasModule('pricing_advanced');
 
   const sidebarTabs = ALL_SIDEBAR_TABS.filter(t => !t.module || hasModule(t.module));
 
@@ -425,22 +429,20 @@ export default function Quotes() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
-          <p className="text-sm text-muted-foreground">Gerencie orçamentos{hasPricing ? ' e configurações de precificação' : ''}</p>
+          <p className="text-sm text-muted-foreground">Gerencie orçamentos, custos e precificação</p>
         </div>
       </div>
 
-      {hasPricing ? (
-        <SettingsSidebarLayout
-          tabs={sidebarTabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        >
-          {activeTab === 'quotes' && <QuotesList />}
-          {activeTab === 'pricing' && <PricingTab />}
-        </SettingsSidebarLayout>
-      ) : (
-        <QuotesList />
-      )}
+      <SettingsSidebarLayout
+        tabs={sidebarTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
+        {activeTab === 'quotes' && <QuotesList />}
+        {activeTab === 'service-costs' && <ServiceCostsTab />}
+        {activeTab === 'global-costs' && hasModule('pricing_advanced') && <GlobalCostsTab />}
+        {activeTab === 'pricing' && hasModule('pricing_advanced') && <PricingTab />}
+      </SettingsSidebarLayout>
     </div>
   );
 }
