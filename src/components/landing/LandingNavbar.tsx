@@ -23,29 +23,31 @@ export default function LandingNavbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Track active section based on viewport
+  // Track active section: pick the last section whose top has crossed the header line
   useEffect(() => {
-    const sections = navLinks
-      .map((l) => document.getElementById(l.id))
-      .filter((el): el is HTMLElement => !!el);
-
-    if (sections.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Pick the section with highest intersection ratio that's intersecting
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) {
-          setActiveId(visible[0].target.id);
+    const updateActive = () => {
+      const offset = 120; // header height + small buffer
+      let current = '';
+      for (const link of navLinks) {
+        const el = document.getElementById(link.id);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top;
+        if (top - offset <= 0) {
+          current = link.id;
+        } else {
+          break;
         }
-      },
-      { rootMargin: '-30% 0px -50% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
-    );
+      }
+      setActiveId(current);
+    };
 
-    sections.forEach((s) => observer.observe(s));
-    return () => observer.disconnect();
+    updateActive();
+    window.addEventListener('scroll', updateActive, { passive: true });
+    window.addEventListener('resize', updateActive);
+    return () => {
+      window.removeEventListener('scroll', updateActive);
+      window.removeEventListener('resize', updateActive);
+    };
   }, []);
 
   return (
