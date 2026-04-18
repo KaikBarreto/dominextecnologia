@@ -80,6 +80,21 @@ export default function AdminCompanies() {
     },
   });
 
+  const { data: salespeople = [] } = useQuery({
+    queryKey: ['salespeople-map'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('salespeople').select('id, name').order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const salespersonMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of salespeople) m.set(s.id, s.name);
+    return m;
+  }, [salespeople]);
+
   // Auto-deactivate expired
   useEffect(() => {
     const deactivate = async () => {
@@ -278,6 +293,7 @@ export default function AdminCompanies() {
           companies={filtered}
           masterUserMap={masterUserMap}
           origins={origins || undefined}
+          salespersonMap={salespersonMap}
           onEdit={handleEdit}
           onRefetch={() => refetch()}
         />
