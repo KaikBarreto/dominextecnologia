@@ -347,6 +347,19 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                         )}
                       </div>
                     </div>
+                    <div className="col-span-2">
+                      <span className="text-[11px] text-muted-foreground/70">Segmento</span>
+                      <div className="mt-0.5">
+                        {segmentInfo ? (
+                          <Badge className="border-0 flex items-center gap-1 w-fit" style={{ backgroundColor: segmentInfo.color, color: '#fff' }}>
+                            <segmentInfo.icon className="h-3 w-3" />
+                            {segmentInfo.label}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
