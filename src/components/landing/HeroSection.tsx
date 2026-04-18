@@ -43,17 +43,13 @@ export default function HeroSection() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative inline-flex w-full sm:w-auto">
-                <span className="absolute inset-0 rounded-md bg-primary animate-ping-wave-sm opacity-60" aria-hidden />
-                <span className="absolute inset-0 rounded-md bg-primary animate-ping-wave-sm opacity-40 [animation-delay:2s]" aria-hidden />
-                <Button
-                  size="lg"
-                  className="relative bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
-                  asChild
-                >
-                  <Link to="/cadastro?origem=Site">Começar grátis por 14 dias</Link>
-                </Button>
-              </div>
+              <Button
+                size="lg"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
+                asChild
+              >
+                <Link to="/cadastro?origem=Site">Começar grátis por 14 dias</Link>
+              </Button>
               <Button
                 size="lg"
                 variant="ghost"

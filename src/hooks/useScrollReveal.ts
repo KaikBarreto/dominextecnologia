@@ -15,7 +15,7 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>() {
           el.classList.remove('scroll-revealed');
         }
       },
-      { threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
+      { threshold: [0, 0.2, 0.5, 0.8], rootMargin: '-15% 0px -15% 0px' }
     );
 
     observer.observe(el);

@@ -7,8 +7,8 @@ import logoWhite from '@/assets/logo-horizontal-verde.png';
 
 const navLinks = [
   { label: 'Plataforma', href: '#features', id: 'features' },
-  { label: 'Segmentos', href: '#segments', id: 'segments' },
   { label: 'Recursos', href: '#how-it-works', id: 'how-it-works' },
+  { label: 'Segmentos', href: '#segments', id: 'segments' },
   { label: 'Preços', href: '#pricing', id: 'pricing' },
 ];
 
