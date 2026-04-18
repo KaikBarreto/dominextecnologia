@@ -970,6 +970,76 @@ export type Database = {
           },
         ]
       }
+      credit_card_bills: {
+        Row: {
+          account_id: string
+          amount_paid: number
+          closing_date: string
+          company_id: string
+          created_at: string
+          due_date: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_transaction_id: string | null
+          reference_month: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount_paid?: number
+          closing_date: string
+          company_id: string
+          created_at?: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_transaction_id?: string | null
+          reference_month: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount_paid?: number
+          closing_date?: string
+          company_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_transaction_id?: string | null
+          reference_month?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_card_bills_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_card_bills_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_card_bills_payment_transaction_id_fkey"
+            columns: ["payment_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           color: string
@@ -1649,9 +1719,11 @@ export type Database = {
       financial_accounts: {
         Row: {
           bank_name: string | null
+          closing_day: number | null
           color: string
           company_id: string
           created_at: string
+          credit_limit: number | null
           icon: string | null
           id: string
           initial_balance: number
@@ -1660,15 +1732,18 @@ export type Database = {
           institution_name: string | null
           is_active: boolean
           name: string
+          payment_due_days: number | null
           sort_order: number | null
           type: string
           updated_at: string
         }
         Insert: {
           bank_name?: string | null
+          closing_day?: number | null
           color?: string
           company_id: string
           created_at?: string
+          credit_limit?: number | null
           icon?: string | null
           id?: string
           initial_balance?: number
@@ -1677,15 +1752,18 @@ export type Database = {
           institution_name?: string | null
           is_active?: boolean
           name: string
+          payment_due_days?: number | null
           sort_order?: number | null
           type?: string
           updated_at?: string
         }
         Update: {
           bank_name?: string | null
+          closing_day?: number | null
           color?: string
           company_id?: string
           created_at?: string
+          credit_limit?: number | null
           icon?: string | null
           id?: string
           initial_balance?: number
@@ -1694,6 +1772,7 @@ export type Database = {
           institution_name?: string | null
           is_active?: boolean
           name?: string
+          payment_due_days?: number | null
           sort_order?: number | null
           type?: string
           updated_at?: string
@@ -1770,6 +1849,7 @@ export type Database = {
           contract_id: string | null
           created_at: string
           created_by: string | null
+          credit_card_bill_date: string | null
           customer_id: string | null
           description: string
           due_date: string | null
@@ -1797,6 +1877,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          credit_card_bill_date?: string | null
           customer_id?: string | null
           description: string
           due_date?: string | null
@@ -1824,6 +1905,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          credit_card_bill_date?: string | null
           customer_id?: string | null
           description?: string
           due_date?: string | null
