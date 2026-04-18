@@ -94,8 +94,8 @@ const menuItems: MenuItem[] = [
       { title: 'Movimentações', icon: History, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
       { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
       { title: 'Caixas e Bancos', icon: Landmark, path: '/financeiro/caixas-bancos', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
-      { title: 'Categorias', icon: Tag, path: '/financeiro/categorias', screenKey: 'screen:finance' },
       { title: 'DRE - Resultado', icon: FileBarChart, path: '/financeiro/dre', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Configurações', icon: Settings, path: '/financeiro/configuracoes', screenKey: 'screen:finance' },
     ],
   },
 ];

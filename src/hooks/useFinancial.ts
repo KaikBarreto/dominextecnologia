@@ -166,6 +166,14 @@ export function useFinancial() {
       const { installment_count, ...rest } = input;
       const sanitized = normalizeOptionalForeignKeys(rest, ['customer_id', 'service_order_id', 'contract_id', 'account_id']);
 
+      // Detect transition paid -> unpaid: also unmark linked children (tarifas, CMV)
+      const { data: existing } = await supabase
+        .from('financial_transactions')
+        .select('is_paid')
+        .eq('id', id)
+        .maybeSingle();
+      const wasPaidNowUnpaid = existing?.is_paid && rest.is_paid === false;
+
       const { data, error } = await supabase
         .from('financial_transactions')
         .update(sanitized)
@@ -174,6 +182,14 @@ export function useFinancial() {
         .single();
       
       if (error) throw error;
+
+      if (wasPaidNowUnpaid) {
+        await supabase
+          .from('financial_transactions')
+          .update({ is_paid: false, paid_date: null } as any)
+          .eq('parent_transaction_id', id);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -187,6 +203,12 @@ export function useFinancial() {
 
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
+      // Cascade delete children + clear quote link if root
+      await supabase.from('financial_transactions').delete().eq('parent_transaction_id', id);
+      await supabase
+        .from('quotes')
+        .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
+        .eq('financial_transaction_id', id);
       const { error } = await supabase
         .from('financial_transactions')
         .delete()
@@ -248,6 +270,7 @@ export function useFinancial() {
           notes: cfg.notes,
           created_by: user?.id,
           company_id,
+          parent_transaction_id: data.id,
         } as any, ['customer_id', 'account_id']);
         const { error: feeErr } = await supabase.from('financial_transactions').insert(feePayload as any);
         if (feeErr) throw feeErr;

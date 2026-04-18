@@ -16,13 +16,19 @@ const ROUTE_TAB_MAP: Record<string, string> = {
   '/financeiro/movimentacoes': 'historico',
   '/financeiro/contas': 'contas',
   '/financeiro/caixas-bancos': 'bancos',
-  '/financeiro/categorias': 'categorias',
+  '/financeiro/categorias': 'configuracoes', // legacy alias → config
+  '/financeiro/configuracoes': 'configuracoes',
   '/financeiro/dre': 'dre',
 };
 
-const TAB_ROUTE_MAP: Record<string, string> = Object.fromEntries(
-  Object.entries(ROUTE_TAB_MAP).map(([k, v]) => [v, k])
-);
+const TAB_ROUTE_MAP: Record<string, string> = {
+  'visao-geral': '/financeiro',
+  'historico': '/financeiro/movimentacoes',
+  'contas': '/financeiro/contas',
+  'bancos': '/financeiro/caixas-bancos',
+  'configuracoes': '/financeiro/configuracoes',
+  'dre': '/financeiro/dre',
+};
 
 export default function Finance() {
   const location = useLocation();
@@ -110,7 +116,7 @@ export default function Finance() {
     'historico': { title: 'Movimentações', description: 'Histórico completo de receitas e despesas' },
     'contas': { title: 'Contas a Pagar / Receber', description: 'Gerencie vencimentos e cobranças' },
     'bancos': { title: 'Caixas e Bancos', description: 'Gerencie suas contas bancárias e saldos' },
-    'categorias': { title: 'Categorias', description: 'Organize suas receitas e despesas por categoria' },
+    'configuracoes': { title: 'Configurações do Financeiro', description: 'Categorias, regras e personalização' },
     'dre': { title: 'DRE — Demonstrativo de Resultado', description: 'Análise de resultado do exercício' },
   };
 
@@ -164,7 +170,11 @@ export default function Finance() {
 
         {activeTab === 'bancos' && <FinanceBanks />}
 
-        {activeTab === 'categorias' && <FinanceCategorias />}
+        {activeTab === 'configuracoes' && (
+          <div className="space-y-6">
+            <FinanceCategorias />
+          </div>
+        )}
 
         {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
       </div>

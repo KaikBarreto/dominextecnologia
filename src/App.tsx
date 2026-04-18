@@ -244,6 +244,7 @@ const AppRoutes = () => (
       <Route path="/financeiro/contas" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/caixas-bancos" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/categorias" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
+      <Route path="/financeiro/configuracoes" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/dre" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/pmoc" element={<Navigate to="/contratos" replace />} />
       <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><Contracts /></PermissionRoute>} />
