@@ -414,6 +414,8 @@ interface FiltersFormProps {
   setFilterOrigin: (v: string) => void;
   filterSegment: string;
   setFilterSegment: (v: string) => void;
+  filterDatePreset: DatePreset;
+  setFilterDatePreset: (v: DatePreset) => void;
   filterDateFrom: string;
   setFilterDateFrom: (v: string) => void;
   filterDateTo: string;
@@ -422,8 +424,78 @@ interface FiltersFormProps {
 
 function FiltersForm({
   origins, filterOrigin, setFilterOrigin, filterSegment, setFilterSegment,
+  filterDatePreset, setFilterDatePreset,
   filterDateFrom, setFilterDateFrom, filterDateTo, setFilterDateTo,
 }: FiltersFormProps) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Origem</Label>
+        <Select value={filterOrigin} onValueChange={setFilterOrigin}>
+          <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {origins.map(o => (
+              <SelectItem key={o.id} value={o.name}>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded" style={{ backgroundColor: o.color || '#6B7280' }} />
+                  <span>{o.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Segmento</Label>
+        <Select value={filterSegment} onValueChange={setFilterSegment}>
+          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {COMPANY_SEGMENTS.map(s => (
+              <SelectItem key={s.value} value={s.value}>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: s.color }}>
+                    <s.icon className="h-2.5 w-2.5 text-white" />
+                  </div>
+                  <span>{s.label}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de Geração</Label>
+        <Select value={filterDatePreset} onValueChange={(v) => setFilterDatePreset(v as DatePreset)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os períodos</SelectItem>
+            <SelectItem value="today">Hoje</SelectItem>
+            <SelectItem value="this_week">Esta semana</SelectItem>
+            <SelectItem value="this_month">Este mês</SelectItem>
+            <SelectItem value="this_year">Este ano</SelectItem>
+            <SelectItem value="custom">Personalizado</SelectItem>
+          </SelectContent>
+        </Select>
+        {filterDatePreset === 'custom' && (
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">De</Label>
+              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Até</Label>
+              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
   return (
     <div className="space-y-4">
       <div className="space-y-2">
