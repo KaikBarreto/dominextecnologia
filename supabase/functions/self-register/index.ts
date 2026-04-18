@@ -4,21 +4,6 @@ import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-// Comissão padrão (igual ao hook useSalespersonData.calculateCommission)
-function calculateCommission(amount: number, billingCycle: 'monthly' | 'annual'): number {
-  if (!amount || amount <= 0) return 0;
-  return billingCycle === 'annual' ? amount * 0.2 : amount * 0.5;
-}
-
-const PLAN_VALUES: Record<string, { monthly: number; annual: number }> = {
-  essencial: { monthly: 200, annual: 160 },
-  starter:   { monthly: 200, annual: 160 },
-  avancado:  { monthly: 350, annual: 280 },
-  pro:       { monthly: 350, annual: 280 },
-  master:    { monthly: 650, annual: 520 },
-  enterprise:{ monthly: 650, annual: 520 },
-};
-
 Deno.serve(async (req) => {
   const corsResp = handleCors(req);
   if (corsResp) return corsResp;
@@ -51,25 +36,6 @@ Deno.serve(async (req) => {
     const contact_name = trim(raw.contact_name, 200);
     const password = typeof raw.password === 'string' ? raw.password : '';
     const origin = trim(raw.origin, 100);
-    const salesperson_referral_code = trim(raw.salesperson_referral_code, 50).toLowerCase() || null;
-    const tipo = trim(raw.tipo, 20) || null; // 'teste' | 'venda'
-    const plano = trim(raw.plano, 30) || null;
-    const ciclo = trim(raw.ciclo, 10) || 'monthly';
-
-    // Sanitização cuidadosa de números (vindos de URL pública — não confiar)
-    const customPriceRaw = raw.custom_price;
-    let custom_price: number | null = null;
-    if (customPriceRaw != null && customPriceRaw !== '') {
-      const n = Number(customPriceRaw);
-      if (Number.isFinite(n) && n >= 0 && n < 1_000_000) custom_price = n;
-    }
-    const customMonthsRaw = raw.custom_price_months;
-    let custom_price_months: number | null = null;
-    if (customMonthsRaw != null && customMonthsRaw !== '') {
-      const n = parseInt(String(customMonthsRaw), 10);
-      if (Number.isFinite(n) && n >= 0 && n <= 120) custom_price_months = n;
-    }
-    const custom_price_permanent = !!raw.custom_price_permanent;
 
     if (!company_name || !contact_name || !company_email || !password) {
       return new Response(
@@ -88,11 +54,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verifica email duplicado
+    // Check if email already exists
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(
       (u: any) => u.email?.toLowerCase() === company_email.toLowerCase()
     );
+
     if (existingUser) {
       return new Response(
         JSON.stringify({ error: 'Este email já está cadastrado. Faça login ou use outro email.' }),
@@ -100,40 +67,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Resolve vendedor (se houver)
-    let salespersonId: string | null = null;
-    let salespersonRow: any = null;
-    if (salesperson_referral_code) {
-      const { data: sp } = await supabaseAdmin
-        .from('salespeople')
-        .select('id, name, no_commission, is_active')
-        .eq('referral_code', salesperson_referral_code)
-        .maybeSingle();
-      if (sp && sp.is_active !== false) {
-        salespersonId = sp.id;
-        salespersonRow = sp;
-      }
-      // se referral_code não corresponder => silenciosamente sem vendedor (não falhar cadastro)
-    }
-
-    // Resolve plano e valor inicial
-    const planKey = plano && PLAN_VALUES[plano] ? plano : 'starter';
-    const billingCycle: 'monthly' | 'annual' = ciclo === 'annual' || ciclo === 'yearly' ? 'annual' : 'monthly';
-    const subscription_plan_normalized = ['essencial', 'starter'].includes(planKey) ? 'starter'
-      : ['avancado', 'pro'].includes(planKey) ? 'pro'
-      : 'enterprise';
-
-    // Trial padrão se 'teste' ou se não for 'venda'
-    const isVenda = tipo === 'venda';
-    const subscription_status = isVenda ? 'active' : 'testing';
-
-    // Valor cobrado: prioridade => custom_price > tabela do plano
-    const planBase = PLAN_VALUES[planKey] || PLAN_VALUES.starter;
-    const subscription_value = custom_price ?? planBase[billingCycle];
-
+    // Calculate trial expiration (14 days)
     const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + (isVenda ? 30 : 14));
+    expirationDate.setDate(expirationDate.getDate() + 14);
 
+    // Create company
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
       .insert({
@@ -143,17 +81,12 @@ Deno.serve(async (req) => {
         phone: company_phone || null,
         contact_name,
         origin: origin || null,
-        subscription_status,
-        subscription_plan: subscription_plan_normalized,
-        subscription_value,
-        billing_cycle: billingCycle === 'annual' ? 'yearly' : 'monthly',
+        subscription_status: 'testing',
+        subscription_plan: 'starter',
+        subscription_value: 0,
         subscription_expires_at: expirationDate.toISOString(),
         max_users: 5,
-        trial_days: isVenda ? 0 : 14,
-        salesperson_id: salespersonId,
-        custom_price,
-        custom_price_months,
-        custom_price_permanent,
+        trial_days: 14,
       })
       .select()
       .single();
@@ -165,6 +98,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Create auth user with email auto-confirmed
     const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
       email: company_email,
       password,
@@ -177,6 +111,7 @@ Deno.serve(async (req) => {
     });
 
     if (createUserError) {
+      // Rollback company
       await supabaseAdmin.from('companies').delete().eq('id', company.id);
       return new Response(
         JSON.stringify({ error: `Erro ao criar usuário: ${createUserError.message}` }),
@@ -184,16 +119,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Wait for profile trigger
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    await supabaseAdmin.from('profiles').update({
-      company_id: company.id,
-      full_name: contact_name,
-    }).eq('user_id', newUser.user.id);
+    // Update profile with company_id
+    await supabaseAdmin
+      .from('profiles')
+      .update({
+        company_id: company.id,
+        full_name: contact_name,
+      })
+      .eq('user_id', newUser.user.id);
 
-    await supabaseAdmin.from('user_roles').insert({ user_id: newUser.user.id, role: 'admin' });
+    // Create admin role
+    await supabaseAdmin
+      .from('user_roles')
+      .insert({ user_id: newUser.user.id, role: 'admin' });
 
-    // Seed categorias e contas
+    // Seed default financial categories
     const defaultCategories = [
       { name: 'Serviços Prestados', type: 'entrada', color: '#10b981', icon: 'Wrench', dre_group: 'opex', is_system: false },
       { name: 'Vendas de Peças/Materiais', type: 'entrada', color: '#3b82f6', icon: 'Package', dre_group: 'opex', is_system: false },
@@ -210,36 +153,23 @@ Deno.serve(async (req) => {
       { name: 'Ferramentas e Equipamentos', type: 'saida', color: '#64748b', icon: 'Hammer', dre_group: 'opex', is_system: false },
       { name: 'Outros', type: 'ambos', color: '#6b7280', icon: 'Tag', dre_group: 'opex', is_system: false },
     ];
-    await supabaseAdmin.from('financial_categories').insert(defaultCategories.map(c => ({ ...c, company_id: company.id })));
+    await supabaseAdmin
+      .from('financial_categories')
+      .insert(defaultCategories.map(c => ({ ...c, company_id: company.id })));
 
-    await supabaseAdmin.from('financial_accounts').insert([
-      { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
-      { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
-    ]);
-
-    // Cria registro de venda automática se for venda direta E houver vendedor com comissão
-    if (isVenda && salespersonId && salespersonRow && !salespersonRow.no_commission) {
-      const commission = calculateCommission(subscription_value, billingCycle);
-      await supabaseAdmin.from('salesperson_sales').insert({
-        salesperson_id: salespersonId,
-        company_id: company.id,
-        customer_name: contact_name,
-        customer_company: company_name,
-        customer_origin: origin || null,
-        amount: subscription_value,
-        paid_amount: 0,
-        commission_amount: commission,
-        billing_cycle: billingCycle,
-        notes: `Venda gerada automaticamente via link de afiliado (${salesperson_referral_code})`,
-      });
-    }
+    // Seed default financial accounts
+    await supabaseAdmin
+      .from('financial_accounts')
+      .insert([
+        { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
+        { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
+      ]);
 
     return new Response(
       JSON.stringify({
         success: true,
         company: { id: company.id, name: company.name },
         user: { id: newUser.user.id, email: newUser.user.email },
-        salesperson_linked: !!salespersonId,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -4,7 +4,6 @@ import { Menu, X, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
-import { buildCadastroUrl } from '@/utils/utmTracking';
 
 const navLinks = [
   { label: 'Plataforma', href: '#features', id: 'features' },
@@ -98,7 +97,7 @@ export default function LandingNavbar() {
               </Link>
             </Button>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90" asChild>
-              <Link to={buildCadastroUrl()}>Criar Conta</Link>
+              <Link to="/cadastro">Criar Conta</Link>
             </Button>
           </div>
 
@@ -139,7 +138,7 @@ export default function LandingNavbar() {
               </Link>
             </Button>
             <Button className="w-full bg-primary text-primary-foreground" asChild>
-              <Link to={buildCadastroUrl()}>Criar Conta</Link>
+              <Link to="/cadastro">Criar Conta</Link>
             </Button>
           </div>
         </div>

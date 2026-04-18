@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { buildCadastroUrl } from '@/utils/utmTracking';
 
 const plans = [
   {
@@ -24,7 +23,7 @@ const plans = [
       'Suporte por email',
     ],
     cta: 'Testar 7 Dias Grátis',
-    ctaPlan: 'essencial',
+    ctaLink: '/cadastro?plano=essencial&origem=Site',
   },
   {
     code: 'avancado',
@@ -42,7 +41,7 @@ const plans = [
       'DRE e relatórios financeiros',
     ],
     cta: 'Testar 7 Dias Grátis',
-    ctaPlan: 'avancado',
+    ctaLink: '/cadastro?plano=avancado&origem=Site',
   },
   {
     code: 'master',
@@ -60,7 +59,7 @@ const plans = [
       'Suporte prioritário',
     ],
     cta: 'Testar 7 Dias Grátis',
-    ctaPlan: 'master',
+    ctaLink: '/cadastro?plano=master&origem=Site',
   },
 ];
 
@@ -181,7 +180,7 @@ export default function PricingSection() {
                   size="lg"
                   asChild
                 >
-                  <Link to={buildCadastroUrl({ plano: plan.ctaPlan, ciclo: annual ? 'annual' : 'monthly' })}>{plan.cta}</Link>
+                  <Link to={plan.ctaLink}>{plan.cta}</Link>
                 </Button>
               </div>
             );

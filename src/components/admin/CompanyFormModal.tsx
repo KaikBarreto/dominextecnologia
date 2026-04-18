@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
-import { Loader2, Building2, CreditCard, KeyRound, Eye, EyeOff, RefreshCw, Copy, Check, Gift } from 'lucide-react';
+import { Loader2, Building2, CreditCard, KeyRound, Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 import { CepLookup } from '@/components/CepLookup';
+import { StateCitySelector } from '@/components/StateCitySelector';
 
 interface Props {
   open: boolean;
@@ -29,17 +29,21 @@ function generatePassword(length = 10): string {
 
 function parseAddress(address: string | null) {
   if (!address) return { logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' };
+  // Try to parse "Rua X, 123, Comp, Bairro, Cidade - UF, 00000-000"
   const parts = address.split(',').map(p => p.trim());
   return {
-    logradouro: parts[0] || '', numero: parts[1] || '', complemento: parts[2] || '',
-    bairro: parts[3] || '', cidade: parts[4]?.split('-')[0]?.trim() || '',
-    estado: parts[4]?.split('-')[1]?.trim() || '', cep: parts[5] || '',
+    logradouro: parts[0] || '',
+    numero: parts[1] || '',
+    complemento: parts[2] || '',
+    bairro: parts[3] || '',
+    cidade: parts[4]?.split('-')[0]?.trim() || '',
+    estado: parts[4]?.split('-')[1]?.trim() || '',
+    cep: parts[5] || '',
   };
 }
 
-function buildAddress(addr: any) {
-  const parts = [addr.logradouro, addr.numero, addr.complemento, addr.bairro,
-    addr.cidade && addr.estado ? `${addr.cidade} - ${addr.estado}` : addr.cidade || addr.estado, addr.cep].filter(Boolean);
+function buildAddress(addr: { logradouro: string; numero: string; complemento: string; bairro: string; cidade: string; estado: string; cep: string }) {
+  const parts = [addr.logradouro, addr.numero, addr.complemento, addr.bairro, addr.cidade && addr.estado ? `${addr.cidade} - ${addr.estado}` : addr.cidade || addr.estado, addr.cep].filter(Boolean);
   return parts.join(', ');
 }
 
@@ -51,38 +55,16 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data: salespeople = [] } = useQuery({
-    queryKey: ['salespeople', { activeOnly: false }],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('salespeople').select('id, name, is_active').order('name');
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: open,
-  });
-
-  const { data: origins = [] } = useQuery({
-    queryKey: ['company-origins'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('company_origins').select('*').order('name');
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: open,
-  });
-
   const [formData, setFormData] = useState({
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
     subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '', origin: '',
-    salesperson_id: '',
-    custom_price: '', custom_price_months: '', custom_price_permanent: false,
     admin_email: '', admin_password: '',
   });
 
   const [addr, setAddr] = useState({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
 
-  const updateField = useCallback((field: string, value: any) => {
+  const updateField = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
@@ -101,12 +83,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         subscription_expires_at: company.subscription_expires_at ? company.subscription_expires_at.split('T')[0] : '',
         billing_cycle: company.billing_cycle || 'monthly',
         max_users: String(company.max_users || 5), notes: company.notes || '',
-        origin: company.origin || '',
-        salesperson_id: company.salesperson_id || '',
-        custom_price: company.custom_price != null ? String(company.custom_price) : '',
-        custom_price_months: company.custom_price_months != null ? String(company.custom_price_months) : '',
-        custom_price_permanent: !!company.custom_price_permanent,
-        admin_email: '', admin_password: '',
+        origin: company.origin || '', admin_email: '', admin_password: '',
       });
       setAddr(parseAddress(company.address));
       setActiveTab('basic');
@@ -116,9 +93,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
         subscription_status: 'testing', subscription_plan: 'starter', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
-        notes: '', origin: '', salesperson_id: '',
-        custom_price: '', custom_price_months: '', custom_price_permanent: false,
-        admin_email: '', admin_password: generatePassword(),
+        notes: '', origin: '', admin_email: '', admin_password: generatePassword(),
       });
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
       setActiveTab('basic');
@@ -133,53 +108,36 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const mutation = useMutation({
     mutationFn: async () => {
       const address = buildAddress(addr);
-      const customPriceVal = formData.custom_price ? parseFloat(formData.custom_price.replace(',', '.')) : null;
-      const customMonthsVal = formData.custom_price_months ? parseInt(formData.custom_price_months, 10) : null;
-
-      const sharedFields = {
-        name: formData.name,
-        cnpj: formData.cnpj || null,
-        email: formData.email || null,
-        phone: formData.phone || null,
-        address: address || null,
-        contact_name: formData.contact_name || null,
-        subscription_status: formData.subscription_status,
-        subscription_plan: formData.subscription_plan,
-        subscription_value: parseFloat(formData.subscription_value) || 0,
-        subscription_expires_at: formData.subscription_expires_at || null,
-        billing_cycle: formData.billing_cycle,
-        max_users: parseInt(formData.max_users) || 5,
-        notes: formData.notes || null,
-        origin: formData.origin || null,
-        salesperson_id: formData.salesperson_id || null,
-        custom_price: customPriceVal,
-        custom_price_months: customMonthsVal,
-        custom_price_permanent: formData.custom_price_permanent,
-      };
-
       if (isEditing) {
-        const { error } = await supabase.from('companies').update(sharedFields).eq('id', company.id);
+        const { error } = await supabase.from('companies').update({
+          name: formData.name, cnpj: formData.cnpj || null, email: formData.email || null,
+          phone: formData.phone || null, address: address || null,
+          contact_name: formData.contact_name || null,
+          subscription_status: formData.subscription_status,
+          subscription_plan: formData.subscription_plan,
+          subscription_value: parseFloat(formData.subscription_value) || 0,
+          subscription_expires_at: formData.subscription_expires_at || null,
+          billing_cycle: formData.billing_cycle,
+          max_users: parseInt(formData.max_users) || 5,
+          notes: formData.notes || null, origin: formData.origin || null,
+        }).eq('id', company.id);
         if (error) throw error;
       } else {
         const { data: session } = await supabase.auth.getSession();
         if (!session.session) throw new Error('Não autenticado');
         const { data, error } = await supabase.functions.invoke('create-company', {
           body: {
-            company_name: sharedFields.name, company_cnpj: sharedFields.cnpj,
-            company_email: sharedFields.email, company_phone: sharedFields.phone,
-            company_address: sharedFields.address, contact_name: sharedFields.contact_name,
-            notes: sharedFields.notes, admin_email: formData.admin_email,
+            company_name: formData.name, company_cnpj: formData.cnpj || null,
+            company_email: formData.email || null, company_phone: formData.phone || null,
+            company_address: address || null, contact_name: formData.contact_name || null,
+            notes: formData.notes || null, admin_email: formData.admin_email,
             admin_password: formData.admin_password,
-            subscription_status: sharedFields.subscription_status,
-            subscription_plan: sharedFields.subscription_plan,
-            subscription_value: sharedFields.subscription_value,
-            subscription_expires_at: sharedFields.subscription_expires_at ? new Date(sharedFields.subscription_expires_at).toISOString() : null,
-            billing_cycle: sharedFields.billing_cycle, max_users: sharedFields.max_users,
-            origin: sharedFields.origin,
-            salesperson_id: sharedFields.salesperson_id,
-            custom_price: sharedFields.custom_price,
-            custom_price_months: sharedFields.custom_price_months,
-            custom_price_permanent: sharedFields.custom_price_permanent,
+            subscription_status: formData.subscription_status,
+            subscription_plan: formData.subscription_plan,
+            subscription_value: parseFloat(formData.subscription_value) || 0,
+            subscription_expires_at: formData.subscription_expires_at ? new Date(formData.subscription_expires_at).toISOString() : null,
+            billing_cycle: formData.billing_cycle, max_users: parseInt(formData.max_users) || 5,
+            origin: formData.origin || null,
           },
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
@@ -201,16 +159,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) { setActiveTab('basic'); toast({ variant: 'destructive', title: 'Nome da empresa é obrigatório' }); return; }
-    // Validações de preço personalizado
-    if (formData.custom_price) {
-      const cp = parseFloat(formData.custom_price.replace(',', '.'));
-      if (isNaN(cp) || cp < 0) { setActiveTab('commercial'); toast({ variant: 'destructive', title: 'Preço personalizado inválido' }); return; }
-    }
-    if (formData.custom_price && !formData.custom_price_permanent) {
-      const m = parseInt(formData.custom_price_months || '0', 10);
-      if (!m || m < 1) { setActiveTab('commercial'); toast({ variant: 'destructive', title: 'Informe os meses promocionais ou marque como permanente' }); return; }
-    }
+    if (!formData.name) { setActiveTab('basic'); toast({ variant: 'destructive', title: 'Nome da empresa é obrigatório' }); return; }
     if (!isEditing) {
       if (!formData.admin_email) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Email do administrador é obrigatório' }); return; }
       if (!formData.admin_password || formData.admin_password.length < 6) { setActiveTab('access'); toast({ variant: 'destructive', title: 'Senha deve ter no mínimo 6 caracteres' }); return; }
@@ -273,6 +222,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   <Input value={formData.cnpj} onChange={e => updateField('cnpj', cpfCnpjMask(e.target.value))} maxLength={18} />
                 </div>
 
+                {/* Structured Address */}
                 <div className="space-y-3 rounded-md border p-3">
                   <Label className="text-sm font-semibold">Endereço</Label>
                   <div className="grid grid-cols-3 gap-3">
@@ -357,11 +307,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Valor (R$)</Label>
-                    <Input type="number" step="0.01" min="0" value={formData.subscription_value} onChange={e => updateField('subscription_value', e.target.value)} />
+                    <Input type="number" step="0.01" value={formData.subscription_value} onChange={e => updateField('subscription_value', e.target.value)} />
                   </div>
                   <div>
                     <Label>Máx Usuários</Label>
-                    <Input type="number" min="1" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                    <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -380,75 +330,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     </Select>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Origem</Label>
-                    <Select value={formData.origin || '__none__'} onValueChange={v => updateField('origin', v === '__none__' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Nenhuma —</SelectItem>
-                        {origins.map((o: any) => (
-                          <SelectItem key={o.id} value={o.name}>{o.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Vendedor</Label>
-                    <Select value={formData.salesperson_id || '__none__'} onValueChange={v => updateField('salesperson_id', v === '__none__' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Sem vendedor —</SelectItem>
-                        {salespeople.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}{!s.is_active && ' (inativo)'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Preço personalizado */}
-                <div className="space-y-3 rounded-md border p-3 bg-muted/30">
-                  <div className="flex items-center gap-2">
-                    <Gift className="h-4 w-4 text-primary" />
-                    <Label className="text-sm font-semibold">Preço Personalizado / Promocional</Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Defina um preço diferenciado por tempo determinado ou permanente. Não altera o valor base do plano.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Preço Custom (R$)</Label>
-                      <Input
-                        type="number" step="0.01" min="0"
-                        value={formData.custom_price}
-                        onChange={e => updateField('custom_price', e.target.value)}
-                        placeholder="Ex: 99.90"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Meses Promocionais</Label>
-                      <Input
-                        type="number" min="0"
-                        value={formData.custom_price_months}
-                        onChange={e => updateField('custom_price_months', e.target.value)}
-                        placeholder="Ex: 3"
-                        disabled={formData.custom_price_permanent}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      checked={formData.custom_price_permanent}
-                      onCheckedChange={(v) => updateField('custom_price_permanent', v)}
-                    />
-                    <Label className="text-sm font-normal cursor-pointer" onClick={() => updateField('custom_price_permanent', !formData.custom_price_permanent)}>
-                      Preço permanente (sem prazo)
-                    </Label>
-                  </div>
+                <div>
+                  <Label>Origem</Label>
+                  <Input value={formData.origin} onChange={e => updateField('origin', e.target.value)} placeholder="Ex: Google, Instagram..." />
                 </div>
               </TabsContent>
 

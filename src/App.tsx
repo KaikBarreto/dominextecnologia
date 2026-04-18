@@ -261,11 +261,11 @@ const AppRoutes = () => (
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/empresas" element={<AdminCompanies />} />
       <Route path="/admin/empresas/:id" element={<AdminCompanyDetail />} />
-      <Route path="/admin/vendedores" element={<AdminSalespeople />} />
-      <Route path="/admin/vendedores/:id" element={<AdminSalespersonDetail />} />
       <Route path="/admin/assinaturas" element={<AdminSubscriptions />} />
       <Route path="/admin/financeiro" element={<AdminFinancial />} />
       <Route path="/admin/crm" element={<AdminCRM />} />
+      <Route path="/admin/vendedores" element={<AdminSalespeople />} />
+      <Route path="/admin/vendedores/:id" element={<AdminSalespersonDetail />} />
       <Route path="/admin/configuracoes" element={<AdminSettings />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />

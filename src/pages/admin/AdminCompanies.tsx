@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Filter, LayoutList, Kanban, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Plus, Filter, LayoutList, Kanban, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
 import { CompanyTable } from '@/components/admin/CompanyTable';
 import { CompanyKanbanBoard } from '@/components/admin/CompanyKanbanBoard';
-import GenerateLinkModal from '@/components/admin/GenerateLinkModal';
 import { differenceInDays } from 'date-fns';
 
 export default function AdminCompanies() {
@@ -28,10 +27,8 @@ export default function AdminCompanies() {
   const [originFilter, setOriginFilter] = useState('all');
   const [expirationFilter, setExpirationFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
-  const [salespersonFilter, setSalespersonFilter] = useState('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [showGenerateLink, setShowGenerateLink] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [companyToDelete, setCompanyToDelete] = useState<any>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -83,15 +80,6 @@ export default function AdminCompanies() {
     },
   });
 
-  const { data: salespeople = [] } = useQuery({
-    queryKey: ['salespeople', { activeOnly: false }],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('salespeople').select('id, name, is_active, referral_code').order('name');
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   // Auto-deactivate expired
   useEffect(() => {
     const deactivate = async () => {
@@ -134,9 +122,6 @@ export default function AdminCompanies() {
     const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
     const matchOrigin = originFilter === 'all' || c.origin === originFilter;
     const matchPlan = planFilter === 'all' || c.subscription_plan === planFilter;
-    const matchSalesperson =
-      salespersonFilter === 'all' ||
-      (salespersonFilter === '__none__' ? !c.salesperson_id : c.salesperson_id === salespersonFilter);
     let matchExp = true;
     if (expirationFilter !== 'all' && c.subscription_expires_at) {
       const exp = new Date(c.subscription_expires_at);
@@ -151,7 +136,7 @@ export default function AdminCompanies() {
         case 'overdue': matchExp = diff < 0; break;
       }
     }
-    return matchSearch && matchStatus && matchOrigin && matchPlan && matchSalesperson && matchExp;
+    return matchSearch && matchStatus && matchOrigin && matchPlan && matchExp;
   });
 
   const handleEdit = (company: any) => {
@@ -169,7 +154,6 @@ export default function AdminCompanies() {
     setOriginFilter('all');
     setExpirationFilter('all');
     setPlanFilter('all');
-    setSalespersonFilter('all');
   };
 
   const FilterContent = () => (
@@ -224,19 +208,6 @@ export default function AdminCompanies() {
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2">
-        <Label>Vendedor</Label>
-        <Select value={salespersonFilter} onValueChange={setSalespersonFilter}>
-          <SelectTrigger><SelectValue placeholder="Vendedor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="__none__">Sem vendedor</SelectItem>
-            {salespeople.map((s: any) => (
-              <SelectItem key={s.id} value={s.id}>{s.name}{!s.is_active && ' (inativo)'}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
       <Button variant="outline" className="w-full" onClick={clearFilters}>Limpar Filtros</Button>
     </div>
   );
@@ -283,10 +254,7 @@ export default function AdminCompanies() {
             <ToggleGroupItem value="kanban" aria-label="Kanban"><Kanban className="h-4 w-4" /></ToggleGroupItem>
           </ToggleGroup>
 
-          <Button variant="outline" onClick={() => setShowGenerateLink(true)} className="gap-2 w-full sm:w-auto sm:ml-auto">
-            <LinkIcon className="h-4 w-4" /> Gerar Link
-          </Button>
-          <Button onClick={() => { setEditingCompany(null); setShowForm(true); }} className="gap-2 w-full sm:w-auto">
+          <Button onClick={() => { setEditingCompany(null); setShowForm(true); }} className="gap-2 w-full sm:w-auto sm:ml-auto">
             <Plus className="h-4 w-4" /> Nova Empresa
           </Button>
         </div>
@@ -302,7 +270,6 @@ export default function AdminCompanies() {
           companies={filtered}
           origins={origins || undefined}
           masterUserMap={masterUserMap}
-          salespeople={salespeople}
           onEdit={handleEdit}
           onDelete={handleDeleteFromKanban}
         />
@@ -346,13 +313,6 @@ export default function AdminCompanies() {
           queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
           setShowForm(false);
         }}
-      />
-
-      <GenerateLinkModal
-        open={showGenerateLink}
-        onOpenChange={setShowGenerateLink}
-        origins={origins || undefined}
-        salespeople={salespeople}
       />
     </div>
   );

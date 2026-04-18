@@ -10,7 +10,6 @@ interface CompanyKanbanBoardProps {
   companies: any[];
   origins: any[] | undefined;
   masterUserMap: Map<string, string>;
-  salespeople?: any[];
   onEdit: (company: any) => void;
   onDelete: (company: any) => void;
 }
@@ -21,7 +20,7 @@ const COLUMNS = [
   { id: 'inactive', title: 'INATIVOS', status: 'inactive', color: 'bg-rose-500' },
 ];
 
-export function CompanyKanbanBoard({ companies, origins, masterUserMap, salespeople, onEdit, onDelete }: CompanyKanbanBoardProps) {
+export function CompanyKanbanBoard({ companies, origins, masterUserMap, onEdit, onDelete }: CompanyKanbanBoardProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [draggedCompanyId, setDraggedCompanyId] = useState<string | null>(null);
@@ -122,7 +121,6 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salespeo
                         <CompanyKanbanCard
                           company={company}
                           origins={origins}
-                          salespeople={salespeople}
                           onEdit={onEdit}
                           onDelete={onDelete}
                           isDragging={draggedCompanyId === company.id}
