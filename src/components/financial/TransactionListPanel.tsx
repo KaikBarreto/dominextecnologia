@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Landmark, Wallet } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Filter, X, Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignedLink } from '@/components/ui/SignedLink';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { ReceivePaymentModal } from './ReceivePaymentModal';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
