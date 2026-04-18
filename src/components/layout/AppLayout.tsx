@@ -137,6 +137,13 @@ export function AppLayout() {
   const isSuperAdmin = roles.includes('super_admin');
   useKeyboardShortcuts(true);
 
+  // Super admin sempre usa tema claro (UX consistente do painel administrativo)
+  useEffect(() => {
+    if (isSuperAdmin) {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isSuperAdmin]);
+
   return (
     <>
       <VersionUpdateNotification />
