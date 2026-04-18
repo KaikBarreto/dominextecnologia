@@ -257,7 +257,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 </div>
                 {!t.is_paid && (
                   <div className="flex justify-end pt-1 border-t">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs text-success gap-1" onClick={() => onMarkAsPaid(t.id)}>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-success gap-1" onClick={() => handleMarkAsPaidClick(t)}>
                       <Check className="h-3 w-3" /> Marcar pago
                     </Button>
                   </div>
