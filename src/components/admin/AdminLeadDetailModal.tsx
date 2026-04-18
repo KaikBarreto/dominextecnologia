@@ -16,6 +16,7 @@ import { phoneMask } from '@/utils/masks';
 import { useAdminLeadInteractions, useAdminCrmStages, useAdminLeads, ADMIN_INTERACTION_TYPES, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
+import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +65,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
     phone: '',
     value: '',
     source: '',
+    segment: '',
     stage_id: '',
     expected_close_date: '',
     notes: '',
@@ -78,6 +80,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
       phone: lead.phone || '',
       value: lead.value ? String(lead.value) : '',
       source: lead.source || '',
+      segment: lead.segment || '',
       stage_id: lead.stage_id || '',
       expected_close_date: lead.expected_close_date || '',
       notes: lead.notes || '',
@@ -113,6 +116,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
       phone: form.phone || null,
       value: form.value ? Number(form.value) : 0,
       source: form.source || null,
+      segment: form.segment || null,
       stage_id: form.stage_id || null,
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,
@@ -129,6 +133,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
       phone: lead.phone || '',
       value: lead.value ? String(lead.value) : '',
       source: lead.source || '',
+      segment: lead.segment || '',
       stage_id: lead.stage_id || '',
       expected_close_date: lead.expected_close_date || '',
       notes: lead.notes || '',
@@ -138,6 +143,8 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
 
   const originInfo = lead.source ? origins.find(o => o.name === lead.source) : null;
   const selectedOriginEdit = origins.find(o => o.name === form.source);
+  const segmentInfo = getSegment(lead.segment);
+  const selectedSegmentEdit = getSegment(form.segment);
 
   const formatCurrency = (v: number | null) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
 
@@ -232,6 +239,36 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="sm:col-span-2">
+                      <Label className="text-xs">Segmento</Label>
+                      <Select value={form.segment} onValueChange={v => setForm(f => ({ ...f, segment: v }))}>
+                        <SelectTrigger
+                          className={selectedSegmentEdit ? 'text-white font-medium border-transparent' : ''}
+                          style={selectedSegmentEdit ? { backgroundColor: selectedSegmentEdit.color } : undefined}
+                        >
+                          {selectedSegmentEdit ? (
+                            <div className="flex items-center gap-2">
+                              <selectedSegmentEdit.icon className="h-3.5 w-3.5 text-white" />
+                              <span className="truncate">{selectedSegmentEdit.label}</span>
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Selecione o segmento" />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPANY_SEGMENTS.map(s => (
+                            <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
+                              <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>
+                                  <s.icon className="h-2.5 w-2.5 text-white" />
+                                </div>
+                                <span>{s.label}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
@@ -305,6 +342,19 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                           </Badge>
                         ) : lead.source ? (
                           <Badge variant="outline">{lead.source}</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-[11px] text-muted-foreground/70">Segmento</span>
+                      <div className="mt-0.5">
+                        {segmentInfo ? (
+                          <Badge className="border-0 flex items-center gap-1 w-fit" style={{ backgroundColor: segmentInfo.color, color: '#fff' }}>
+                            <segmentInfo.icon className="h-3 w-3" />
+                            {segmentInfo.label}
+                          </Badge>
                         ) : (
                           <span className="text-sm text-muted-foreground/40 italic">—</span>
                         )}

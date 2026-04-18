@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { Plus, Search, DollarSign, TrendingUp, Users, Filter } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,13 +9,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useProfiles } from '@/hooks/useProfiles';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
-import { getSegment } from '@/utils/companySegments';
+import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 function OriginIcon({ name, className }: { name: string; className?: string }) {
@@ -30,6 +35,7 @@ export default function AdminCRM() {
   const { origins } = useCompanyOrigins();
   const { data: profiles } = useProfiles();
 
+  const isMobile = useIsMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
   const [detailLead, setDetailLead] = useState<AdminLead | null>(null);
@@ -40,15 +46,34 @@ export default function AdminCRM() {
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropTargetStageId, setDropTargetStageId] = useState<string | null>(null);
 
+  // Filters
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterOrigin, setFilterOrigin] = useState<string>('all');
+  const [filterSegment, setFilterSegment] = useState<string>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+  const [filterDateTo, setFilterDateTo] = useState<string>('');
+
+  const activeFilterCount =
+    (filterOrigin !== 'all' ? 1 : 0) +
+    (filterSegment !== 'all' ? 1 : 0) +
+    (filterDateFrom ? 1 : 0) +
+    (filterDateTo ? 1 : 0);
+
   const filteredLeads = useMemo(() => {
-    if (!search) return leads;
     const q = search.toLowerCase();
-    return leads.filter(l =>
-      l.title.toLowerCase().includes(q) ||
-      l.company_name?.toLowerCase().includes(q) ||
-      l.contact_name?.toLowerCase().includes(q)
-    );
-  }, [leads, search]);
+    return leads.filter(l => {
+      if (search && !(
+        l.title.toLowerCase().includes(q) ||
+        l.company_name?.toLowerCase().includes(q) ||
+        l.contact_name?.toLowerCase().includes(q)
+      )) return false;
+      if (filterOrigin !== 'all' && l.source !== filterOrigin) return false;
+      if (filterSegment !== 'all' && l.segment !== filterSegment) return false;
+      if (filterDateFrom && new Date(l.created_at) < new Date(filterDateFrom + 'T00:00:00')) return false;
+      if (filterDateTo && new Date(l.created_at) > new Date(filterDateTo + 'T23:59:59')) return false;
+      return true;
+    });
+  }, [leads, search, filterOrigin, filterSegment, filterDateFrom, filterDateTo]);
 
   const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
 
@@ -119,14 +144,9 @@ export default function AdminCRM() {
     <TooltipProvider delayDuration={200}>
       <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl lg:text-2xl font-bold text-foreground">CRM Comercial</h1>
-            <p className="text-sm text-muted-foreground">Pipeline de vendas da Dominex</p>
-          </div>
-          <Button onClick={() => { setEditingLead(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> Novo Lead
-          </Button>
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-foreground">CRM Comercial</h1>
+          <p className="text-sm text-muted-foreground">Pipeline de vendas da Dominex</p>
         </div>
 
         {/* Stats */}
@@ -137,10 +157,23 @@ export default function AdminCRM() {
           <Card><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" /><div><p className="text-xs text-muted-foreground">Ganhos</p><p className="text-lg font-bold text-green-600">{leads.filter(l => stages.find(s => s.id === l.stage_id)?.is_won).length}</p></div></div></CardContent></Card>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar leads..." className="pl-9" />
+        {/* Search + Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar leads..." className="pl-9" />
+          </div>
+          <div className="flex gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={() => setFiltersOpen(true)} className="relative">
+              <Filter className="h-4 w-4 mr-2" /> Filtros
+              {activeFilterCount > 0 && (
+                <Badge className="ml-2 h-5 px-1.5 bg-primary text-primary-foreground border-0">{activeFilterCount}</Badge>
+              )}
+            </Button>
+            <Button onClick={() => { setEditingLead(null); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" /> Novo Lead
+            </Button>
+          </div>
         </div>
 
         {/* Kanban — rolagem horizontal sempre, colunas com largura fixa */}
@@ -299,7 +332,139 @@ export default function AdminCRM() {
           leadTitle={pendingLossDrop?.leadTitle || ''}
           onConfirm={handleLossConfirm}
         />
+
+        {/* Filters: Sheet on desktop, Drawer on mobile */}
+        {isMobile ? (
+          <Drawer open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>Filtros</DrawerTitle>
+              </DrawerHeader>
+              <div className="px-4 pb-4 overflow-y-auto">
+                <FiltersForm
+                  origins={origins}
+                  filterOrigin={filterOrigin}
+                  setFilterOrigin={setFilterOrigin}
+                  filterSegment={filterSegment}
+                  setFilterSegment={setFilterSegment}
+                  filterDateFrom={filterDateFrom}
+                  setFilterDateFrom={setFilterDateFrom}
+                  filterDateTo={filterDateTo}
+                  setFilterDateTo={setFilterDateTo}
+                />
+              </div>
+              <DrawerFooter>
+                <Button variant="outline" onClick={() => {
+                  setFilterOrigin('all'); setFilterSegment('all');
+                  setFilterDateFrom(''); setFilterDateTo('');
+                }}>Limpar</Button>
+                <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto py-4">
+                <FiltersForm
+                  origins={origins}
+                  filterOrigin={filterOrigin}
+                  setFilterOrigin={setFilterOrigin}
+                  filterSegment={filterSegment}
+                  setFilterSegment={setFilterSegment}
+                  filterDateFrom={filterDateFrom}
+                  setFilterDateFrom={setFilterDateFrom}
+                  filterDateTo={filterDateTo}
+                  setFilterDateTo={setFilterDateTo}
+                />
+              </div>
+              <SheetFooter className="gap-2">
+                <Button variant="outline" onClick={() => {
+                  setFilterOrigin('all'); setFilterSegment('all');
+                  setFilterDateFrom(''); setFilterDateTo('');
+                }}>Limpar</Button>
+                <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </TooltipProvider>
+  );
+}
+
+interface FiltersFormProps {
+  origins: { id: string; name: string; color?: string | null; icon?: string | null }[];
+  filterOrigin: string;
+  setFilterOrigin: (v: string) => void;
+  filterSegment: string;
+  setFilterSegment: (v: string) => void;
+  filterDateFrom: string;
+  setFilterDateFrom: (v: string) => void;
+  filterDateTo: string;
+  setFilterDateTo: (v: string) => void;
+}
+
+function FiltersForm({
+  origins, filterOrigin, setFilterOrigin, filterSegment, setFilterSegment,
+  filterDateFrom, setFilterDateFrom, filterDateTo, setFilterDateTo,
+}: FiltersFormProps) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Origem</Label>
+        <Select value={filterOrigin} onValueChange={setFilterOrigin}>
+          <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {origins.map(o => (
+              <SelectItem key={o.id} value={o.name}>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded" style={{ backgroundColor: o.color || '#6B7280' }} />
+                  <span>{o.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Segmento</Label>
+        <Select value={filterSegment} onValueChange={setFilterSegment}>
+          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {COMPANY_SEGMENTS.map(s => (
+              <SelectItem key={s.value} value={s.value}>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: s.color }}>
+                    <s.icon className="h-2.5 w-2.5 text-white" />
+                  </div>
+                  <span>{s.label}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de Geração</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">De</Label>
+            <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Até</Label>
+            <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
