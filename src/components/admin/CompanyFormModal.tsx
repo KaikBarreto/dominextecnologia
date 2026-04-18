@@ -16,12 +16,14 @@ import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import {
   Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check,
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
-  Tag, Briefcase,
+  Tag, Briefcase, Link2,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { addDays, format } from 'date-fns';
 import { CepLookup } from '@/components/CepLookup';
+import { GenerateLinkModal } from './GenerateLinkModal';
 
 interface Props {
   open: boolean;
@@ -115,7 +117,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '',
     origin: '', salesperson_id: '',
     admin_email: '', admin_password: '',
+    use_custom_price: false,
+    custom_price_permanent: true,
+    custom_price_months: '3',
   });
+
+  const [showGenerateLink, setShowGenerateLink] = useState(false);
 
   const [addr, setAddr] = useState({
     logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '',
@@ -152,6 +159,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         salesperson_id: company.salesperson_id || '',
         admin_email: '',
         admin_password: '',
+        use_custom_price: !!company.custom_price && Number(company.custom_price) > 0,
+        custom_price_permanent: company.custom_price_permanent ?? true,
+        custom_price_months: company.custom_price_months ? String(company.custom_price_months) : '3',
       });
       setAddr(parseAddress(company.address));
     } else {
@@ -162,6 +172,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
         notes: '', origin: '', salesperson_id: '',
         admin_email: '', admin_password: '',
+        use_custom_price: false, custom_price_permanent: true, custom_price_months: '3',
       });
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
     }
@@ -188,10 +199,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     updateField('subscription_plan', v);
     const p = plans.find((pl: any) => pl.code === v);
     if (p) {
-      if (p.price != null) updateField('subscription_value', String(p.price));
+      // Só sobrescreve o valor se NÃO estiver usando preço customizado
+      if (p.price != null && !formData.use_custom_price) updateField('subscription_value', String(p.price));
       if (p.max_users != null) updateField('max_users', String(p.max_users));
     }
-  }, [plans, updateField]);
+  }, [plans, updateField, formData.use_custom_price]);
 
   // ========== Mutation ==========
   const mutation = useMutation({
@@ -199,6 +211,10 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const address = buildAddress(addr);
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const cleanCnpj = formData.cnpj.replace(/\D/g, '');
+
+      const customPriceVal = formData.use_custom_price ? parseFloat(formData.subscription_value) || 0 : null;
+      const planObj = plans.find((p: any) => p.code === formData.subscription_plan);
+      const originalPlanPrice = planObj?.price ?? null;
 
       if (isEditing) {
         const { error } = await supabase.from('companies').update({
@@ -217,6 +233,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           notes: formData.notes || null,
           origin: formData.origin || null,
           salesperson_id: formData.salesperson_id || null,
+          custom_price: customPriceVal,
+          custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
+          custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
+            ? parseInt(formData.custom_price_months) || null
+            : null,
         }).eq('id', company.id);
         if (error) throw error;
       } else {
@@ -243,6 +264,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             max_users: parseInt(formData.max_users) || 5,
             origin: formData.origin || null,
             salesperson_id: formData.salesperson_id || null,
+            custom_price: customPriceVal,
+            custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
+            custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
+              ? parseInt(formData.custom_price_months) || null
+              : null,
+            original_plan_price: originalPlanPrice,
           },
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
@@ -481,15 +508,101 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Valor (R$)</Label>
-                <Input type="number" step="0.01" value={formData.subscription_value} onChange={e => updateField('subscription_value', e.target.value)} />
+            {/* Switch + valor personalizado */}
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="use-custom-price"
+                  checked={formData.use_custom_price}
+                  onCheckedChange={(v) => {
+                    setFormData(prev => ({ ...prev, use_custom_price: v }));
+                    if (!v) {
+                      // restaurar preço do plano
+                      const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+                      if (p?.price != null) updateField('subscription_value', String(p.price));
+                    }
+                  }}
+                />
+                <Label htmlFor="use-custom-price" className="text-sm cursor-pointer">
+                  Usar valor personalizado
+                </Label>
               </div>
-              <div className="space-y-2">
-                <Label>Máx. Usuários</Label>
-                <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
-              </div>
+
+              {formData.use_custom_price && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Valor (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.subscription_value}
+                        onChange={e => updateField('subscription_value', e.target.value)}
+                      />
+                      {(() => {
+                        const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+                        return p?.price != null ? (
+                          <p className="text-xs text-muted-foreground">
+                            Valor original do plano: R$ {Number(p.price).toFixed(2)}/mês
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Máx. Usuários</Label>
+                      <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="is-permanent"
+                        checked={formData.custom_price_permanent}
+                        onCheckedChange={(v) => setFormData(prev => ({ ...prev, custom_price_permanent: v }))}
+                      />
+                      <Label htmlFor="is-permanent" className="text-sm cursor-pointer">
+                        Permanentemente
+                      </Label>
+                    </div>
+
+                    {!formData.custom_price_permanent && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Por quantos meses?</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="3"
+                          value={formData.custom_price_months}
+                          onChange={(e) => setFormData(prev => ({ ...prev, custom_price_months: e.target.value }))}
+                          className="w-24"
+                        />
+                        {(() => {
+                          const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+                          return p?.price != null && formData.subscription_value ? (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Os primeiros {formData.custom_price_months || 'X'} pagamentos serão de R$ {Number(formData.subscription_value).toFixed(2)}, depois volta para R$ {Number(p.price).toFixed(2)}/mês
+                            </p>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!formData.use_custom_price && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Valor (R$)</Label>
+                    <Input type="number" step="0.01" value={formData.subscription_value} disabled />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Máx. Usuários</Label>
+                    <Input type="number" value={formData.max_users} onChange={e => updateField('max_users', e.target.value)} />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -608,37 +721,58 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     </form>
   );
 
+  const HeaderActions = !isEditing && (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => setShowGenerateLink(true)}
+      className="gap-2"
+    >
+      <Link2 className="h-4 w-4" />
+      Gerar Link
+    </Button>
+  );
+
   // ========== Mobile: Drawer ==========
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} dismissible={false}>
-        <DrawerContent className="max-h-[90dvh]">
-          <DrawerHeader className="border-b pb-4">
-            <DrawerTitle>{title}</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4 overflow-y-auto flex-1 flex flex-col">
-            {FormContent}
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={open} onOpenChange={onOpenChange} dismissible={false}>
+          <DrawerContent className="max-h-[90dvh]">
+            <DrawerHeader className="border-b pb-4 flex flex-row items-center justify-between">
+              <DrawerTitle>{title}</DrawerTitle>
+              {HeaderActions}
+            </DrawerHeader>
+            <div className="p-4 overflow-y-auto flex-1 flex flex-col">
+              {FormContent}
+            </div>
+          </DrawerContent>
+        </Drawer>
+        <GenerateLinkModal open={showGenerateLink} onOpenChange={setShowGenerateLink} />
+      </>
     );
   }
 
   // ========== Desktop: Dialog ==========
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-2xl max-h-[90vh] flex flex-col"
-        onPointerDownOutside={(e) => { if (!isEditing) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (!isEditing) e.preventDefault(); }}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 min-h-0 flex flex-col">
-          {FormContent}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] flex flex-col"
+          onPointerDownOutside={(e) => { if (!isEditing) e.preventDefault(); }}
+          onEscapeKeyDown={(e) => { if (!isEditing) e.preventDefault(); }}
+        >
+          <DialogHeader className="flex flex-row items-center justify-between gap-4 pr-8">
+            <DialogTitle>{title}</DialogTitle>
+            {HeaderActions}
+          </DialogHeader>
+          <div className="flex-1 min-h-0 flex flex-col">
+            {FormContent}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <GenerateLinkModal open={showGenerateLink} onOpenChange={setShowGenerateLink} />
+    </>
   );
 }
