@@ -12,6 +12,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Label } from '@/components/ui/label';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
+import { RelatedTransactionsDialog } from './RelatedTransactionsDialog';
+import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRelatedTransactions';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -74,8 +78,12 @@ export function TransactionListPanel({
   const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
   const { accounts: allAccounts } = useFinancialAccounts();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -122,8 +130,38 @@ export function TransactionListPanel({
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
   const pagination = useDataPagination(sortedItems);
 
-  const handleDelete = async () => {
-    if (deleteId) { await onDelete(deleteId); setDeleteId(null); selectedIds.delete(deleteId); setSelectedIds(new Set(selectedIds)); }
+  const requestDelete = async (id: string) => {
+    const txn = transactions.find((t) => t.id === id);
+    if (!txn) return;
+    const { related, linkedQuote } = await findRelatedTransactions(id);
+    if (related.length === 0 && !linkedQuote) {
+      // Plain delete
+      setPendingDelete({ txn, related: [], linkedQuote: null });
+    } else {
+      setPendingDelete({ txn, related, linkedQuote });
+    }
+  };
+  const confirmDelete = async (deleteAllRelated: boolean) => {
+    if (!pendingDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteTransactionCascade(pendingDelete.txn.id, deleteAllRelated);
+      const removedIds = new Set([pendingDelete.txn.id]);
+      if (deleteAllRelated) pendingDelete.related.forEach((r) => removedIds.add(r.id));
+      const next = new Set(selectedIds);
+      removedIds.forEach((id) => next.delete(id));
+      setSelectedIds(next);
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast({ title: deleteAllRelated ? 'Lançamentos excluídos!' : 'Lançamento excluído!' });
+      setPendingDelete(null);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: e.message });
+    } finally {
+      setIsDeleting(false);
+    }
   };
   const handleBulkDelete = async () => {
     for (const id of selectedIds) await onDelete(id);
@@ -342,7 +380,7 @@ export function TransactionListPanel({
                 <div className="flex items-center gap-1 justify-end pt-1 border-t">
                   {!t.is_paid && <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })}><Check className="h-3.5 w-3.5" /></Button>}
                   <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => requestDelete(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </CardContent>
             </Card>
@@ -421,7 +459,7 @@ export function TransactionListPanel({
                         <div className="flex gap-1">
                           {!t.is_paid && <Button variant="ghost" size="icon" className="text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })} title="Marcar como pago"><Check className="h-4 w-4" /></Button>}
                           <Button variant="edit-ghost" size="icon" onClick={() => onEdit(t)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="destructive-ghost" size="icon" onClick={() => requestDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -440,18 +478,16 @@ export function TransactionListPanel({
         </Card>
       )}
 
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir transação</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza? Esta ação não pode ser desfeita.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RelatedTransactionsDialog
+        open={!!pendingDelete}
+        onOpenChange={(v) => { if (!v) setPendingDelete(null); }}
+        transaction={pendingDelete?.txn ?? null}
+        related={pendingDelete?.related ?? []}
+        linkedQuote={pendingDelete?.linkedQuote ?? null}
+        mode="delete"
+        onConfirm={confirmDelete}
+        isProcessing={isDeleting}
+      />
 
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
