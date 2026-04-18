@@ -144,14 +144,9 @@ export default function AdminCRM() {
     <TooltipProvider delayDuration={200}>
       <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl lg:text-2xl font-bold text-foreground">CRM Comercial</h1>
-            <p className="text-sm text-muted-foreground">Pipeline de vendas da Dominex</p>
-          </div>
-          <Button onClick={() => { setEditingLead(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> Novo Lead
-          </Button>
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-foreground">CRM Comercial</h1>
+          <p className="text-sm text-muted-foreground">Pipeline de vendas da Dominex</p>
         </div>
 
         {/* Stats */}
@@ -162,10 +157,23 @@ export default function AdminCRM() {
           <Card><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" /><div><p className="text-xs text-muted-foreground">Ganhos</p><p className="text-lg font-bold text-green-600">{leads.filter(l => stages.find(s => s.id === l.stage_id)?.is_won).length}</p></div></div></CardContent></Card>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar leads..." className="pl-9" />
+        {/* Search + Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar leads..." className="pl-9" />
+          </div>
+          <div className="flex gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={() => setFiltersOpen(true)} className="relative">
+              <Filter className="h-4 w-4 mr-2" /> Filtros
+              {activeFilterCount > 0 && (
+                <Badge className="ml-2 h-5 px-1.5 bg-primary text-primary-foreground border-0">{activeFilterCount}</Badge>
+              )}
+            </Button>
+            <Button onClick={() => { setEditingLead(null); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" /> Novo Lead
+            </Button>
+          </div>
         </div>
 
         {/* Kanban — rolagem horizontal sempre, colunas com largura fixa */}
