@@ -105,7 +105,7 @@ export function TimeReport() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={employee.photo_url || undefined} />
+                <SignedAvatarImage src={employee.photo_url} />
                 <AvatarFallback>{employee.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
