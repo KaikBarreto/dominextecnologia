@@ -41,9 +41,9 @@ export function FinancialMovementSection({ transactions, categories, type, onCre
     <div className="space-y-4">
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Card className="p-4 border-0 shadow-md bg-gradient-to-br from-emerald-500/10 to-emerald-500/5">
+          <Card className="p-4 border shadow-sm bg-card">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-500/20"><ShoppingCart className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /></div>
+              <div className="p-2.5 rounded-lg bg-emerald-500"><ShoppingCart className="h-5 w-5 text-white" /></div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Vendas</p>
                 <p className="text-lg font-bold">{fmt(stats.salesTotal)}</p>
@@ -51,9 +51,9 @@ export function FinancialMovementSection({ transactions, categories, type, onCre
               </div>
             </div>
           </Card>
-          <Card className="p-4 border-0 shadow-md bg-gradient-to-br from-cyan-500/10 to-cyan-500/5">
+          <Card className="p-4 border shadow-sm bg-card">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-cyan-500/20"><RefreshCw className="h-5 w-5 text-cyan-600 dark:text-cyan-400" /></div>
+              <div className="p-2.5 rounded-lg bg-blue-500"><RefreshCw className="h-5 w-5 text-white" /></div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Renovações</p>
                 <p className="text-lg font-bold">{fmt(stats.renewalsTotal)}</p>
@@ -61,10 +61,15 @@ export function FinancialMovementSection({ transactions, categories, type, onCre
               </div>
             </div>
           </Card>
-          <Card className="p-4 border-0 shadow-md">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Receitas</p>
-            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{fmt(total)}</p>
-            <p className="text-[11px] text-muted-foreground">{filtered.length} transações</p>
+          <Card className="p-4 border shadow-sm bg-card">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-600"><ShoppingCart className="h-5 w-5 text-white" /></div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Receitas</p>
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{fmt(total)}</p>
+                <p className="text-[11px] text-muted-foreground">{filtered.length} transações</p>
+              </div>
+            </div>
           </Card>
         </div>
       )}
