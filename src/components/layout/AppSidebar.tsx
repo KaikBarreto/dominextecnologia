@@ -67,17 +67,17 @@ const menuItems: MenuItem[] = [
     icon: Wrench,
     children: [
       { title: 'Ordens de Serviço', icon: ClipboardList, path: '/ordens-servico', screenKey: 'screen:service_orders' },
-      { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
       { title: 'Ponto Eletrônico', icon: Clock, path: '/ponto', moduleKey: 'rh' },
-      { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Mapa e Rastreamento', icon: Map, path: '/mapa-ao-vivo' },
     ],
   },
+  { title: 'Orçamentos', icon: FileText, path: '/orcamentos', screenKey: 'screen:quotes' },
   {
     title: 'Gestão',
     icon: FolderOpen,
     children: [
       { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
+      { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },

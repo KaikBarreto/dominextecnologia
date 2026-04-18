@@ -237,7 +237,7 @@ const AppRoutes = () => (
       <Route path="/equipamentos" element={<PermissionRoute screenKey="screen:equipment"><EquipmentPage /></PermissionRoute>} />
       <Route path="/equipamentos/:id" element={<PermissionRoute screenKey="screen:equipment"><EquipmentDetail /></PermissionRoute>} />
       <Route path="/crm" element={<PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>} />
-      <Route path="/orcamentos" element={<PermissionRoute screenKey="screen:crm"><Quotes /></PermissionRoute>} />
+      <Route path="/orcamentos" element={<PermissionRoute screenKey="screen:quotes"><Quotes /></PermissionRoute>} />
       <Route path="/estoque" element={<PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>} />
       <Route path="/financeiro" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/movimentacoes" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
