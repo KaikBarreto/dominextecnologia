@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { buildCadastroUrl } from '@/utils/utmTracking';
 
 export default function CtaFinalSection() {
   const ref = useScrollReveal();
@@ -30,7 +31,7 @@ export default function CtaFinalSection() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow"
             asChild
           >
-            <Link to="/cadastro?origem=Site">
+            <Link to={buildCadastroUrl()}>
               Criar minha conta grátis <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -40,7 +41,7 @@ export default function CtaFinalSection() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6"
             asChild
           >
-            <Link to="/cadastro?origem=Site">Ou agendar uma demo</Link>
+            <Link to={buildCadastroUrl()}>Ou agendar uma demo</Link>
           </Button>
         </div>
       </div>

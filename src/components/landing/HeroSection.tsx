@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Play, MapPin, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { buildCadastroUrl } from '@/utils/utmTracking';
 
 const FULL_TEXT_PRE = 'Gestão de equipes de campo que realmente ';
 const FULL_TEXT_HIGHLIGHT = 'funciona.';
@@ -73,7 +74,7 @@ export default function HeroSection() {
                 className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
                 asChild
               >
-                <Link to="/cadastro?origem=Site">Começar grátis por 14 dias</Link>
+                <Link to={buildCadastroUrl()}>Começar grátis por 14 dias</Link>
               </Button>
               <Button
                 size="lg"

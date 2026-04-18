@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
+import { captureUtmFromUrl } from '@/utils/utmTracking';
 
 const ORIGIN_ICONS: Record<string, LucideIcon> = {
   Globe, Instagram, Search, MessageCircle, Youtube, Users, HelpCircle,
@@ -45,7 +46,10 @@ export default function Registration() {
   const [selectedOrigin, setSelectedOrigin] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const originFromUrl = searchParams.get('origem') || 'Site/Google';
+  // Captura UTM/origem/vendedor da URL ou sessionStorage (vindo da LP)
+  const utmData = captureUtmFromUrl(searchParams.toString());
+  const originFromUrl = utmData.origem || 'Site/Google';
+  const referralCode = utmData.vendedor || null;
 
   useEffect(() => {
     setSelectedOrigin(originFromUrl);
@@ -78,6 +82,13 @@ export default function Registration() {
           contact_name: data.contact_name,
           password: data.password,
           origin: selectedOrigin || null,
+          salesperson_referral_code: referralCode,
+          tipo: utmData.tipo || null,
+          plano: utmData.plano || null,
+          ciclo: utmData.ciclo || null,
+          custom_price: utmData.preco ?? null,
+          custom_price_months: utmData.meses_promo ?? null,
+          custom_price_permanent: !!utmData.bloqueado && (utmData.preco != null) && !utmData.meses_promo,
         },
       });
 
