@@ -74,6 +74,48 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_financial_categories: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          label: string
+          name: string
+          sort_order: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          label: string
+          name: string
+          sort_order?: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          label?: string
+          name?: string
+          sort_order?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_financial_transactions: {
         Row: {
           amount: number
@@ -221,6 +263,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      admin_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       companies: {
         Row: {
@@ -3095,6 +3158,7 @@ export type Database = {
           referral_code: string | null
           salary: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -3109,6 +3173,7 @@ export type Database = {
           referral_code?: string | null
           salary?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -3123,6 +3188,7 @@ export type Database = {
           referral_code?: string | null
           salary?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
