@@ -239,8 +239,36 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                </div>
+                    <div className="sm:col-span-2">
+                      <Label className="text-xs">Segmento</Label>
+                      <Select value={form.segment} onValueChange={v => setForm(f => ({ ...f, segment: v }))}>
+                        <SelectTrigger
+                          className={selectedSegmentEdit ? 'text-white font-medium border-transparent' : ''}
+                          style={selectedSegmentEdit ? { backgroundColor: selectedSegmentEdit.color } : undefined}
+                        >
+                          {selectedSegmentEdit ? (
+                            <div className="flex items-center gap-2">
+                              <selectedSegmentEdit.icon className="h-3.5 w-3.5 text-white" />
+                              <span className="truncate">{selectedSegmentEdit.label}</span>
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Selecione o segmento" />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPANY_SEGMENTS.map(s => (
+                            <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
+                              <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>
+                                  <s.icon className="h-2.5 w-2.5 text-white" />
+                                </div>
+                                <span>{s.label}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                 <Separator />
 
