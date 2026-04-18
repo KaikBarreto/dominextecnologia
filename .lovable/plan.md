@@ -1,103 +1,56 @@
 
 
-## Plano: Segmento de empresa + correção planos Master + dashboard com ordem do Eco + zoom map
+## Plano
 
-### 1. Banco — adicionar coluna `segment`
+### 1. Visão Geral do Financeiro (`FinanceOverview.tsx`)
+Reordenar os 3 cards do topo: **Receitas → Despesas → Saldo do Período** (renomear "Saldo" para "Saldo do Período").
 
-Migration: `ALTER TABLE companies ADD COLUMN segment text` + corrigir valor de empresas Master:
-```sql
-UPDATE companies SET subscription_value = 650
-WHERE subscription_plan = 'master' AND subscription_value = 199;
-```
-(2 empresas afetadas: ArcTech Refrigeração e Minha Empresa Tutorial.)
+### 2. Conta/Caixa obrigatória em transações
+- `TransactionFormDialog.tsx`: tornar `account_id` obrigatório no Zod (`z.string().min(1, 'Selecione uma conta ou caixa')`), remover "(opcional)" do label, adicionar asterisco. Se não houver contas, mostrar alerta com link para `/financeiro/caixas-bancos`.
+- `AdminFinancialMovementModal.tsx`: como não existe tabela `admin_financial_accounts`, deixo apenas tenant.
+- `ContaFormDialog.tsx`: adicionar campo `account_id` obrigatório (Select de contas).
 
-### 2. Lista de segmentos (constante compartilhada)
+### 3. Filtro de data no drawer do CRM Admin (`AdminCRM.tsx`)
+Substituir os 2 inputs de data por `Select` com presets: **Hoje, Esta Semana, Este Mês (padrão), Este Ano, Personalizado**. "Personalizado" exibe os 2 inputs De/Até. Default `'this_month'` via `date-fns`. Atualizar `filteredLeads`.
 
-Novo arquivo `src/utils/companySegments.ts` com:
-- Refrigeração e Climatização
-- Instalações Elétricas
-- Energia Solar
-- Telecomunicações / Provedores
-- CFTV e Segurança Eletrônica
-- Construção Civil
-- Engenharia
-- Elevadores
-- Automação Industrial
-- Limpeza e Conservação
-- Dedetização
-- Manutenção Predial
-- Outro
+### 4. Banco de dados — colunas de instituição
+Migration: `ALTER TABLE financial_accounts ADD COLUMN institution_code int, ADD COLUMN institution_name text, ADD COLUMN institution_ispb text;` (mantém `bank_name` para retrocompatibilidade).
 
-Cada segmento com cor (paleta variada: emerald, blue, amber, violet, rose, cyan, etc.) e ícone (Lucide) — usados no card kanban e gráfico.
+### 5. Logo/instituição bancária (espelhando o Eco)
+**Novos arquivos:**
+- `src/hooks/useBrazilBanks.ts` — copiado do Eco (BrasilAPI + Google favicon S2 + map de domínios populares + name-based fallback). Função `getBankLogo(code, name)`.
+- `src/components/financial/BankInstitutionCombobox.tsx` — combobox com Popover, busca, "Mais populares" (Nubank, Itaú, Bradesco, Santander, Caixa, BB, Inter, C6, Sicredi), seção "Todos os bancos", ícone via `BankLogo` com favicon. Exporta também `BankLogo`.
 
-### 3. Cadastro/Edição de empresa (`CompanyFormModal.tsx`)
+### 6. Refatorar `FinanceBanks.tsx` (criação/edição igual ao Eco)
+- Modal "Nova/Editar Conta" com:
+  - Nome da conta (obrigatório)
+  - `BankInstitutionCombobox` (instituição com logo)
+  - Saldo (R$) — texto de aviso ao editar
+  - **ColorPicker** com 21 cores preset + cor personalizada (Popover com input color HTML)
+  - **Pré-visualização** (card com cor de fundo + logo do banco + nome)
+- Cards da listagem: usar `BankLogo` no lugar do ícone Lucide genérico, manter cor identificadora.
 
-- Adicionar `segment: ''` no `formData` inicial e ao carregar empresa existente.
-- Incluir no payload de `update` e `invoke('create-company')`.
-- Na aba **Comercial**, dentro do grid `Origem / Vendedor`, adicionar um terceiro Select **Segmento** ao lado de Origem (transformando em grid com 3 colunas no desktop / 1 no mobile), com itens da constante.
+### 7. Refatorar `useFinancialAccounts.ts`
+- Adicionar `institution_code`, `institution_name`, `institution_ispb` na interface `FinancialAccount` e `AccountInput`.
 
-Edge function `create-company` (`supabase/functions/create-company/index.ts`): ler `segment` do body e gravar na inserção da `companies`.
+### 8. Select de conta nas transações (`TransactionFormDialog.tsx`)
+Renderizar opções com `BankLogo` + bolinha de cor (mesmo padrão do `BankAccountSelect.tsx` do Eco).
 
-### 4. Card do Kanban (`CompanyKanbanCard.tsx`)
-
-Logo abaixo do badge "Origem" exibir uma linha "Segmento:" com Badge colorido conforme a constante (mesma estética de Origem).
-
-### 5. Tabela de Empresas (`CompanyTable.tsx`)
-
-Adicionar coluna **Segmento** entre "Origem" e "Plano":
-- Inline `Select` (mesmo padrão do `origin`) que atualiza `segment` via `updateCompanyMutation`.
-- Renderiza Badge colorido com ícone do segmento.
-
-### 6. Dashboard Admin — ordem espelhada do Eco
-
-Reordenar `AdminDashboard.tsx` exatamente como o EcoSistema:
-1. `AdminDashboardStats`
-2. **Pies (Origem + Forma de Pagamento)** — dentro de `AdminDashboardCharts`
-3. *(Pular NPS — não existe no admin do Dominex)*
-4. **Funil de Retenção** — dentro de `AdminDashboardCharts`
-5. **Mapa do Brasil** (`AdminBrazilMapChart`)
-6. **Top 3 Clientes LTV** + **Clientes por Plano** (lado a lado)
-7. **Evolução da Receita** (Mensal/Semanal)
-8. **Taxa de Churn Mensal**
-9. **NOVO: Clientes por Segmento** (último — pizza/donut igual aos demais)
-
-Em `AdminDashboardCharts.tsx`, garantir que a ordem interna seja: Pies → Funil → Receita → Churn (separar Receita+Churn em renders condicionais ou reorganizar). Adicionar prop/seção para colocar TopLTV + ClientsByPlan **entre** Mapa e Receita (esses já estão no `AdminDashboard.tsx` — basta reordenar a chamada lá).
-
-### 7. Novo componente `AdminSegmentDistributionChart.tsx`
-
-Card pizza/donut com Recharts, agrupando `companies` por `segment` (filtrando ativas + testing). Cores da constante. Legenda lateral com contadores e percentuais. Renderiza placeholder vazio se não houver dados (igual aos outros).
-
-### 8. Mapa Brasil — drilldown com zoom in/out
-
-Refatorar `AdminBrazilMapChart.tsx` para espelhar a lógica do Eco:
-- Adicionar estados `zoomTarget` e `zoomOutFrom`.
-- Função `getStateZoomOrigin(stateCode)` que calcula `transformOrigin` em % usando `STATE_LABEL_POSITIONS`.
-- `handleStateClick`: setar `zoomTarget`, esperar 450ms (animação `scale: 2.2 + opacity: 0` com `transformOrigin` no estado clicado), depois trocar para `selectedState`.
-- `handleBackToMap`: setar `zoomOutFrom`, animar entrada do mapa com `initial={{ scale: 2.2, opacity: 0 }} → { scale: 1, opacity: 1 }` no `transformOrigin` do estado anterior.
-- Toggle Map/List no drilldown (botões `Map` e `List`).
-- Lista de cidades com barras gradientes verde-claro→verde-escuro (índice 0 = mais escuro).
-- Manter compatível com `companies` que possuem `state` e `city` estruturados (já temos via migração anterior).
-
-*Não vou portar `StateMapView.tsx` (mapa municipal por IBGE) porque é complexo (370 linhas + carregamento dinâmico de geojson IBGE) e o usuário pediu "mesma lógica de zoom in/out" — a view de cidades já mostra as cidades em barras, com toggle Map/List. Se quiser o mapa municipal real depois, abro como follow-up.*
-
-### 9. Versão e changelog
-
-Bump para `1.7.2` com entrada: "Campo Segmento em empresas, gráfico de Clientes por Segmento, drilldown do mapa com zoom animado, correção de valores Master".
+### 9. Versão
+Bump para **1.7.3** com nota: "Saldo do Período renomeado, conta/caixa obrigatórios em transações, filtro de presets no CRM admin, instituições bancárias com logo automático".
 
 ### Arquivos
-
 **Novos:**
-- `src/utils/companySegments.ts`
-- `src/components/admin/AdminSegmentDistributionChart.tsx`
-- `supabase/migrations/<ts>_companies_segment_and_master_fix.sql`
+- `src/hooks/useBrazilBanks.ts`
+- `src/components/financial/BankInstitutionCombobox.tsx`
+- Migration SQL (3 colunas em `financial_accounts`)
 
 **Editados:**
-- `src/components/admin/CompanyFormModal.tsx` (campo segmento na aba Comercial)
-- `src/components/admin/CompanyKanbanCard.tsx` (linha Segmento)
-- `src/components/admin/CompanyTable.tsx` (coluna Segmento inline-editável)
-- `src/components/admin/AdminBrazilMapChart.tsx` (zoom in/out + toggle Map/List)
-- `src/components/admin/AdminDashboardCharts.tsx` (reordenar internamente)
-- `src/pages/admin/AdminDashboard.tsx` (reordenar componentes + adicionar SegmentChart no fim)
-- `supabase/functions/create-company/index.ts` (aceitar `segment`)
-- `src/config/version.ts` + `src/pages/Changelog.tsx`
+- `src/components/financial/FinanceOverview.tsx`
+- `src/components/financial/TransactionFormDialog.tsx`
+- `src/components/financial/ContaFormDialog.tsx`
+- `src/components/financial/FinanceBanks.tsx`
+- `src/hooks/useFinancialAccounts.ts`
+- `src/pages/admin/AdminCRM.tsx`
+- `src/config/version.ts`
 
