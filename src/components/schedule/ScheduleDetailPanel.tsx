@@ -562,7 +562,7 @@ export function ScheduleDetailPanel({
   }, [orders, dateKey]);
 
   return (
-    <div className="bg-card rounded-xl border shadow-sm p-4 h-full">
+    <div className="bg-card rounded-xl border shadow-sm p-4 h-full min-w-0 overflow-hidden">
       {selectedOrder ? (
         <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onDeleteFinancialGroup={onDeleteFinancialGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
       ) : (
@@ -575,14 +575,14 @@ export function ScheduleDetailPanel({
               {format(selectedDate, 'EEEE', { locale: ptBR })}
             </p>
           </div>
-          <ScrollArea className="h-[calc(100%-4rem)]">
+          <ScrollArea className="h-[calc(100%-4rem)] w-full">
             {dayOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Clock className="mb-3 h-10 w-10 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground">Nenhum agendamento</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 pr-2 min-w-0">
                 {dayOrders.map((order) => (
                   <EventCard
                     key={order.id}
