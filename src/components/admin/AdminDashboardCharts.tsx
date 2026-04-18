@@ -24,11 +24,14 @@ interface Props {
   transactions: any[];
   startDate: Date;
   endDate: Date;
+  /** Quais seções renderizar. Default: todas. */
+  sections?: Array<'pies' | 'funnel' | 'revenue' | 'churn'>;
 }
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export function AdminDashboardCharts({ companies, transactions, startDate, endDate }: Props) {
+export function AdminDashboardCharts({ companies, transactions, startDate, endDate, sections }: Props) {
+  const visible = new Set(sections ?? ['pies', 'funnel', 'revenue', 'churn']);
   const [revenueView, setRevenueView] = useState<'monthly' | 'weekly'>('monthly');
 
   const { data: companyOrigins } = useQuery({
