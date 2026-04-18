@@ -76,7 +76,7 @@ const customPlan = {
     'Gestor de conta dedicado',
   ],
   cta: 'Falar com Consultor',
-  ctaLink: '/cadastro?plano=personalizado&origem=Site',
+  ctaLink: `https://wa.me/5521966885044?text=${encodeURIComponent('Olá! Vim pelo site do Dominex e tenho interesse no plano Enterprise (Personalizado). Gostaria de conversar sobre uma solução sob medida.')}`,
 };
 
 export default function PricingSection() {
