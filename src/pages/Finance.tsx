@@ -115,7 +115,7 @@ export default function Finance() {
     'visao-geral': { title: 'Visão Geral', description: 'Resumo financeiro da sua empresa' },
     'historico': { title: 'Movimentações', description: 'Histórico completo de receitas e despesas' },
     'contas': { title: 'Contas a Pagar / Receber', description: 'Gerencie vencimentos e cobranças' },
-    'bancos': { title: 'Caixas e Bancos', description: 'Gerencie suas contas bancárias e saldos' },
+    'bancos': { title: 'Contas e Cartões', description: 'Gerencie caixas, contas bancárias e cartões de crédito' },
     'configuracoes': { title: 'Configurações do Financeiro', description: 'Categorias, regras e personalização' },
     'dre': { title: 'DRE — Demonstrativo de Resultado', description: 'Análise de resultado do exercício' },
   };

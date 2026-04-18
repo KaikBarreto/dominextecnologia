@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { CreditCardBill } from '@/types/database';
 import type { FinancialAccount } from '@/hooks/useFinancialAccounts';
-import { format, addDays, setDate, addMonths, startOfMonth } from 'date-fns';
+import { format, addDays, setDate, addMonths, startOfMonth, getDaysInMonth } from 'date-fns';
 
 export type { CreditCardBill };
 
@@ -36,9 +36,11 @@ export interface PayBillInput {
 export function computeBillDate(account: Pick<FinancialAccount, 'closing_day'>, transactionDate: string): string {
   const closingDay = account.closing_day ?? 10;
   const txDate = new Date(transactionDate + 'T12:00:00');
+  // Clamp to actual days in the transaction's month (handles months shorter than closing_day)
+  const effectiveClosingDay = Math.min(closingDay, getDaysInMonth(txDate));
   const txDay = txDate.getDate();
 
-  if (txDay <= closingDay) {
+  if (txDay <= effectiveClosingDay) {
     return format(startOfMonth(txDate), 'yyyy-MM-dd');
   } else {
     return format(startOfMonth(addMonths(txDate, 1)), 'yyyy-MM-dd');
@@ -48,17 +50,33 @@ export function computeBillDate(account: Pick<FinancialAccount, 'closing_day'>, 
 /**
  * Given a card account and a reference_month (first day of month),
  * compute the closing_date and due_date.
+ *
+ * Prefers account.due_day (calendar day) over payment_due_days (day offset).
+ * When due_day < closing_day the due date falls in the month following closing.
  */
 export function computeBillDates(
-  account: Pick<FinancialAccount, 'closing_day' | 'payment_due_days'>,
+  account: Pick<FinancialAccount, 'closing_day' | 'payment_due_days' | 'due_day'>,
   referenceMonth: string
 ): { closing_date: string; due_date: string } {
   const closingDay = account.closing_day ?? 10;
-  const paymentDueDays = account.payment_due_days ?? 10;
-
   const refDate = new Date(referenceMonth + 'T12:00:00');
-  const closingDate = setDate(refDate, closingDay);
-  const dueDate = addDays(closingDate, paymentDueDays);
+  // Clamp to actual days in the reference month (handles closing_day 29-31 in short months)
+  const effectiveClosingDay = Math.min(closingDay, getDaysInMonth(refDate));
+  const closingDate = setDate(refDate, effectiveClosingDay);
+
+  let dueDate: Date;
+  if (account.due_day) {
+    if (account.due_day > effectiveClosingDay) {
+      const effectiveDueDay = Math.min(account.due_day, getDaysInMonth(refDate));
+      dueDate = setDate(refDate, effectiveDueDay);
+    } else {
+      const nextMonth = addMonths(refDate, 1);
+      const effectiveDueDay = Math.min(account.due_day, getDaysInMonth(nextMonth));
+      dueDate = setDate(nextMonth, effectiveDueDay);
+    }
+  } else {
+    dueDate = addDays(closingDate, account.payment_due_days ?? 10);
+  }
 
   return {
     closing_date: format(closingDate, 'yyyy-MM-dd'),

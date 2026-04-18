@@ -47,7 +47,8 @@ const ACCOUNT_COLORS = [
   '#10b981', '#14b8a6', '#06b6d4',
 ];
 
-const CLOSING_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+const CLOSING_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+const DUE_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 const BILL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   open: { label: 'Aberta', color: 'text-blue-600', icon: Clock },
@@ -122,9 +123,12 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
       </div>
 
       {account.closing_day && (
-        <div className="flex gap-4 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30">
+        <div className="flex gap-4 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30 flex-wrap">
           <span>Fecha dia <strong>{account.closing_day}</strong></span>
-          <span>Vencimento <strong>{account.payment_due_days ?? 10} dias</strong> após</span>
+          {account.due_day
+            ? <span>Vence dia <strong>{account.due_day}</strong>{account.due_day <= (account.closing_day ?? 10) ? ' (mês seguinte)' : ''}</span>
+            : <span>Vencimento <strong>{account.payment_due_days ?? 10} dias</strong> após fechamento</span>
+          }
           {account.credit_limit && <span>Limite <strong>{formatBRL(account.credit_limit)}</strong></span>}
         </div>
       )}
@@ -230,14 +234,30 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
         title="Pagar Fatura"
         className="sm:max-w-[440px]"
       >
-        {payingBill && (
+        {payingBill && (() => {
+          const billTotal = payingBill.total_amount ?? 0;
+          const alreadyPaid = Number(payingBill.amount_paid ?? 0);
+          const remaining = billTotal - alreadyPaid;
+          const afterPayment = remaining - payAmount;
+          const isFullPayment = afterPayment <= 0.01;
+          return (
           <div className="space-y-4">
-            <div className="border rounded-lg p-3 bg-muted/30 text-sm">
-              <p className="font-medium capitalize">{formatMonth(payingBill.reference_month)}</p>
-              <p className="text-muted-foreground">Total da fatura: {formatBRL(payingBill.total_amount ?? 0)}</p>
-              {Number(payingBill.amount_paid ?? 0) > 0 && (
-                <p className="text-muted-foreground">Já pago: {formatBRL(Number(payingBill.amount_paid ?? 0))}</p>
+            <div className="border rounded-lg p-3 bg-muted/30 text-sm space-y-1">
+              <p className="font-semibold capitalize mb-2">{formatMonth(payingBill.reference_month)}</p>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total da fatura</span>
+                <span className="font-medium">{formatBRL(billTotal)}</span>
+              </div>
+              {alreadyPaid > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Já pago</span>
+                  <span className="text-success">− {formatBRL(alreadyPaid)}</span>
+                </div>
               )}
+              <div className="flex justify-between border-t pt-1 mt-1">
+                <span className="font-medium">Restante a pagar</span>
+                <span className="font-bold">{formatBRL(remaining)}</span>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -273,14 +293,16 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
                 onChange={handlePayAmountChange}
                 inputMode="numeric"
               />
-              {(() => {
-                const remaining = (payingBill.total_amount ?? 0) - Number(payingBill.amount_paid ?? 0);
-                const diff = remaining - payAmount;
-                if (diff > 0.01) {
-                  return <p className="text-xs text-yellow-600">Pagamento parcial — Saldo devedor: {formatBRL(diff)}</p>;
-                }
-                return null;
-              })()}
+              {isFullPayment ? (
+                <p className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1.5 rounded flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  Fatura será completamente quitada
+                </p>
+              ) : afterPayment > 0.01 ? (
+                <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-1.5 rounded">
+                  Pagamento parcial — ficará <strong>{formatBRL(afterPayment)}</strong> em aberto
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-1.5">
@@ -304,7 +326,8 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
               </Button>
             </div>
           </div>
-        )}
+          );
+        })()}
       </ResponsiveModal>
     </div>
   );
@@ -327,7 +350,7 @@ export function FinanceBanks() {
   const [initialBalance, setInitialBalance] = useState(0);
   const [color, setColor] = useState('#3b82f6');
   const [closingDay, setClosingDay] = useState<number>(10);
-  const [paymentDueDays, setPaymentDueDays] = useState<number>(10);
+  const [dueDay, setDueDay] = useState<number>(20);
   const [creditLimit, setCreditLimit] = useState<number>(0);
 
   const cashBankAccounts = accounts.filter(a => a.type !== 'cartao');
@@ -336,10 +359,10 @@ export function FinanceBanks() {
   const totalCashBalance = cashBankAccounts.reduce((sum, a) => sum + (balances[a.id] ?? a.initial_balance), 0);
   const totalOpenBills = cardAccounts.reduce((sum, a) => sum + (cardBillTotals[a.id] ?? 0), 0);
 
-  const openNew = () => {
+  const openNew = (initialType: string = 'banco') => {
     setEditing(null);
-    setName(''); setType('banco'); setInstitution(null); setInitialBalance(0); setColor('#3b82f6');
-    setClosingDay(10); setPaymentDueDays(10); setCreditLimit(0);
+    setName(''); setType(initialType); setInstitution(null); setInitialBalance(0); setColor('#3b82f6');
+    setClosingDay(10); setDueDay(20); setCreditLimit(0);
     setFormOpen(true);
   };
 
@@ -351,7 +374,7 @@ export function FinanceBanks() {
     setInitialBalance(a.initial_balance);
     setColor(a.color);
     setClosingDay(a.closing_day ?? 10);
-    setPaymentDueDays(a.payment_due_days ?? 10);
+    setDueDay(a.due_day ?? (a.payment_due_days ? (a.closing_day ?? 10) + a.payment_due_days : 20));
     setCreditLimit(a.credit_limit ?? 0);
     setFormOpen(true);
   };
@@ -369,10 +392,12 @@ export function FinanceBanks() {
       color,
       ...(type === 'cartao' ? {
         closing_day: closingDay,
-        payment_due_days: paymentDueDays,
+        due_day: dueDay,
+        payment_due_days: dueDay > closingDay ? dueDay - closingDay : (30 - closingDay + dueDay),
         credit_limit: creditLimit > 0 ? creditLimit : null,
       } : {
         closing_day: null,
+        due_day: null,
         payment_due_days: null,
         credit_limit: null,
       }),
@@ -423,27 +448,21 @@ export function FinanceBanks() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold">Caixas e Bancos</h2>
-          <p className="text-sm text-muted-foreground">Gerencie suas contas bancárias, caixas e cartões</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => setTransferOpen(true)} disabled={cashBankAccounts.length < 2}>
-            <ArrowLeftRight className="h-4 w-4" /> Transferir
-          </Button>
-          <Button className="gap-2" onClick={openNew}>
-            <Plus className="h-4 w-4" /> Nova Conta
-          </Button>
-        </div>
-      </div>
-
       {/* ── Seção 1: Caixas e Contas Bancárias ── */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Landmark className="h-4 w-4 text-muted-foreground" />
-          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Caixas e Contas Bancárias</h3>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Landmark className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Caixas e Contas Bancárias</h3>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setTransferOpen(true)} disabled={cashBankAccounts.length < 2}>
+              <ArrowLeftRight className="h-4 w-4" /> Transferir
+            </Button>
+            <Button size="sm" className="gap-2" onClick={() => openNew('banco')}>
+              <Plus className="h-4 w-4" /> Nova Conta
+            </Button>
+          </div>
         </div>
 
         <Card className="bg-primary border-0">
@@ -514,9 +533,14 @@ export function FinanceBanks() {
 
       {/* ── Seção 2: Cartões de Crédito ── */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
-          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Cartões de Crédito</h3>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Cartões de Crédito</h3>
+          </div>
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => openNew('cartao')}>
+            <Plus className="h-4 w-4" /> Novo Cartão
+          </Button>
         </div>
 
         {cardAccounts.length > 0 && (
@@ -532,7 +556,7 @@ export function FinanceBanks() {
           <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
             <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm font-medium">Nenhum cartão cadastrado</p>
-            <p className="text-xs mt-1">Clique em "Nova Conta" e selecione Cartão de Crédito</p>
+            <p className="text-xs mt-1">Clique em "Novo Cartão" para cadastrar</p>
           </div>
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -614,7 +638,12 @@ export function FinanceBanks() {
       </section>
 
       {/* Account form modal */}
-      <ResponsiveModal open={formOpen} onOpenChange={setFormOpen} title={editing ? 'Editar Conta' : 'Nova Conta'} className="sm:max-w-[480px]">
+      <ResponsiveModal
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        title={editing ? (editing.type === 'cartao' ? 'Editar Cartão' : 'Editar Conta') : (type === 'cartao' ? 'Novo Cartão' : 'Nova Conta')}
+        className="sm:max-w-[480px]"
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Nome da Conta *</Label>
@@ -651,15 +680,18 @@ export function FinanceBanks() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Vencimento (dias após fechamento)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={40}
-                    value={paymentDueDays}
-                    onChange={e => setPaymentDueDays(Number(e.target.value))}
-                    placeholder="10"
-                  />
+                  <Label>Dia de vencimento *</Label>
+                  <Select value={String(dueDay)} onValueChange={v => setDueDay(Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DUE_DAYS.map(d => <SelectItem key={d} value={String(d)}>Dia {d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {dueDay <= closingDay && (
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      Vencimento no mês seguinte ao fechamento
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -738,7 +770,9 @@ export function FinanceBanks() {
                   <p className="font-semibold text-sm truncate">{name || 'Nome da conta'}</p>
                   {institution?.name && <p className="text-xs text-muted-foreground truncate">{institution.name}</p>}
                   {type === 'cartao' && closingDay && (
-                    <p className="text-xs text-muted-foreground">Fecha dia {closingDay}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Fecha dia {closingDay} · Vence dia {dueDay}{dueDay <= closingDay ? ' (mês seguinte)' : ''}
+                    </p>
                   )}
                 </div>
               </CardContent>
@@ -748,7 +782,7 @@ export function FinanceBanks() {
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button>
             <Button type="submit" disabled={!name || createAccount.isPending || updateAccount.isPending}>
-              {editing ? 'Salvar' : 'Criar Conta'}
+              {editing ? 'Salvar' : type === 'cartao' ? 'Criar Cartão' : 'Criar Conta'}
             </Button>
           </div>
         </form>

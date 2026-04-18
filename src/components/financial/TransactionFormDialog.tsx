@@ -30,9 +30,9 @@ import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 
-// Billing months: 3 months back to 8 months ahead
-const CARD_BILL_MONTHS = Array.from({ length: 12 }, (_, i) => {
-  const d = addMonths(startOfMonth(new Date()), i - 3);
+// Billing months: 1 month back to 4 months ahead (covers all realistic card use cases)
+const CARD_BILL_MONTHS = Array.from({ length: 6 }, (_, i) => {
+  const d = addMonths(startOfMonth(new Date()), i - 1);
   return { value: format(d, 'yyyy-MM-dd'), label: format(d, 'MMMM yyyy', { locale: ptBR }) };
 });
 
@@ -60,13 +60,37 @@ const fallbackCategories = {
 interface CreditCardBillSectionProps {
   form: ReturnType<typeof useForm<any>>;
   cardName: string;
+  account: import('@/hooks/useFinancialAccounts').FinancialAccount | undefined;
+  installmentCount: number;
+  totalAmount: number;
+  transactionDate: string;
 }
 
-function CreditCardBillSection({ form, cardName }: CreditCardBillSectionProps) {
+function CreditCardBillSection({ form, cardName, account, installmentCount, totalAmount, transactionDate }: CreditCardBillSectionProps) {
   const billDate = form.watch('credit_card_bill_date');
   const billLabel = billDate
     ? format(parseISO(billDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR })
     : null;
+
+  const perInstallment = installmentCount > 1 && totalAmount > 0
+    ? Math.round((totalAmount / installmentCount) * 100) / 100
+    : 0;
+
+  const installmentBreakdown = installmentCount > 1 && account && transactionDate
+    ? Array.from({ length: installmentCount }, (_, i) => {
+        const d = new Date(transactionDate + 'T12:00:00');
+        d.setMonth(d.getMonth() + i);
+        const dueDateStr = d.toISOString().split('T')[0];
+        const bDate = computeBillDate(account, dueDateStr);
+        const bLabel = format(parseISO(bDate + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
+        const amt = i === installmentCount - 1
+          ? Math.round((totalAmount - perInstallment * (installmentCount - 1)) * 100) / 100
+          : perInstallment;
+        return { label: bLabel, amount: amt, num: i + 1 };
+      })
+    : null;
+
+  const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   return (
     <div className="rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800 p-3 space-y-2">
@@ -74,29 +98,50 @@ function CreditCardBillSection({ form, cardName }: CreditCardBillSectionProps) {
         <CreditCard className="h-4 w-4 shrink-0" />
         <p className="text-sm font-medium">Despesa no Cartão de Crédito</p>
       </div>
-      {billLabel && (
-        <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
-          <Info className="h-3 w-3" />
-          Esta despesa será acumulada na <strong>fatura de {billLabel}</strong> do cartão {cardName}
-        </p>
+
+      {installmentBreakdown ? (
+        <div className="space-y-1">
+          <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+            <Info className="h-3 w-3 shrink-0" />
+            {installmentCount} parcelas distribuídas nas faturas do cartão {cardName}:
+          </p>
+          <div className="space-y-0.5 pl-4">
+            {installmentBreakdown.map(({ num, label, amount }) => (
+              <div key={num} className="flex justify-between text-xs text-violet-700 dark:text-violet-300">
+                <span className="capitalize">{num}/{installmentCount} → fatura de {label}</span>
+                <span className="font-medium">{fmt(amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        billLabel && (
+          <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            Esta despesa será acumulada na <strong>fatura de {billLabel}</strong> do cartão {cardName}
+          </p>
+        )
       )}
-      <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
-        <FormItem>
-          <FormLabel className="text-xs text-violet-700 dark:text-violet-300">Mês da fatura</FormLabel>
-          <Select onValueChange={field.onChange} value={field.value || ''}>
-            <FormControl>
-              <SelectTrigger className="h-8 text-sm border-violet-300 dark:border-violet-700">
-                <SelectValue placeholder="Selecione o mês" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {CARD_BILL_MONTHS.map(m => (
-                <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormItem>
-      )} />
+
+      {!installmentBreakdown && (
+        <FormField control={form.control} name="credit_card_bill_date" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs text-violet-700 dark:text-violet-300">Mês da fatura</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value || ''}>
+              <FormControl>
+                <SelectTrigger className="h-8 text-sm border-violet-300 dark:border-violet-700">
+                  <SelectValue placeholder="Selecione o mês" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {CARD_BILL_MONTHS.map(m => (
+                  <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormItem>
+        )} />
+      )}
     </div>
   );
 }
@@ -362,6 +407,10 @@ export function TransactionFormDialog({
             <CreditCardBillSection
               form={form}
               cardName={selectedAccount?.name ?? ''}
+              account={selectedAccount}
+              installmentCount={form.watch('installment_count') ?? 1}
+              totalAmount={form.watch('amount') ?? 0}
+              transactionDate={form.watch('transaction_date') ?? ''}
             />
           )}
 
@@ -403,8 +452,8 @@ export function TransactionFormDialog({
             )}
           </div>
 
-          {/* Installment info */}
-          {!isEditing && (form.watch('installment_count') || 1) > 1 && (
+          {/* Installment info — shown for non-card transactions only (card gets breakdown above) */}
+          {!isEditing && (form.watch('installment_count') || 1) > 1 && !isCardAccount && (
             <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
               Serão geradas {form.watch('installment_count')} parcelas de{' '}
               <strong>

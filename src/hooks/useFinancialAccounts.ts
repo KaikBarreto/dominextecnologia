@@ -21,6 +21,7 @@ export interface FinancialAccount {
   sort_order: number;
   closing_day?: number | null;
   payment_due_days?: number | null;
+  due_day?: number | null;
   credit_limit?: number | null;
   created_at: string;
   updated_at: string;
@@ -40,6 +41,7 @@ export interface AccountInput {
   sort_order?: number;
   closing_day?: number | null;
   payment_due_days?: number | null;
+  due_day?: number | null;
   credit_limit?: number | null;
 }
 

@@ -19,6 +19,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -51,14 +57,25 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
+  const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
+  const [payDespAccountId, setPayDespAccountId] = useState('');
+  const [payDespDate, setPayDespDate] = useState('');
+  const [payDespMethod, setPayDespMethod] = useState('pix');
+  const [payDespNotes, setPayDespNotes] = useState('');
   const isMobile = useIsMobile();
   const { deleteTransaction, updateTransaction } = useFinancial();
+  const { accounts: allAccounts } = useFinancialAccounts();
+  const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
 
   const handleMarkAsPaidClick = (t: FinancialTransaction & { customer?: any }) => {
     if (t.transaction_type === 'entrada') {
       setReceivingTxn(t);
     } else {
-      onMarkAsPaid({ id: t.id });
+      setPayingDespesaTxn(t);
+      setPayDespDate(new Date().toISOString().split('T')[0]);
+      setPayDespAccountId(cashBankAccounts[0]?.id ?? '');
+      setPayDespMethod('pix');
+      setPayDespNotes('');
     }
   };
 
@@ -396,6 +413,83 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           setReceivingTxn(null);
         }}
       />
+
+      {/* Modal: confirmar pagamento de despesa */}
+      <ResponsiveModal
+        open={!!payingDespesaTxn}
+        onOpenChange={(v) => { if (!v) setPayingDespesaTxn(null); }}
+        title="Confirmar pagamento"
+        description={payingDespesaTxn ? `${payingDespesaTxn.description} — ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(payingDespesaTxn.amount))}` : undefined}
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Pago com *</Label>
+            <Select value={payDespAccountId} onValueChange={setPayDespAccountId}>
+              <SelectTrigger><SelectValue placeholder="Selecione caixa ou conta" /></SelectTrigger>
+              <SelectContent>
+                {cashBankAccounts.map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {cashBankAccounts.length === 0 && (
+              <p className="text-xs text-destructive">Cadastre um caixa ou conta primeiro.</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Forma de pagamento</Label>
+              <Select value={payDespMethod} onValueChange={setPayDespMethod}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Data do pagamento *</Label>
+              <Input type="date" value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Observações</Label>
+            <Textarea
+              value={payDespNotes}
+              onChange={e => setPayDespNotes(e.target.value)}
+              placeholder="Opcional"
+              rows={2}
+              className="resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)}>Cancelar</Button>
+            <Button
+              disabled={!payDespAccountId || !payDespDate}
+              onClick={async () => {
+                if (!payingDespesaTxn || !payDespAccountId) return;
+                await onMarkAsPaid({
+                  id: payingDespesaTxn.id,
+                  account_id: payDespAccountId,
+                  payment_method: payDespMethod,
+                  paid_date: payDespDate,
+                  notes: payDespNotes.trim() || undefined,
+                });
+                setPayingDespesaTxn(null);
+              }}
+            >
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </ResponsiveModal>
     </div>
   );
 }
