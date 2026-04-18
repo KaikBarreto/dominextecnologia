@@ -11,10 +11,11 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>() {
       ([entry]) => {
         if (entry.isIntersecting) {
           el.classList.add('scroll-revealed');
-          observer.unobserve(el);
+        } else {
+          el.classList.remove('scroll-revealed');
         }
       },
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
     );
 
     observer.observe(el);
