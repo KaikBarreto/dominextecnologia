@@ -106,7 +106,7 @@ export default function HeroSection() {
                   />
                 ))}
               </div>
-              <span className="text-sm text-white/50">Mais de 3.000 gestores já usam</span>
+              <span className="text-sm text-white/50">Mais de 200 gestores já usam</span>
             </div>
           </div>
 
