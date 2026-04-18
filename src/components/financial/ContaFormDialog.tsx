@@ -269,6 +269,35 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             />
           </div>
 
+          {/* Account selector — required */}
+          {accounts.length === 0 ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">Nenhuma conta cadastrada</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                É necessário cadastrar uma conta ou caixa.{' '}
+                <a href="/financeiro/caixas-bancos" className="underline font-medium">Cadastrar agora</a>
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Conta Bancária / Caixa <span className="text-destructive">*</span></Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger>
+                <SelectContent>
+                  {accounts.filter(a => a.is_active).map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <span className="flex items-center gap-2">
+                        <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                        {a.type === 'caixa' ? `${a.name} (em dinheiro)` : a.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {!isEditing && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -299,7 +328,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount}>
+            <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount || !accountId}>
               {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? 'Salvando...' : 'Criando...'}</> : (isEditing ? 'Salvar' : 'Criar Conta')}
             </Button>
           </div>
