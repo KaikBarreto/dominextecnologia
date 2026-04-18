@@ -42,7 +42,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -123,7 +123,7 @@ export function AppSidebar() {
   const { user, profile, roles, hasScreenAccess, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, open, setOpen, toggleSidebar, isMobile } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const navigate = useNavigate();
@@ -140,6 +140,39 @@ export function AppSidebar() {
     }
     return 'light';
   });
+
+  // Hover-expand: when collapsed by user preference, hovering temporarily expands the sidebar
+  // without changing the persisted state.
+  const isHoverOpenRef = useRef(false);
+  const persistedOpenRef = useRef(open);
+  const hoverLeaveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Track real persisted state only when not in hover mode
+    if (!isHoverOpenRef.current) persistedOpenRef.current = open;
+  }, [open]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (isMobile) return;
+    if (hoverLeaveTimerRef.current) {
+      window.clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
+    if (!persistedOpenRef.current && !open) {
+      isHoverOpenRef.current = true;
+      setOpen(true);
+    }
+  }, [isMobile, open, setOpen]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (isMobile) return;
+    if (!isHoverOpenRef.current) return;
+    // small delay prevents flicker when crossing borders / popovers
+    hoverLeaveTimerRef.current = window.setTimeout(() => {
+      isHoverOpenRef.current = false;
+      setOpen(false);
+    }, 120);
+  }, [isMobile, setOpen]);
 
   const applyTheme = (next: 'light' | 'dark') => {
     setTheme(next);
