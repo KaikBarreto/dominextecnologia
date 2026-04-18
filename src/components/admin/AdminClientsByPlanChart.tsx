@@ -29,8 +29,6 @@ export function AdminClientsByPlanChart({ companies }: Props) {
   const totalC = clientData.reduce((s, d) => s + d.value, 0);
   const totalR = revData.reduce((s, d) => s + d.value, 0);
 
-  if (clientData.length === 0) return null;
-
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="border-0 shadow-lg overflow-hidden">
