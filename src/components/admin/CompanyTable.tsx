@@ -16,6 +16,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -188,6 +189,11 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                 </Button>
               </TableHead>
               <TableHead>
+                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('segment')}>
+                  Segmento <SortIcon column="segment" />
+                </Button>
+              </TableHead>
+              <TableHead>
                 <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('subscription_plan')}>
                   Plano <SortIcon column="subscription_plan" />
                 </Button>
@@ -213,7 +219,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
           <TableBody>
             {paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma empresa encontrada</TableCell>
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma empresa encontrada</TableCell>
               </TableRow>
             ) : (
               paginated.map((company) => {
@@ -270,6 +276,43 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                           ))}
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    {/* Segment - inline select */}
+                    <TableCell onClick={(e) => e.stopPropagation()} className="py-6 overflow-visible">
+                      {(() => {
+                        const seg = getSegment(company.segment);
+                        const isUpd = updatingField?.id === company.id && updatingField?.field === 'segment';
+                        return (
+                          <Select
+                            value={company.segment || ''}
+                            onValueChange={(value) => updateCompanyMutation.mutate({ id: company.id, field: 'segment', value })}
+                            disabled={isUpd}
+                          >
+                            <SelectTrigger className="w-[170px] h-auto min-h-[2.5rem] border-0 bg-transparent hover:bg-accent py-3">
+                              <SelectValue placeholder="Selecione">
+                                {isUpd ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : seg ? (
+                                  <Badge className="text-white border-0 gap-1" style={{ backgroundColor: seg.color }}>
+                                    <seg.icon className="h-3 w-3" />
+                                    <span className="truncate max-w-[110px]">{seg.label}</span>
+                                  </Badge>
+                                ) : '—'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="py-2 max-h-[320px]">
+                              {COMPANY_SEGMENTS.map((s) => (
+                                <SelectItem key={s.value} value={s.value} className="py-2">
+                                  <Badge className="text-white border-0 gap-1" style={{ backgroundColor: s.color }}>
+                                    <s.icon className="h-3 w-3" />
+                                    {s.label}
+                                  </Badge>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       {company.subscription_plan ? (

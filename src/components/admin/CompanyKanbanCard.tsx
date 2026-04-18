@@ -7,6 +7,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { getSegment } from '@/utils/companySegments';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -42,6 +43,7 @@ export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDraggi
   };
 
   const originData = origins?.find(o => o.name === company.origin) || null;
+  const segmentData = getSegment(company.segment);
   const expirationInfo = getExpirationInfo(company.subscription_expires_at);
   const formatCurrency = (v: number | null) => !v ? 'R$ 0,00' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getInitials = (name: string) => name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
@@ -75,6 +77,15 @@ export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDraggi
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Origem:</span>
             <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[55%]" style={{ backgroundColor: originData.color || '#6B7280' }}>
               <span className="truncate">{originData.name}</span>
+            </Badge>
+          </div>
+        )}
+        {segmentData && (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Segmento:</span>
+            <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[60%] gap-1" style={{ backgroundColor: segmentData.color }}>
+              <segmentData.icon className="h-3 w-3 shrink-0" />
+              <span className="truncate">{segmentData.label}</span>
             </Badge>
           </div>
         )}
