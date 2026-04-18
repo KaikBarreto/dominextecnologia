@@ -21,7 +21,7 @@ export default function MyData() {
       const [profileRes, rolesRes, consentsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', user.id).single(),
         supabase.from('user_roles').select('*').eq('user_id', user.id),
-        supabase.from('consent_records').select('*').eq('user_id', user.id),
+        supabase.from('consent_records' as any).select('*').eq('user_id', user.id),
       ]);
 
       const exportData = {
