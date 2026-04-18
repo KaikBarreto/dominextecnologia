@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.7.2";
+export const APP_VERSION = "1.7.3";
 
-export const VERSION_NOTES = "Campo Segmento em empresas (cadastro/kanban/tabela), gráfico Clientes por Segmento no dashboard, drilldown do mapa do Brasil com zoom animado, correção de valores Master.";
+export const VERSION_NOTES = "Saldo do Período renomeado, conta/caixa obrigatórios em transações, filtro de presets no CRM admin, instituições bancárias com logo automático e cores personalizadas.";

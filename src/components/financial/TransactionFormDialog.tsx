@@ -23,6 +23,7 @@ import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { SignedLink } from '@/components/ui/SignedLink';
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 
@@ -36,7 +37,7 @@ const transactionSchema = z.object({
   notes: z.string().optional(),
   payment_method: z.string().optional(),
   installment_count: z.coerce.number().min(1).default(1),
-  account_id: z.string().optional(),
+  account_id: z.string().min(1, 'Selecione uma conta ou caixa'),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -253,17 +254,26 @@ export function TransactionFormDialog({
           }} />
 
           {/* Account */}
-          {accounts.length > 0 && (
+          {accounts.length === 0 ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">Nenhuma conta cadastrada</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                É necessário cadastrar pelo menos uma conta ou caixa para registrar transações.{' '}
+                <a href="/financeiro/caixas-bancos" className="underline font-medium">Cadastrar agora</a>
+              </p>
+            </div>
+          ) : (
             <FormField control={form.control} name="account_id" render={({ field }) => (
               <FormItem>
-                <FormLabel>Conta Bancária / Caixa</FormLabel>
+                <FormLabel>Conta Bancária / Caixa <span className="text-destructive">*</span></FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || ''}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione uma conta (opcional)" /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione uma conta" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {accounts.filter(a => a.is_active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         <span className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                          <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={18} />
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
                           {a.type === 'caixa' ? `${a.name} (em dinheiro)` : a.name}
                         </span>
                       </SelectItem>
