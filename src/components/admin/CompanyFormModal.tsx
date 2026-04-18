@@ -157,6 +157,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         salesperson_id: company.salesperson_id || '',
         admin_email: '',
         admin_password: '',
+        use_custom_price: !!company.custom_price && Number(company.custom_price) > 0,
+        custom_price_permanent: company.custom_price_permanent ?? true,
+        custom_price_months: company.custom_price_months ? String(company.custom_price_months) : '3',
       });
       setAddr(parseAddress(company.address));
     } else {
@@ -167,6 +170,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
         notes: '', origin: '', salesperson_id: '',
         admin_email: '', admin_password: '',
+        use_custom_price: false, custom_price_permanent: true, custom_price_months: '3',
       });
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
     }
