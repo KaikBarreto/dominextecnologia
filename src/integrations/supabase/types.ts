@@ -310,6 +310,7 @@ export type Database = {
           origin: string | null
           phone: string | null
           salesperson_id: string | null
+          segment: string | null
           state: string | null
           subscription_expires_at: string | null
           subscription_plan: string | null
@@ -343,6 +344,7 @@ export type Database = {
           origin?: string | null
           phone?: string | null
           salesperson_id?: string | null
+          segment?: string | null
           state?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null
@@ -376,6 +378,7 @@ export type Database = {
           origin?: string | null
           phone?: string | null
           salesperson_id?: string | null
+          segment?: string | null
           state?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null

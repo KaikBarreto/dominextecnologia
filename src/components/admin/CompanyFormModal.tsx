@@ -16,8 +16,9 @@ import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import {
   Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check,
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
-  Tag, Briefcase, Link2,
+  Tag, Briefcase, Link2, Layers,
 } from 'lucide-react';
+import { COMPANY_SEGMENTS } from '@/utils/companySegments';
 import { Switch } from '@/components/ui/switch';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
@@ -115,7 +116,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
     subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '',
-    origin: '', salesperson_id: '',
+    origin: '', salesperson_id: '', segment: '',
     admin_email: '', admin_password: '',
     use_custom_price: false,
     custom_price_permanent: true,
@@ -157,6 +158,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         notes: company.notes || '',
         origin: company.origin || '',
         salesperson_id: company.salesperson_id || '',
+        segment: company.segment || '',
         admin_email: '',
         admin_password: '',
         use_custom_price: !!company.custom_price && Number(company.custom_price) > 0,
@@ -170,7 +172,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
         subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
-        notes: '', origin: '', salesperson_id: '',
+        notes: '', origin: '', salesperson_id: '', segment: '',
         admin_email: '', admin_password: '',
         use_custom_price: false, custom_price_permanent: true, custom_price_months: '3',
       });
@@ -233,6 +235,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           notes: formData.notes || null,
           origin: formData.origin || null,
           salesperson_id: formData.salesperson_id || null,
+          segment: formData.segment || null,
           custom_price: customPriceVal,
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
           custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
@@ -264,6 +267,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             max_users: parseInt(formData.max_users) || 5,
             origin: formData.origin || null,
             salesperson_id: formData.salesperson_id || null,
+            segment: formData.segment || null,
             custom_price: customPriceVal,
             custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
             custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
@@ -622,7 +626,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Origem</Label>
                 <Select value={formData.origin || 'none'} onValueChange={v => updateField('origin', v === 'none' ? '' : v)}>
@@ -637,6 +641,27 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                         </span>
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Layers className="h-4 w-4" />Segmento</Label>
+                <Select value={formData.segment || 'none'} onValueChange={v => updateField('segment', v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {COMPANY_SEGMENTS.map((s) => {
+                      const Icon = s.icon;
+                      return (
+                        <SelectItem key={s.value} value={s.value}>
+                          <span className="flex items-center gap-2">
+                            <Icon className="h-3.5 w-3.5" style={{ color: s.color }} />
+                            {s.label}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
