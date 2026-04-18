@@ -178,6 +178,8 @@ export default function CustomerPortal() {
     if (!ticketDesc.trim() || !customer) return;
     setTicketSubmitting(true);
     try {
+      // Use customer's company_id (portal can be unauthenticated)
+      const company_id = (customer as any).company_id;
       const payload = normalizeOptionalForeignKeys({
         customer_id: customer.id,
         equipment_id: ticketEquipmentId || null,
@@ -185,8 +187,9 @@ export default function CustomerPortal() {
         os_type: 'corretiva',
         status: 'pendente',
         origin: 'portal',
+        company_id,
       } as any, ['customer_id', 'equipment_id']);
-      const { error } = await supabase.from('service_orders').insert(payload);
+      const { error } = await supabase.from('service_orders').insert(payload as any);
       if (error) throw error;
       toast({ title: 'Chamado aberto com sucesso!' });
       setShowTicketForm(false);

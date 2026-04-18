@@ -100,6 +100,8 @@ export function useQuoteConversion() {
         throw new Error('Usuário não autenticado');
       }
 
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { error } = await supabase.from('financial_transactions').insert({
         transaction_type: 'receita' as any,
         amount: quote.final_price || quote.total_value || 0,
@@ -107,7 +109,8 @@ export function useQuoteConversion() {
         customer_id: quote.customer_id,
         is_paid: false,
         created_by: user.id,
-      });
+        company_id,
+      } as any);
       
       if (error) throw error;
     },

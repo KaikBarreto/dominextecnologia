@@ -32,9 +32,11 @@ export function useOsStatuses() {
   const createStatus = useMutation({
     mutationFn: async (input: { key: string; label: string; color: string }) => {
       const maxPos = (query.data ?? []).reduce((max, s) => Math.max(max, s.position), -1);
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('os_statuses')
-        .insert({ ...input, position: maxPos + 1 })
+        .insert({ ...input, position: maxPos + 1, company_id } as any)
         .select()
         .single();
       if (error) throw error;

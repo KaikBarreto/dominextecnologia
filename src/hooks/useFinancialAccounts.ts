@@ -157,6 +157,8 @@ export function useFinancialAccounts() {
       const pairId = crypto.randomUUID();
       const desc = input.description || 'Transferência entre contas';
 
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const rows = [
         {
           transaction_type: 'saida' as const,
@@ -169,6 +171,7 @@ export function useFinancialAccounts() {
           account_id: input.from_account_id,
           transfer_pair_id: pairId,
           created_by: user?.id,
+          company_id,
         },
         {
           transaction_type: 'entrada' as const,
@@ -181,10 +184,11 @@ export function useFinancialAccounts() {
           account_id: input.to_account_id,
           transfer_pair_id: pairId,
           created_by: user?.id,
+          company_id,
         },
       ];
 
-      const { error } = await supabase.from('financial_transactions').insert(rows);
+      const { error } = await supabase.from('financial_transactions').insert(rows as any);
       if (error) throw error;
     },
     onSuccess: () => { invalidateAll(); toast({ title: 'Transferência realizada!' }); },

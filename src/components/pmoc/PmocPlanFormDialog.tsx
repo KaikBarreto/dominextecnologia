@@ -141,6 +141,8 @@ export function PmocPlanFormDialog({ open, onOpenChange, plan }: PmocPlanFormDia
       else { const result = await createPlan.mutateAsync(input); planId = (result as any)?.id; }
 
       if (!isEditing && planId && status === 'ativo') {
+        const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+        const company_id = await getCurrentUserCompanyId();
         for (const date of previewDates) {
           const equipNames = selectedEquipmentIds.map(id => equipment.find(e => e.id === id)?.name).filter(Boolean);
           const description = `PMOC automático: ${name}${equipNames.length > 0 ? ` - ${equipNames.join(', ')}` : ''}`;
@@ -155,8 +157,9 @@ export function PmocPlanFormDialog({ open, onOpenChange, plan }: PmocPlanFormDia
             description,
             require_tech_signature: true,
             status: 'pendente' as const,
+            company_id,
           } as any, ['customer_id', 'equipment_id', 'technician_id', 'service_type_id', 'form_template_id']);
-          const { data: os, error: osError } = await supabase.from('service_orders').insert(osPayload)
+          const { data: os, error: osError } = await supabase.from('service_orders').insert(osPayload as any)
             .select('id').single();
           if (osError) { console.error('Error creating OS:', osError); continue; }
           if (selectedEquipmentIds.length > 0) {

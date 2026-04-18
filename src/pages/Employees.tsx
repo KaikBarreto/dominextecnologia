@@ -221,6 +221,8 @@ export default function Employees() {
     accountId?: string;
   }) => {
     const today = new Date().toISOString().split('T')[0];
+    const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+    const company_id = await getCurrentUserCompanyId();
     await supabase.from('financial_transactions').insert({
       transaction_type: input.type,
       amount: input.amount,
@@ -232,7 +234,8 @@ export default function Employees() {
       notes: input.notes,
       account_id: input.accountId || null,
       created_by: user?.id,
-    });
+      company_id,
+    } as any);
 
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });

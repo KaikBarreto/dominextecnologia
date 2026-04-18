@@ -97,6 +97,8 @@ export function useFinancial() {
 
   const createTransaction = useMutation({
     mutationFn: async (input: TransactionInput) => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { installment_count, ...rest } = input;
       const n = installment_count && installment_count > 1 ? installment_count : 0;
 
@@ -121,6 +123,7 @@ export function useFinancial() {
               is_paid: i === 0 ? rest.is_paid : false,
               paid_date: i === 0 && rest.is_paid ? dueDateStr : undefined,
               created_by: user?.id,
+              company_id,
               installment_group_id: groupId,
               installment_number: i + 1,
               installment_total: n,
@@ -130,19 +133,19 @@ export function useFinancial() {
           rows.push(sanitized);
         }
 
-        const { error } = await supabase.from('financial_transactions').insert(rows);
+        const { error } = await supabase.from('financial_transactions').insert(rows as any);
         if (error) throw error;
         return null;
       }
 
       const sanitized = normalizeOptionalForeignKeys(
-        { ...rest, created_by: user?.id },
+        { ...rest, created_by: user?.id, company_id },
         ['customer_id', 'service_order_id', 'contract_id', 'account_id']
       );
 
       const { data, error } = await supabase
         .from('financial_transactions')
-        .insert(sanitized)
+        .insert(sanitized as any)
         .select()
         .single();
       

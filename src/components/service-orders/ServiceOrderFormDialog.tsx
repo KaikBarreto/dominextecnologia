@@ -337,6 +337,8 @@ export function ServiceOrderFormDialog({
       }
 
       const groupId = crypto.randomUUID();
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const inserts = dates.map(date => normalizeOptionalForeignKeys({
         customer_id: customerId,
         technician_id: techId || null,
@@ -358,6 +360,7 @@ export function ServiceOrderFormDialog({
         recurrence_interval: recurrenceInterval,
         recurrence_end_date: recurrenceEndDate,
         recurrence_group_id: groupId,
+        company_id,
       } as any, ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']));
 
       const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
@@ -1448,7 +1451,9 @@ export function ServiceOrderFormDialog({
           equipment={null}
           onSubmit={async (data: any) => {
             const { supabase } = await import('@/integrations/supabase/client');
-            const { data: created, error } = await supabase.from('equipment').insert(data as any).select().single();
+            const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+            const company_id = await getCurrentUserCompanyId();
+            const { data: created, error } = await supabase.from('equipment').insert({ ...data, company_id } as any).select().single();
             if (!error && created) {
               setSelectedEquipmentIds(prev => [...prev, (created as any).id]);
             }

@@ -127,11 +127,14 @@ export function useServiceOrders() {
 
   const createServiceOrder = useMutation({
     mutationFn: async (input: ServiceOrderInput) => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { equipment_items, assignee_user_ids, assignee_team_ids, ...rest } = input;
       const sanitized = normalizeOptionalForeignKeys(
         {
           ...rest,
           created_by: user?.id,
+          company_id,
         },
         ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']
       );
