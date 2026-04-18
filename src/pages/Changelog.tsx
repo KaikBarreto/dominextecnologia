@@ -40,6 +40,53 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.6.0',
+    date: '18 de abril de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Dashboard avançado de vendedores',
+        description: 'Nova página de detalhes do vendedor com filtro por período, gráficos de desempenho (vendas vs. meta, origem dos clientes, evolução semanal) e estatísticas detalhadas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Controle de pagamento de vendedores',
+        description: 'Gestão financeira mensal com comparativo lado a lado, edição inline de salário, registro de vales e modal de confirmação que calcula salário + comissão - vales.',
+        category: 'recurso',
+      },
+      {
+        title: 'Links de venda com checkout direto',
+        description: 'Gerador de links de afiliado com parâmetros de plano, preço, meses promocionais e vendedor. Após cadastro, o usuário é levado direto para o pagamento; se não pagar, ao logar é redirecionado novamente para finalizar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Preços personalizados em empresas',
+        description: 'Modal de empresa permite definir valor personalizado, com opção de promoção por X meses ou permanente. Após o período, retorna automaticamente ao valor original do plano.',
+        category: 'recurso',
+      },
+      {
+        title: 'Limpeza automática ao excluir funcionário',
+        description: 'Ao excluir um funcionário, ele agora é removido automaticamente das equipes e das ordens de serviço em que estava vinculado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Limites de plano corrigidos',
+        description: 'Plano Master ajustado para 15 usuários. Campo "máx. usuários" passa a refletir o limite real do plano em vez de valores genéricos.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Senha aleatória sob demanda',
+        description: 'Removido preenchimento automático de senha aleatória nos formulários de criação de empresa/usuário. A senha só é gerada ao clicar em "Gerar".',
+        category: 'melhoria',
+      },
+      {
+        title: 'UI alinhada e responsiva no admin',
+        description: 'Padronização de altura e espaçamento dos inputs e selects nos modais de empresa, com layout totalmente responsivo no painel administrativo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.5.23',
     date: '9 de abril de 2026',
     type: 'minor',
