@@ -64,6 +64,10 @@ Deno.serve(async (req) => {
       billing_cycle,
       max_users,
       origin,
+      salesperson_id,
+      custom_price,
+      custom_price_permanent,
+      custom_price_months,
     } = body
 
     if (!company_name || !admin_email || !admin_password) {
@@ -91,6 +95,10 @@ Deno.serve(async (req) => {
         billing_cycle: billing_cycle || 'monthly',
         max_users: max_users || 5,
         origin: origin || null,
+        salesperson_id: salesperson_id || null,
+        custom_price: custom_price ?? null,
+        custom_price_permanent: custom_price_permanent ?? true,
+        custom_price_months: custom_price_months ?? null,
       })
       .select('id')
       .single()
