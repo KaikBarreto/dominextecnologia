@@ -68,17 +68,18 @@ export default function AdminCRM() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterOrigin, setFilterOrigin] = useState<string>('all');
   const [filterSegment, setFilterSegment] = useState<string>('all');
+  const [filterDatePreset, setFilterDatePreset] = useState<DatePreset>('this_month');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
 
   const activeFilterCount =
     (filterOrigin !== 'all' ? 1 : 0) +
     (filterSegment !== 'all' ? 1 : 0) +
-    (filterDateFrom ? 1 : 0) +
-    (filterDateTo ? 1 : 0);
+    (filterDatePreset !== 'this_month' ? 1 : 0);
 
   const filteredLeads = useMemo(() => {
     const q = search.toLowerCase();
+    const { from, to } = computeDateRange(filterDatePreset, filterDateFrom, filterDateTo);
     return leads.filter(l => {
       if (search && !(
         l.title.toLowerCase().includes(q) ||
@@ -87,11 +88,14 @@ export default function AdminCRM() {
       )) return false;
       if (filterOrigin !== 'all' && l.source !== filterOrigin) return false;
       if (filterSegment !== 'all' && l.segment !== filterSegment) return false;
-      if (filterDateFrom && new Date(l.created_at) < new Date(filterDateFrom + 'T00:00:00')) return false;
-      if (filterDateTo && new Date(l.created_at) > new Date(filterDateTo + 'T23:59:59')) return false;
+      if (from || to) {
+        const created = new Date(l.created_at);
+        if (from && created < from) return false;
+        if (to && created > to) return false;
+      }
       return true;
     });
-  }, [leads, search, filterOrigin, filterSegment, filterDateFrom, filterDateTo]);
+  }, [leads, search, filterOrigin, filterSegment, filterDatePreset, filterDateFrom, filterDateTo]);
 
   const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
 
