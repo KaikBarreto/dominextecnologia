@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Landmark, Wallet } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Filter, X, Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignedLink } from '@/components/ui/SignedLink';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { ReceivePaymentModal } from './ReceivePaymentModal';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -46,8 +50,14 @@ interface TransactionListPanelProps {
   onNew?: () => void;
   onEdit: (t: FinancialTransaction) => void;
   onDelete: (id: string) => Promise<any>;
-  onMarkAsPaid: (id: string) => Promise<any>;
+  onMarkAsPaid: (params: any) => Promise<any>;
   buttonColor?: string;
+}
+
+function getAccIcon(type: string) {
+  if (type === 'caixa') return Wallet;
+  if (type === 'cartao') return CreditCard;
+  return Landmark;
 }
 
 export function TransactionListPanel({
@@ -62,7 +72,10 @@ export function TransactionListPanel({
   const [statusFilter, setStatusFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
   const isMobile = useIsMobile();
+  const { accounts: allAccounts } = useFinancialAccounts();
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -70,14 +83,32 @@ export function TransactionListPanel({
     return Array.from(cats).sort();
   }, [transactions]);
 
+  // Combine accounts from transactions + master list (so empty accounts also show)
   const accountNames = useMemo(() => {
     const map = new Map<string, { name: string; type: string; color: string }>();
+    allAccounts.filter(a => a.is_active).forEach((a) => {
+      map.set(a.id, { name: a.name, type: a.type, color: a.color });
+    });
     transactions.forEach((t) => {
       const acc = (t as any).account;
-      if (acc) map.set(acc.id, { name: acc.name, type: acc.type, color: acc.color });
+      if (acc && !map.has(acc.id)) map.set(acc.id, { name: acc.name, type: acc.type, color: acc.color });
     });
     return map;
-  }, [transactions]);
+  }, [transactions, allAccounts]);
+
+  const activeFiltersCount = [
+    categoryFilter !== 'all',
+    statusFilter !== 'all',
+    accountFilter !== 'all',
+    type === 'all' && typeFilter !== 'all',
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setAccountFilter('all');
+    setTypeFilter('all');
+  };
 
   const effectiveType = type === 'all' ? typeFilter : type;
 
@@ -172,46 +203,87 @@ export function TransactionListPanel({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        {type === 'all' && (
-          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
-            <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="entrada">Receitas</SelectItem>
-              <SelectItem value="saida">Despesas</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas categorias</SelectItem>
-            {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="paid">Pago</SelectItem>
-            <SelectItem value="pending">Pendente</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={accountFilter} onValueChange={setAccountFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Conta" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas contas</SelectItem>
-            {Array.from(accountNames.entries()).map(([id, acc]) => (
-              <SelectItem key={id} value={id}>
-                <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: acc.color }} />
-                  {acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Button variant="outline" onClick={() => setFiltersOpen(true)} className="gap-2 relative">
+          <Filter className="h-4 w-4" />
+          Filtros
+          {activeFiltersCount > 0 && (
+            <Badge className="ml-1 h-5 min-w-5 px-1 bg-primary text-primary-foreground">{activeFiltersCount}</Badge>
+          )}
+        </Button>
       </div>
+
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Filtros</SheetTitle>
+            <SheetDescription>Refine a lista de movimentações</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 mt-6">
+            {type === 'all' && (
+              <div className="space-y-1.5">
+                <Label>Tipo</Label>
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="entrada">Receitas</SelectItem>
+                    <SelectItem value="saida">Despesas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Categoria</Label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas categorias</SelectItem>
+                  {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="paid">Pago</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Caixa / Conta bancária</Label>
+              <Select value={accountFilter} onValueChange={setAccountFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos caixas e contas</SelectItem>
+                  {Array.from(accountNames.entries()).map(([id, acc]) => {
+                    const Icon = getAccIcon(acc.type);
+                    return (
+                      <SelectItem key={id} value={id}>
+                        <span className="flex items-center gap-2">
+                          <span className="rounded-full p-1" style={{ backgroundColor: acc.color }}>
+                            <Icon className="h-3 w-3 text-white" />
+                          </span>
+                          {acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={clearFilters} className="flex-1 gap-1">
+                <X className="h-4 w-4" /> Limpar
+              </Button>
+              <Button onClick={() => setFiltersOpen(false)} className="flex-1">Aplicar</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {isLoading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>
@@ -268,7 +340,7 @@ export function TransactionListPanel({
                   </span>
                 </div>
                 <div className="flex items-center gap-1 justify-end pt-1 border-t">
-                  {!t.is_paid && <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => onMarkAsPaid(t.id)}><Check className="h-3.5 w-3.5" /></Button>}
+                  {!t.is_paid && <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })}><Check className="h-3.5 w-3.5" /></Button>}
                   <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
                   <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
@@ -347,7 +419,7 @@ export function TransactionListPanel({
                       <TableCell><Badge variant={t.is_paid ? 'default' : 'secondary'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {!t.is_paid && <Button variant="ghost" size="icon" className="text-success" onClick={() => onMarkAsPaid(t.id)} title="Marcar como pago"><Check className="h-4 w-4" /></Button>}
+                          {!t.is_paid && <Button variant="ghost" size="icon" className="text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })} title="Marcar como pago"><Check className="h-4 w-4" /></Button>}
                           <Button variant="edit-ghost" size="icon" onClick={() => onEdit(t)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(t.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
@@ -393,6 +465,27 @@ export function TransactionListPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReceivePaymentModal
+        open={!!receivingTxn}
+        onOpenChange={(v) => { if (!v) setReceivingTxn(null); }}
+        amount={Number(receivingTxn?.amount ?? 0)}
+        title="Como foi recebido?"
+        description={receivingTxn?.description}
+        onConfirm={async (payment) => {
+          if (!receivingTxn) return;
+          await onMarkAsPaid({
+            id: receivingTxn.id,
+            account_id: payment.account_id,
+            payment_method: payment.payment_method,
+            paid_date: payment.paid_date,
+            fee_amount: payment.fee_amount,
+            notes: payment.notes,
+            customer_id: (receivingTxn as any).customer_id,
+          });
+          setReceivingTxn(null);
+        }}
+      />
     </div>
   );
 }

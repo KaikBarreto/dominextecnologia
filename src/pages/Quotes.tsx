@@ -26,6 +26,7 @@ import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/use
 import { useQuoteConversion } from '@/hooks/useQuoteConversion';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
+import { ReceivePaymentModal } from '@/components/financial/ReceivePaymentModal';
 import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
 import { PricingTab } from '@/components/pricing/PricingTab';
 import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
@@ -52,7 +53,7 @@ function QuotesList() {
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
   const { quotes, isLoading, updateStatus, deleteQuote, duplicateQuote, createFinancialFromQuote, kpis } = useQuotes();
-  const { convertToServiceOrder, isConverting } = useQuoteConversion();
+  const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -61,6 +62,7 @@ function QuotesList() {
   const [viewQuote, setViewQuote] = useState<Quote | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [approvingQuote, setApprovingQuote] = useState<Quote | null>(null);
 
   const filtered = useMemo(() => {
     let list = quotes;
@@ -287,11 +289,11 @@ function QuotesList() {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
-                                    onClick={() => updateStatus.mutate({ id: q.id, status: 'aprovado' })}>
+                                    onClick={() => setApprovingQuote(q)}>
                                     <CheckCircle2 className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Aprovar</TooltipContent>
+                                <TooltipContent>Aprovar (registrar recebimento)</TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -305,28 +307,40 @@ function QuotesList() {
                             </>
                           )}
 
+                          {q.status === 'rascunho' && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
+                                  onClick={() => setApprovingQuote(q)}>
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Aprovar (registrar recebimento)</TooltipContent>
+                            </Tooltip>
+                          )}
+
                           {q.status === 'aprovado' && !q.converted_to_os_id && (
-                            <>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary"
-                                    onClick={() => convertToServiceOrder.mutate(q)}
-                                    disabled={isConverting}>
-                                    <ArrowRight className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Converter em OS</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
-                                    onClick={() => createFinancialFromQuote.mutate(q)}>
-                                    <DollarSign className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Gerar Conta a Receber</TooltipContent>
-                              </Tooltip>
-                            </>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary"
+                                  onClick={() => convertToServiceOrder.mutate(q)}
+                                  disabled={isConverting}>
+                                  <ArrowRight className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Converter em OS</TooltipContent>
+                            </Tooltip>
+                          )}
+
+                          {q.financial_transaction_id && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="h-7 gap-1 text-success border-success/40">
+                                  <DollarSign className="h-3 w-3" /> Recebido
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>Lançamento financeiro gerado</TooltipContent>
+                            </Tooltip>
                           )}
 
                           <Tooltip>
@@ -393,6 +407,20 @@ function QuotesList() {
         />
       )}
       <ProposalConfigDialog open={configOpen} onOpenChange={setConfigOpen} />
+
+      <ReceivePaymentModal
+        open={!!approvingQuote}
+        onOpenChange={(v) => { if (!v) setApprovingQuote(null); }}
+        amount={Number(approvingQuote?.final_price ?? approvingQuote?.total_value ?? 0)}
+        title={`Aprovar Orçamento #${approvingQuote?.quote_number}`}
+        description="Como o cliente pagou? Vamos lançar a receita e os custos no financeiro."
+        isSubmitting={isApproving}
+        onConfirm={async (payment) => {
+          if (!approvingQuote) return;
+          await approveQuoteFinancial.mutateAsync({ quote: approvingQuote, payment });
+          setApprovingQuote(null);
+        }}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={(v) => { if (!v) setDeleteId(null); }}>
         <AlertDialogContent>
