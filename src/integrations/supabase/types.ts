@@ -1780,6 +1780,7 @@ export type Database = {
           is_paid: boolean | null
           notes: string | null
           paid_date: string | null
+          parent_transaction_id: string | null
           payment_method: string | null
           receipt_url: string | null
           service_order_id: string | null
@@ -1806,6 +1807,7 @@ export type Database = {
           is_paid?: boolean | null
           notes?: string | null
           paid_date?: string | null
+          parent_transaction_id?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
@@ -1832,6 +1834,7 @@ export type Database = {
           is_paid?: boolean | null
           notes?: string | null
           paid_date?: string | null
+          parent_transaction_id?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
@@ -1867,6 +1870,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_parent_transaction_id_fkey"
+            columns: ["parent_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
           {
