@@ -4,6 +4,7 @@ import type { Customer, CustomerType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface CustomerInput {
   name: string;
@@ -32,14 +33,14 @@ export function useCustomers() {
   const customersQuery = useQuery({
     queryKey: ['customers', user?.id ?? 'anon'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('name');
-      
-      if (error) throw error;
-      return data as Customer[];
+      const data = await fetchAllPaginated<Customer>(
+        () => supabase
+          .from('customers')
+          .select('*')
+          .eq('is_deleted', false)
+          .order('name')
+      );
+      return data;
     },
     enabled: !loading,
     retry: 3,
