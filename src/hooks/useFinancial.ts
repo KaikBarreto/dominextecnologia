@@ -248,6 +248,7 @@ export function useFinancial() {
           notes: cfg.notes,
           created_by: user?.id,
           company_id,
+          parent_transaction_id: data.id,
         } as any, ['customer_id', 'account_id']);
         const { error: feeErr } = await supabase.from('financial_transactions').insert(feePayload as any);
         if (feeErr) throw feeErr;

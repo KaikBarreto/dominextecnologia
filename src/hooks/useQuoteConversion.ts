@@ -155,6 +155,7 @@ export function useQuoteConversion() {
           notes: `Custo de materiais do orçamento #${quote.quote_number}`,
           created_by: user.id,
           company_id,
+          parent_transaction_id: revenue.id,
         } as any, ['customer_id', 'account_id']));
       }
 
@@ -183,6 +184,7 @@ export function useQuoteConversion() {
           notes: `Diárias / valor avulso do orçamento #${quote.quote_number}`,
           created_by: user.id,
           company_id,
+          parent_transaction_id: revenue.id,
         } as any, ['customer_id', 'account_id']));
       }
 
@@ -201,6 +203,7 @@ export function useQuoteConversion() {
           is_paid: true,
           created_by: user.id,
           company_id,
+          parent_transaction_id: revenue.id,
         } as any, ['customer_id', 'account_id']));
       }
 
