@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.7.3";
+export const APP_VERSION = "1.7.4";
 
-export const VERSION_NOTES = "Saldo do Período renomeado, conta/caixa obrigatórios em transações, filtro de presets no CRM admin, instituições bancárias com logo automático e cores personalizadas.";
+export const VERSION_NOTES = "Permissão dedicada para Orçamentos, custos de serviços agregados em Orçamentos, menu reorganizado (Serviços em Gestão), Acesso Total dinâmico inclui novas permissões automaticamente, login aceita senhas legadas e email do usuário aparece corretamente ao editar.";

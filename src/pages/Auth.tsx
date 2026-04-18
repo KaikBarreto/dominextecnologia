@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
-  password: z.string().min(10, 'Senha deve ter no mínimo 10 caracteres'),
+  password: z.string().min(1, 'Senha é obrigatória'),
   rememberMe: z.boolean().default(false),
 });
 

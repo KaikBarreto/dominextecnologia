@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
-import { useUserPermissions, usePermissionPresets } from '@/hooks/usePermissions';
+import { useUserPermissions, usePermissionPresets, getAllPermissionKeys } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -213,14 +213,14 @@ export default function Users() {
   const openEditUser = async (userProfile: UserWithRole) => {
     const perm = getUserPermission(userProfile.user_id);
     const linkedEmployee = employees.find(e => e.user_id === userProfile.user_id);
-    
-    // Fetch current email from auth
-    let currentEmail = '';
+
+    // Fetch current email from auth (fallback para email do funcionário vinculado)
+    let currentEmail = linkedEmployee?.email || '';
     try {
       const { data: emailData } = await supabase.functions.invoke('manage-user', {
         body: { action: 'get_email', user_id: userProfile.user_id },
       });
-      currentEmail = emailData?.email || '';
+      if (emailData?.email) currentEmail = emailData.email;
     } catch {}
 
     setEditingUser({
@@ -315,7 +315,7 @@ export default function Users() {
                 const isActive = !perm || perm.is_active;
                 const permCount = perm?.permissions?.length || 0;
                 const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
-                const isAllPerms = permCount >= 27;
+                const isAllPerms = permCount >= getAllPermissionKeys().length;
 
                 return (
                   <Card key={userProfile.id} className={`hover:shadow-md transition-shadow ${!isActive ? 'opacity-60' : ''}`}>

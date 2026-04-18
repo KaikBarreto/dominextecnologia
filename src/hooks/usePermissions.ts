@@ -40,6 +40,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:equipment', label: 'Equipamentos', group: 'Serviços', category: 'servicos' },
   { key: 'screen:customers', label: 'Clientes', group: 'Comercial', category: 'comercial' },
   { key: 'screen:crm', label: 'CRM', group: 'Comercial', category: 'comercial' },
+  { key: 'screen:quotes', label: 'Orçamentos', group: 'Comercial', category: 'comercial' },
   { key: 'screen:inventory', label: 'Estoque', group: 'Operacional', category: 'operacional' },
   { key: 'screen:finance', label: 'Financeiro', group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:employees', label: 'Funcionários', group: 'Administração', category: 'administracao' },

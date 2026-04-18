@@ -2,46 +2,17 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { TaskTypesPanel } from '@/components/service-orders/TaskTypesPanel';
-import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
-import { GlobalCostsTab } from '@/components/service-orders/GlobalCostsTab';
 import { QuestionnairesPanel } from '@/components/service-orders/QuestionnairesPanel';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
-import { Settings, DollarSign, Boxes, FileText, CheckSquare } from 'lucide-react';
-import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { Settings, FileText, CheckSquare } from 'lucide-react';
 
-const allTabs = [
-  {
-    value: 'types',
-    label: 'Tipos de Serviços',
-    icon: Settings,
-  },
-  {
-    value: 'task-types',
-    label: 'Tipos de Tarefas',
-    icon: CheckSquare,
-  },
-  {
-    value: 'questionnaires',
-    label: 'Questionários',
-    icon: FileText,
-  },
-  {
-    value: 'costs',
-    label: 'Custos dos Serviços',
-    icon: DollarSign,
-  },
-  {
-    value: 'global',
-    label: 'Custos Globais',
-    icon: Boxes,
-    module: 'pricing_advanced' as const,
-  },
+const tabs = [
+  { value: 'types', label: 'Tipos de Serviços', icon: Settings },
+  { value: 'task-types', label: 'Tipos de Tarefas', icon: CheckSquare },
+  { value: 'questionnaires', label: 'Questionários', icon: FileText },
 ];
 
 export default function ServicesPage() {
-  const { hasModule } = useCompanyModules();
-  const tabs = allTabs.filter(t => !t.module || hasModule(t.module));
-
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
@@ -56,7 +27,7 @@ export default function ServicesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Serviços</h1>
-        <p className="text-muted-foreground">Configure os tipos de serviços, tarefas{hasModule('pricing_advanced') ? ', questionários e custos' : ' e questionários'}</p>
+        <p className="text-muted-foreground">Configure os tipos de serviços, tarefas e questionários</p>
       </div>
 
       <SettingsSidebarLayout
@@ -67,8 +38,6 @@ export default function ServicesPage() {
         {activeTab === 'types' && <ServiceTypesPanel />}
         {activeTab === 'task-types' && <TaskTypesPanel />}
         {activeTab === 'questionnaires' && <QuestionnairesPanel />}
-        {activeTab === 'costs' && <ServiceCostsTab />}
-        {activeTab === 'global' && hasModule('pricing_advanced') && <GlobalCostsTab />}
       </SettingsSidebarLayout>
     </div>
   );

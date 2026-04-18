@@ -83,16 +83,19 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   useEffect(() => {
     if (editingUser) {
       const allKeys = getAllPermissionKeys();
-      const isAll = editingUser.permissions.length >= allKeys.length;
+      // "Acesso Total" = tem TODAS as permissões existentes hoje (mesmo as criadas depois)
+      const isAll = allKeys.every(k => editingUser.permissions.includes(k));
       const presetMatch = editingUser.preset_id || null;
-      
+      // Se for acesso total, sempre usa o conjunto completo atual (inclui novas perms criadas depois)
+      const initialPermissions = isAll ? allKeys : (editingUser.permissions || []);
+
       setForm({
         full_name: editingUser.full_name,
         email: editingUser.email || '',
         password: '',
         phone: editingUser.phone || '',
         role: editingUser.role || '',
-        permissions: editingUser.permissions || [],
+        permissions: initialPermissions,
         preset_id: presetMatch,
         photo: null,
         removePhoto: false,
