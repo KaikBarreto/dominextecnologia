@@ -40,7 +40,7 @@ type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 interface FinanceContasProps {
   transactions: (FinancialTransaction & { customer?: any })[];
   isLoading: boolean;
-  onMarkAsPaid: (id: string) => Promise<any>;
+  onMarkAsPaid: (params: any) => Promise<any>;
 }
 
 export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: FinanceContasProps) {
@@ -49,8 +49,17 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
   const isMobile = useIsMobile();
   const { deleteTransaction, updateTransaction } = useFinancial();
+
+  const handleMarkAsPaidClick = (t: FinancialTransaction & { customer?: any }) => {
+    if (t.transaction_type === 'entrada') {
+      setReceivingTxn(t);
+    } else {
+      onMarkAsPaid({ id: t.id });
+    }
+  };
 
   const today = startOfDay(new Date());
   const next7Days = addDays(today, 7);

@@ -465,6 +465,27 @@ export function TransactionListPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReceivePaymentModal
+        open={!!receivingTxn}
+        onOpenChange={(v) => { if (!v) setReceivingTxn(null); }}
+        amount={Number(receivingTxn?.amount ?? 0)}
+        title="Como foi recebido?"
+        description={receivingTxn?.description}
+        onConfirm={async (payment) => {
+          if (!receivingTxn) return;
+          await onMarkAsPaid({
+            id: receivingTxn.id,
+            account_id: payment.account_id,
+            payment_method: payment.payment_method,
+            paid_date: payment.paid_date,
+            fee_amount: payment.fee_amount,
+            notes: payment.notes,
+            customer_id: (receivingTxn as any).customer_id,
+          });
+          setReceivingTxn(null);
+        }}
+      />
     </div>
   );
 }
