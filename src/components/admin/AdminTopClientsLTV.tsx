@@ -40,8 +40,6 @@ export function AdminTopClientsLTV({ companies }: Props) {
   const withTicket = enriched.filter((c) => c.ticket > 0);
   const averageTicket = withTicket.length > 0 ? withTicket.reduce((s, c) => s + c.ticket, 0) / withTicket.length : 0;
 
-  if (topClients.length === 0) return null;
-
   return (
     <Card className="border-0 shadow-lg overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-yellow-500 to-amber-500 pb-3 sm:pb-4 px-4 sm:px-6">
