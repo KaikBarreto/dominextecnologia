@@ -167,6 +167,8 @@ export function useQuotes() {
 
   const createQuote = useMutation({
     mutationFn: async (input: QuoteInput) => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { items, displacement_cost, final_price, ...quoteData } = input as any;
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData, [
         'customer_id',
@@ -176,7 +178,7 @@ export function useQuotes() {
 
       const { data: quote, error } = await supabase
         .from('quotes')
-        .insert({ ...sanitizedQuoteData, created_by: user?.id } as any)
+        .insert({ ...sanitizedQuoteData, created_by: user?.id, company_id } as any)
         .select()
         .single();
 
@@ -270,6 +272,8 @@ export function useQuotes() {
 
   const duplicateQuote = useMutation({
     mutationFn: async (source: Quote) => {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
       const { data: newQuote, error } = await supabase
         .from('quotes')
         .insert({
@@ -286,6 +290,7 @@ export function useQuotes() {
           terms: source.terms,
           assigned_to: source.assigned_to,
           created_by: user?.id,
+          company_id,
           status: 'rascunho',
           tax_rate: source.tax_rate,
           admin_indirect_rate: source.admin_indirect_rate,

@@ -41,7 +41,9 @@ export function useEmployees() {
 
   const createEmployee = useMutation({
     mutationFn: async (input: Partial<Omit<Employee, 'id' | 'created_at' | 'updated_at'>>) => {
-      const { data, error } = await supabase.from('employees').insert(input as any).select().single();
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+      const { data, error } = await supabase.from('employees').insert({ ...input, company_id } as any).select().single();
       if (error) throw error;
       return data;
     },
