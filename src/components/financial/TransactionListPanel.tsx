@@ -340,7 +340,7 @@ export function TransactionListPanel({
                   </span>
                 </div>
                 <div className="flex items-center gap-1 justify-end pt-1 border-t">
-                  {!t.is_paid && <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => onMarkAsPaid(t.id)}><Check className="h-3.5 w-3.5" /></Button>}
+                  {!t.is_paid && <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })}><Check className="h-3.5 w-3.5" /></Button>}
                   <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
                   <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
@@ -419,7 +419,7 @@ export function TransactionListPanel({
                       <TableCell><Badge variant={t.is_paid ? 'default' : 'secondary'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {!t.is_paid && <Button variant="ghost" size="icon" className="text-success" onClick={() => onMarkAsPaid(t.id)} title="Marcar como pago"><Check className="h-4 w-4" /></Button>}
+                          {!t.is_paid && <Button variant="ghost" size="icon" className="text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })} title="Marcar como pago"><Check className="h-4 w-4" /></Button>}
                           <Button variant="edit-ghost" size="icon" onClick={() => onEdit(t)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="destructive-ghost" size="icon" onClick={() => setDeleteId(t.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
