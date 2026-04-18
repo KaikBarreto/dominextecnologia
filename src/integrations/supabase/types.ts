@@ -229,6 +229,10 @@ export type Database = {
           cnpj: string | null
           contact_name: string | null
           created_at: string | null
+          custom_price: number | null
+          custom_price_months: number | null
+          custom_price_payments_made: number
+          custom_price_permanent: boolean
           email: string | null
           extra_users: number | null
           id: string
@@ -238,6 +242,7 @@ export type Database = {
           notes: string | null
           origin: string | null
           phone: string | null
+          salesperson_id: string | null
           subscription_expires_at: string | null
           subscription_plan: string | null
           subscription_status: string
@@ -251,6 +256,10 @@ export type Database = {
           cnpj?: string | null
           contact_name?: string | null
           created_at?: string | null
+          custom_price?: number | null
+          custom_price_months?: number | null
+          custom_price_payments_made?: number
+          custom_price_permanent?: boolean
           email?: string | null
           extra_users?: number | null
           id?: string
@@ -260,6 +269,7 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          salesperson_id?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
@@ -273,6 +283,10 @@ export type Database = {
           cnpj?: string | null
           contact_name?: string | null
           created_at?: string | null
+          custom_price?: number | null
+          custom_price_months?: number | null
+          custom_price_payments_made?: number
+          custom_price_permanent?: boolean
           email?: string | null
           extra_users?: number | null
           id?: string
@@ -282,6 +296,7 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          salesperson_id?: string | null
           subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
@@ -289,7 +304,15 @@ export type Database = {
           trial_days?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "companies_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_modules: {
         Row: {
@@ -3054,6 +3077,199 @@ export type Database = {
             columns: ["proposal_template_id"]
             isOneToOne: false
             referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salespeople: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          monthly_goal: number
+          name: string
+          no_commission: boolean
+          notes: string | null
+          phone: string | null
+          referral_code: string | null
+          salary: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_goal?: number
+          name: string
+          no_commission?: boolean
+          notes?: string | null
+          phone?: string | null
+          referral_code?: string | null
+          salary?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_goal?: number
+          name?: string
+          no_commission?: boolean
+          notes?: string | null
+          phone?: string | null
+          referral_code?: string | null
+          salary?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      salesperson_advances: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          reference_month: string | null
+          salesperson_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          reference_month?: string | null
+          salesperson_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          reference_month?: string | null
+          salesperson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesperson_advances_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salesperson_payments: {
+        Row: {
+          advances_deducted: number
+          commission_amount: number
+          created_by: string | null
+          id: string
+          notes: string | null
+          paid_at: string
+          reference_month: string
+          salary_amount: number
+          salesperson_id: string
+          total_amount: number
+        }
+        Insert: {
+          advances_deducted?: number
+          commission_amount?: number
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          reference_month: string
+          salary_amount?: number
+          salesperson_id: string
+          total_amount?: number
+        }
+        Update: {
+          advances_deducted?: number
+          commission_amount?: number
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          reference_month?: string
+          salary_amount?: number
+          salesperson_id?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesperson_payments_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salesperson_sales: {
+        Row: {
+          amount: number
+          billing_cycle: string
+          commission_amount: number
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_company: string | null
+          customer_name: string | null
+          customer_origin: string | null
+          id: string
+          notes: string | null
+          paid_amount: number
+          salesperson_id: string
+        }
+        Insert: {
+          amount?: number
+          billing_cycle?: string
+          commission_amount?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_company?: string | null
+          customer_name?: string | null
+          customer_origin?: string | null
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          salesperson_id: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string
+          commission_amount?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_company?: string | null
+          customer_name?: string | null
+          customer_origin?: string | null
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          salesperson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesperson_sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesperson_sales_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople"
             referencedColumns: ["id"]
           },
         ]
