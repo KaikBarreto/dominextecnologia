@@ -34,6 +34,7 @@ export default function AdminCRM() {
   const { origins } = useCompanyOrigins();
   const { data: profiles } = useProfiles();
 
+  const isMobile = useIsMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<AdminLead | null>(null);
   const [detailLead, setDetailLead] = useState<AdminLead | null>(null);
@@ -44,15 +45,34 @@ export default function AdminCRM() {
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropTargetStageId, setDropTargetStageId] = useState<string | null>(null);
 
+  // Filters
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterOrigin, setFilterOrigin] = useState<string>('all');
+  const [filterSegment, setFilterSegment] = useState<string>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+  const [filterDateTo, setFilterDateTo] = useState<string>('');
+
+  const activeFilterCount =
+    (filterOrigin !== 'all' ? 1 : 0) +
+    (filterSegment !== 'all' ? 1 : 0) +
+    (filterDateFrom ? 1 : 0) +
+    (filterDateTo ? 1 : 0);
+
   const filteredLeads = useMemo(() => {
-    if (!search) return leads;
     const q = search.toLowerCase();
-    return leads.filter(l =>
-      l.title.toLowerCase().includes(q) ||
-      l.company_name?.toLowerCase().includes(q) ||
-      l.contact_name?.toLowerCase().includes(q)
-    );
-  }, [leads, search]);
+    return leads.filter(l => {
+      if (search && !(
+        l.title.toLowerCase().includes(q) ||
+        l.company_name?.toLowerCase().includes(q) ||
+        l.contact_name?.toLowerCase().includes(q)
+      )) return false;
+      if (filterOrigin !== 'all' && l.source !== filterOrigin) return false;
+      if (filterSegment !== 'all' && l.segment !== filterSegment) return false;
+      if (filterDateFrom && new Date(l.created_at) < new Date(filterDateFrom + 'T00:00:00')) return false;
+      if (filterDateTo && new Date(l.created_at) > new Date(filterDateTo + 'T23:59:59')) return false;
+      return true;
+    });
+  }, [leads, search, filterOrigin, filterSegment, filterDateFrom, filterDateTo]);
 
   const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
 
