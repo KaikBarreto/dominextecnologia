@@ -105,17 +105,23 @@ export function usePublicRating(token: string | undefined) {
     queryKey: ['public-rating', token],
     enabled: !!token,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('service_ratings')
-        .select(`
-          *,
-          service_order:service_orders(id, order_number, scheduled_date, customer:customers(id, name))
-        `)
-        .eq('token', token!)
-        .single();
-
+      const { data: rpcRows, error } = await supabase
+        .rpc('get_rating_by_token', { _token: token! });
       if (error) throw error;
-      return data as unknown as ServiceRating;
+      const ratingRow = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
+      if (!ratingRow) throw new Error('Avaliação não encontrada');
+
+      // Carregar OS relacionada (RLS já permite leitura via portal/token? — caso contrário, retornamos só rating)
+      let service_order: any = null;
+      if ((ratingRow as any).service_order_id) {
+        const { data: osData } = await supabase
+          .from('service_orders')
+          .select('id, order_number, scheduled_date, customer:customers(id, name)')
+          .eq('id', (ratingRow as any).service_order_id)
+          .maybeSingle();
+        service_order = osData;
+      }
+      return { ...(ratingRow as any), service_order } as unknown as ServiceRating;
     },
   });
 
