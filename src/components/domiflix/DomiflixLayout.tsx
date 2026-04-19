@@ -154,7 +154,7 @@ export function DomiflixLayout() {
 
             <button
               onClick={() => navigate("/dashboard")}
-              className="hidden md:flex items-center gap-2 text-sm font-medium text-white/85 hover:text-white bg-white/5 hover:bg-[#00C597] hover:text-black border border-white/15 hover:border-[#00C597] transition-all rounded px-4 py-1.5"
+              className="hidden md:flex items-center gap-2 text-sm font-medium text-white/85 hover:text-white bg-white/5 hover:bg-[#e50914] border border-white/15 hover:border-[#e50914] transition-all duration-300 rounded px-4 py-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Voltar ao sistema
@@ -195,7 +195,7 @@ export function DomiflixLayout() {
               </nav>
               <div className="mt-auto p-4 border-t border-white/10">
                 <button onClick={() => navigate("/dashboard")}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-medium text-black bg-[#00C597] hover:bg-[#00b287] rounded px-4 py-2.5">
+                  className="w-full flex items-center justify-center gap-2 text-sm font-medium text-white bg-[#e50914] hover:bg-[#c11118] transition-colors rounded px-4 py-2.5">
                   <ArrowLeft className="w-4 h-4" /> Voltar ao sistema
                 </button>
               </div>
