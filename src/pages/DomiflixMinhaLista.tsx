@@ -27,7 +27,7 @@ export default function DomiflixMinhaLista() {
     <div className="min-h-screen bg-[#141414] text-white pt-[80px] md:pt-[96px] pb-16">
       <div className="px-4 md:px-12">
         <div className="flex items-center gap-3 mb-2">
-          <Bookmark className="w-7 h-7 text-[#00C597]" />
+          <Bookmark className="w-7 h-7 text-[#e50914]" />
           <h1 className="text-2xl md:text-3xl font-bold">Minha Lista</h1>
         </div>
         <p className="text-white/50 text-sm md:text-base mb-8">Títulos que você salvou para assistir depois</p>
@@ -66,7 +66,7 @@ export default function DomiflixMinhaLista() {
                   <div className="flex-1 min-w-0 py-3 pr-4 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span className="font-bold text-[10px] tracking-[0.18em] uppercase text-[#00C597]">{title.type === "series" ? "Módulo" : "Live"}</span>
+                        <span className="font-bold text-[10px] tracking-[0.18em] uppercase text-[#e50914]">{title.type === "series" ? "Módulo" : "Live"}</span>
                         {epCount > 0 && <span className="text-white/40 text-xs">• {epCount} {epCount === 1 ? "episódio" : "episódios"}</span>}
                         {hasProgress && <span className="text-white/50 text-xs">• Em andamento</span>}
                       </div>

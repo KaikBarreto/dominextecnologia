@@ -90,7 +90,7 @@ export function DomiflixCard({
 
         {progressPct > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#4d4d4d] z-10">
-            <div className="h-full bg-[#00C597] transition-all" style={{ width: `${Math.min(100, progressPct)}%` }} />
+            <div className="h-full bg-[#e50914] transition-all" style={{ width: `${Math.min(100, progressPct)}%` }} />
           </div>
         )}
 

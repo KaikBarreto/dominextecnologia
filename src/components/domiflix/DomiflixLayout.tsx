@@ -171,7 +171,7 @@ export function DomiflixLayout() {
                   <img src={avatarUrl} alt={firstName} className="h-10 w-10 rounded-md object-cover border-2 border-transparent group-hover:border-white transition-all" />
                 ) : (
                   <Avatar className="h-10 w-10 border border-white/20 rounded-md group-hover:border-white transition-all">
-                    <AvatarFallback className="bg-[#00C597] text-black text-sm font-semibold rounded-md">{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-[#e50914] text-black text-sm font-semibold rounded-md">{initials}</AvatarFallback>
                   </Avatar>
                 )}
               </button>

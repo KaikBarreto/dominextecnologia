@@ -16,7 +16,7 @@ export function domiflixToast({
   description,
   duration = 2800,
 }: DomiflixToastOptions) {
-  const accent = variant === "error" ? "#E50914" : variant === "removed" ? "#6d6d6e" : "#00C597";
+  const accent = variant === "error" ? "#E50914" : variant === "removed" ? "#6d6d6e" : "#e50914";
 
   const Icon =
     variant === "added" ? Check : variant === "removed" ? X : variant === "error" ? AlertTriangle : Bookmark;
@@ -33,7 +33,7 @@ export function domiflixToast({
           className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center ml-2"
           style={{
             backgroundColor: variant === "added" ? "rgba(0,197,151,0.18)" : "rgba(255,255,255,0.08)",
-            color: variant === "added" ? "#00C597" : variant === "error" ? "#E50914" : "#fff",
+            color: variant === "added" ? "#e50914" : variant === "error" ? "#E50914" : "#fff",
           }}
         >
           <Icon className="w-4 h-4" strokeWidth={2.5} />

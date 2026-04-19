@@ -98,7 +98,7 @@ export default function DomiflixTitle() {
         ) : titleData ? (
           <div className="absolute bottom-[12%] left-8 sm:left-16 max-w-2xl">
             <div className="flex items-center gap-2 mb-3">
-              <span className="font-bold text-[11px] tracking-[0.2em] uppercase text-[#00C597]">
+              <span className="font-bold text-[11px] tracking-[0.2em] uppercase text-[#e50914]">
                 {titleData.type === "movie" ? "Live" : "Série"}
               </span>
             </div>
@@ -112,7 +112,7 @@ export default function DomiflixTitle() {
             <div className="flex items-center gap-3 flex-wrap">
               {titleData.type === "movie" && titleData.live_url ? (
                 <button onClick={() => window.open(titleData.live_url!, "_blank")}
-                  className="flex items-center gap-2 px-7 py-2.5 rounded font-bold text-black bg-[#00C597] hover:bg-[#00b287] text-sm md:text-base">
+                  className="flex items-center gap-2 px-7 py-2.5 rounded font-bold text-white bg-[#e50914] hover:bg-[#b80710] text-sm md:text-base">
                   <ExternalLink className="w-5 h-5" /> Entrar na Live
                 </button>
               ) : episodesToShow.length > 0 ? (
@@ -123,7 +123,7 @@ export default function DomiflixTitle() {
 
               <button onClick={() => toggleWatchlist.mutate({ titleId, isInList: isInWatchlist })}
                 className={cn("flex items-center gap-2 px-6 py-2.5 rounded font-semibold text-sm md:text-base border",
-                  isInWatchlist ? "bg-[#00C597] hover:bg-[#00b287] text-black border-[#00C597]" : "bg-[#6d6d6eb3] hover:bg-[#6d6d6e] text-white border-white/20"
+                  isInWatchlist ? "bg-[#e50914] hover:bg-[#b80710] text-black border-[#e50914]" : "bg-[#6d6d6eb3] hover:bg-[#6d6d6e] text-white border-white/20"
                 )}>
                 {isInWatchlist ? <><Check className="w-5 h-5" strokeWidth={3} /> Na minha lista</> : <><Plus className="w-5 h-5" /> Minha lista</>}
               </button>
@@ -148,7 +148,7 @@ export default function DomiflixTitle() {
                         return (
                           <button key={s.id} onClick={() => setSelectedSeasonId(s.id)}
                             className={cn("shrink-0 text-left px-4 py-3 rounded-md border-l-2",
-                              isActive ? "bg-white/10 border-[#00C597] text-white" : "border-transparent text-white/60 hover:text-white hover:bg-white/5"
+                              isActive ? "bg-white/10 border-[#e50914] text-white" : "border-transparent text-white/60 hover:text-white hover:bg-white/5"
                             )}>
                             <div className="font-semibold text-sm">Temporada {s.season_number}</div>
                           </button>
@@ -204,7 +204,7 @@ function EpisodeList({ episodes, isWatched, onPlay, getProgress }: {
             )}
             {getProgress(ep.id) > 0 && (
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#4d4d4d] rounded-b">
-                <div className="h-full bg-[#00C597] rounded-b" style={{ width: `${getProgress(ep.id)}%` }} />
+                <div className="h-full bg-[#e50914] rounded-b" style={{ width: `${getProgress(ep.id)}%` }} />
               </div>
             )}
           </div>
@@ -212,7 +212,7 @@ function EpisodeList({ episodes, isWatched, onPlay, getProgress }: {
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-white font-medium leading-tight">{ep.title}</h3>
               {ep.duration_minutes ? (
-                <span className="text-[#00C597] text-[11px] font-semibold flex items-center gap-1">
+                <span className="text-[#e50914] text-[11px] font-semibold flex items-center gap-1">
                   <Clock className="w-3 h-3" />{ep.duration_minutes}min
                 </span>
               ) : null}
@@ -220,8 +220,8 @@ function EpisodeList({ episodes, isWatched, onPlay, getProgress }: {
             {ep.description && <p className="text-[#a0a0a0] text-sm mt-1">{ep.description}</p>}
           </div>
           {(isWatched(ep.id) || getProgress(ep.id) >= 90) && (
-            <div className="shrink-0 mt-1 flex items-center justify-center w-6 h-6 rounded-full bg-[#00C597]/15 ring-1 ring-[#00C597]/40">
-              <Check className="w-3.5 h-3.5 text-[#00C597]" strokeWidth={3} />
+            <div className="shrink-0 mt-1 flex items-center justify-center w-6 h-6 rounded-full bg-[#e50914]/15 ring-1 ring-[#e50914]/40">
+              <Check className="w-3.5 h-3.5 text-[#e50914]" strokeWidth={3} />
             </div>
           )}
         </div>
