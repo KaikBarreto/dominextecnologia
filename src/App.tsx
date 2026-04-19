@@ -298,6 +298,7 @@ const AppRoutes = () => (
       <Route path="/domiflix/perfil" element={<DomiflixAvatarPicker />} />
       <Route path="/domiflix/:titleSlug" element={<DomiflixTitle />} />
       <Route path="/domiflix/assistir/:titleSlug/:episodeNumber" element={<DomiflixWatch />} />
+      <Route path="/domiflix/assistir/:titleSlug/:episodeNumber/:startSeconds" element={<DomiflixWatch />} />
     </Route>
 
     {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}

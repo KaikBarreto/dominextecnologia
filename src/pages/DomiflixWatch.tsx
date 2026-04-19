@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Lock, Check } from "lucide-react";
+import { ArrowLeft, ChevronDown, Check, Gauge, Lock, List, Subtitles, SkipForward } from "lucide-react";
 
 import {
   useDomiflixTitleBySlug,
@@ -39,6 +39,7 @@ import domiflixLogo from "@/assets/logo-white-horizontal.png";
 import { playDomiflixIntro, stopDomiflixIntro } from "@/lib/domiflixIntroSound";
 
 // ─── YouTube IFrame API ──────────────────────────────────────────────────────
+
 declare global {
   interface Window {
     YT: any;
@@ -92,6 +93,7 @@ type ProgressPayload = Pick<
 >;
 
 // ─── Player Page ─────────────────────────────────────────────────────────────
+
 export default function DomiflixWatchPage() {
   const { titleSlug, episodeNumber, startSeconds } = useParams<{
     titleSlug: string;
@@ -126,7 +128,9 @@ export default function DomiflixWatchPage() {
       ? titleData.seasons.find((s) => s.episodes.some((e) => e.id === episode.id))
       : null;
   const episodeNumberInSeason =
-    seasonInfo && episode ? seasonInfo.episodes.findIndex((e) => e.id === episode.id) + 1 : epNum;
+    seasonInfo && episode
+      ? seasonInfo.episodes.findIndex((e) => e.id === episode.id) + 1
+      : epNum;
 
   const progressSecondsRef = useRef(0);
   const durationSecondsRef = useRef(0);
@@ -135,15 +139,20 @@ export default function DomiflixWatchPage() {
 
   useEffect(() => {
     let active = true;
+
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       userIdRef.current = data.session?.user.id ?? null;
       accessTokenRef.current = data.session?.access_token ?? null;
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       userIdRef.current = session?.user.id ?? null;
       accessTokenRef.current = session?.access_token ?? null;
     });
+
     return () => {
       active = false;
       subscription.unsubscribe();
@@ -155,11 +164,13 @@ export default function DomiflixWatchPage() {
     const epId = episode?.id;
     const titleId = resolvedTitleId;
     if (!userId || !epId || !titleId) return null;
+
     const rawProgress = Math.round(progressSecondsRef.current);
     const rawDuration = Math.round(durationSecondsRef.current);
     const duration = Math.max(0, rawDuration);
     const progressSeconds = duration > 0 ? Math.min(rawProgress, duration) : rawProgress;
     if (progressSeconds <= 1) return null;
+
     return {
       user_id: userId,
       episode_id: epId,
@@ -175,7 +186,10 @@ export default function DomiflixWatchPage() {
     const payload = buildProgressPayload();
     const accessToken = accessTokenRef.current;
     if (!payload || !accessToken) return;
+
     const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/domiflix_user_progress?on_conflict=user_id,episode_id`;
+    const body = JSON.stringify(payload);
+
     try {
       fetch(url, {
         method: "POST",
@@ -185,21 +199,26 @@ export default function DomiflixWatchPage() {
           "Content-Type": "application/json",
           Prefer: "resolution=merge-duplicates",
         },
-        body: JSON.stringify(payload),
+        body,
         keepalive: true,
       }).catch(() => {});
-    } catch { /* ignore */ }
+    } catch {
+      // ignore
+    }
   }, [buildProgressPayload]);
 
   const saveProgressAsync = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     userIdRef.current = data.session?.user.id ?? null;
     accessTokenRef.current = data.session?.access_token ?? null;
+
     const payload = buildProgressPayload();
     if (!payload) return;
+
     const { error } = await supabase
-      .from("domiflix_user_progress" as any)
+      .from("domiflix_user_progress")
       .upsert(payload, { onConflict: "user_id,episode_id" });
+
     if (error) throw error;
     queryClient.invalidateQueries({ queryKey: ["domiflix-progress"] });
   }, [buildProgressPayload, queryClient]);
@@ -230,6 +249,7 @@ export default function DomiflixWatchPage() {
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") onHide();
     };
+
     window.addEventListener("pagehide", onHide);
     window.addEventListener("beforeunload", onHide);
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -256,8 +276,11 @@ export default function DomiflixWatchPage() {
     } catch {
       saveProgressKeepalive();
     }
-    if (titleSlug) navigate(`/domiflix/${titleSlug}`);
-    else navigate("/domiflix");
+    if (titleSlug) {
+      navigate(`/domiflix/${titleSlug}`);
+    } else {
+      navigate("/domiflix");
+    }
   }, [navigate, saveProgressAsync, saveProgressKeepalive, titleSlug]);
 
   const resumeSecondsFor = useCallback(
@@ -283,7 +306,15 @@ export default function DomiflixWatchPage() {
     const startAt = resumeSecondsFor(nextEpisode.id);
     const path = `/domiflix/assistir/${titleSlug}/${epNum + 1}${startAt > 0 ? `/${startAt}` : ""}`;
     navigate(path, { replace: true });
-  }, [nextEpisode, titleSlug, epNum, navigate, resumeSecondsFor, saveProgressAsync, saveProgressKeepalive]);
+  }, [
+    nextEpisode,
+    titleSlug,
+    epNum,
+    navigate,
+    resumeSecondsFor,
+    saveProgressAsync,
+    saveProgressKeepalive,
+  ]);
 
   const handleVideoEnded = useCallback(async () => {
     if (nextEpisode) {
@@ -360,6 +391,16 @@ export default function DomiflixWatchPage() {
           playbackSpeed={prefs?.playback_speed ?? 1}
           onChangePlaybackSpeed={(s) => updateSpeed.mutate(s)}
           nextEpisode={nextEpisode}
+          nextEpisodeNumberInSeason={
+            nextEpisode && titleData?.type === "series"
+              ? (() => {
+                  const ns = titleData.seasons.find((s) =>
+                    s.episodes.some((e) => e.id === nextEpisode.id)
+                  );
+                  return ns ? ns.episodes.findIndex((e) => e.id === nextEpisode.id) + 1 : null;
+                })()
+              : null
+          }
           onProgressUpdate={(current, total) => {
             progressSecondsRef.current = current;
             durationSecondsRef.current = total;
@@ -372,7 +413,10 @@ export default function DomiflixWatchPage() {
       ) : (
         <div className="flex flex-col items-center justify-center h-full text-white/50 gap-4">
           <p className="text-lg">Vídeo não disponível</p>
-          <button onClick={handleBack} className="text-sm text-white/40 hover:text-white underline">
+          <button
+            onClick={handleBack}
+            className="text-sm text-white/40 hover:text-white underline"
+          >
             Voltar
           </button>
         </div>
@@ -382,6 +426,7 @@ export default function DomiflixWatchPage() {
 }
 
 // ─── Netflix-style Player ────────────────────────────────────────────────────
+
 interface NetflixPlayerProps {
   videoId: string;
   videoType: "youtube" | "drive";
@@ -397,6 +442,7 @@ interface NetflixPlayerProps {
   playbackSpeed?: number;
   onChangePlaybackSpeed?: (speed: number) => void;
   nextEpisode?: DomiflixEpisode;
+  nextEpisodeNumberInSeason?: number | null;
   onProgressUpdate?: (currentSeconds: number, totalSeconds: number) => void;
   titleData?: DomiflixTitleFull | null;
   progress?: DomiflixProgress[];
@@ -483,7 +529,6 @@ function NetflixPlayer({
   const isYouTube = videoType === "youtube";
   const isDrive = videoType === "drive";
 
-  // Intro sound
   useEffect(() => {
     setIntroPlaying(true);
     let cancelled = false;
@@ -508,7 +553,9 @@ function NetflixPlayer({
           yt.unMute?.();
           yt.playVideo?.();
         }
-      } catch { /* ignore */ }
+      } catch {
+        // ignore
+      }
     } else {
       const v = videoElRef.current;
       if (!v) return;
@@ -524,13 +571,16 @@ function NetflixPlayer({
 
   useEffect(() => {
     if (isYouTube) {
-      try { ytPlayerRef.current?.setPlaybackRate?.(playbackSpeed); } catch { /* ignore */ }
+      try {
+        ytPlayerRef.current?.setPlaybackRate?.(playbackSpeed);
+      } catch {
+        // ignore
+      }
     } else if (videoElRef.current) {
       videoElRef.current.playbackRate = playbackSpeed;
     }
   }, [playbackSpeed, isYouTube, ready]);
 
-  // Controls
   const togglePlay = useCallback(() => {
     if (isYouTube) {
       if (!ytPlayerRef.current) return;
@@ -544,16 +594,25 @@ function NetflixPlayer({
     }
   }, [isYouTube]);
 
-  const seekTo = useCallback((t: number) => {
-    if (isYouTube) ytPlayerRef.current?.seekTo(t, true);
-    else if (videoElRef.current) videoElRef.current.currentTime = t;
-    setCurrentTime(t);
-  }, [isYouTube]);
+  const seekTo = useCallback(
+    (t: number) => {
+      if (isYouTube) {
+        ytPlayerRef.current?.seekTo(t, true);
+      } else if (videoElRef.current) {
+        videoElRef.current.currentTime = t;
+      }
+      setCurrentTime(t);
+    },
+    [isYouTube]
+  );
 
-  const skip = useCallback((delta: number) => {
-    const t = Math.max(0, Math.min(durationRef.current, currentTimeRef.current + delta));
-    seekTo(t);
-  }, [seekTo]);
+  const skip = useCallback(
+    (delta: number) => {
+      const t = Math.max(0, Math.min(durationRef.current, currentTimeRef.current + delta));
+      seekTo(t);
+    },
+    [seekTo]
+  );
 
   const toggleMute = useCallback(() => {
     if (isYouTube) {
@@ -571,29 +630,32 @@ function NetflixPlayer({
     }
   }, [isYouTube]);
 
-  const handleVolumeChange = useCallback((v: number) => {
-    const clamped = Math.max(0, Math.min(100, v));
-    setVolume(clamped);
-    if (isYouTube) {
-      ytPlayerRef.current?.setVolume(clamped);
-      if (clamped === 0) {
-        ytPlayerRef.current?.mute();
-        setMuted(true);
-      } else if (mutedRef.current) {
-        ytPlayerRef.current?.unMute();
-        setMuted(false);
+  const handleVolumeChange = useCallback(
+    (v: number) => {
+      const clamped = Math.max(0, Math.min(100, v));
+      setVolume(clamped);
+      if (isYouTube) {
+        ytPlayerRef.current?.setVolume(clamped);
+        if (clamped === 0) {
+          ytPlayerRef.current?.mute();
+          setMuted(true);
+        } else if (mutedRef.current) {
+          ytPlayerRef.current?.unMute();
+          setMuted(false);
+        }
+      } else if (videoElRef.current) {
+        videoElRef.current.volume = clamped / 100;
+        if (clamped === 0) {
+          videoElRef.current.muted = true;
+          setMuted(true);
+        } else {
+          videoElRef.current.muted = false;
+          setMuted(false);
+        }
       }
-    } else if (videoElRef.current) {
-      videoElRef.current.volume = clamped / 100;
-      if (clamped === 0) {
-        videoElRef.current.muted = true;
-        setMuted(true);
-      } else {
-        videoElRef.current.muted = false;
-        setMuted(false);
-      }
-    }
-  }, [isYouTube]);
+    },
+    [isYouTube]
+  );
 
   const toggleFullscreen = useCallback(() => {
     const el = document.querySelector(".domiflix-player-root");
@@ -602,7 +664,6 @@ function NetflixPlayer({
     else (el as HTMLElement).requestFullscreen();
   }, []);
 
-  // Auto-fullscreen + landscape on mobile
   useEffect(() => {
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
       || window.matchMedia("(max-width: 1024px)").matches;
@@ -622,11 +683,16 @@ function NetflixPlayer({
       }
       const req = root.requestFullscreen?.();
       if (req && typeof req.then === "function") {
-        req.then(() => {
-          const orientation = (screen as any).orientation;
-          if (orientation?.lock) orientation.lock("landscape").catch(() => applyCssFallback());
-          else applyCssFallback();
-        }).catch(() => applyCssFallback());
+        req
+          .then(() => {
+            const orientation = (screen as any).orientation;
+            if (orientation?.lock) {
+              orientation.lock("landscape").catch(() => applyCssFallback());
+            } else {
+              applyCssFallback();
+            }
+          })
+          .catch(() => applyCssFallback());
       } else {
         applyCssFallback();
       }
@@ -652,7 +718,6 @@ function NetflixPlayer({
     };
   }, []);
 
-  // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -687,7 +752,6 @@ function NetflixPlayer({
     return () => document.removeEventListener("keydown", handler);
   }, [togglePlay, skip, toggleMute, toggleFullscreen]);
 
-  // YouTube player
   useEffect(() => {
     if (!isYouTube) return;
     let destroyed = false;
@@ -726,9 +790,17 @@ function NetflixPlayer({
             setVolume(e.target.getVolume());
             setMuted(e.target.isMuted());
             if (startSeconds && startSeconds > 0) {
-              try { e.target.seekTo(startSeconds, true); } catch { /* ignore */ }
+              try {
+                e.target.seekTo(startSeconds, true);
+              } catch {
+                // ignore
+              }
             }
-            try { e.target.setPlaybackRate?.(playbackSpeed); } catch { /* ignore */ }
+            try {
+              e.target.setPlaybackRate?.(playbackSpeed);
+            } catch {
+              // ignore
+            }
             setPlaying(true);
           },
           onStateChange: (e: any) => {
@@ -741,13 +813,16 @@ function NetflixPlayer({
     });
     return () => {
       destroyed = true;
-      try { ytPlayerRef.current?.destroy(); } catch { /* ignore */ }
+      try {
+        ytPlayerRef.current?.destroy();
+      } catch {
+        // ignore
+      }
       cancelAnimationFrame(tickRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId, isYouTube]);
 
-  // Drive video
   useEffect(() => {
     if (!isDrive) return;
     const v = videoElRef.current;
@@ -756,7 +831,11 @@ function NetflixPlayer({
       setReady(true);
       setDuration(v.duration || 0);
       if (startSeconds > 0) {
-        try { v.currentTime = startSeconds; } catch { /* ignore */ }
+        try {
+          v.currentTime = startSeconds;
+        } catch {
+          // ignore
+        }
       }
       v.play().catch(() => {});
     };
@@ -775,7 +854,6 @@ function NetflixPlayer({
     };
   }, [isDrive, startSeconds]);
 
-  // Time tick
   const onProgressRef = useRef(onProgressUpdate);
   onProgressRef.current = onProgressUpdate;
 
@@ -797,7 +875,9 @@ function NetflixPlayer({
         if (!seeking) setCurrentTime(t);
         if (d > 0) setDuration(d);
         onProgressRef.current?.(t, d);
-      } catch { /* ignore */ }
+      } catch {
+        // ignore
+      }
       tickRef.current = requestAnimationFrame(tick);
     }
     tick();
@@ -807,7 +887,6 @@ function NetflixPlayer({
     };
   }, [ready, seeking, isYouTube]);
 
-  // Auto-hide HUD
   const resetHideTimer = useCallback(() => {
     if (hudLocked) {
       setShowHud(false);
@@ -834,14 +913,15 @@ function NetflixPlayer({
     };
   }, [playing, resetHideTimer]);
 
-  // Fullscreen listener
   useEffect(() => {
     const handler = () => {
       const fs = !!document.fullscreenElement;
       setIsFullscreen(fs);
       const orientation = (screen as any).orientation;
       if (fs && orientation?.lock) {
-        orientation.lock("landscape").catch(() => {});
+        orientation.lock("landscape").catch(() => {
+          /* unsupported (iOS Safari) — silently ignore */
+        });
       } else if (!fs && orientation?.unlock) {
         try { orientation.unlock(); } catch { /* noop */ }
       }
@@ -850,7 +930,6 @@ function NetflixPlayer({
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
-  // Show next episode CTA in last 10s
   useEffect(() => {
     if (!duration) {
       setShowNextPreview(false);
@@ -860,7 +939,6 @@ function NetflixPlayer({
     setShowNextPreview(remaining > 0 && remaining <= 10);
   }, [currentTime, duration]);
 
-  // Drive frame preview
   const driveStreamUrl = isDrive ? getDriveStreamUrl(videoId) : "";
 
   useEffect(() => {
@@ -884,7 +962,11 @@ function NetflixPlayer({
       const drawOnSeeked = () => {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        try { ctx.drawImage(pv, 0, 0, canvas.width, canvas.height); } catch { /* ignore */ }
+        try {
+          ctx.drawImage(pv, 0, 0, canvas.width, canvas.height);
+        } catch {
+          // ignore (CORS may block)
+        }
         pv.removeEventListener("seeked", drawOnSeeked);
       };
       pv.addEventListener("seeked", drawOnSeeked);
@@ -908,7 +990,7 @@ function NetflixPlayer({
         togglePlay();
       }}
     >
-      {/* YouTube */}
+      {/* YouTube iframe */}
       {isYouTube && (
         <>
           <div className="absolute inset-0 overflow-hidden bg-black">
@@ -925,7 +1007,7 @@ function NetflixPlayer({
         </>
       )}
 
-      {/* Drive */}
+      {/* Drive HTML5 video */}
       {isDrive && (
         <>
           <video
@@ -946,7 +1028,7 @@ function NetflixPlayer({
         </>
       )}
 
-      {/* Spinner */}
+      {/* Loading spinner */}
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="w-12 h-12 border-[3px] border-[#E50914] border-t-transparent rounded-full animate-spin" />
@@ -969,7 +1051,7 @@ function NetflixPlayer({
         />
       </div>
 
-      {/* Gradients */}
+      {/* Gradient overlays */}
       <div
         className={cn(
           "absolute inset-0 z-10 pointer-events-none transition-opacity duration-500",
@@ -980,14 +1062,13 @@ function NetflixPlayer({
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
       </div>
 
-      {/* HUD top */}
+      {/* HUD: Back button + episode title (top) */}
       <div
         className={cn(
           "player-controls absolute top-0 left-0 right-0 z-20 px-3 pt-2 pb-3 md:px-6 md:pt-3 md:pb-4 transition-all duration-500",
           showHud ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none"
         )}
       >
-        {/* Mobile */}
         <div className="md:hidden relative flex items-center h-9">
           <button
             onClick={onBack}
@@ -1001,11 +1082,12 @@ function NetflixPlayer({
             style={{ fontFamily: '"Netflix Sans","Helvetica Neue",Helvetica,Arial,sans-serif' }}
           >
             <span className="font-bold">{titleName}</span>
-            {titleSubLabel && <span className="font-light text-white/60">{` · ${titleSubLabel}`}</span>}
+            {titleSubLabel && (
+              <span className="font-light text-white/60">{` · ${titleSubLabel}`}</span>
+            )}
           </div>
         </div>
 
-        {/* Desktop */}
         <div className="hidden md:flex items-center gap-4">
           <button
             onClick={onBack}
@@ -1054,7 +1136,7 @@ function NetflixPlayer({
         />
       )}
 
-      {/* Still watching */}
+      {/* "Você está assistindo" overlay */}
       {showStillWatching && !playing && (
         <div
           className="absolute inset-0 z-30 animate-fade-in"
@@ -1069,7 +1151,9 @@ function NetflixPlayer({
           <div className="absolute inset-0 pointer-events-none bg-black/80" />
           <div className="relative h-full">
             <div className="absolute top-1/2 left-8 sm:left-12 md:left-20 right-6 sm:right-auto -translate-y-1/2 max-w-[640px] text-white">
-              <p className="text-sm md:text-base text-white/70 font-light mb-1">Você está assistindo:</p>
+              <p className="text-sm md:text-base text-white/70 font-light mb-1">
+                Você está assistindo:
+              </p>
               {titleLogoUrl ? (
                 <img
                   src={titleLogoUrl}
@@ -1102,7 +1186,7 @@ function NetflixPlayer({
         </div>
       )}
 
-      {/* End-of-ep buttons */}
+      {/* End-of-episode action buttons (last 10s) */}
       {showNextPreview && (() => {
         const remaining = Math.max(0, duration - currentTime);
         const fillPct = Math.max(0, Math.min(1, (10 - remaining) / 10)) * 100;
@@ -1123,6 +1207,7 @@ function NetflixPlayer({
             >
               Voltar para o início
             </button>
+
             {nextEpisode && onEnded && (
               <button
                 onClick={(e) => {
@@ -1146,14 +1231,14 @@ function NetflixPlayer({
         );
       })()}
 
-      {/* HUD bottom */}
+      {/* HUD Bottom */}
       <div
         className={cn(
           "player-controls absolute bottom-0 left-0 right-0 z-20 transition-all duration-500",
           showHud ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"
         )}
       >
-        {/* Progress bar */}
+        {/* Progress bar with hover preview */}
         <div className="px-4 md:px-10 relative">
           <div className="flex items-center gap-3">
             <div
@@ -1198,6 +1283,7 @@ function NetflixPlayer({
                   transition: seeking ? "none" : "left 150ms linear, width 150ms, height 150ms",
                 }}
               />
+
               {hoverPct !== null && duration > 0 && (
                 <div
                   className="absolute bottom-full mb-2 -translate-x-1/2 pointer-events-none"
@@ -1231,16 +1317,27 @@ function NetflixPlayer({
           </div>
         </div>
 
-        {/* Desktop controls */}
+        {/* Desktop controls row */}
         <div className="hidden md:flex items-center justify-between px-4 md:px-10 pb-4 md:pb-6 pt-2">
           <div className="flex items-center gap-1 md:gap-3">
-            <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform p-1">
+            <button
+              onClick={togglePlay}
+              className="text-white hover:scale-110 transition-transform p-1"
+            >
               {playing ? <PauseIcon className="w-7 h-7 md:w-8 md:h-8" /> : <PlayIcon className="w-7 h-7 md:w-8 md:h-8" />}
             </button>
-            <button onClick={() => skip(-10)} className="text-white hover:scale-110 transition-transform p-1 hidden sm:block">
+
+            <button
+              onClick={() => skip(-10)}
+              className="text-white hover:scale-110 transition-transform p-1 hidden sm:block"
+            >
               <SkipBack10Icon className="w-7 h-7 md:w-8 md:h-8" />
             </button>
-            <button onClick={() => skip(10)} className="text-white hover:scale-110 transition-transform p-1 hidden sm:block">
+
+            <button
+              onClick={() => skip(10)}
+              className="text-white hover:scale-110 transition-transform p-1 hidden sm:block"
+            >
               <SkipForward10Icon className="w-7 h-7 md:w-8 md:h-8" />
             </button>
 
@@ -1255,9 +1352,13 @@ function NetflixPlayer({
                 volumeTimer.current = setTimeout(() => setShowVolume(false), 300);
               }}
             >
-              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform p-1">
+              <button
+                onClick={toggleMute}
+                className="text-white hover:scale-110 transition-transform p-1"
+              >
                 <VolumeIcon className="w-6 h-6 md:w-7 md:h-7" />
               </button>
+
               <div
                 className={cn(
                   "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#181818] rounded-md px-3 py-4 flex flex-col items-center transition-all border border-white/10",
@@ -1268,10 +1369,12 @@ function NetflixPlayer({
                   className="relative w-[10px] h-24 bg-white/25 rounded-sm cursor-pointer"
                   onMouseDown={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
-                    const pct = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                    const pct =
+                      1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
                     handleVolumeChange(Math.round(pct * 100));
                     const onMove = (ev: MouseEvent) => {
-                      const p = 1 - Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
+                      const p =
+                        1 - Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
                       handleVolumeChange(Math.round(p * 100));
                     };
                     const onUp = () => {
@@ -1282,17 +1385,27 @@ function NetflixPlayer({
                     window.addEventListener("mouseup", onUp);
                   }}
                 >
-                  <div className="absolute bottom-0 left-0 right-0 bg-[#E50914] rounded-sm" style={{ height: `${muted ? 0 : volume}%` }} />
-                  <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-[#E50914] rounded-full shadow" style={{ bottom: `${muted ? 0 : volume}%`, marginBottom: "-6px" }} />
+                  <div
+                    className="absolute bottom-0 left-0 right-0 bg-[#E50914] rounded-sm"
+                    style={{ height: `${muted ? 0 : volume}%` }}
+                  />
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-[#E50914] rounded-full shadow"
+                    style={{ bottom: `${muted ? 0 : volume}%`, marginBottom: "-6px" }}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Center: title */}
+          {/* Center: Title */}
           <div className="hidden md:flex items-center min-w-0 mx-4 gap-2">
-            <span className="text-white font-bold text-sm truncate max-w-[280px]">{titleName}</span>
-            <span className="text-white/60 text-sm font-light truncate max-w-[200px]">{titleSubLabel}</span>
+            <span className="text-white font-bold text-sm truncate max-w-[280px]">
+              {titleName}
+            </span>
+            <span className="text-white/60 text-sm font-light truncate max-w-[200px]">
+              {titleSubLabel}
+            </span>
           </div>
 
           {/* Right controls */}
@@ -1300,6 +1413,7 @@ function NetflixPlayer({
             {nextEpisode && onPlayNext && (
               <NextEpisodeButton nextEpisode={nextEpisode} onPlayNext={onPlayNext} />
             )}
+
             {titleData && titleData.type === "series" && onSelectEpisode && (
               <button
                 onClick={(e) => {
@@ -1316,6 +1430,7 @@ function NetflixPlayer({
                 <EpisodesListIcon className="w-8 h-7 md:w-9 md:h-8" />
               </button>
             )}
+
             {onChangePlaybackSpeed && (
               <SpeedButton
                 speed={playbackSpeed}
@@ -1327,13 +1442,21 @@ function NetflixPlayer({
                 }}
               />
             )}
-            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform p-1">
-              {isFullscreen ? <MinimizeIcon className="w-7 h-7 md:w-8 md:h-8" /> : <FullscreenIcon className="w-7 h-7 md:w-8 md:h-8" />}
+
+            <button
+              onClick={toggleFullscreen}
+              className="text-white hover:scale-110 transition-transform p-1"
+            >
+              {isFullscreen ? (
+                <MinimizeIcon className="w-7 h-7 md:w-8 md:h-8" />
+              ) : (
+                <FullscreenIcon className="w-7 h-7 md:w-8 md:h-8" />
+              )}
             </button>
           </div>
         </div>
 
-        {/* Mobile bottom */}
+        {/* Mobile bottom controls row */}
         <div className="md:hidden flex items-center justify-center gap-8 sm:gap-10 pt-2 pb-3 text-white">
           {onChangePlaybackSpeed && (
             <button
@@ -1348,6 +1471,7 @@ function NetflixPlayer({
               <span className="text-[10px] font-light">Velocidade ({playbackSpeed}x)</span>
             </button>
           )}
+
           {titleData && titleData.type === "series" && onSelectEpisode && (
             <button
               onClick={(e) => {
@@ -1355,12 +1479,16 @@ function NetflixPlayer({
                 setShowSpeed(false);
                 setShowEpisodes((v) => !v);
               }}
-              className={cn("flex flex-col items-center gap-0.5", showEpisodes && "text-[#E50914]")}
+              className={cn(
+                "flex flex-col items-center gap-0.5",
+                showEpisodes && "text-[#E50914]"
+              )}
             >
               <EpisodesListIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Episódios</span>
             </button>
           )}
+
           {nextEpisode && onPlayNext && (
             <button
               onClick={(e) => {
@@ -1376,11 +1504,11 @@ function NetflixPlayer({
         </div>
       </div>
 
-      {/* Mobile center cluster */}
+      {/* Mobile center cluster: skip/play/skip */}
       {ready && showHud && !showEpisodes && (
         <div className="player-controls md:hidden absolute inset-0 z-20 flex items-center justify-center gap-10 pointer-events-none">
           <button
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); skip(-10); }}
             className="pointer-events-auto text-white p-3 -m-1"
             aria-label="Voltar 10 segundos"
@@ -1388,7 +1516,7 @@ function NetflixPlayer({
             <SkipBack10Icon className="w-10 h-10" />
           </button>
           <button
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); togglePlay(); }}
             className="pointer-events-auto w-16 h-16 flex items-center justify-center text-white"
             aria-label={playing ? "Pausar" : "Reproduzir"}
@@ -1396,7 +1524,7 @@ function NetflixPlayer({
             {playing ? <PauseIcon className="w-12 h-12" /> : <PlayIcon className="w-12 h-12 ml-1" />}
           </button>
           <button
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); skip(10); }}
             className="pointer-events-auto text-white p-3 -m-1"
             aria-label="Avançar 10 segundos"
@@ -1406,7 +1534,7 @@ function NetflixPlayer({
         </div>
       )}
 
-      {/* Center play when paused (desktop) */}
+      {/* Center play button when paused (desktop only) */}
       {ready && !playing && showHud && !showEpisodes && (
         <div className="hidden md:flex absolute inset-0 z-15 items-center justify-center pointer-events-none">
           <div className="w-20 h-20 bg-black/40 backdrop-blur-sm rounded-full items-center justify-center flex">
@@ -1415,7 +1543,7 @@ function NetflixPlayer({
         </div>
       )}
 
-      {/* Locked HUD unlock (mobile) */}
+      {/* Locked HUD: floating unlock button (mobile) */}
       {hudLocked && (
         <button
           onClick={(e) => { e.stopPropagation(); setHudLocked(false); }}
@@ -1455,15 +1583,18 @@ function EpisodesOverlay({
 
   const initialOpen = useMemo(() => {
     const set = new Set<string>();
-    const currentSeason = seasons.find((s) => s.episodes.some((e) => e.id === currentEpisodeId));
+    const currentSeason = seasons.find((s) =>
+      s.episodes.some((e) => e.id === currentEpisodeId)
+    );
     if (currentSeason) set.add(currentSeason.id);
     else if (seasons[0]) set.add(seasons[0].id);
     return set;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleData, currentEpisodeId]);
 
   const [openSeasons, setOpenSeasons] = useState<Set<string>>(initialOpen);
-  const [expandedEpisodeId, setExpandedEpisodeId] = useState<string | null>(currentEpisodeId ?? null);
+  const [expandedEpisodeId, setExpandedEpisodeId] = useState<string | null>(
+    currentEpisodeId ?? null
+  );
   const currentRowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1498,7 +1629,11 @@ function EpisodesOverlay({
             ? Math.min(100, (saved.progress_seconds / saved.duration_seconds) * 100)
             : 0
         : 0;
-      if (episodeId === currentEpisodeId && currentEpisodeProgressPct > 0) return currentEpisodeProgressPct;
+
+      if (episodeId === currentEpisodeId && currentEpisodeProgressPct > 0) {
+        return currentEpisodeProgressPct;
+      }
+
       return savedPct;
     },
     [currentEpisodeId, currentEpisodeProgressPct, progressByEpisode]
@@ -1516,7 +1651,13 @@ function EpisodesOverlay({
       >
         <div className="px-4 md:px-5 py-2.5 md:py-3.5 border-b border-white/10 flex items-center justify-between shrink-0">
           <h3 className="text-white text-sm md:text-lg font-semibold truncate">{titleData.title}</h3>
-          <button onClick={onClose} className="text-white/60 hover:text-white text-xs" aria-label="Fechar">✕</button>
+          <button
+            onClick={onClose}
+            className="text-white/60 hover:text-white text-xs"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto py-1">
@@ -1535,9 +1676,15 @@ function EpisodesOverlay({
                     <span className="text-white/50 text-xs uppercase tracking-wider font-light">
                       {season.episodes.length} {season.episodes.length === 1 ? "Episódio" : "Episódios"}
                     </span>
-                    <ChevronDown className={cn("w-4 h-4 text-white/60 transition-transform", seasonOpen && "rotate-180")} />
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 text-white/60 transition-transform",
+                        seasonOpen && "rotate-180"
+                      )}
+                    />
                   </div>
                 </button>
+
                 {seasonOpen && (
                   <div>
                     {season.episodes.map((ep, eIdx) => {
@@ -1545,43 +1692,72 @@ function EpisodesOverlay({
                       const isExpanded = expandedEpisodeId === ep.id;
                       const displayEpisodeNumber = ep.episode_number ?? eIdx + 1;
                       const episodeProgressPct = getEpisodeProgressPct(ep.id);
+
                       return (
                         <div
                           key={ep.id}
                           ref={isCurrent ? currentRowRef : undefined}
-                          className={cn("border-b border-white/5 transition-colors", isCurrent && "ring-1 ring-white/40")}
+                          className={cn(
+                            "border-b border-white/5 transition-colors",
+                            isCurrent && "ring-1 ring-white/40"
+                          )}
                         >
                           <button
                             onClick={() => setExpandedEpisodeId(isExpanded ? null : ep.id)}
                             className="w-full flex items-center gap-4 pl-10 pr-5 py-3 text-left hover:bg-white/5 transition-colors"
                           >
-                            <span className="text-white font-bold text-sm w-6 shrink-0">{displayEpisodeNumber}</span>
+                            <span className="text-white font-bold text-sm w-6 shrink-0">
+                              {displayEpisodeNumber}
+                            </span>
                             <div className="flex-1 min-w-0">
-                              <span className="text-white font-bold text-sm block truncate">Episódio {displayEpisodeNumber}</span>
+                              <span className="text-white font-bold text-sm block truncate">
+                                Episódio {displayEpisodeNumber}
+                              </span>
                             </div>
                             {episodeProgressPct >= 90 && (
-                              <Check className="w-4 h-4 text-[#E50914] shrink-0" strokeWidth={3} aria-label="Assistido" />
+                              <Check
+                                className="w-4 h-4 text-[#E50914] shrink-0"
+                                strokeWidth={3}
+                                aria-label="Assistido"
+                              />
                             )}
                             {episodeProgressPct > 0 && episodeProgressPct < 90 && (
                               <div className="relative h-[3px] w-12 rounded-full bg-white/20 overflow-hidden shrink-0">
-                                <div className="absolute inset-y-0 left-0 bg-[#E50914] rounded-full transition-all" style={{ width: `${episodeProgressPct}%` }} />
+                                <div
+                                  className="absolute inset-y-0 left-0 bg-[#E50914] rounded-full transition-all"
+                                  style={{ width: `${episodeProgressPct}%` }}
+                                />
                               </div>
                             )}
                           </button>
+
                           {isExpanded && (
                             <div className="pl-10 pr-5 pb-4 flex gap-4">
-                              <button onClick={() => onSelectEpisode(ep)} className="shrink-0 group">
+                              <button
+                                onClick={() => onSelectEpisode(ep)}
+                                className="shrink-0 group"
+                              >
                                 {ep.thumbnail_url ? (
-                                  <img src={ep.thumbnail_url} alt={ep.title} className="w-44 h-24 object-cover rounded group-hover:opacity-80 transition-opacity" />
+                                  <img
+                                    src={ep.thumbnail_url}
+                                    alt={ep.title}
+                                    className="w-44 h-24 object-cover rounded group-hover:opacity-80 transition-opacity"
+                                  />
                                 ) : (
                                   <div className="w-44 h-24 bg-white/10 rounded" />
                                 )}
                               </button>
                               <div className="flex-1 min-w-0">
-                                <p className="text-white text-sm font-medium mb-1">{ep.title || `Episódio ${displayEpisodeNumber}`}</p>
-                                <p className="text-white/80 text-sm leading-snug line-clamp-4">{ep.description || "Sem descrição."}</p>
+                                <p className="text-white text-sm font-medium mb-1">
+                                  {ep.title || `Episódio ${displayEpisodeNumber}`}
+                                </p>
+                                <p className="text-white/80 text-sm leading-snug line-clamp-4">
+                                  {ep.description || "Sem descrição."}
+                                </p>
                                 {ep.duration_minutes ? (
-                                  <p className="text-[#E50914] text-[11px] font-semibold mt-1">{ep.duration_minutes} min</p>
+                                  <p className="text-[#E50914] text-[11px] font-semibold mt-1">
+                                    {ep.duration_minutes} min
+                                  </p>
                                 ) : null}
                               </div>
                             </div>
@@ -1631,6 +1807,7 @@ function NextEpisodeButton({
       >
         <NextEpisodeIcon className="w-7 h-7 md:w-8 md:h-8" />
       </button>
+
       <div
         className={cn(
           "absolute bottom-full right-0 mb-3 w-[400px] max-w-[80vw]",
@@ -1650,7 +1827,11 @@ function NextEpisodeButton({
           className="w-full text-left flex gap-3 p-3 hover:bg-white/5 transition-colors"
         >
           {nextEpisode.thumbnail_url ? (
-            <img src={nextEpisode.thumbnail_url} alt={nextEpisode.title} className="w-32 h-20 object-cover rounded shrink-0" />
+            <img
+              src={nextEpisode.thumbnail_url}
+              alt={nextEpisode.title}
+              className="w-32 h-20 object-cover rounded shrink-0"
+            />
           ) : (
             <div className="w-32 h-20 bg-white/10 rounded shrink-0" />
           )}
@@ -1661,7 +1842,9 @@ function NextEpisodeButton({
               {nextEpisode.title || `Episódio ${nextEpisode.episode_number ?? ""}`}
             </p>
             {nextEpisode.description && (
-              <p className="text-white/70 text-xs leading-snug line-clamp-3">{nextEpisode.description}</p>
+              <p className="text-white/70 text-xs leading-snug line-clamp-3">
+                {nextEpisode.description}
+              </p>
             )}
           </div>
         </button>
@@ -1670,7 +1853,7 @@ function NextEpisodeButton({
   );
 }
 
-// ─── Speed Button ────────────────────────────────────────────────────────────
+// ─── Playback Speed Button ───────────────────────────────────────────────────
 function SpeedButton({
   speed,
   onChange,
@@ -1707,11 +1890,15 @@ function SpeedButton({
           e.stopPropagation();
           onOpenChange(!open);
         }}
-        className={cn("text-white hover:scale-110 transition-transform p-1", open && "text-[#E50914]")}
+        className={cn(
+          "text-white hover:scale-110 transition-transform p-1",
+          open && "text-[#E50914]"
+        )}
         title="Velocidade"
       >
         <SpeedIcon className="w-7 h-7 md:w-8 md:h-8" />
       </button>
+
       <div
         className={cn(
           "absolute bottom-[calc(100%+72px)] right-0 w-[480px] max-w-[80vw]",
@@ -1734,6 +1921,7 @@ function SpeedButton({
                 style={{ left: `${50 / PLAYBACK_SPEEDS.length}%`, right: `${50 / PLAYBACK_SPEEDS.length}%` }}
               />
             </div>
+
             {PLAYBACK_SPEEDS.map((s, i) => {
               const active = Math.abs(s - speed) < 0.01;
               return (
