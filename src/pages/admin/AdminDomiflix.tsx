@@ -534,7 +534,7 @@ export default function AdminDomiflix() {
         </TabsContent>
 
         <TabsContent value="sections" className="mt-4">
-          <SectionsTab />
+          <AdminDomiflixSections />
         </TabsContent>
       </Tabs>
 
