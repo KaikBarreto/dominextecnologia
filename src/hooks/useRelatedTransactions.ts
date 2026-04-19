@@ -50,6 +50,18 @@ export async function findRelatedTransactions(transactionId: string): Promise<{
   if (rootTxn) all.push(rootTxn as FinancialTransaction);
   (children || []).forEach((c) => all.push(c as FinancialTransaction));
 
+  // 3b. installment siblings — transactions that share the same installment_group_id
+  const installmentGroupId = (txn as any).installment_group_id;
+  if (installmentGroupId) {
+    const { data: siblings } = await supabase
+      .from('financial_transactions')
+      .select('*')
+      .eq('installment_group_id', installmentGroupId);
+    (siblings || []).forEach((s) => {
+      if (!all.find((a) => a.id === s.id)) all.push(s as FinancialTransaction);
+    });
+  }
+
   // 4. linked quote
   let linkedQuote: { id: string; quote_number: number } | null = null;
   const { data: quote } = await supabase
