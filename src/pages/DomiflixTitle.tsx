@@ -123,7 +123,7 @@ export default function DomiflixTitle() {
 
               <button onClick={() => toggleWatchlist.mutate({ titleId, isInList: isInWatchlist })}
                 className={cn("flex items-center gap-2 px-6 py-2.5 rounded font-semibold text-sm md:text-base border",
-                  isInWatchlist ? "bg-[#e50914] hover:bg-[#b80710] text-black border-[#e50914]" : "bg-[#6d6d6eb3] hover:bg-[#6d6d6e] text-white border-white/20"
+                  isInWatchlist ? "bg-[#e50914] hover:bg-[#b80710] text-white border-[#e50914]" : "bg-[#6d6d6eb3] hover:bg-[#6d6d6e] text-white border-white/20"
                 )}>
                 {isInWatchlist ? <><Check className="w-5 h-5" strokeWidth={3} /> Na minha lista</> : <><Plus className="w-5 h-5" /> Minha lista</>}
               </button>
