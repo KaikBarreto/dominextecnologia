@@ -99,6 +99,15 @@ import AdminCRM from "./pages/admin/AdminCRM";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminSalespeople from "./pages/admin/AdminSalespeople";
 import AdminSalespersonDetail from "./pages/admin/AdminSalespersonDetail";
+import AdminDomiflix from "./pages/admin/AdminDomiflix";
+
+// Domiflix
+import { DomiflixLayout } from "@/components/domiflix/DomiflixLayout";
+import DomiflixHome from "./pages/Domiflix";
+import DomiflixTitle from "./pages/DomiflixTitle";
+import DomiflixWatch from "./pages/DomiflixWatch";
+import DomiflixMinhaLista from "./pages/DomiflixMinhaLista";
+import DomiflixAvatarPicker from "./pages/DomiflixAvatarPicker";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";

@@ -13,6 +13,47 @@
 @import '@fontsource/montserrat/800.css';
 @import '@fontsource/montserrat/900.css';
 
+/* Netflix Sans — usado apenas no Domiflix */
+@font-face {
+  font-family: 'Netflix Sans';
+  src: url('/src/assets/fonts/NetflixSans-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Netflix Sans';
+  src: url('/src/assets/fonts/NetflixSans-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Netflix Sans';
+  src: url('/src/assets/fonts/NetflixSans-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Netflix Sans';
+  src: url('/src/assets/fonts/NetflixSans-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.domiflix-app {
+  font-family: 'Netflix Sans', 'Inter', sans-serif;
+  background-color: #141414;
+  color: #fff;
+}
+
+.domiflix-app ::-webkit-scrollbar { width: 8px; height: 8px; }
+.domiflix-app ::-webkit-scrollbar-track { background: transparent; }
+.domiflix-app ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+.domiflix-app ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 Design Premium com Verde da Marca #00C597
