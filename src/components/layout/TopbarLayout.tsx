@@ -59,7 +59,7 @@ const menuItems: MenuItem[] = [
   { title: 'Assinatura', icon: CreditCard, path: '/assinatura' },
 ];
 
-const userMenuPaths = ['/tutoriais', '/configuracoes'];
+const userMenuPaths = ['/domiflix', '/configuracoes'];
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
 
@@ -233,8 +233,8 @@ export function TopbarLayout() {
               <DropdownMenuItem onClick={() => navigate('/configuracoes')} className="cursor-pointer">
                 <Settings className="h-4 w-4 mr-2" /> Configurações
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/tutoriais')} className="cursor-pointer">
-                <GraduationCap className="h-4 w-4 mr-2" /> Tutoriais
+              <DropdownMenuItem onClick={() => navigate('/domiflix')} className="cursor-pointer">
+                <GraduationCap className="h-4 w-4 mr-2" /> Domiflix
               </DropdownMenuItem>
               <DropdownMenuSeparator />
 

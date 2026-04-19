@@ -78,7 +78,7 @@ import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
 import ServiceRating from "./pages/ServiceRating";
 import Changelog from "./pages/Changelog";
-import Tutorials from "./pages/Tutorials";
+// Tutorials removed — replaced by Domiflix
 import Employees from "./pages/Employees";
 import TimeClock from "./pages/TimeClock";
 import Billing from "./pages/Billing";
