@@ -1554,22 +1554,22 @@ export type Database = {
       }
       domiflix_user_preferences: {
         Row: {
-          ecoflix_avatar_url: string | null
-          ecoflix_display_name: string | null
+          domiflix_avatar_url: string | null
+          domiflix_display_name: string | null
           playback_speed: number
           updated_at: string
           user_id: string
         }
         Insert: {
-          ecoflix_avatar_url?: string | null
-          ecoflix_display_name?: string | null
+          domiflix_avatar_url?: string | null
+          domiflix_display_name?: string | null
           playback_speed?: number
           updated_at?: string
           user_id: string
         }
         Update: {
-          ecoflix_avatar_url?: string | null
-          ecoflix_display_name?: string | null
+          domiflix_avatar_url?: string | null
+          domiflix_display_name?: string | null
           playback_speed?: number
           updated_at?: string
           user_id?: string

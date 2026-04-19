@@ -238,7 +238,7 @@ export function AppSidebar() {
     : [
         { label: 'Perfil', icon: UserCircle, action: () => navigate('/perfil') },
         { label: 'Assinatura', icon: CreditCard, action: () => navigate('/assinatura') },
-        { label: 'Tutoriais', icon: GraduationCap, action: () => navigate('/tutoriais') },
+        { label: 'Domiflix', icon: GraduationCap, action: () => navigate('/domiflix') },
         { label: 'Configurações', icon: Settings, action: () => navigate('/configuracoes'), screenKey: 'screen:settings' },
       ];
 

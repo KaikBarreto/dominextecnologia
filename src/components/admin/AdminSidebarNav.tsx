@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Target,
   Briefcase,
+  Clapperboard,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ const ADMIN_MENU_ITEMS: { label: string; path: string; icon: React.ComponentType
   { label: 'Vendedores', path: '/admin/vendedores', icon: Briefcase },
   { label: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
   { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet },
+  { label: 'Domiflix', path: '/admin/domiflix', icon: Clapperboard },
   { label: 'Configurações', path: '/admin/configuracoes', icon: Settings },
 ];
 

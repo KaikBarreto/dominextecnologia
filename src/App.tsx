@@ -78,7 +78,7 @@ import TechnicianOS from "./pages/TechnicianOS";
 import NotFound from "./pages/NotFound";
 import ServiceRating from "./pages/ServiceRating";
 import Changelog from "./pages/Changelog";
-import Tutorials from "./pages/Tutorials";
+// Tutorials removed — replaced by Domiflix
 import Employees from "./pages/Employees";
 import TimeClock from "./pages/TimeClock";
 import Billing from "./pages/Billing";
@@ -99,6 +99,15 @@ import AdminCRM from "./pages/admin/AdminCRM";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminSalespeople from "./pages/admin/AdminSalespeople";
 import AdminSalespersonDetail from "./pages/admin/AdminSalespersonDetail";
+import AdminDomiflix from "./pages/admin/AdminDomiflix";
+
+// Domiflix
+import { DomiflixLayout } from "@/components/domiflix/DomiflixLayout";
+import DomiflixHome from "./pages/Domiflix";
+import DomiflixTitle from "./pages/DomiflixTitle";
+import DomiflixWatch from "./pages/DomiflixWatch";
+import DomiflixMinhaLista from "./pages/DomiflixMinhaLista";
+import DomiflixAvatarPicker from "./pages/DomiflixAvatarPicker";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -268,9 +277,27 @@ const AppRoutes = () => (
       <Route path="/admin/vendedores" element={<AdminSalespeople />} />
       <Route path="/admin/vendedores/:id" element={<AdminSalespersonDetail />} />
       <Route path="/admin/configuracoes" element={<AdminSettings />} />
+      <Route path="/admin/domiflix" element={<AdminDomiflix />} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
-      <Route path="/tutoriais" element={<Tutorials />} />
+      <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />
+    </Route>
+
+    {/* Domiflix — fullscreen layout próprio */}
+    <Route
+      element={
+        <ProtectedRoute>
+          <div className="domiflix-app min-h-screen">
+            <DomiflixLayout />
+          </div>
+        </ProtectedRoute>
+      }
+    >
+      <Route path="/domiflix" element={<DomiflixHome />} />
+      <Route path="/domiflix/minha-lista" element={<DomiflixMinhaLista />} />
+      <Route path="/domiflix/perfil" element={<DomiflixAvatarPicker />} />
+      <Route path="/domiflix/:titleSlug" element={<DomiflixTitle />} />
+      <Route path="/domiflix/assistir/:titleSlug/:episodeNumber" element={<DomiflixWatch />} />
     </Route>
 
     {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}

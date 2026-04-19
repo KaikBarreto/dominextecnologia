@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.7.7";
+export const APP_VERSION = "1.8.0";
 
-export const VERSION_NOTES = "Cartões de crédito no Financeiro: cadastre cartões com dia de fechamento, dias para vencimento e limite. Despesas em cartão geram automaticamente faturas mensais (aberta/fechada/paga/parcial). Tela 'Caixas e Bancos' agora separa Caixas/Contas Bancárias dos Cartões — cards de cartão mostram fatura aberta + limite disponível. Botão 'Ver Faturas' abre painel com lista colapsável de transações por fatura e modal 'Pagar Fatura' (suporta pagamento parcial). Saldo total real exclui cartões; faturas de cartão não entram no DRE (são liquidação de dívida).";
+export const VERSION_NOTES = "Novo módulo Domiflix: plataforma de tutoriais estilo Netflix com séries, episódios, lives, progresso de exibição, minha lista, avatares, busca e gestão completa no admin (títulos, temporadas, episódios e seções da home). Player com YouTube/Drive, controle de velocidade e som de intro. Bônus: ao excluir uma parcela de cartão, o sistema agora oferece a opção de excluir somente aquela ou todas as parcelas vinculadas (mesmo installment_group_id).";

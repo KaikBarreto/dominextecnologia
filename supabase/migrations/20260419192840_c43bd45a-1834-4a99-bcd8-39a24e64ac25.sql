@@ -1,0 +1,2 @@
+ALTER TABLE public.domiflix_user_preferences RENAME COLUMN ecoflix_avatar_url TO domiflix_avatar_url;
+ALTER TABLE public.domiflix_user_preferences RENAME COLUMN ecoflix_display_name TO domiflix_display_name;
