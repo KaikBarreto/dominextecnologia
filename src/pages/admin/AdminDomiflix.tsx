@@ -21,11 +21,7 @@ import {
   useCreateEpisode, useUpdateEpisode, useDeleteEpisode,
   type DomiflixTitle, type DomiflixSeason, type DomiflixEpisode,
 } from "@/hooks/useDomiflix";
-import {
-  useDomiflixSections, useDomiflixSectionTitles, useCreateSection, useUpdateSection,
-  useDeleteSection, useUpdateSectionTitles,
-  type DomiflixSection,
-} from "@/hooks/useDomiflixSections";
+import { AdminDomiflixSections } from "@/components/admin/AdminDomiflixSections";
 
 // ─────────────── Image upload helper ───────────────
 async function uploadImage(file: File, folder: string): Promise<string> {
@@ -454,104 +450,6 @@ function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => v
                 setConfirmDel(null);
               }}
             >Excluir</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-// ─────────────── Sections tab ───────────────
-function SectionsTab() {
-  const { data: sections = [] } = useDomiflixSections();
-  const { data: links = [] } = useDomiflixSectionTitles();
-  const { data: titles = [] } = useDomiflixTitles();
-  const create = useCreateSection();
-  const update = useUpdateSection();
-  const del = useDeleteSection();
-  const updateLinks = useUpdateSectionTitles();
-  const [newLabel, setNewLabel] = useState("");
-  const [confirmDel, setConfirmDel] = useState<string | null>(null);
-
-  const titleIdsBySection = useMemo(() => {
-    const m = new Map<string, Set<string>>();
-    links.forEach((l) => {
-      if (!m.has(l.section_id)) m.set(l.section_id, new Set());
-      m.get(l.section_id)!.add(l.title_id);
-    });
-    return m;
-  }, [links]);
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardContent className="p-4 flex gap-2">
-          <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="Nome da nova seção (ex: Tendências)" />
-          <Button onClick={async () => { if (!newLabel.trim()) return; await create.mutateAsync({ label: newLabel.trim() }); setNewLabel(""); }}>
-            <Plus className="h-4 w-4 mr-1" /> Criar
-          </Button>
-        </CardContent>
-      </Card>
-
-      {sections.map((sec) => (
-        <Card key={sec.id}>
-          <Collapsible defaultOpen={false}>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/30 flex-row items-center justify-between py-3 space-y-0">
-                <div className="flex items-center gap-2">
-                  <ChevronRight className="h-4 w-4" />
-                  <CardTitle className="text-base">{sec.label}</CardTitle>
-                  <Badge variant="outline">{titleIdsBySection.get(sec.id)?.size ?? 0} títulos</Badge>
-                  {!sec.is_active && <Badge variant="secondary">Oculta</Badge>}
-                </div>
-                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                  <Switch checked={sec.is_active} onCheckedChange={(v) => update.mutate({ id: sec.id, is_active: v })} />
-                  <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setConfirmDel(sec.id)}><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0 space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Editar nome</Label>
-                  <Input defaultValue={sec.label} onBlur={(e) => { if (e.target.value !== sec.label) update.mutate({ id: sec.id, label: e.target.value }); }} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Títulos nesta seção</Label>
-                  <div className="grid grid-cols-2 gap-1 max-h-64 overflow-y-auto border rounded p-2">
-                    {titles.map((t) => {
-                      const checked = titleIdsBySection.get(sec.id)?.has(t.id) ?? false;
-                      return (
-                        <label key={t.id} className="flex items-center gap-2 text-sm hover:bg-muted/50 rounded px-1 py-0.5 cursor-pointer">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const current = Array.from(titleIdsBySection.get(sec.id) ?? []);
-                              const next = v ? [...current, t.id] : current.filter((id) => id !== t.id);
-                              updateLinks.mutate({ sectionId: sec.id, titleIds: next });
-                            }}
-                          />
-                          <span className="truncate">{t.title}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
-      ))}
-
-      <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir seção?</AlertDialogTitle>
-            <AlertDialogDescription>Os títulos não serão excluídos, apenas a seção e seus vínculos.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => { if (confirmDel) { await del.mutateAsync(confirmDel); setConfirmDel(null); } }}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
