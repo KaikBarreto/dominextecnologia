@@ -32,7 +32,7 @@ export function domiflixToast({
         <div
           className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center ml-2"
           style={{
-            backgroundColor: variant === "added" ? "rgba(0,197,151,0.18)" : "rgba(255,255,255,0.08)",
+            backgroundColor: variant === "added" ? "rgba(229,9,20,0.18)" : "rgba(255,255,255,0.08)",
             color: variant === "added" ? "#e50914" : variant === "error" ? "#E50914" : "#fff",
           }}
         >
