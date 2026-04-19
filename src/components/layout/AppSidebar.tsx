@@ -108,6 +108,7 @@ const adminMenuItems: MenuItem[] = [
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores' },
   { title: 'Assinaturas', icon: CreditCard, path: '/admin/assinaturas' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
+  { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix' },
   { title: 'Configurações', icon: Settings, path: '/admin/configuracoes' },
 ];
 
