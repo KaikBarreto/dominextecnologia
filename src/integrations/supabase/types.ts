@@ -1334,6 +1334,325 @@ export type Database = {
           },
         ]
       }
+      domiflix_episodes: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          episode_number: number | null
+          id: string
+          order_index: number
+          recorded_at: string | null
+          season_id: string | null
+          thumbnail_url: string | null
+          title: string
+          title_id: string
+          video_id: string | null
+          video_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          episode_number?: number | null
+          id?: string
+          order_index?: number
+          recorded_at?: string | null
+          season_id?: string | null
+          thumbnail_url?: string | null
+          title: string
+          title_id: string
+          video_id?: string | null
+          video_type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          episode_number?: number | null
+          id?: string
+          order_index?: number
+          recorded_at?: string | null
+          season_id?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          title_id?: string
+          video_id?: string | null
+          video_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domiflix_episodes_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domiflix_episodes_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domiflix_seasons: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_index: number
+          season_number: number
+          title: string
+          title_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          season_number: number
+          title: string
+          title_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          season_number?: number
+          title?: string
+          title_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domiflix_seasons_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domiflix_section_titles: {
+        Row: {
+          id: string
+          order_index: number
+          section_id: string
+          title_id: string
+        }
+        Insert: {
+          id?: string
+          order_index?: number
+          section_id: string
+          title_id: string
+        }
+        Update: {
+          id?: string
+          order_index?: number
+          section_id?: string
+          title_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domiflix_section_titles_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domiflix_section_titles_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domiflix_sections: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      domiflix_titles: {
+        Row: {
+          banner_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_featured: boolean
+          live_scheduled_at: string | null
+          live_url: string | null
+          logo_url: string | null
+          order_index: number
+          tags: string[]
+          thumbnail_url: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_featured?: boolean
+          live_scheduled_at?: string | null
+          live_url?: string | null
+          logo_url?: string | null
+          order_index?: number
+          tags?: string[]
+          thumbnail_url?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_featured?: boolean
+          live_scheduled_at?: string | null
+          live_url?: string | null
+          logo_url?: string | null
+          order_index?: number
+          tags?: string[]
+          thumbnail_url?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      domiflix_user_preferences: {
+        Row: {
+          ecoflix_avatar_url: string | null
+          ecoflix_display_name: string | null
+          playback_speed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ecoflix_avatar_url?: string | null
+          ecoflix_display_name?: string | null
+          playback_speed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ecoflix_avatar_url?: string | null
+          ecoflix_display_name?: string | null
+          playback_speed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      domiflix_user_progress: {
+        Row: {
+          completed: boolean
+          duration_seconds: number
+          episode_id: string
+          id: string
+          progress_seconds: number
+          title_id: string
+          user_id: string
+          watched_at: string
+        }
+        Insert: {
+          completed?: boolean
+          duration_seconds?: number
+          episode_id: string
+          id?: string
+          progress_seconds?: number
+          title_id: string
+          user_id: string
+          watched_at?: string
+        }
+        Update: {
+          completed?: boolean
+          duration_seconds?: number
+          episode_id?: string
+          id?: string
+          progress_seconds?: number
+          title_id?: string
+          user_id?: string
+          watched_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domiflix_user_progress_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domiflix_user_progress_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domiflix_watchlist: {
+        Row: {
+          added_at: string
+          id: string
+          title_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          title_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          title_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domiflix_watchlist_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "domiflix_titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_movements: {
         Row: {
           amount: number
