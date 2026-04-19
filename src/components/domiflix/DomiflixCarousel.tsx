@@ -54,7 +54,7 @@ export function DomiflixCarousel({
           <button
             onClick={() => navigate(exploreUrl)}
             className={cn(
-              "text-[#00C597] text-[11px] font-semibold flex items-center gap-0.5 transition-all duration-200 hover:underline",
+              "text-[#e50914] text-[11px] font-semibold flex items-center gap-0.5 transition-all duration-200 hover:underline",
               labelVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"
             )}
           >

@@ -100,7 +100,7 @@ export function DomiflixHero({ title, continueWatchingTitle, watchlist, progress
           {isContinuing && (
             <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.15em] uppercase text-white/60">Continuar Assistindo</span>
           )}
-          <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.2em] uppercase text-[#00C597]">
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.2em] uppercase text-[#e50914]">
             {displayTitle.type === "movie" ? "Live" : "Série"}
           </span>
         </div>
@@ -134,7 +134,7 @@ export function DomiflixHero({ title, continueWatchingTitle, watchlist, progress
             className={cn(
               "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-sm font-semibold transition-all text-xs sm:text-sm md:text-base backdrop-blur-sm border",
               isInWatchlist
-                ? "bg-[#00C597] hover:bg-[#00b287] text-black border-[#00C597] shadow-[0_0_18px_rgba(0,197,151,0.35)]"
+                ? "bg-[#e50914] hover:bg-[#b80710] text-white border-[#e50914] shadow-[0_0_18px_rgba(229,9,20,0.35)]"
                 : "bg-[#6d6d6eb3] hover:bg-[#6d6d6e] text-white border-white/20"
             )}
           >

@@ -106,7 +106,7 @@ export default function DomiflixWatch() {
     return (
       <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center text-white/50">
         <div className="text-center">
-          <div className="w-10 h-10 border-[3px] border-[#00C597] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-10 h-10 border-[3px] border-[#e50914] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm mb-4">Carregando...</p>
           <button onClick={() => navigate(-1)} className="text-xs text-white/30 hover:text-white underline">Voltar</button>
         </div>
@@ -356,7 +356,7 @@ function Player({ videoId, videoType, titleName, subLabel, episodeName, startSec
 
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="w-12 h-12 border-[3px] border-[#00C597] border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-[3px] border-[#e50914] border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
@@ -410,8 +410,8 @@ function Player({ videoId, videoType, titleName, subLabel, episodeName, startSec
                 window.addEventListener("mousemove", onMove);
                 window.addEventListener("mouseup", onUp);
               }}>
-              <div className="absolute inset-y-0 left-0 bg-[#00C597] rounded-full" style={{ width: `${pct}%` }} />
-              <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-[#00C597] rounded-full" style={{ left: `${pct}%`, marginLeft: "-7px" }} />
+              <div className="absolute inset-y-0 left-0 bg-[#e50914] rounded-full" style={{ width: `${pct}%` }} />
+              <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-[#e50914] rounded-full" style={{ left: `${pct}%`, marginLeft: "-7px" }} />
             </div>
             <span className="text-white/60 text-[11px] tabular-nums w-[52px] text-right">{fmt(duration - currentTime)}</span>
           </div>
@@ -440,7 +440,7 @@ function Player({ videoId, videoType, titleName, subLabel, episodeName, startSec
                   {PLAYBACK_SPEEDS.map((s) => (
                     <button key={s} onClick={(e) => { e.stopPropagation(); onChangeSpeed(s); setShowSpeed(false); }}
                       className={cn("block w-full text-left px-3 py-1.5 text-sm hover:bg-white/10",
-                        s === playbackSpeed ? "text-[#00C597] font-semibold" : "text-white")}>{s}x</button>
+                        s === playbackSpeed ? "text-[#e50914] font-semibold" : "text-white")}>{s}x</button>
                   ))}
                 </div>
               )}
