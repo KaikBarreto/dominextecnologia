@@ -32,6 +32,7 @@ import {
   Sun,
   Moon,
   HelpCircle,
+  Clapperboard,
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
