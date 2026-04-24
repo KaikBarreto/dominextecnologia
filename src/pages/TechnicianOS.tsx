@@ -104,7 +104,6 @@ export default function TechnicianOS() {
     if (id) {
       fetchServiceOrder();
       fetchPhotos();
-      fetchCompany();
       fetchEquipmentItems();
       fetchFormResponses();
       fetchTechnicianProfile();
@@ -113,7 +112,7 @@ export default function TechnicianOS() {
       document.documentElement.style.removeProperty('--primary');
       document.documentElement.style.removeProperty('--ring');
     };
-  }, [id]);
+  }, [id, fetchServiceOrder, fetchTechnicianProfile]);
 
   const fetchFormResponses = async () => {
     if (!id) return;
@@ -172,7 +171,7 @@ export default function TechnicianOS() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [id, isAuthenticated]);
+  }, [id, isAuthenticated, fetchServiceOrder, fetchTechnicianProfile]);
 
   const fetchEquipmentItems = async () => {
     try {
