@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ClipboardList, 
@@ -131,10 +131,10 @@ export default function TechnicianOS() {
     }
   };
 
-  const fetchTechnicianProfile = async () => {
+  const fetchTechnicianProfile = useCallback(async () => {
     if (!id) return;
     // Try technician_id first, then fall back to first assignee
-    const { data: so } = await supabase.from('service_orders').select('technician_id').eq('id', id).single();
+    const { data: so } = await supabase.from('service_orders').select('technician_id').eq('id', id).maybeSingle();
     let userId = (so as any)?.technician_id;
     if (!userId) {
       const { data: assignees } = await supabase
@@ -145,10 +145,10 @@ export default function TechnicianOS() {
       userId = (assignees as any)?.[0]?.user_id;
     }
     if (userId) {
-      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).single();
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
       if (profile) setTechnicianProfile(profile);
     }
-  };
+  }, [id]);
   useEffect(() => {
     if (!id || isAuthenticated !== false) return;
 
@@ -193,8 +193,16 @@ export default function TechnicianOS() {
     }
   };
 
-  const fetchCompany = async () => {
-    const { data } = await supabase.from('company_settings').select('*').limit(1).single();
+  const fetchCompany = useCallback(async (companyId?: string | null) => {
+    const resolvedCompanyId = companyId || (serviceOrder as any)?.company_id || null;
+    if (!resolvedCompanyId) return;
+
+    const { data } = await supabase
+      .from('company_settings')
+      .select('*')
+      .eq('company_id', resolvedCompanyId)
+      .maybeSingle();
+
     if (data) {
       setCompany(data);
 
@@ -223,9 +231,9 @@ export default function TechnicianOS() {
         }
       }
     }
-  };
+  }, [serviceOrder]);
 
-  const fetchServiceOrder = async () => {
+  const fetchServiceOrder = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('service_orders')
@@ -237,15 +245,20 @@ export default function TechnicianOS() {
           service_type:service_types(id, name, color)
         `)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        setServiceOrder(null);
+        return;
+      }
       
       setServiceOrder(data as any);
       setCheckInTime(data.check_in_time);
       setCheckOutTime(data.check_out_time);
       setCheckInLocation(data.check_in_location as any);
       setCheckOutLocation(data.check_out_location as any);
+      await fetchCompany((data as any).company_id);
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -255,7 +268,7 @@ export default function TechnicianOS() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, toast, fetchCompany]);
 
   const fetchPhotos = async () => {
     try {
