@@ -381,6 +381,18 @@ export default function TechnicianOS() {
       if (error) throw error;
 
       if (id) {
+        const { error: ratingError } = await supabase
+          .from('service_ratings')
+          .insert({ service_order_id: id })
+          .select('id')
+          .maybeSingle();
+
+        if (ratingError && ratingError.code !== '23505') {
+          throw ratingError;
+        }
+      }
+
+      if (id) {
         recordLocationEvent(id, location.lat, location.lng, 'check_out');
       }
 
