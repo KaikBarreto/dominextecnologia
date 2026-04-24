@@ -100,20 +100,6 @@ export default function TechnicianOS() {
     });
   }, [forceReadOnly]);
 
-  useEffect(() => {
-    if (id) {
-      fetchServiceOrder();
-      fetchPhotos();
-      fetchEquipmentItems();
-      fetchFormResponses();
-      fetchTechnicianProfile();
-    }
-    return () => {
-      document.documentElement.style.removeProperty('--primary');
-      document.documentElement.style.removeProperty('--ring');
-    };
-  }, [id, fetchServiceOrder, fetchTechnicianProfile]);
-
   const fetchFormResponses = async () => {
     if (!id) return;
     const { data } = await supabase
@@ -148,31 +134,6 @@ export default function TechnicianOS() {
       if (profile) setTechnicianProfile(profile);
     }
   }, [id]);
-  useEffect(() => {
-    if (!id || isAuthenticated !== false) return;
-
-    const channel = supabase
-      .channel(`os-realtime-${id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'service_orders', filter: `id=eq.${id}` },
-        () => { fetchServiceOrder(); fetchTechnicianProfile(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'form_responses', filter: `service_order_id=eq.${id}` },
-        () => { fetchFormResponses(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'os_photos', filter: `service_order_id=eq.${id}` },
-        () => { fetchPhotos(); }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [id, isAuthenticated, fetchServiceOrder, fetchTechnicianProfile]);
-
   const fetchEquipmentItems = async () => {
     try {
       const { data, error } = await supabase
@@ -193,7 +154,7 @@ export default function TechnicianOS() {
   };
 
   const fetchCompany = useCallback(async (companyId?: string | null) => {
-    const resolvedCompanyId = companyId || (serviceOrder as any)?.company_id || null;
+    const resolvedCompanyId = companyId || null;
     if (!resolvedCompanyId) return;
 
     const { data } = await supabase
@@ -230,7 +191,7 @@ export default function TechnicianOS() {
         }
       }
     }
-  }, [serviceOrder]);
+  }, []);
 
   const fetchServiceOrder = useCallback(async () => {
     try {
@@ -268,6 +229,45 @@ export default function TechnicianOS() {
       setLoading(false);
     }
   }, [id, toast, fetchCompany]);
+
+  useEffect(() => {
+    if (id) {
+      fetchServiceOrder();
+      fetchPhotos();
+      fetchEquipmentItems();
+      fetchFormResponses();
+      fetchTechnicianProfile();
+    }
+    return () => {
+      document.documentElement.style.removeProperty('--primary');
+      document.documentElement.style.removeProperty('--ring');
+    };
+  }, [id, fetchServiceOrder, fetchTechnicianProfile]);
+
+  useEffect(() => {
+    if (!id || isAuthenticated !== false) return;
+
+    const channel = supabase
+      .channel(`os-realtime-${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'service_orders', filter: `id=eq.${id}` },
+        () => { fetchServiceOrder(); fetchTechnicianProfile(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'form_responses', filter: `service_order_id=eq.${id}` },
+        () => { fetchFormResponses(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'os_photos', filter: `service_order_id=eq.${id}` },
+        () => { fetchPhotos(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [id, isAuthenticated, fetchServiceOrder, fetchTechnicianProfile]);
 
   const fetchPhotos = async () => {
     try {
