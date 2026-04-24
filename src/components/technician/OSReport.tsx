@@ -227,7 +227,14 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
   };
 
   const fetchCompany = async () => {
-    const { data } = await supabase.from('company_settings').select('*').limit(1).single();
+    const companyId = (serviceOrder as any).company_id || snapshot?.company?.id || null;
+    if (!companyId) return;
+
+    const { data } = await supabase
+      .from('company_settings')
+      .select('*')
+      .eq('company_id', companyId)
+      .maybeSingle();
     if (data) {
       setCompany(data);
       const d = data as any;
