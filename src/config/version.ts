@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.0";
+export const APP_VERSION = "1.8.1";
 
-export const VERSION_NOTES = "Novo módulo Domiflix: plataforma de tutoriais estilo Netflix com séries, episódios, lives, progresso de exibição, minha lista, avatares, busca e gestão completa no admin (títulos, temporadas, episódios e seções da home). Player com YouTube/Drive, controle de velocidade e som de intro. Bônus: ao excluir uma parcela de cartão, o sistema agora oferece a opção de excluir somente aquela ou todas as parcelas vinculadas (mesmo installment_group_id).";
+export const VERSION_NOTES = "Correção: relatório de OS agora carrega obrigatoriamente os dados (nome, CNPJ, contato, logo) da empresa dona da OS, garantindo isolamento multi-empresa e aplicação correta do white label. Tokens de avaliação pública gerados retroativamente para todas as OS concluídas.";
