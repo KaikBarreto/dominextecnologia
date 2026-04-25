@@ -45,7 +45,7 @@ export default function Customers() {
   );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);
-  const pagination = useDataPagination(sortedItems);
+  const pagination = useDataPagination(sortedItems, 10, 'customers-list');
 
   const handleSubmit = async (data: any) => {
     if (editingCustomer) {
