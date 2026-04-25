@@ -1,4 +1,4 @@
-project_id = "lhfejzqgeqgppfremxeq"
+project_id = "byqldosixshhuiuarszp"
 
 # self-register: público por design (cadastro de novas empresas)
 # O JWT não existe ainda neste fluxo — protegido por validação de campos e (futuramente) CAPTCHA
