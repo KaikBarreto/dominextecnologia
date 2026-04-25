@@ -32,8 +32,8 @@ ALTER TABLE public.credit_card_bills ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage their company credit card bills"
   ON public.credit_card_bills
   FOR ALL
-  USING (company_id = get_user_company_id())
-  WITH CHECK (company_id = get_user_company_id());
+  USING (company_id = get_user_company_id(auth.uid()))
+  WITH CHECK (company_id = get_user_company_id(auth.uid()));
 
 -- Seed a system category for credit card bill payments so DRE can filter it out
 INSERT INTO public.financial_categories (company_id, name, type, color, icon, is_system, dre_group, sort_order)

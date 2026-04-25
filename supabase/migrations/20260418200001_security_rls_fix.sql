@@ -73,15 +73,26 @@ CREATE POLICY "Company settings visible to own company"
   TO authenticated
   USING (company_id = get_user_company_id(auth.uid()));
 
-CREATE POLICY "Public can view company settings by portal token"
-  ON public.company_settings FOR SELECT
-  TO anon
-  USING (
-    company_id IN (
-      SELECT cp.company_id FROM public.customer_portals cp
-      WHERE cp.token = current_setting('request.headers.x-portal-token', true)
-    )
-  );
+-- Policy referencia customer_portals.company_id que não existe no schema (bug original); criar apenas se a coluna existir
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='customer_portals' AND column_name='company_id'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY "Public can view company settings by portal token"
+        ON public.company_settings FOR SELECT
+        TO anon
+        USING (
+          company_id IN (
+            SELECT cp.company_id FROM public.customer_portals cp
+            WHERE cp.token = current_setting('request.headers.x-portal-token', true)
+          )
+        )
+    $policy$;
+  END IF;
+END$$;
 
 -- ---------------------------------------------------------------------------
 -- 5. equipment — remover USING (true) público
@@ -156,7 +167,7 @@ CREATE POLICY "Public can view quote by valid token"
   ON public.quotes FOR SELECT
   TO anon
   USING (
-    share_token = current_setting('request.headers.x-share-token', true)
+    token = current_setting('request.headers.x-share-token', true)
     AND current_setting('request.headers.x-share-token', true) <> ''
   );
 
@@ -164,11 +175,11 @@ CREATE POLICY "Public can update quote by valid token"
   ON public.quotes FOR UPDATE
   TO anon
   USING (
-    share_token = current_setting('request.headers.x-share-token', true)
+    token = current_setting('request.headers.x-share-token', true)
     AND current_setting('request.headers.x-share-token', true) <> ''
   )
   WITH CHECK (
-    share_token = current_setting('request.headers.x-share-token', true)
+    token = current_setting('request.headers.x-share-token', true)
     AND current_setting('request.headers.x-share-token', true) <> ''
   );
 
@@ -178,7 +189,7 @@ CREATE POLICY "Public can view quote_items by valid quote"
   USING (
     quote_id IN (
       SELECT id FROM public.quotes
-      WHERE share_token = current_setting('request.headers.x-share-token', true)
+      WHERE token = current_setting('request.headers.x-share-token', true)
       AND current_setting('request.headers.x-share-token', true) <> ''
     )
   );
@@ -291,12 +302,12 @@ CREATE POLICY "Technicians can insert photos for own company OS"
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Authenticated can view inventory" ON public.inventory;
 DO $$
+DECLARE r record;
 BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_policies WHERE tablename = 'inventory' AND policyname LIKE '%view%'
     AND qual = 'true'
   ) THEN
-    -- Remover qualquer política SELECT pública existente
     FOR r IN (
       SELECT policyname FROM pg_policies
       WHERE tablename = 'inventory' AND cmd = 'SELECT' AND qual = 'true'

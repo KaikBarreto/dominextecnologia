@@ -217,10 +217,18 @@ CREATE POLICY "Users manage own quote_items" ON public.quote_items FOR ALL TO au
 CREATE POLICY "Public view quote_items via quote" ON public.quote_items FOR SELECT TO anon
   USING (EXISTS(SELECT 1 FROM quotes q WHERE q.id = quote_id AND q.token IS NOT NULL));
 
-DROP POLICY IF EXISTS "Authenticated users can manage quote_item_materials" ON public.quote_item_materials;
-CREATE POLICY "Users manage own quote_item_materials" ON public.quote_item_materials FOR ALL TO authenticated
-  USING (EXISTS(SELECT 1 FROM quote_items qi JOIN quotes q ON q.id = qi.quote_id WHERE qi.id = quote_item_id AND (q.company_id = get_user_company_id(auth.uid()) OR is_super_admin(auth.uid()))))
-  WITH CHECK (EXISTS(SELECT 1 FROM quote_items qi JOIN quotes q ON q.id = qi.quote_id WHERE qi.id = quote_item_id AND (q.company_id = get_user_company_id(auth.uid()) OR is_super_admin(auth.uid()))));
+-- quote_item_materials: tabela criada manualmente no antigo, pode não existir no novo. Aplicar policy só se existir.
+DO $$
+BEGIN
+  IF to_regclass('public.quote_item_materials') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can manage quote_item_materials" ON public.quote_item_materials';
+    EXECUTE $policy$
+      CREATE POLICY "Users manage own quote_item_materials" ON public.quote_item_materials FOR ALL TO authenticated
+        USING (EXISTS(SELECT 1 FROM quote_items qi JOIN quotes q ON q.id = qi.quote_id WHERE qi.id = quote_item_id AND (q.company_id = get_user_company_id(auth.uid()) OR is_super_admin(auth.uid()))))
+        WITH CHECK (EXISTS(SELECT 1 FROM quote_items qi JOIN quotes q ON q.id = qi.quote_id WHERE qi.id = quote_item_id AND (q.company_id = get_user_company_id(auth.uid()) OR is_super_admin(auth.uid()))))
+    $policy$;
+  END IF;
+END$$;
 
 -- FORM_TEMPLATES / QUESTIONS / RESPONSES / TEMPLATE_SERVICE_TYPES
 DROP POLICY IF EXISTS "Authenticated users can view form_templates" ON public.form_templates;
