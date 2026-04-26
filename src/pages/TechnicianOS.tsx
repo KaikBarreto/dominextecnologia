@@ -207,12 +207,14 @@ export default function TechnicianOS() {
         .eq('id', id)
         .maybeSingle();
 
-      if (error) throw error;
+      // PGRST116 with "0 rows" leaks through some supabase-js versions despite
+      // .maybeSingle() — treat it as a clean not-found, never as a UI error.
+      if (error && error.code !== 'PGRST116') throw error;
       if (!data) {
         setServiceOrder(null);
         return;
       }
-      
+
       setServiceOrder(data as any);
       setCheckInTime(data.check_in_time);
       setCheckOutTime(data.check_out_time);
