@@ -43,13 +43,14 @@ export function useFinancial() {
   const transactionsQuery = useQuery({
     queryKey: ['financial-transactions'],
     queryFn: async () => {
-      const data = await fetchAllPaginated<FinancialTransaction & { customer: any; account: any }>(
+      const data = await fetchAllPaginated<FinancialTransaction & { customer: any; account: any; employee: any }>(
         () => supabase
           .from('financial_transactions')
           .select(`
             *,
             customer:customers(id, name),
-            account:financial_accounts(id, name, type, color)
+            account:financial_accounts(id, name, type, color),
+            employee:employees(id, name, salary, photo_url)
           `)
           .order('transaction_date', { ascending: false })
       );

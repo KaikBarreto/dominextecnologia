@@ -9,6 +9,12 @@ verify_jwt = false
 [functions.generate-pmoc-orders]
 verify_jwt = false
 
+# generate-payroll: protegido por CRON_SECRET no header Authorization
+# Gera linhas de Folha de Pagamento em financial_transactions para cada
+# funcionário ativo conforme sua frequência (mensal/quinzenal/semanal)
+[functions.generate-payroll]
+verify_jwt = false
+
 # crm-lead-webhook: protegido por token de webhook na tabela crm_webhooks
 [functions.crm-lead-webhook]
 verify_jwt = false

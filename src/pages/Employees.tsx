@@ -219,6 +219,8 @@ export default function Employees() {
     description: string;
     notes?: string;
     accountId?: string;
+    employeeId?: string;
+    payrollKind?: 'salary' | 'vale' | 'bonus' | 'rescission';
   }) => {
     const today = new Date().toISOString().split('T')[0];
     const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
@@ -235,6 +237,8 @@ export default function Employees() {
       account_id: input.accountId || null,
       created_by: user?.id,
       company_id,
+      employee_id: input.employeeId ?? null,
+      payroll_kind: input.payrollKind ?? null,
     } as any);
 
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
@@ -273,6 +277,8 @@ export default function Employees() {
             amount: data.amount,
             description: `${movementType === 'vale' ? 'Vale' : 'Bônus'} - ${movementEmployee.name}`,
             notes: data.description,
+            employeeId: movementEmployee.id,
+            payrollKind: movementType === 'vale' ? 'vale' : 'bonus',
           });
         }
         setMovementEmployee(null);
@@ -342,14 +348,48 @@ export default function Employees() {
             }
           }
 
-          // 4. Register financial transaction linked to account
-          await registerFinancialTransaction({
-            type: 'saida',
-            amount: toPay,
-            description: `Pagamento de salário - ${emp.name}`,
-            notes: payload.description,
-            accountId: payload.accountId,
-          });
+          // 4. Quita uma folha pendente do funcionário (se existir) ou cria nova transação tipada
+          const { data: pendingPayroll } = await supabase
+            .from('financial_transactions')
+            .select('id, amount')
+            .eq('employee_id', emp.id)
+            .eq('payroll_kind', 'salary')
+            .eq('is_paid', false)
+            .is('cancelled_at', null)
+            .order('due_date', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (pendingPayroll?.id) {
+            // Atualiza a folha pendente em vez de criar nova linha (evita duplicar despesa)
+            const today = new Date().toISOString().split('T')[0];
+            const { error: payErr } = await supabase
+              .from('financial_transactions')
+              .update({
+                is_paid: true,
+                paid_date: today,
+                account_id: payload.accountId,
+                amount: toPay,
+                notes: payload.description,
+              } as any)
+              .eq('id', pendingPayroll.id);
+            if (payErr) {
+              console.error('Erro ao quitar folha pendente:', payErr);
+            }
+            queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+            queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+          } else {
+            await registerFinancialTransaction({
+              type: 'saida',
+              amount: toPay,
+              description: `Pagamento de salário - ${emp.name}`,
+              notes: payload.description,
+              accountId: payload.accountId,
+              employeeId: emp.id,
+              payrollKind: 'salary',
+            });
+          }
         } catch (err) {
           console.error('Erro no fluxo de pagamento:', err);
           toast({ variant: 'destructive', title: 'Erro no fluxo de pagamento', description: 'Alguns registros podem não ter sido criados.' });
