@@ -18,6 +18,12 @@ dist
 dist-ssr
 *.local
 
+# Supabase CLI local cache
+supabase/.temp/
+
+# Dados de migração do banco antigo (CSVs e arquivos de buckets) — não versionar
+src/TMP/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

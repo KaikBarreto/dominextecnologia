@@ -1,4 +1,4 @@
-project_id = "lhfejzqgeqgppfremxeq"
+project_id = "byqldosixshhuiuarszp"
 
 # self-register: público por design (cadastro de novas empresas)
 # O JWT não existe ainda neste fluxo — protegido por validação de campos e (futuramente) CAPTCHA
@@ -7,6 +7,12 @@ verify_jwt = false
 
 # generate-pmoc-orders: protegido por CRON_SECRET no header Authorization
 [functions.generate-pmoc-orders]
+verify_jwt = false
+
+# generate-payroll: protegido por CRON_SECRET no header Authorization
+# Gera linhas de Folha de Pagamento em financial_transactions para cada
+# funcionário ativo conforme sua frequência (mensal/quinzenal/semanal)
+[functions.generate-payroll]
 verify_jwt = false
 
 # crm-lead-webhook: protegido por token de webhook na tabela crm_webhooks

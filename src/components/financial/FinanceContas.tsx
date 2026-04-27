@@ -36,6 +36,13 @@ import type { TransactionType } from '@/types/database';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
+import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
+import { calculateEmployeeBalance } from '@/utils/employeeCalculations';
+import { Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -44,8 +51,10 @@ function formatCurrency(value: number) {
 type SubTab = 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 
+type PayrollTxn = FinancialTransaction & { customer?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
+
 interface FinanceContasProps {
-  transactions: (FinancialTransaction & { customer?: any })[];
+  transactions: PayrollTxn[];
   isLoading: boolean;
   onMarkAsPaid: (params: any) => Promise<any>;
 }
@@ -56,8 +65,9 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
+  const [receivingTxn, setReceivingTxn] = useState<PayrollTxn | null>(null);
   const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
+  const [payrollTxn, setPayrollTxn] = useState<PayrollTxn | null>(null);
   const [payDespAccountId, setPayDespAccountId] = useState('');
   const [payDespDate, setPayDespDate] = useState('');
   const [payDespMethod, setPayDespMethod] = useState('pix');
@@ -66,8 +76,22 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
   const { deleteTransaction, updateTransaction } = useFinancial();
   const { accounts: allAccounts } = useFinancialAccounts();
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
+  const { movements: payrollEmpMovements } = useEmployeeMovements(payrollTxn?.employee?.id);
+  const payrollBalance = useMemo(() => {
+    if (!payrollTxn?.employee) return calculateEmployeeBalance([], 0);
+    return calculateEmployeeBalance(payrollEmpMovements ?? [], payrollTxn.employee.salary);
+  }, [payrollEmpMovements, payrollTxn?.employee]);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleMarkAsPaidClick = (t: FinancialTransaction & { customer?: any }) => {
+  const isPayrollSalaryRow = (t: PayrollTxn) =>
+    t.payroll_kind === 'salary' && !!t.employee_id && !t.is_paid;
+
+  const handleMarkAsPaidClick = (t: PayrollTxn) => {
+    if (isPayrollSalaryRow(t)) {
+      setPayrollTxn(t);
+      return;
+    }
     if (t.transaction_type === 'entrada') {
       setReceivingTxn(t);
     } else {
@@ -77,6 +101,37 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       setPayDespMethod('pix');
       setPayDespNotes('');
     }
+  };
+
+  const handleConfirmPayrollPayment = async (payload: PaymentPayload) => {
+    if (!payrollTxn) return;
+    const subtotal = (payrollTxn.employee?.salary ?? Number(payrollTxn.amount))
+      + payrollBalance.totalBonus
+      - payrollBalance.totalFaltas;
+    const netAmount = subtotal - payload.valeDiscount;
+
+    const { error } = await supabase.rpc('pay_payroll_transaction', {
+      p_transaction_id: payrollTxn.id,
+      p_account_id: payload.accountId,
+      p_paid_date: new Date().toISOString().split('T')[0],
+      p_vale_discount: payload.valeDiscount,
+      p_net_amount: netAmount,
+      p_notes: payload.description ?? null,
+      p_payment_method: 'pix',
+    });
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Erro ao pagar folha', description: error.message });
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    queryClient.invalidateQueries({ queryKey: ['employee-movements'] });
+    queryClient.invalidateQueries({ queryKey: ['all-employee-movements'] });
+    setPayrollTxn(null);
+    toast({ title: 'Folha quitada com sucesso' });
   };
 
   const today = startOfDay(new Date());
@@ -236,8 +291,12 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{t.description}</p>
-                    {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
+                    <p className="font-medium text-sm truncate flex items-center gap-1.5">
+                      {t.payroll_kind === 'salary' && <Users className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                      <span className="truncate">{t.description}</span>
+                    </p>
+                    {t.employee && <p className="text-xs text-muted-foreground truncate">{t.employee.name}</p>}
+                    {!t.employee && t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
                   </div>
                   <div className="flex items-center gap-1">
                     {t.is_paid ? (
@@ -304,8 +363,12 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                     <TableRow key={t.id} className={cn(isOverdue(t) && 'bg-destructive/5')}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{t.description}</p>
-                          {t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
+                          <p className="font-medium flex items-center gap-1.5">
+                            {t.payroll_kind === 'salary' && <Users className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                            <span>{t.description}</span>
+                          </p>
+                          {t.employee && <p className="text-xs text-muted-foreground">{t.employee.name}</p>}
+                          {!t.employee && t.customer && <p className="text-xs text-muted-foreground">{t.customer.name}</p>}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
@@ -392,6 +455,19 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {payrollTxn?.employee && (
+        <EmployeePaymentModal
+          open={!!payrollTxn}
+          onOpenChange={(v) => { if (!v) setPayrollTxn(null); }}
+          employeeName={payrollTxn.employee.name}
+          salary={payrollTxn.employee.salary}
+          balance={payrollBalance}
+          onSubmit={handleConfirmPayrollPayment}
+          financialTransactionId={payrollTxn.id}
+          payrollPeriodLabel={payrollTxn.payroll_period ?? undefined}
+        />
+      )}
 
       <ReceivePaymentModal
         open={!!receivingTxn}

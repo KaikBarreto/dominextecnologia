@@ -3,9 +3,14 @@
 -- CORREÇÕES DE SEGURANÇA CRÍTICAS
 -- ============================================================================
 
--- 1) crm_webhooks: bloquear leitura pública de tokens
-DROP POLICY IF EXISTS "Public can view active webhooks by token" ON public.crm_webhooks;
-DROP POLICY IF EXISTS "Anonymous can view active webhooks" ON public.crm_webhooks;
+-- 1) crm_webhooks: bloquear leitura pública de tokens (tabela criada manualmente; pode não existir)
+DO $$
+BEGIN
+  IF to_regclass('public.crm_webhooks') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "Public can view active webhooks by token" ON public.crm_webhooks';
+    EXECUTE 'DROP POLICY IF EXISTS "Anonymous can view active webhooks" ON public.crm_webhooks';
+  END IF;
+END$$;
 
 -- 2) service_ratings: exigir token via header
 DROP POLICY IF EXISTS "Public can view rating by token" ON public.service_ratings;

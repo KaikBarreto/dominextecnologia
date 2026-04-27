@@ -2,8 +2,10 @@
 -- Add company_id to company_settings for multi-tenant isolation
 ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE;
 
--- Link existing settings row to the existing company
-UPDATE public.company_settings SET company_id = '478ee686-12dd-40a8-880a-a7375764a5a0' WHERE company_id IS NULL;
+-- Link existing settings row to the existing company (skip if target company doesn't exist; idempotent for empty databases)
+UPDATE public.company_settings SET company_id = '478ee686-12dd-40a8-880a-a7375764a5a0'
+  WHERE company_id IS NULL
+  AND EXISTS (SELECT 1 FROM public.companies WHERE id = '478ee686-12dd-40a8-880a-a7375764a5a0');
 
 -- Sync data from company_settings to companies table for Empresa Kaik Barreto
 UPDATE public.companies SET 

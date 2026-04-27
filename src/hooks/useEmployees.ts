@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 
+export type PaymentFrequency = 'monthly' | 'biweekly' | 'weekly';
+export type PaymentDayType = 'business' | 'calendar';
+
 export interface Employee {
   id: string;
   name: string;
@@ -19,6 +22,11 @@ export interface Employee {
   is_active: boolean;
   monthly_cost: number | null;
   monthly_cost_breakdown: any;
+  payment_frequency: PaymentFrequency;
+  payment_day_type: PaymentDayType;
+  payment_day: number | null;
+  payment_day_2: number | null;
+  payment_weekday: number | null;
   created_at: string;
   updated_at: string;
 }

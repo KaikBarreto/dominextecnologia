@@ -7,6 +7,11 @@
 -- Helper: ID da Glacial Cold Brasil
 -- 478ee686-12dd-40a8-880a-a7375764a5a0
 
+-- Garantir que a Glacial existe (no-op em bancos onde já existia; necessário em bancos vazios para os UPDATEs + NOT NULL abaixo funcionarem)
+INSERT INTO public.companies (id, name)
+  VALUES ('478ee686-12dd-40a8-880a-a7375764a5a0', 'Glacial Cold Brasil')
+  ON CONFLICT (id) DO NOTHING;
+
 -- 1. CUSTOMERS
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE RESTRICT;
 UPDATE public.customers SET company_id = '478ee686-12dd-40a8-880a-a7375764a5a0' WHERE company_id IS NULL;
@@ -134,12 +139,15 @@ CREATE TABLE IF NOT EXISTS public.consent_records (
 );
 ALTER TABLE public.consent_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own consent records" ON public.consent_records;
 CREATE POLICY "Users can view own consent records" ON public.consent_records
   FOR SELECT USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can insert own consent records" ON public.consent_records;
 CREATE POLICY "Users can insert own consent records" ON public.consent_records
   FOR INSERT WITH CHECK (user_id = auth.uid() OR user_id IS NULL);
 
+DROP POLICY IF EXISTS "Super admins can view all consent records" ON public.consent_records;
 CREATE POLICY "Super admins can view all consent records" ON public.consent_records
   FOR SELECT USING (has_role(auth.uid(), 'super_admin'::app_role));
 

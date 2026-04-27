@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
-import { Employee } from '@/hooks/useEmployees';
+import { Employee, PaymentFrequency, PaymentDayType } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
 import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
@@ -56,6 +56,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [monthlyCost, setMonthlyCost] = useState('');
   const [monthlyCostBreakdown, setMonthlyCostBreakdown] = useState<MonthlyCostBreakdown | null>(null);
   const [showCostCalc, setShowCostCalc] = useState(false);
+  const [paymentFrequency, setPaymentFrequency] = useState<PaymentFrequency>('monthly');
+  const [paymentDayType, setPaymentDayType] = useState<PaymentDayType>('business');
+  const [paymentDay, setPaymentDay] = useState<number>(5);
+  const [paymentDay2, setPaymentDay2] = useState<number>(20);
+  const [paymentWeekday, setPaymentWeekday] = useState<number>(5);
 
   type EmployeeDraft = { name: string; cpf: string; phone: string; email: string; position: string; salary: string; hireDate: string; address: string; pixKey: string };
   const draft = useFormDraft<EmployeeDraft>({ key: 'employee-form', isOpen: open, isEditing });
@@ -96,6 +101,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setHireDate(employee?.hire_date || '');
         setAddress(employee?.address || '');
         setPixKey(employee?.pix_key || '');
+        setPaymentFrequency((employee?.payment_frequency as PaymentFrequency) || 'monthly');
+        setPaymentDayType((employee?.payment_day_type as PaymentDayType) || 'business');
+        setPaymentDay(employee?.payment_day ?? 5);
+        setPaymentDay2(employee?.payment_day_2 ?? 20);
+        setPaymentWeekday(employee?.payment_weekday ?? 5);
       }
       setPhotoUrl(employee?.photo_url || '');
       setCreateAccess(false);
@@ -149,6 +159,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       pix_key: pixKey || null,
       photo_url: photoUrl || null,
       user_id: linkedUserId,
+      payment_frequency: paymentFrequency,
+      payment_day_type: paymentFrequency === 'weekly' ? 'calendar' : paymentDayType,
+      payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
+      payment_day_2: paymentFrequency === 'biweekly' ? paymentDay2 : null,
+      payment_weekday: paymentFrequency === 'weekly' ? paymentWeekday : null,
       _createAccess: createAccess,
       _password: finalPassword,
     } as any);
@@ -233,6 +248,88 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             <Label>Chave PIX</Label>
             <Input value={pixKey} onChange={e => setPixKey(pixKeyMask(e.target.value))} placeholder="CPF, email, telefone ou chave aleatória" />
           </div>
+        </div>
+
+        {/* Configuração de pagamento */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <Label className="text-sm font-medium">Configuração de Pagamento</Label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Frequência</Label>
+              <Select value={paymentFrequency} onValueChange={(v) => setPaymentFrequency(v as PaymentFrequency)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="biweekly">Quinzenal</SelectItem>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {paymentFrequency !== 'weekly' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Tipo de dia</Label>
+                <Select value={paymentDayType} onValueChange={(v) => setPaymentDayType(v as PaymentDayType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="business">Dia útil</SelectItem>
+                    <SelectItem value="calendar">Dia corrido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {paymentFrequency === 'monthly' && (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">{paymentDayType === 'business' ? 'N° dia útil do mês' : 'Dia do mês'}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={paymentDay}
+                  onChange={e => setPaymentDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                />
+              </div>
+            )}
+            {paymentFrequency === 'biweekly' && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">1° pagamento</Label>
+                  <Input
+                    type="number" min={1} max={31}
+                    value={paymentDay}
+                    onChange={e => setPaymentDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">2° pagamento</Label>
+                  <Input
+                    type="number" min={1} max={31}
+                    value={paymentDay2}
+                    onChange={e => setPaymentDay2(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                  />
+                </div>
+              </>
+            )}
+            {paymentFrequency === 'weekly' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Dia da semana</Label>
+                <Select value={String(paymentWeekday)} onValueChange={(v) => setPaymentWeekday(parseInt(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Domingo</SelectItem>
+                    <SelectItem value="1">Segunda-feira</SelectItem>
+                    <SelectItem value="2">Terça-feira</SelectItem>
+                    <SelectItem value="3">Quarta-feira</SelectItem>
+                    <SelectItem value="4">Quinta-feira</SelectItem>
+                    <SelectItem value="5">Sexta-feira</SelectItem>
+                    <SelectItem value="6">Sábado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Valor da folha aparece automaticamente em Contas a Pagar conforme essa configuração.
+          </p>
         </div>
 
         {/* Link to existing user */}

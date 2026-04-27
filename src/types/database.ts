@@ -191,6 +191,11 @@ export interface FinancialTransaction {
   transfer_pair_id?: string | null;
   parent_transaction_id?: string | null;
   credit_card_bill_date?: string | null;
+  employee_id?: string | null;
+  payroll_period?: string | null;
+  payroll_kind?: 'salary' | 'vale' | 'bonus' | 'rescission' | null;
+  cancelled_at?: string | null;
+  cancelled_reason?: string | null;
   created_by?: string;
   created_at: string;
   updated_at: string;

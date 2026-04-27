@@ -24,9 +24,16 @@ interface EmployeePaymentModalProps {
   balance: BalanceSummary;
   onSubmit: (payload: PaymentPayload) => void;
   isPending?: boolean;
+  /**
+   * Quando preenchido, o pagamento quita uma `financial_transactions` de folha
+   * já existente (caminho via Contas a Pagar). Quando ausente, gera nova
+   * transação (caminho via tela de Funcionários).
+   */
+  financialTransactionId?: string;
+  payrollPeriodLabel?: string;
 }
 
-export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary, balance, onSubmit, isPending }: EmployeePaymentModalProps) {
+export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary, balance, onSubmit, isPending, financialTransactionId, payrollPeriodLabel }: EmployeePaymentModalProps) {
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const { accounts, balances } = useFinancialAccounts();
   const activeAccounts = useMemo(() => {
@@ -86,6 +93,11 @@ export function EmployeePaymentModal({ open, onOpenChange, employeeName, salary,
   return (
     <ResponsiveModal open={open} onOpenChange={handleOpenChange} title={`Pagamento — ${employeeName}`}>
       <div className="space-y-4 p-1">
+        {financialTransactionId && (
+          <div className="rounded-lg border-2 border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Quitando folha pendente{payrollPeriodLabel ? ` — período ${payrollPeriodLabel}` : ''}
+          </div>
+        )}
         {/* Financial Summary */}
         <div className="rounded-lg border p-4 space-y-2 text-sm">
           <div className="flex justify-between">
