@@ -59,24 +59,10 @@ export function renderPasswordResetEmail(opts: {
         </td>
       </tr>
 
-      <!-- Botao COPIAR CODIGO (visualmente convida selecionar/copiar) -->
-      <tr>
-        <td style="padding:0 40px 8px 40px;text-align:center;">
-          <a href="${resetUrl}" style="display:inline-block;padding:10px 22px;background:rgba(255,255,255,0.06);border:1px solid rgba(0,199,127,0.4);border-radius:8px;color:#00C77F;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;text-decoration:none;">
-            ⧉&nbsp;&nbsp;COPIAR CÓDIGO
-          </a>
-        </td>
-      </tr>
-
-      <!-- Link clicavel: redefinir agora -->
+      <!-- CTA primario: redefinir senha agora -->
       <tr>
         <td style="padding:8px 40px 24px 40px;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-            <tr>
-              <td style="padding:8px 0;text-align:center;">
-                <span style="color:rgba(255,255,255,0.5);font-size:12px;">— ou —</span>
-              </td>
-            </tr>
             <tr>
               <td style="text-align:center;padding:8px 0;">
                 <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;background:#00C77F;border-radius:10px;color:#ffffff;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;box-shadow:0 4px 16px rgba(0,199,127,0.3);">

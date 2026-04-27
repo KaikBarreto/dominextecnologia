@@ -127,6 +127,19 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
         body: { email, code: codeStr, newPassword: data.password },
       });
       if (error || (respData as any)?.error) throw new Error((respData as any)?.error || error?.message);
+
+      // Auto-login com a nova senha
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: data.password,
+      });
+      if (signInError) {
+        // Senha foi atualizada mas auto-login falhou — fluxo manual
+        setStep('done');
+        return;
+      }
+
+      // Sessao criada — o AuthContext detecta e redireciona automaticamente
       setStep('done');
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao redefinir senha', description: err?.message || 'Tente novamente' });

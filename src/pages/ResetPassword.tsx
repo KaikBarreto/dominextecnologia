@@ -83,8 +83,24 @@ export default function ResetPassword() {
       if (error || (respData as any)?.error) {
         throw new Error((respData as any)?.error || error?.message || 'Erro ao redefinir senha');
       }
+
+      // Auto-login com a nova senha
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: data.password,
+      });
+      if (signInError) {
+        // Senha foi atualizada mas auto-login falhou — manda pro login para o usuario tentar manualmente
+        toast({
+          title: 'Senha redefinida',
+          description: 'Faça login com a nova senha.',
+        });
+        setTimeout(() => navigate('/login'), 1500);
+        return;
+      }
+
       setStatus('success');
-      setTimeout(() => navigate('/login'), 2000);
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -134,7 +150,7 @@ export default function ResetPassword() {
                   <CheckCircle className="h-7 w-7 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-white">Senha redefinida!</h3>
-                <p className="text-sm text-white/70">Redirecionando para o login…</p>
+                <p className="text-sm text-white/70">Entrando no sistema…</p>
               </div>
             )}
 
