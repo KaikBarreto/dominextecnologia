@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import type { ServiceOrder, FormQuestion } from '@/types/database';
 import { osTypeLabels } from '@/types/database';
 import { format } from 'date-fns';
@@ -54,6 +55,7 @@ interface EquipmentItem {
 interface OSReportProps {
   serviceOrder: ServiceOrder & { customer: any; equipment: any; form_template?: any };
   photos: OSPhoto[];
+  forceReadOnly?: boolean;
 }
 
 // Helper to safely extract joined object (Supabase may return array for some joins)
@@ -84,7 +86,10 @@ function ReportImage({ src, alt, className, onClick }: { src: string; alt: strin
   );
 }
 
-export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProps) {
+export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly = false }: OSReportProps) {
+  // No modo cliente, usar cliente anônimo para que a RLS avalie como `anon`
+  // (e nao como o usuario logado de outra empresa).
+  const db = forceReadOnly ? supabaseAnon : supabase;
   // Apply snapshot fallback for deleted entities
   const snapshot = (rawServiceOrder as any).snapshot_data;
   const serviceOrder = {
@@ -208,11 +213,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
   const fetchTechnician = async () => {
     let userId = serviceOrder.technician_id;
     if (!userId) {
-      const { data: assignees } = await supabase.from('service_order_assignees').select('user_id').eq('service_order_id', serviceOrder.id).limit(1);
+      const { data: assignees } = await db.from('service_order_assignees').select('user_id').eq('service_order_id', serviceOrder.id).limit(1);
       userId = (assignees as any)?.[0]?.user_id;
     }
     if (!userId) return;
-    const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
+    const { data } = await db.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
     if (data) {
       setTechnicianInfo({ full_name: data.full_name, photo_url: data.avatar_url });
     } else if (snapshot?.technician) {
@@ -222,7 +227,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
   };
 
   const fetchRating = async () => {
-    const { data } = await supabase.from('service_ratings').select('*').eq('service_order_id', serviceOrder.id).maybeSingle();
+    const { data } = await db.from('service_ratings').select('*').eq('service_order_id', serviceOrder.id).maybeSingle();
     if (data) setRatingData(data);
   };
 
@@ -230,7 +235,13 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
     const companyId = (serviceOrder as any).company_id || snapshot?.company?.id || null;
     if (!companyId) return;
 
-    const { data } = await supabase
+    // Reset antes de buscar para nao mostrar branding de outra empresa
+    // caso a fetch falhe ou o componente seja reaproveitado entre OSs.
+    setCompany(null);
+    setIsWhiteLabel(false);
+    setHeaderConfig(DEFAULT_HEADER_CONFIG);
+
+    const { data } = await db
       .from('company_settings')
       .select('*')
       .eq('company_id', companyId)
@@ -253,7 +264,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
   };
 
   const fetchContract = async (contractId: string) => {
-    const { data } = await supabase.from('contracts').select('id, name').eq('id', contractId).maybeSingle();
+    const { data } = await db.from('contracts').select('id, name').eq('id', contractId).maybeSingle();
     if (data) {
       setContractInfo(data);
     } else if (snapshot?.contract) {
@@ -262,7 +273,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
   };
 
   const fetchEquipmentItems = async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('service_order_equipment')
       .select(`
         equipment_id,
@@ -288,7 +299,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos }: OSReportProp
   };
 
   const fetchAllResponses = async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)')
       .eq('service_order_id', serviceOrder.id);

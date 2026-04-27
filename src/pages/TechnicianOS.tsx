@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
@@ -61,6 +62,9 @@ export default function TechnicianOS() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const forceReadOnly = searchParams.get('modo') === 'cliente';
+  // No modo cliente usamos cliente anônimo para que a RLS avalie como `anon`,
+  // mesmo que haja sessão de outro usuário/empresa persistida no navegador.
+  const db = forceReadOnly ? supabaseAnon : supabase;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -102,7 +106,7 @@ export default function TechnicianOS() {
 
   const fetchFormResponses = async () => {
     if (!id) return;
-    const { data } = await supabase
+    const { data } = await db
       .from('form_responses')
       .select('id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(id, question, question_type, options, description, position, template_id)')
       .eq('service_order_id', id);
@@ -119,10 +123,10 @@ export default function TechnicianOS() {
   const fetchTechnicianProfile = useCallback(async () => {
     if (!id) return;
     // Try technician_id first, then fall back to first assignee
-    const { data: so } = await supabase.from('service_orders').select('technician_id').eq('id', id).maybeSingle();
+    const { data: so } = await db.from('service_orders').select('technician_id').eq('id', id).maybeSingle();
     let userId = (so as any)?.technician_id;
     if (!userId) {
-      const { data: assignees } = await supabase
+      const { data: assignees } = await db
         .from('service_order_assignees')
         .select('user_id')
         .eq('service_order_id', id)
@@ -130,13 +134,13 @@ export default function TechnicianOS() {
       userId = (assignees as any)?.[0]?.user_id;
     }
     if (userId) {
-      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
+      const { data: profile } = await db.from('profiles').select('full_name, avatar_url').eq('user_id', userId).maybeSingle();
       if (profile) setTechnicianProfile(profile);
     }
   }, [id]);
   const fetchEquipmentItems = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('service_order_equipment')
         .select(`
           equipment_id,
@@ -157,7 +161,10 @@ export default function TechnicianOS() {
     const resolvedCompanyId = companyId || null;
     if (!resolvedCompanyId) return;
 
-    const { data } = await supabase
+    // Reset antes da fetch para nao herdar branding de outra empresa.
+    setCompany(null);
+
+    const { data } = await db
       .from('company_settings')
       .select('*')
       .eq('company_id', resolvedCompanyId)
@@ -195,7 +202,7 @@ export default function TechnicianOS() {
 
   const fetchServiceOrder = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('service_orders')
         .select(`
           *,
@@ -249,7 +256,7 @@ export default function TechnicianOS() {
   useEffect(() => {
     if (!id || isAuthenticated !== false) return;
 
-    const channel = supabase
+    const channel = db
       .channel(`os-realtime-${id}`)
       .on(
         'postgres_changes',
@@ -268,12 +275,12 @@ export default function TechnicianOS() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { db.removeChannel(channel); };
   }, [id, isAuthenticated, fetchServiceOrder, fetchTechnicianProfile]);
 
   const fetchPhotos = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('os_photos')
         .select('*')
         .eq('service_order_id', id)
@@ -467,7 +474,7 @@ export default function TechnicianOS() {
           </div>
         </div>
         <div className="max-w-2xl mx-auto p-3 sm:p-4">
-          <OSReport serviceOrder={serviceOrder} photos={photos} />
+          <OSReport serviceOrder={serviceOrder} photos={photos} forceReadOnly={forceReadOnly} />
         </div>
       </div>
     );

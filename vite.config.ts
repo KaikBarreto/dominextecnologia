@@ -26,14 +26,20 @@ export default defineConfig(({ mode }) => ({
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
+          // Supabase storage (assets publicos: logos, fotos) — pode cachear.
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
+            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+            handler: "CacheFirst",
             options: {
-              cacheName: "supabase-cache",
-              expiration: { maxEntries: 200, maxAgeSeconds: 300 },
-              networkTimeoutSeconds: 10,
+              cacheName: "supabase-storage",
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
+          },
+          // NUNCA cachear REST/auth/realtime/functions: respostas dependem de
+          // JWT/RLS e ficar com OS de outra empresa em cache quebra share-links.
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/(rest|auth|realtime|functions)\/.*/i,
+            handler: "NetworkOnly",
           },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

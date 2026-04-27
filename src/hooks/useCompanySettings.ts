@@ -48,20 +48,27 @@ export function useCompanySettings() {
   const settingsQuery = useQuery({
     queryKey: ['company-settings'],
     queryFn: async () => {
-      // Try to get settings linked to user's company first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      let query = supabase.from('company_settings').select('*');
-      if (profile?.company_id) {
-        query = query.eq('company_id', profile.company_id);
-      }
-      const { data, error } = await query.limit(1).single();
+      // Sem company_id nao da pra escolher settings deterministicamente.
+      // Sem este guard, .limit(1).single() devolvia a primeira linha visivel
+      // (pode ser de outra empresa) e quebrava o branding em share-links.
+      if (!profile?.company_id) return null;
+
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .maybeSingle();
       if (error) throw error;
-      return data as CompanySettings;
+      return data as CompanySettings | null;
     },
   });
 
