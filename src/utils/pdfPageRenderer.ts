@@ -128,20 +128,44 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
       windowHeight: clone.scrollHeight,
     });
 
-    // Slice into A4 pages
+    // Map image bounding boxes (in canvas pixels — scale=2) so we can avoid
+    // cutting them across pages.
+    const SCALE = 2;
+    const cloneTop = clone.getBoundingClientRect().top;
+    const imageBoxes = Array.from(clone.querySelectorAll('img')).map(img => {
+      const r = (img as HTMLImageElement).getBoundingClientRect();
+      return { top: (r.top - cloneTop) * SCALE, bottom: (r.bottom - cloneTop) * SCALE };
+    });
+
+    // Slice into A4 pages, snapping page breaks before any image that would be split.
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidthMm = pdf.internal.pageSize.getWidth();
     const pdfHeightMm = pdf.internal.pageSize.getHeight();
 
-    // Each page in source pixels (canvas is at scale=2)
     const pageHeightPx = Math.floor((A4_HEIGHT_PX / A4_WIDTH_PX) * fullCanvas.width);
-    const totalPages = Math.ceil(fullCanvas.height / pageHeightPx);
 
-    for (let i = 0; i < totalPages; i++) {
-      const sliceY = i * pageHeightPx;
-      const sliceHeight = Math.min(pageHeightPx, fullCanvas.height - sliceY);
+    let cursorY = 0;
+    let pageIndex = 0;
+    while (cursorY < fullCanvas.height) {
+      let pageEndY = Math.min(cursorY + pageHeightPx, fullCanvas.height);
 
-      // Create a per-page canvas at full A4 height (white-pad short last page)
+      // If an image straddles pageEndY, push the break up to its top so the
+      // entire image lands on the next page. Skip if the image is taller than
+      // a full page (cannot avoid in that case).
+      for (const box of imageBoxes) {
+        if (box.top < pageEndY && box.bottom > pageEndY) {
+          const imgHeight = box.bottom - box.top;
+          if (imgHeight <= pageHeightPx && box.top > cursorY + pageHeightPx * 0.15) {
+            pageEndY = Math.floor(box.top);
+            break;
+          }
+        }
+      }
+
+      // Safety: never produce an empty page
+      if (pageEndY <= cursorY) pageEndY = Math.min(cursorY + pageHeightPx, fullCanvas.height);
+
+      const sliceHeight = pageEndY - cursorY;
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width = fullCanvas.width;
       pageCanvas.height = pageHeightPx;
@@ -150,13 +174,16 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
       ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
       ctx.drawImage(
         fullCanvas,
-        0, sliceY, fullCanvas.width, sliceHeight,
+        0, cursorY, fullCanvas.width, sliceHeight,
         0, 0, fullCanvas.width, sliceHeight
       );
 
       const imgData = pageCanvas.toDataURL('image/jpeg', 0.92);
-      if (i > 0) pdf.addPage();
+      if (pageIndex > 0) pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
+
+      cursorY = pageEndY;
+      pageIndex++;
     }
 
     pdf.save(filename);
