@@ -28,5 +28,14 @@ verify_jwt = false
 [functions.activate-scheduled-orders]
 verify_jwt = false
 
+# request-password-reset: público (anon pede recuperação por email)
+# Requer secrets: RESEND_API_KEY, RESEND_FROM_EMAIL (opcional)
+[functions.request-password-reset]
+verify_jwt = false
+
+# reset-password-with-code: público (valida código + atualiza senha)
+[functions.reset-password-with-code]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company
