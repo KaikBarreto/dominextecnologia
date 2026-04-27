@@ -1,8 +1,6 @@
 const ALLOWED_ORIGINS = [
   'https://dominex.app',
   'https://www.dominex.app',
-  'https://dominextecnologia.lovable.app',
-  'https://app.dominex.com.br',
 ];
 
 // Permite preview deploys da Vercel (*.vercel.app) e localhost para dev
