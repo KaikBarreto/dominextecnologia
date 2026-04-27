@@ -1,6 +1,7 @@
 // HTML template para email de recuperação de senha — tema escuro Dominex
 // Cor primária: #00C77F (hsl 160 100% 39%)
-// Logo público: https://dominex.app/logo-white-horizontal.png
+// Logo: mesmo arquivo da tela de login (src/assets/logo-horizontal-verde.png),
+// copiado também em public/ para ficar acessível via URL pública
 
 export function renderPasswordResetEmail(opts: {
   code: string;
@@ -20,7 +21,7 @@ export function renderPasswordResetEmail(opts: {
 
       <tr>
         <td style="padding:40px 40px 24px 40px;text-align:center;background:#000;border-bottom:1px solid rgba(255,255,255,0.06);">
-          <img src="https://dominex.app/logo-white-horizontal.png" alt="Dominex" width="160" style="max-width:160px;height:auto;display:inline-block;">
+          <img src="https://www.dominex.app/logo-horizontal-verde.png" alt="Dominex" width="180" style="max-width:180px;height:auto;display:inline-block;">
         </td>
       </tr>
 
