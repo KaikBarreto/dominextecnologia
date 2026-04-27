@@ -202,7 +202,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
             />
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redefinindo...</> : 'Redefinir senha'}
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redefinindo...</> : 'REDEFINIR SENHA'}
             </Button>
           </form>
         </Form>
@@ -248,7 +248,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
         </div>
 
         <Button type="button" className="w-full" onClick={verifyCode} disabled={!codeFilled || isLoading}>
-          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verificando...</> : 'Continuar'}
+          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verificando...</> : 'CONTINUAR'}
         </Button>
 
         <div className="flex items-center justify-between text-xs">
@@ -303,7 +303,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : 'Enviar código'}
+            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : 'ENVIAR CÓDIGO'}
           </Button>
         </form>
       </Form>
