@@ -70,11 +70,36 @@ export async function generateReportPDF(reportElement: HTMLElement, filename: st
     // Remove anything marked print:hidden
     clone.querySelectorAll('.print\\:hidden, [class*="print:hidden"]').forEach(el => el.remove());
 
-    // Enlarge inline thumbnails — in the PDF the reader can't open lightboxes,
-    // so make pictures meaningful. Targets common Tailwind thumb sizes used
-    // in the report (w-20 h-20, w-24 h-24, w-32 h-32) and any <img> sized via inline style.
+    // Inject style overrides for known html2canvas weaknesses:
+    // - flexbox `gap` is poorly supported → emulate via margin on adjacent siblings
+    // - `ml-auto` sometimes fails inside flex → re-assert
+    // Also enlarge inline thumbnails (in the PDF the reader can't open lightboxes).
+    const styleFix = document.createElement('style');
+    styleFix.textContent = `
+      /* Emulate Tailwind gap-x-* via margin-left on subsequent flex children */
+      .pdf-clone [class*="gap-x-1"] > * + *  { margin-left: 4px !important; }
+      .pdf-clone [class*="gap-x-1.5"] > * + * { margin-left: 6px !important; }
+      .pdf-clone [class*="gap-x-2"] > * + *  { margin-left: 8px !important; }
+      .pdf-clone [class*="gap-x-3"] > * + *  { margin-left: 12px !important; }
+      .pdf-clone [class*="gap-x-4"] > * + *  { margin-left: 16px !important; }
+      .pdf-clone [class*="gap-x-6"] > * + *  { margin-left: 24px !important; }
+      /* Emulate Tailwind gap-* (no axis) on flex-row containers */
+      .pdf-clone [class*=" gap-1 "] > * + *,  .pdf-clone [class^="gap-1 "] > * + *,  .pdf-clone [class$=" gap-1"] > * + *  { margin-left: 4px !important; }
+      .pdf-clone [class*=" gap-2 "] > * + *,  .pdf-clone [class^="gap-2 "] > * + *,  .pdf-clone [class$=" gap-2"] > * + *  { margin-left: 8px !important; }
+      .pdf-clone [class*=" gap-3 "] > * + *,  .pdf-clone [class^="gap-3 "] > * + *,  .pdf-clone [class$=" gap-3"] > * + *  { margin-left: 12px !important; }
+      .pdf-clone [class*=" gap-4 "] > * + *,  .pdf-clone [class^="gap-4 "] > * + *,  .pdf-clone [class$=" gap-4"] > * + *  { margin-left: 16px !important; }
+      /* Re-assert ml-auto */
+      .pdf-clone [class*="ml-auto"] { margin-left: auto !important; }
+      /* Force flex layouts to respect direction even if media queries flake */
+      .pdf-clone .flex.flex-row { display: flex !important; flex-direction: row !important; }
+    `;
+    clone.classList.add('pdf-clone');
+    clone.prepend(styleFix);
+
+    // Enlarge inline thumbnails. Cap both width AND height so a portrait photo
+    // doesn't fill an entire A4 page.
     const enlargeThumb = (el: HTMLImageElement) => {
-      el.style.cssText += ';width:100%!important;max-width:520px!important;height:auto!important;max-height:none!important;object-fit:contain!important;display:block!important;margin:8px auto!important;border-radius:6px!important;';
+      el.style.cssText += ';width:auto!important;max-width:480px!important;height:auto!important;max-height:340px!important;object-fit:contain!important;display:block!important;margin:8px auto!important;border-radius:6px!important;';
     };
     clone.querySelectorAll('img').forEach(img => {
       const el = img as HTMLImageElement;
