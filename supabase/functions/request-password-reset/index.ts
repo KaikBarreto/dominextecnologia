@@ -102,8 +102,8 @@ Deno.serve(async (req) => {
     }
 
     // Envia email via Resend
-    const html = renderPasswordResetEmail({ code, expiresMinutes: CODE_EXPIRES_MINUTES });
-    const text = renderPasswordResetText({ code, expiresMinutes: CODE_EXPIRES_MINUTES });
+    const html = renderPasswordResetEmail({ email: normalizedEmail, code, expiresMinutes: CODE_EXPIRES_MINUTES });
+    const text = renderPasswordResetText({ email: normalizedEmail, code, expiresMinutes: CODE_EXPIRES_MINUTES });
 
     const resendResp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
