@@ -3,9 +3,11 @@ const ALLOWED_ORIGINS = [
   'https://www.dominex.app',
 ];
 
-// Permite preview deploys da Vercel (*.vercel.app) e localhost para dev
+// Permite qualquer subdomínio de dominex.app (teste, staging, etc),
+// preview deploys da Vercel (*.vercel.app) e localhost para dev
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.dominex\.app$/.test(origin)) return true;
   if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
   if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return true;
   if (/^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) return true;
