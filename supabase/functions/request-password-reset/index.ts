@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
-    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') ?? 'Dominex <recuperar@dominex.app>';
+    // Default bate com o Custom SMTP configurado: Dominex <nao-responda@dominex.app>
+    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') ?? 'Dominex <nao-responda@dominex.app>';
 
     if (!resendApiKey) {
       console.error('RESEND_API_KEY não configurado');
