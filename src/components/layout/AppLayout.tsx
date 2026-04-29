@@ -16,12 +16,11 @@ import logoGreen from '@/assets/logo-horizontal-verde.png';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 
 function HeaderContent() {
-  const { roles } = useAuth();
+  const { isAdminUser } = useAuth();
   const { toggleSidebar, isMobile, state } = useSidebar();
   const { isLoading: logoLoading } = useWhiteLabel();
   const navigate = useNavigate();
-  const isSuperAdmin = roles.includes('super_admin');
-  const adminTarget = isSuperAdmin ? '/admin/dashboard' : '/dashboard';
+  const adminTarget = isAdminUser ? '/admin/dashboard' : '/dashboard';
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
@@ -79,12 +78,11 @@ function SidebarAppLayout() {
 }
 
 function TopbarAppLayout() {
-  const { user, signOut, roles } = useAuth();
+  const { user, signOut, isAdminUser } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isLoading: logoLoading } = useWhiteLabel();
-  const isSuperAdmin = roles.includes('super_admin');
-  const adminTarget = isSuperAdmin ? '/admin/dashboard' : '/dashboard';
+  const adminTarget = isAdminUser ? '/admin/dashboard' : '/dashboard';
 
   // On mobile, fallback to sidebar layout
   if (isMobile) {
@@ -107,8 +105,8 @@ function TopbarAppLayout() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => navigate(isSuperAdmin ? '/admin/configuracoes' : '/perfil')}
-                title={isSuperAdmin ? 'Configurações do Admin' : 'Meu Perfil'}
+                onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/perfil')}
+                title={isAdminUser ? 'Configurações do Admin' : 'Meu Perfil'}
               >
                 <UserCircle className="h-4 w-4" />
               </Button>
@@ -133,21 +131,20 @@ function TopbarAppLayout() {
 
 export function AppLayout() {
   const { navigationStyle } = useNavigationPreference();
-  const { roles } = useAuth();
-  const isSuperAdmin = roles.includes('super_admin');
+  const { isAdminUser } = useAuth();
   useKeyboardShortcuts(true);
 
-  // Super admin sempre usa tema claro (UX consistente do painel administrativo)
+  // Admin panel users (master + vendedores) sempre usam tema claro (UX consistente do painel administrativo)
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (isAdminUser) {
       document.documentElement.classList.remove('dark');
     }
-  }, [isSuperAdmin]);
+  }, [isAdminUser]);
 
   return (
     <>
       <VersionUpdateNotification />
-      {isSuperAdmin ? <SidebarAppLayout /> : navigationStyle === 'topbar' ? <TopbarAppLayout /> : <SidebarAppLayout />}
+      {isAdminUser ? <SidebarAppLayout /> : navigationStyle === 'topbar' ? <TopbarAppLayout /> : <SidebarAppLayout />}
     </>
   );
 }

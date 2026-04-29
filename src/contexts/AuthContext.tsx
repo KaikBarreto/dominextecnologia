@@ -9,6 +9,8 @@ interface AuthContextType {
   profile: Profile | null;
   roles: AppRole[];
   permissions: string[];
+  adminPermissions: string[];
+  isAdminUser: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -17,6 +19,7 @@ interface AuthContextType {
   isAdminOrGestor: () => boolean;
   hasPermission: (key: string) => boolean;
   hasScreenAccess: (screenKey: string) => boolean;
+  hasAdminScreenAccess: (key: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null);
           setRoles([]);
           setPermissions([]);
+          setAdminPermissions([]);
         }
       }
     );
@@ -96,6 +101,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setPermissions([]);
       }
+
+      // Fetch admin panel permissions (vendedores / admin users)
+      const { data: adminPermData } = await supabase
+        .from('admin_permissions')
+        .select('permission')
+        .eq('user_id', userId);
+
+      setAdminPermissions((adminPermData ?? []).map((r: any) => r.permission as string));
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
@@ -144,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setRoles([]);
     setPermissions([]);
+    setAdminPermissions([]);
   };
 
   const hasRole = (role: AppRole) => roles.includes(role);
@@ -165,6 +179,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return roles.length > 0;
   };
 
+  // Master (super_admin) sees every admin screen; vendedores see only what's in admin_permissions.
+  const isMaster = roles.includes('super_admin' as AppRole);
+  const isAdminUser = isMaster || adminPermissions.length > 0;
+  const hasAdminScreenAccess = (key: string) => {
+    if (isMaster) return true;
+    return adminPermissions.includes(key);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -173,6 +195,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         roles,
         permissions,
+        adminPermissions,
+        isAdminUser,
         loading,
         signIn,
         signUp,
@@ -181,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdminOrGestor,
         hasPermission,
         hasScreenAccess,
+        hasAdminScreenAccess,
       }}
     >
       {children}

@@ -40,6 +40,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Sidebar, SidebarContent, useSidebar } from '@/components/ui/sidebar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
@@ -101,15 +102,17 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-const adminMenuItems: MenuItem[] = [
-  { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-  { title: 'CRM', icon: Target, path: '/admin/crm' },
-  { title: 'Empresas', icon: Building2, path: '/admin/empresas' },
-  { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores' },
-  { title: 'Assinaturas', icon: CreditCard, path: '/admin/assinaturas' },
-  { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
-  { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix' },
-  { title: 'Configurações', icon: Settings, path: '/admin/configuracoes' },
+// Admin items use `screenKey` to map to entries in `admin_permissions`.
+// Items without `screenKey` are master-only (e.g. Domiflix).
+const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
+  { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', screenKey: 'admin_dashboard' },
+  { title: 'CRM', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
+  { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
+  { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Assinaturas', icon: CreditCard, path: '/admin/assinaturas', screenKey: 'admin_assinaturas' },
+  { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
+  { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
+  { title: 'Configurações', icon: Settings, path: '/admin/configuracoes', screenKey: 'admin_configuracoes' },
 ];
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
@@ -122,7 +125,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 export function AppSidebar() {
-  const { user, profile, roles, hasScreenAccess, signOut } = useAuth();
+  const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
   const { hasModule } = useCompanyModules();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   const { state, open, setOpen, toggleSidebar, isMobile } = useSidebar();
@@ -189,7 +192,7 @@ export function AppSidebar() {
   }, [collapsed]);
 
   const isSuperAdmin = roles.includes('super_admin');
-  const showLogoLoading = logoLoading && !isSuperAdmin;
+  const showLogoLoading = logoLoading && !isAdminUser;
 
   const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
     return items.filter(item => {
@@ -199,8 +202,17 @@ export function AppSidebar() {
     });
   };
 
-  const activeMenu = isSuperAdmin
+  const filteredAdminMenu = isSuperAdmin
     ? adminMenuItems
+    : adminMenuItems.filter(item => !item.masterOnly && item.screenKey && hasAdminScreenAccess(item.screenKey));
+
+  // Where the logo click should land. Master goes to /admin/dashboard; vendedores
+  // go to the first admin route they have access to (which is the same set rendered
+  // in the sidebar).
+  const adminHomePath = filteredAdminMenu[0]?.path ?? '/admin/dashboard';
+
+  const activeMenu = isAdminUser
+    ? filteredAdminMenu
     : filterByAccess(menuItems)
         .map(item => (item.children ? { ...item, children: filterByAccess(item.children) } : item))
         .filter(item => !item.children || item.children.length > 0);
@@ -212,7 +224,7 @@ export function AppSidebar() {
     setOpenMenus((prev) => (prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]));
   };
 
-  const roleLabel = isSuperAdmin
+  const roleLabel = isAdminUser
     ? 'Administrador'
     : roles.length > 0
       ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS]
@@ -230,23 +242,25 @@ export function AppSidebar() {
     toggleSidebar();
   };
 
-  const userMenuItems = isSuperAdmin
-    ? [
-        { label: 'Dashboard', icon: LayoutDashboard, action: () => navigate('/admin/dashboard') },
-        { label: 'CRM', icon: Target, action: () => navigate('/admin/crm') },
-        { label: 'Empresas', icon: Building2, action: () => navigate('/admin/empresas') },
-        { label: 'Configurações', icon: Settings, action: () => navigate('/admin/configuracoes') },
-      ]
-    : [
-        { label: 'Perfil', icon: UserCircle, action: () => navigate('/perfil') },
-        { label: 'Assinatura', icon: CreditCard, action: () => navigate('/assinatura') },
-        { label: 'Domiflix', icon: GraduationCap, action: () => navigate('/domiflix') },
-        { label: 'Configurações', icon: Settings, action: () => navigate('/configuracoes'), screenKey: 'screen:settings' },
-      ];
+  const adminUserMenuItems = [
+    { label: 'Dashboard', icon: LayoutDashboard, action: () => navigate('/admin/dashboard'), screenKey: 'admin_dashboard' },
+    { label: 'CRM', icon: Target, action: () => navigate('/admin/crm'), screenKey: 'admin_crm' },
+    { label: 'Empresas', icon: Building2, action: () => navigate('/admin/empresas'), screenKey: 'admin_empresas' },
+    { label: 'Configurações', icon: Settings, action: () => navigate('/admin/configuracoes'), screenKey: 'admin_configuracoes' },
+  ];
 
-  const visibleUserMenuItems = isSuperAdmin
-    ? userMenuItems
-    : userMenuItems.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
+  const tenantUserMenuItems = [
+    { label: 'Perfil', icon: UserCircle, action: () => navigate('/perfil') },
+    { label: 'Assinatura', icon: CreditCard, action: () => navigate('/assinatura') },
+    { label: 'Domiflix', icon: GraduationCap, action: () => navigate('/domiflix') },
+    { label: 'Configurações', icon: Settings, action: () => navigate('/configuracoes'), screenKey: 'screen:settings' },
+  ];
+
+  const visibleUserMenuItems = isAdminUser
+    ? (isSuperAdmin
+        ? adminUserMenuItems
+        : adminUserMenuItems.filter(item => !item.screenKey || hasAdminScreenAccess(item.screenKey)))
+    : tenantUserMenuItems.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
 
   const themeOptionClass = (active: boolean) =>
     cn(
@@ -264,7 +278,7 @@ export function AppSidebar() {
         >
           <SidebarContent className="flex h-full flex-col p-0 overflow-hidden">
             <NavLink
-              to={isSuperAdmin ? '/admin/dashboard' : '/dashboard'}
+              to={isAdminUser ? adminHomePath : '/dashboard'}
               className="relative h-14 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
             >
               {showLogoLoading ? (
@@ -280,7 +294,7 @@ export function AppSidebar() {
                       collapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     )}
                   >
-                    {!isSuperAdmin && wlEnabled ? (
+                    {!isAdminUser && wlEnabled ? (
                       iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
                     ) : (
                       <>
@@ -296,14 +310,14 @@ export function AppSidebar() {
                       collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
                     )}
                   >
-                    <img src={isSuperAdmin ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full object-contain dark:hidden" />
-                    <img src={isSuperAdmin ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+                    <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="max-h-11 w-auto max-w-full object-contain dark:hidden" />
+                    <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="max-h-11 w-auto max-w-full object-contain hidden dark:block" />
                   </div>
                 </>
               )}
             </NavLink>
 
-            {isSuperAdmin && !collapsed && (
+            {isAdminUser && !collapsed && (
               <div className="flex items-center justify-center border-b border-border py-2">
                 <span className="text-xs font-semibold text-destructive">Painel Administrativo</span>
               </div>
@@ -410,12 +424,12 @@ export function AppSidebar() {
               </nav>
             </div>
 
-            <div className={cn('border-t border-border shrink-0', collapsed ? 'p-1.5' : 'p-2')}>
+            <div className={cn('border-t border-border shrink-0 flex gap-1', collapsed ? 'flex-col p-1.5' : 'items-center p-2')}>
               <Popover>
                 <PopoverTrigger asChild>
                   <button
                     className={cn(
-                      'flex w-full items-center rounded-lg transition-colors hover:bg-muted/50',
+                      'flex min-w-0 flex-1 items-center rounded-lg transition-colors hover:bg-muted/50',
                       collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-2.5'
                     )}
                   >
@@ -466,7 +480,7 @@ export function AppSidebar() {
                       </button>
                     ))}
 
-                    {!isSuperAdmin && (
+                    {!isAdminUser && (
                       <>
                         <div className="group/theme relative">
                           <button
@@ -511,17 +525,27 @@ export function AppSidebar() {
                     )}
                   </div>
 
-                  <div className="border-t py-1">
-                    <button
-                      onClick={signOut}
-                      className="flex w-full items-center gap-3 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                    >
-                      <LogOut className="h-4 w-4 shrink-0" />
-                      <span>Sair</span>
-                    </button>
-                  </div>
                 </PopoverContent>
               </Popover>
+
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      aria-label="Sair"
+                      className={cn(
+                        'flex shrink-0 items-center justify-center rounded-lg text-destructive transition-colors hover:bg-destructive hover:text-white',
+                        collapsed ? 'h-9 w-full' : 'h-9 w-9'
+                      )}
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side={collapsed ? 'right' : 'top'}>Sair</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </SidebarContent>
         </div>

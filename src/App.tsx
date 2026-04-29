@@ -123,7 +123,25 @@ const LoadingSpinner = () => (
 
 // Determine the default authenticated route based on permissions
 function useDefaultRoute() {
-  const { hasScreenAccess } = useAuth();
+  const { hasScreenAccess, isAdminUser, hasAdminScreenAccess } = useAuth();
+
+  // Admin panel users (master + vendedores) land on the admin panel.
+  if (isAdminUser) {
+    const adminCandidates: Array<[string, string]> = [
+      ['admin_dashboard', '/admin/dashboard'],
+      ['admin_crm', '/admin/crm'],
+      ['admin_empresas', '/admin/empresas'],
+      ['admin_vendedores', '/admin/vendedores'],
+      ['admin_assinaturas', '/admin/assinaturas'],
+      ['admin_financeiro', '/admin/financeiro'],
+      ['admin_configuracoes', '/admin/configuracoes'],
+    ];
+    for (const [key, path] of adminCandidates) {
+      if (hasAdminScreenAccess(key)) return path;
+    }
+    return '/admin/dashboard';
+  }
+
   if (hasScreenAccess('screen:dashboard')) return '/dashboard';
   if (hasScreenAccess('screen:schedule')) return '/agenda';
   if (hasScreenAccess('screen:service_orders')) return '/ordens-servico';
@@ -143,12 +161,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 // Permission-gated route — redirects to default route if no access
 function PermissionRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
-  const { hasScreenAccess, loading, user, roles, permissions } = useAuth();
+  const { hasScreenAccess, loading, user, roles, permissions, adminPermissions } = useAuth();
   const defaultRoute = useDefaultRoute();
 
   if (loading) return <LoadingSpinner />;
   // If user is authenticated but permissions/roles haven't loaded yet, show spinner instead of redirecting
-  if (user && roles.length === 0 && permissions.length === 0) return <LoadingSpinner />;
+  if (user && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
   if (!hasScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
 
   return <>{children}</>;

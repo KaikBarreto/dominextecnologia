@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.3',
+    date: '29 de abril de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vendedores admin enxergam o painel administrativo',
+        description: 'Usuários admin não-master (vendedores) agora veem a sidebar do painel administrativo filtrada pelas suas permissões em admin_permissions, e são redirecionados para a primeira tela admin disponível ao logar — antes ficavam com sidebar vazia em /perfil.',
+        category: 'correcao',
+      },
+      {
+        title: 'Botão Sair fora do menu de perfil',
+        description: 'O botão Sair foi movido do dropdown do perfil para um ícone dedicado ao lado do avatar na sidebar (com tooltip e destaque vermelho no hover), tornando o logout um clique mais rápido. Vale para sidebar do tenant e do admin.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '18 de abril de 2026',
     type: 'minor',
