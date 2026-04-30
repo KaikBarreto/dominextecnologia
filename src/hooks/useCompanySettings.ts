@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface CompanySettings {
   id: string;
@@ -44,12 +45,23 @@ export interface CompanySettings {
 export function useCompanySettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, hasRole, loading: authLoading } = useAuth();
 
   const settingsQuery = useQuery({
-    queryKey: ['company-settings'],
+    // Cache must be keyed per-user, otherwise switching accounts (or hitting
+    // hard refresh after a logout) reuses the previous tenant's settings.
+    queryKey: ['company-settings', user?.id ?? null],
+    // Wait for AuthContext to finish loading roles/permissions before firing,
+    // otherwise on hard refresh hasRole('super_admin') is briefly false and
+    // we'd return another tenant's settings to a master.
+    enabled: !!user && !authLoading,
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
+
+      // super_admin (master) operates the admin panel and must never see a
+      // tenant's branding/whitelabel — even if they happen to have a stale
+      // company_id on their profile from past testing data.
+      if (hasRole('super_admin')) return null;
 
       const { data: profile } = await supabase
         .from('profiles')

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.3";
+export const APP_VERSION = "1.8.4";
 
-export const VERSION_NOTES = "Vendedores admin agora enxergam o painel administrativo conforme suas permissões (sidebar e rota inicial). Botão Sair movido para fora do menu de perfil, com tooltip e destaque vermelho no hover.";
+export const VERSION_NOTES = "Vendedores admin com permissão de CRM agora veem todas as oportunidades. White-label da empresa anterior não vaza mais para o login após logout, e o painel master deixou de carregar branding de tenants no hard refresh.";

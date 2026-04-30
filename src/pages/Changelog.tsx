@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.4',
+    date: '29 de abril de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'CRM admin liberado para vendedores com permissão',
+        description: 'Usuários admin não-master com a permissão admin_crm agora veem e gerenciam todas as oportunidades do CRM (leads, etapas e interações), independentemente de estarem ou não atribuídos como responsáveis. Antes a RLS limitava o acesso apenas ao master, deixando a tela vazia.',
+        category: 'correcao',
+      },
+      {
+        title: 'White-label não vaza mais entre empresas',
+        description: 'O painel do master deixou de carregar branding de outro tenant durante hard refresh — a query de company_settings espera as roles carregarem e ignora dados de tenant para super_admin. Cache passou a ser por usuário, evitando reuso entre contas.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Logout limpa branding e tema',
+        description: 'Ao sair, as variáveis CSS de white-label, o tema escuro e o cache de queries são reiniciados. A tela de login volta ao branding padrão do Dominex em vez de manter a aparência da empresa anterior.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.3',
     date: '29 de abril de 2026',
     type: 'patch',

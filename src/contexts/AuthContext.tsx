@@ -1,7 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole, Profile } from '@/types/database';
+
+// Same set of CSS variables that useWhiteLabel applies. Duplicated here to
+// avoid a circular import (useWhiteLabel → useCompanySettings → useAuth).
+const WHITE_LABEL_VARS = [
+  '--primary',
+  '--ring',
+  '--sidebar-primary',
+  '--sidebar-accent',
+  '--sidebar-ring',
+  '--gradient-brand',
+];
 
 interface AuthContextType {
   user: User | null;
@@ -32,19 +44,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
+          // Refetch profile/roles/permissions for the new user. We deliberately
+          // await here so consumers (sidebar, white-label, route guards) only
+          // re-render once the user's identity is fully resolved — otherwise
+          // they get a brief window where roles=[] and may apply tenant
+          // styling to a super_admin or vice-versa.
+          await fetchUserData(session.user.id);
         } else if (event === 'SIGNED_OUT') {
-          // Only clear state on explicit sign-out, not on transient token refresh events
           setProfile(null);
           setRoles([]);
           setPermissions([]);
@@ -53,15 +68,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
-        fetchUserData(session.user.id);
+        await fetchUserData(session.user.id);
       }
       setLoading(false);
-    });
+    })();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -152,6 +168,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await Promise.all(keys.map(key => cache.delete(key)));
       } catch (_) { /* service worker pode não estar disponível */ }
     }
+    // Clear cross-tenant branding state. Without this the previous tenant's
+    // white-label colors (CSS vars on <html>) and dark theme stay applied on
+    // the login screen and would also bleed into the next user that logs in
+    // before useWhiteLabel re-runs.
+    const root = document.documentElement;
+    WHITE_LABEL_VARS.forEach((v) => root.style.removeProperty(v));
+    root.classList.remove('dark');
+    localStorage.removeItem('theme');
+    queryClient.clear();
     setUser(null);
     setSession(null);
     setProfile(null);
