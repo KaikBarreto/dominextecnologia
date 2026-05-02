@@ -147,7 +147,7 @@ export function useAdminLeads() {
       const { error } = await supabase.from('admin_leads' as any).update(input).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead atualizado!' }); },
     onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
   });
 

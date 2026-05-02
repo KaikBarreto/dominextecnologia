@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.5',
+    date: '01 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de leads do painel master unificada',
+        description: 'Ao clicar em Editar no detalhe do lead, agora abre a mesma tela usada para criar um novo lead — com todos os campos visíveis, sem duplicação. Antes, dois formulários diferentes podiam ficar fora de sincronia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Não perde mais o que está digitando no lead',
+        description: 'A edição de leads no painel master deixou de ser reiniciada quando uma atualização chega em segundo plano. Você pode digitar Observações tranquilamente sem o texto sumir.',
+        category: 'correcao',
+      },
+      {
+        title: 'Campo Motivo da perda',
+        description: 'Quando a etapa do lead é de perda, aparece um campo dedicado para registrar o motivo. O detalhe do lead também passa a exibir esse motivo logo abaixo das observações.',
+        category: 'recurso',
+      },
+      {
+        title: 'Confirmação visível ao salvar lead',
+        description: 'Cada salvamento de lead no painel master agora mostra um aviso de sucesso. Em caso de erro, a tela continua aberta para você tentar de novo sem perder o que digitou.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.4',
     date: '29 de abril de 2026',
     type: 'patch',

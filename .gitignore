@@ -24,6 +24,10 @@ supabase/.temp/
 # Dados de migração do banco antigo (CSVs e arquivos de buckets) — não versionar
 src/TMP/
 
+# Segundo cérebro pessoal — time de agentes e planos de implementação
+docs/team/
+docs/planos/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

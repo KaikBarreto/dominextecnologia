@@ -44,11 +44,13 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
     stage_id: '',
     expected_close_date: '',
     notes: '',
+    loss_reason: '',
   });
 
   const [emailError, setEmailError] = useState('');
 
   useEffect(() => {
+    if (!open) return;
     if (editingLead) {
       setForm({
         title: editingLead.title || '',
@@ -62,21 +64,26 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
         stage_id: editingLead.stage_id || '',
         expected_close_date: editingLead.expected_close_date || '',
         notes: editingLead.notes || '',
+        loss_reason: editingLead.loss_reason || '',
       });
     } else {
       const firstStage = stages.find(s => !s.is_won && !s.is_lost);
       setForm({
         title: '', company_name: '', contact_name: '', email: '', phone: '',
         value: '', source: '', segment: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
+        loss_reason: '',
       });
     }
     setEmailError('');
-  }, [editingLead, open, stages]);
+  }, [editingLead?.id, open, stages]);
 
   const validateEmail = (email: string) => {
     if (!email) return true;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
+
+  const selectedStage = stages.find(s => s.id === form.stage_id);
+  const isLostStage = !!selectedStage?.is_lost;
 
   const handleSubmit = () => {
     if (!form.title.trim()) return;
@@ -96,15 +103,20 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       stage_id: form.stage_id || null,
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,
+      loss_reason: isLostStage ? (form.loss_reason || null) : null,
     };
     if (isEditing) {
-      updateLead.mutate({ id: editingLead!.id, ...payload });
+      updateLead.mutate(
+        { id: editingLead!.id, ...payload },
+        { onSuccess: () => onOpenChange(false) },
+      );
     } else {
       payload.created_by = user?.id;
-      createLead.mutate(payload);
+      createLead.mutate(payload, { onSuccess: () => onOpenChange(false) });
     }
-    onOpenChange(false);
   };
+
+  const isSaving = createLead.isPending || updateLead.isPending;
 
   const selectedOrigin = origins.find(o => o.name === form.source);
 
@@ -255,12 +267,25 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
               <Label>Observações</Label>
               <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Anotações sobre a negociação..." />
             </div>
+            {isLostStage && (
+              <div className="sm:col-span-2">
+                <Label>Motivo da perda</Label>
+                <Textarea
+                  value={form.loss_reason}
+                  onChange={e => setForm(f => ({ ...f, loss_reason: e.target.value }))}
+                  rows={2}
+                  placeholder="Por que essa negociação foi perdida?"
+                />
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={!form.title.trim()}>{isEditing ? 'Salvar' : 'Criar Lead'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
+          <Button onClick={handleSubmit} disabled={!form.title.trim() || isSaving}>
+            {isSaving ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar Lead'}
+          </Button>
         </div>
       </div>
     </ResponsiveModal>
