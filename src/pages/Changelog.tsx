@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.6',
+    date: '04 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Editar funcionário não trava mais ao salvar',
+        description: 'Ao editar um funcionário e clicar em Salvar, a tela fechava e o botão ficava carregando para sempre, deixando a página escura. Agora o salvamento conclui imediatamente — a sincronização da foto com o usuário vinculado roda em segundo plano sem prender a tela.',
+        category: 'correcao',
+      },
+      {
+        title: 'Texto digitado no funcionário não é mais reiniciado',
+        description: 'O formulário de edição de funcionário deixou de ser reiniciado quando uma atualização chega em segundo plano. Você pode digitar tranquilamente sem perder o que estava preenchendo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.5',
     date: '01 de maio de 2026',
     type: 'patch',

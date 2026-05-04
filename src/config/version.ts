@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.5";
+export const APP_VERSION = "1.8.6";
 
-export const VERSION_NOTES = "A edição de leads no painel master agora abre uma tela única e não perde mais o que você está digitando se uma atualização chegar em segundo plano. Quando a etapa é de perda, aparece o campo Motivo da perda. Cada salvamento confirma com aviso visível.";
+export const VERSION_NOTES = "Salvar a edição de funcionários voltou a funcionar normalmente: o botão não fica mais travado em carregando e a tela não escurece. O texto digitado também não é mais reiniciado quando uma atualização chega em segundo plano.";

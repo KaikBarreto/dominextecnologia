@@ -113,7 +113,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       setPassword('');
       setLinkedUserId(employee?.user_id || null);
     }
-  }, [open, employee]);
+  }, [open, employee?.id]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];

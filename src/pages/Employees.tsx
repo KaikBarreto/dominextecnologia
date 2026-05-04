@@ -117,54 +117,64 @@ export default function Employees() {
     const { _createAccess, _password, ...employeeData } = data as any;
     
     if (editingEmployee) {
-      updateEmployee.mutate({ id: editingEmployee.id, ...employeeData }, {
-        onSuccess: async (updatedEmp: any) => {
-          // Sync photo to linked user profile if employee has a user_id
-          const linkedUserId = employeeData.user_id || editingEmployee.user_id;
-          if (linkedUserId && employeeData.photo_url) {
-            await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
-          }
-          
-          // Create access for existing employee if requested
-          if (_createAccess && employeeData.email && _password) {
-            try {
-              const response = await supabase.functions.invoke('create-user', {
-                body: {
-                  email: employeeData.email,
-                  password: _password,
-                  full_name: employeeData.name || editingEmployee.name,
-                  phone: employeeData.phone || editingEmployee.phone || undefined,
-                  avatar_url: employeeData.photo_url || editingEmployee.photo_url || undefined,
-                  role: 'tecnico',
-                  employee_id: editingEmployee.id,
-                },
-              });
-              
-              if (response.error) throw new Error(response.error.message || 'Erro na chamada da função');
-              const fnData = response.data;
-              if (fnData?.error) throw new Error(fnData.error);
-              
-              // Link user_id to employee
-              if (fnData?.user?.id) {
-                await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', editingEmployee.id);
-              }
-              
-              toast({
-                title: 'Acesso ao sistema criado!',
-                description: `Email: ${employeeData.email} — Senha: ${_password}`,
-                duration: 15000,
-              });
-            } catch (err: any) {
-              toast({
-                variant: 'destructive',
-                title: 'Funcionário atualizado, mas erro ao criar acesso',
-                description: err.message,
-              });
-            }
-          }
-          
+      const editingId = editingEmployee.id;
+      const editingName = editingEmployee.name;
+      const editingPhone = editingEmployee.phone;
+      const editingPhotoUrl = editingEmployee.photo_url;
+      const previousLinkedUserId = editingEmployee.user_id;
+
+      updateEmployee.mutate({ id: editingId, ...employeeData }, {
+        onSuccess: () => {
           setFormOpen(false);
           setEditingEmployee(null);
+
+          // Side-effects rodam em paralelo, sem bloquear o estado da mutation
+          (async () => {
+            const linkedUserId = employeeData.user_id || previousLinkedUserId;
+            if (linkedUserId && employeeData.photo_url) {
+              try {
+                await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
+              } catch {
+                // Falha silenciosa: avatar pode dessincronizar, mas o salvamento principal foi
+              }
+            }
+
+            if (_createAccess && employeeData.email && _password) {
+              try {
+                const response = await supabase.functions.invoke('create-user', {
+                  body: {
+                    email: employeeData.email,
+                    password: _password,
+                    full_name: employeeData.name || editingName,
+                    phone: employeeData.phone || editingPhone || undefined,
+                    avatar_url: employeeData.photo_url || editingPhotoUrl || undefined,
+                    role: 'tecnico',
+                    employee_id: editingId,
+                  },
+                });
+
+                if (response.error) throw new Error(response.error.message || 'Erro na chamada da função');
+                const fnData = response.data;
+                if (fnData?.error) throw new Error(fnData.error);
+
+                if (fnData?.user?.id) {
+                  await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', editingId);
+                }
+
+                toast({
+                  title: 'Acesso ao sistema criado!',
+                  description: `Email: ${employeeData.email} — Senha: ${_password}`,
+                  duration: 15000,
+                });
+              } catch (err: any) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Funcionário atualizado, mas erro ao criar acesso',
+                  description: err.message,
+                });
+              }
+            }
+          })();
         },
       });
     } else {
