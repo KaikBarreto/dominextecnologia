@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.7',
+    date: '04 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Vídeo de demonstração no destaque da página inicial',
+        description: 'O destaque da página pública passou a exibir um vídeo de apresentação do Dominex no lugar do mockup ilustrativo. Funciona em celular e computador, com áudio ao dar play.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.8.6',
     date: '04 de maio de 2026',
     type: 'patch',

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, MapPin, Bell } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+
+const HERO_VIDEO_URL =
+  'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/Dominex%20-%20Completo.MP4';
 
 const FULL_TEXT_PRE = 'Gestão de equipes de campo que realmente ';
 const FULL_TEXT_HIGHLIGHT = 'funciona.';
@@ -110,53 +113,20 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right — Dashboard mockup */}
+          {/* Right — Demo video */}
           <div className="relative">
-            <div className="rounded-2xl border border-white/10 bg-[hsl(0,0%,7%)] p-4 shadow-2xl">
-              {/* Topbar */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-[hsl(0,70%,50%)]" />
-                  <div className="h-3 w-3 rounded-full bg-[hsl(40,80%,55%)]" />
-                  <div className="h-3 w-3 rounded-full bg-primary" />
-                </div>
-                <div className="h-6 w-48 rounded bg-white/5" />
-              </div>
-
-              {/* OS Cards */}
-              <div className="space-y-2 mb-4">
-                {[
-                  { status: 'Aberta', color: 'bg-info' },
-                  { status: 'Em andamento', color: 'bg-warning' },
-                  { status: 'Concluída', color: 'bg-primary' },
-                ].map((os) => (
-                  <div key={os.status} className="flex items-center gap-3 rounded-lg bg-white/5 p-3">
-                    <div className={`h-2 w-2 rounded-full ${os.color}`} />
-                    <div className="flex-1">
-                      <div className="h-3 w-32 rounded bg-white/10 mb-1" />
-                      <div className="h-2 w-20 rounded bg-white/5" />
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${os.color}/20 text-white/70`}>
-                      {os.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Map placeholder */}
-              <div className="rounded-lg bg-white/5 h-32 flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,hsl(160,100%,39%,0.1)_0%,transparent_50%)]" />
-                <MapPin className="h-5 w-5 text-primary absolute top-6 left-12" />
-                <MapPin className="h-5 w-5 text-warning absolute top-10 right-16" />
-                <MapPin className="h-5 w-5 text-info absolute bottom-8 left-1/3" />
-                <span className="text-xs text-white/20">Mapa em tempo real</span>
-              </div>
-
-              {/* Notification */}
-              <div className="mt-3 flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 p-2">
-                <Bell className="h-4 w-4 text-primary" />
-                <span className="text-xs text-primary/80">OS #1042 concluída por João Silva</span>
-              </div>
+            <div className="rounded-2xl border border-white/10 bg-[hsl(0,0%,7%)] p-2 shadow-2xl">
+              <div className="absolute -inset-px rounded-2xl bg-[radial-gradient(ellipse_at_top_right,hsl(160,100%,39%,0.18)_0%,transparent_60%)] pointer-events-none" />
+              <video
+                src={HERO_VIDEO_URL}
+                controls
+                preload="metadata"
+                playsInline
+                className="w-full aspect-video rounded-xl bg-black object-cover"
+                aria-label="Demonstração do Dominex"
+              >
+                Seu navegador não suporta vídeo HTML5.
+              </video>
             </div>
           </div>
         </div>

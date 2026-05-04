@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.6";
+export const APP_VERSION = "1.8.7";
 
-export const VERSION_NOTES = "Salvar a edição de funcionários voltou a funcionar normalmente: o botão não fica mais travado em carregando e a tela não escurece. O texto digitado também não é mais reiniciado quando uma atualização chega em segundo plano.";
+export const VERSION_NOTES = "A página inicial pública agora mostra um vídeo de demonstração no destaque, no lugar do mockup ilustrativo. O visitante pode dar play e assistir com som, no celular ou no computador.";
