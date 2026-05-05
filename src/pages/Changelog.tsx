@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.9',
+    date: '05 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de login não trava mais em carregamento',
+        description: 'Para alguns usuários, a tela de login ficava presa no estado de carregamento (com os campos em cinza) e nunca aparecia o formulário. O problema foi corrigido. Também adicionamos uma proteção que garante que a tela sempre saia do carregamento mesmo se ocorrer qualquer falha inesperada no futuro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.8',
     date: '04 de maio de 2026',
     type: 'patch',

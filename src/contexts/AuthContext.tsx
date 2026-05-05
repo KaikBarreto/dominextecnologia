@@ -69,14 +69,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
+      try {
+        // Timeout de 5s no getSession: se outro GoTrueClient travar o lock do
+        // navigator.locks (ex: storageKey duplicada, aba zumbi), seguimos sem
+        // sessão em vez de prender o app no skeleton. onAuthStateChange ainda
+        // dispara depois e corrige o estado quando o lock liberar.
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => {
+            console.warn('[Auth] getSession timed out — proceeding without session');
+            resolve({ data: { session: null } });
+          }, 5000)
+        );
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+        setSession(session);
+        setUser(session?.user ?? null);
 
-      if (session?.user) {
-        await fetchUserData(session.user.id);
+        if (session?.user) {
+          await fetchUserData(session.user.id);
+        }
+      } finally {
+        // finally garante que o skeleton nunca fica infinito mesmo que algo
+        // futuro lance dentro do try.
+        setLoading(false);
       }
-      setLoading(false);
     })();
 
     return () => subscription.unsubscribe();

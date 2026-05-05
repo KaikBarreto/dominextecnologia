@@ -74,7 +74,9 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import MobileMenu from "./pages/MobileMenu";
 import Teams from "./pages/Teams";
-import TechnicianOS from "./pages/TechnicianOS";
+// Lazy: TechnicianOS importa o anonClient. Carregando sob demanda,
+// o bundle do /login fica livre de inicializar dois GoTrueClient na mesma aba.
+const TechnicianOS = React.lazy(() => import("./pages/TechnicianOS"));
 import NotFound from "./pages/NotFound";
 import ServiceRating from "./pages/ServiceRating";
 import Changelog from "./pages/Changelog";
@@ -211,6 +213,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 const PageTitleUpdater = () => { usePageTitle(); return null; };
 
 const AppRoutes = () => (
+  <React.Suspense fallback={<LoadingSpinner />}>
   <Routes>
     {/* Landing page — public, no redirect */}
     <Route path="/" element={<Landing />} />
@@ -325,6 +328,7 @@ const AppRoutes = () => (
     {/* Catch-all */}
     <Route path="*" element={<NotFound />} />
   </Routes>
+  </React.Suspense>
 );
 
 // Redirect legacy OS share links (/:uuid) to /os-tecnico/:uuid?modo=cliente

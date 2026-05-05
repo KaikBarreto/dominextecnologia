@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.8";
+export const APP_VERSION = "1.8.9";
 
-export const VERSION_NOTES = "Refinamos o destaque da página inicial: no celular, o vídeo aparece antes do texto e o título principal ficou maior e centralizado. No computador, o vídeo agora ocupa um quadro vertical à direita, valorizando a demonstração.";
+export const VERSION_NOTES = "Corrigimos a tela de login que ficava travada em estado de carregamento para alguns usuários. Adicionamos uma proteção extra que evita que a tela fique presa caso ocorra qualquer falha futura.";
