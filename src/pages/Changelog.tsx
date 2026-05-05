@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.8',
+    date: '04 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Página inicial mais focada no vídeo',
+        description: 'No celular, o vídeo de demonstração agora aparece antes do texto, e o título principal ficou maior e centralizado. No computador, o vídeo passa a ser exibido em um quadro vertical à direita, valorizando a apresentação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.7',
     date: '04 de maio de 2026',
     type: 'minor',

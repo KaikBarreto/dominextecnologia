@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.7";
+export const APP_VERSION = "1.8.8";
 
-export const VERSION_NOTES = "A página inicial pública agora mostra um vídeo de demonstração no destaque, no lugar do mockup ilustrativo. O visitante pode dar play e assistir com som, no celular ou no computador.";
+export const VERSION_NOTES = "Refinamos o destaque da página inicial: no celular, o vídeo aparece antes do texto e o título principal ficou maior e centralizado. No computador, o vídeo agora ocupa um quadro vertical à direita, valorizando a demonstração.";

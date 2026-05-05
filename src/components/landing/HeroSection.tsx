@@ -44,15 +44,15 @@ export default function HeroSection() {
 
       <div ref={ref} className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 lg:py-32 scroll-reveal">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Left */}
-          <div className="space-y-8">
+          {/* Left — texto (depois do video no mobile) */}
+          <div className="space-y-8 order-2 lg:order-1 text-center lg:text-left">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary animate-glow-pulse">
               <span>✦</span>
               <span>Mais de 200 equipes gerenciadas</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[3.5em]">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight min-h-[3.5em]">
               <span>{preTyped}</span>
               <span className="bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] bg-clip-text text-transparent">
                 {highlightTyped}
@@ -65,12 +65,12 @@ export default function HeroSection() {
               />
             </h1>
 
-            <p className="text-lg text-white/50 max-w-xl leading-relaxed">
+            <p className="text-lg text-white/50 max-w-xl mx-auto lg:mx-0 leading-relaxed">
               Chega de planilha, WhatsApp e retrabalho. O Dominex centraliza suas OS,
               rastreia sua equipe e entrega dados reais para você crescer.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Button
                 size="lg"
                 className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto"
@@ -91,7 +91,7 @@ export default function HeroSection() {
             </div>
 
             {/* Avatars */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 justify-center lg:justify-start">
               <div className="flex -space-x-2">
                 {[
                   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face',
@@ -113,16 +113,16 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right — Demo video */}
-          <div className="relative">
-            <div className="rounded-2xl border border-white/10 bg-[hsl(0,0%,7%)] p-2 shadow-2xl">
+          {/* Right — Demo video (16:9 mobile, 9:16 desktop) — antes do texto no mobile */}
+          <div className="relative flex justify-center order-1 lg:order-2">
+            <div className="relative rounded-2xl border border-white/10 bg-[hsl(0,0%,7%)] p-2 shadow-2xl w-full lg:w-auto">
               <div className="absolute -inset-px rounded-2xl bg-[radial-gradient(ellipse_at_top_right,hsl(160,100%,39%,0.18)_0%,transparent_60%)] pointer-events-none" />
               <video
                 src={HERO_VIDEO_URL}
                 controls
                 preload="metadata"
                 playsInline
-                className="w-full aspect-video rounded-xl bg-black object-cover"
+                className="w-full aspect-video lg:aspect-[9/16] lg:h-[640px] lg:w-auto rounded-xl bg-black object-cover lg:object-contain"
                 aria-label="Demonstração do Dominex"
               >
                 Seu navegador não suporta vídeo HTML5.
