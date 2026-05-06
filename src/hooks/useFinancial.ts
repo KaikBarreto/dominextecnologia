@@ -98,7 +98,7 @@ export function useFinancial() {
   });
 
   const createTransaction = useMutation({
-    mutationFn: async (input: TransactionInput) => {
+    mutationFn: async (input: TransactionInput): Promise<{ ids: string[]; primary: FinancialTransaction | null }> => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
       const { installment_count, ...rest } = input;
@@ -158,7 +158,11 @@ export function useFinancial() {
           rows.push(sanitized);
         }
 
-        const { error } = await supabase.from('financial_transactions').insert(rows as any);
+        // Insert + retorna as rows criadas pra termos os IDs (em ordem de installment_number).
+        const { data: insertedRows, error } = await supabase
+          .from('financial_transactions')
+          .insert(rows as any)
+          .select('id, installment_number');
         if (error) throw error;
 
         // Upsert a bill record for each unique month touched by installments
@@ -177,7 +181,12 @@ export function useFinancial() {
           }
         }
 
-        return null;
+        const orderedIds = ((insertedRows ?? []) as Array<{ id: string; installment_number: number | null }>)
+          .slice()
+          .sort((a, b) => (a.installment_number ?? 0) - (b.installment_number ?? 0))
+          .map((r) => r.id);
+
+        return { ids: orderedIds, primary: null };
       }
 
       const sanitized = normalizeOptionalForeignKeys(
@@ -217,7 +226,7 @@ export function useFinancial() {
         }
       }
 
-      return data;
+      return { ids: [data.id], primary: data as FinancialTransaction };
     },
     onSuccess: () => {
       invalidateAll();

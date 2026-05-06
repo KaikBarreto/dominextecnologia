@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.11',
+    date: '05 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comprovantes em despesas parceladas vão para todas as parcelas',
+        description: 'Ao registrar uma despesa parcelada (no cartão ou recorrente), o sistema bloqueava o envio de anexos na criação e pedia para você editar parcela por parcela — e mesmo assim o anexo ficava só na parcela que você editava. Agora você anexa os comprovantes diretamente na hora de criar a despesa parcelada e o sistema vincula o mesmo arquivo a todas as parcelas automaticamente. Ao remover um anexo, ele some apenas da parcela em que foi removido — as outras continuam com o comprovante intacto.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.10',
     date: '05 de maio de 2026',
     type: 'patch',

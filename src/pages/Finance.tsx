@@ -116,13 +116,15 @@ export default function Finance() {
   const handleSubmit = async (data: any) => {
     let result: any = null;
     if (editingTransaction) {
-      result = await updateTransaction.mutateAsync({ ...data, id: editingTransaction.id });
+      // Edit: continua devolvendo a transação atualizada (objeto único).
+      // Embrulha pra manter o contrato { ids, primary } que o form espera.
+      const updated = await updateTransaction.mutateAsync({ ...data, id: editingTransaction.id });
+      result = { ids: [editingTransaction.id], primary: updated };
     } else {
+      // Create: já retorna { ids: string[]; primary } — funciona pra à vista E parcelado.
       result = await createTransaction.mutateAsync(data);
     }
     setEditingTransaction(null);
-    // Retorna a transação criada/editada para que o form possa anexar arquivos.
-    // Quando é parcelamento, createTransaction retorna null — anexos só funcionam à vista.
     return result;
   };
 

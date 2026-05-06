@@ -26,6 +26,7 @@ import { computeBillDate } from '@/hooks/useCreditCardBills';
 import {
   useTransactionAttachments,
   useUploadTransactionAttachment,
+  useUploadTransactionAttachmentShared,
   useRemoveTransactionAttachment,
   createAttachmentSignedUrl,
   formatAttachmentSize,
@@ -180,9 +181,10 @@ interface AttachmentsSectionProps {
   transactionId?: string;
   pendingFiles: PendingFile[];
   setPendingFiles: React.Dispatch<React.SetStateAction<PendingFile[]>>;
+  installmentCount?: number;
 }
 
-function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPendingFiles }: AttachmentsSectionProps) {
+function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPendingFiles, installmentCount = 1 }: AttachmentsSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -192,6 +194,7 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
   );
   const uploadMutation = useUploadTransactionAttachment();
   const removeMutation = useRemoveTransactionAttachment();
+  const showInstallmentInfo = !isEditing && installmentCount > 1;
 
   const handlePick = () => fileInputRef.current?.click();
 
@@ -339,6 +342,13 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
         {totalCount > 0 ? 'Adicionar mais' : 'Anexar comprovantes'}
       </Button>
       <p className="text-xs text-muted-foreground">Aceita imagens (JPG, PNG) e PDFs. Você pode anexar vários.</p>
+
+      {showInstallmentInfo && (
+        <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md p-2 flex items-start gap-1.5">
+          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>Os comprovantes serão vinculados a todas as {installmentCount} parcelas.</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -366,7 +376,7 @@ export function TransactionFormDialog({
   const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const uploadMutation = useUploadTransactionAttachment();
+  const uploadSharedMutation = useUploadTransactionAttachmentShared();
 
   const getCategoriesForType = (type: 'entrada' | 'saida') => {
     const fromDb = dbCategories.filter((c) => c.is_active && (c.type === type || c.type === 'ambos'));
@@ -446,24 +456,27 @@ export function TransactionFormDialog({
 
       const result: any = await onSubmit(payload);
 
-      // Após criar/editar, sobe os anexos pendentes (se houver)
+      // Após criar/editar, sobe os anexos pendentes (se houver).
+      // Contrato esperado de `result`: { ids: string[]; primary?: object }
+      // - À vista: ids = [id]
+      // - Parcelado: ids = [id_1, id_2, ..., id_N] (em ordem de installment_number)
+      // - Edit: ids = [transaction.id] (montado pelo Finance.tsx)
       if (pendingFiles.length > 0) {
-        // Modo novo: precisa do id da transação criada. Modo edit: já existe.
-        const txnId: string | undefined = isEditing ? transaction?.id : (result?.id || result?.[0]?.id);
+        const txnIds: string[] = isEditing
+          ? (transaction?.id ? [transaction.id] : [])
+          : (Array.isArray(result?.ids) ? result.ids : []);
 
-        if (!txnId) {
-          // Caso típico: parcelamento (várias transações criadas, sem id único de retorno).
-          // Anexos pendentes ficam descartados — orientamos a anexar pela edição de cada parcela.
+        if (txnIds.length === 0) {
           toast({
             variant: 'destructive',
             title: 'Anexos não foram enviados',
-            description: 'Para anexar comprovantes em compras parceladas, edite a parcela específica e anexe lá.',
+            description: 'A transação foi salva, mas não conseguimos vincular os comprovantes. Reabra a transação e anexe novamente.',
           });
         } else {
           let failures = 0;
           for (const pf of pendingFiles) {
             try {
-              await uploadMutation.mutateAsync({ transactionId: txnId, file: pf.file });
+              await uploadSharedMutation.mutateAsync({ transactionIds: txnIds, file: pf.file });
             } catch {
               failures += 1;
             }
@@ -473,6 +486,10 @@ export function TransactionFormDialog({
               variant: 'destructive',
               title: `${failures} anexo${failures !== 1 ? 's' : ''} não enviado${failures !== 1 ? 's' : ''}`,
               description: 'A transação foi salva. Reabra para anexar novamente.',
+            });
+          } else if (txnIds.length > 1) {
+            toast({
+              title: `${pendingFiles.length} comprovante${pendingFiles.length !== 1 ? 's' : ''} anexado${pendingFiles.length !== 1 ? 's' : ''} em todas as ${txnIds.length} parcelas`,
             });
           }
         }
@@ -700,6 +717,7 @@ export function TransactionFormDialog({
             transactionId={transaction?.id}
             pendingFiles={pendingFiles}
             setPendingFiles={setPendingFiles}
+            installmentCount={form.watch('installment_count') ?? 1}
           />
 
           {/* Is Paid toggle — hidden for credit card expenses (always committed) */}

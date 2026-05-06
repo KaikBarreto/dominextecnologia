@@ -103,6 +103,75 @@ export function useUploadTransactionAttachment() {
 }
 
 /**
+ * Mutation: sobe UM arquivo no Storage e vincula a N transações (parcelas).
+ *
+ * Cenário: criação de uma despesa parcelada com comprovante. O arquivo precisa
+ * aparecer em todas as N parcelas. Em vez de fazer N uploads, sobe 1 vez
+ * (path baseado no id da 1ª parcela) e cria N rows em
+ * `financial_transaction_attachments`, todas apontando pro mesmo `storage_path`.
+ *
+ * Trade-off: se TODAS as N parcelas forem deletadas no futuro, o arquivo no
+ * Storage fica órfão (nenhuma row referencia). Aceitável agora; vira problema
+ * de cron de GC se acumular.
+ */
+export function useUploadTransactionAttachmentShared() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ transactionIds, file }: { transactionIds: string[]; file: File }) => {
+      if (!user) throw new Error('Usuário não autenticado');
+      if (transactionIds.length === 0) throw new Error('Nenhuma transação informada');
+      const companyId = await fetchUserCompanyId(user.id);
+      if (!companyId) throw new Error('Empresa não encontrada para o usuário');
+
+      const safeName = sanitizeStorageFileName(file.name);
+      const primaryId = transactionIds[0];
+      const storagePath = `${companyId}/${primaryId}/${crypto.randomUUID()}_${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(storagePath, file, { contentType: file.type || undefined });
+      if (uploadError) throw uploadError;
+
+      const rows = transactionIds.map((transaction_id) => ({
+        transaction_id,
+        storage_path: storagePath,
+        file_name: file.name,
+        mime_type: file.type || null,
+        size_bytes: file.size ?? null,
+        uploaded_by: user.id,
+      }));
+
+      const { data, error } = await supabase
+        .from('financial_transaction_attachments')
+        .insert(rows)
+        .select();
+
+      if (error) {
+        // Se o insert falhou, tenta limpar o arquivo órfão no storage
+        await supabase.storage.from(BUCKET).remove([storagePath]).catch(() => {});
+        throw error;
+      }
+
+      return { storagePath, rows: data as TransactionAttachment[] };
+    },
+    onSuccess: ({ rows }) => {
+      // Invalida todas as transactions afetadas + o counts global
+      const ids = new Set(rows.map((r) => r.transaction_id));
+      ids.forEach((id) => {
+        queryClient.invalidateQueries({ queryKey: ['transaction-attachments', id] });
+      });
+      queryClient.invalidateQueries({ queryKey: ['transaction-attachments-counts'] });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: error.message });
+    },
+  });
+}
+
+/**
  * Mutation: remove a row em `financial_transaction_attachments` e o arquivo no bucket.
  */
 export function useRemoveTransactionAttachment() {
@@ -117,8 +186,19 @@ export function useRemoveTransactionAttachment() {
         .eq('id', attachment.id);
       if (error) throw error;
 
-      // Limpa storage (best-effort — se falhar não bloqueia: a row já sumiu)
-      await supabase.storage.from(BUCKET).remove([attachment.storage_path]).catch(() => {});
+      // O mesmo `storage_path` pode estar vinculado a N rows (compra parcelada
+      // compartilha 1 arquivo entre todas as parcelas). Só removemos o arquivo
+      // físico quando NENHUMA outra row aponta pra ele.
+      const { count } = await supabase
+        .from('financial_transaction_attachments')
+        .select('id', { count: 'exact', head: true })
+        .eq('storage_path', attachment.storage_path);
+
+      if (!count || count === 0) {
+        // best-effort — se falhar não bloqueia: a row já sumiu
+        await supabase.storage.from(BUCKET).remove([attachment.storage_path]).catch(() => {});
+      }
+
       return attachment;
     },
     onSuccess: (data) => {
