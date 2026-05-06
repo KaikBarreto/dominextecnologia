@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.13',
+    date: '05 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Veja as movimentações de cada conta com 1 clique',
+        description: 'No card de cada conta bancária na tela "Contas e Cartões", agora aparece um botão "Ver movimentações" que leva direto para o histórico filtrado por aquela conta. Aparece um resumo no topo com saldo inicial, entradas e saídas no período e saldo atual — assim você entende exatamente de onde veio o saldo da conta. O filtro pode ser combinado com período, categoria, status e tipo, e o link da página pode ser compartilhado: o filtro é preservado.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.8.12',
     date: '05 de maio de 2026',
     type: 'patch',

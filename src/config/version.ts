@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.12";
+export const APP_VERSION = "1.8.13";
 
-export const VERSION_NOTES = "Parcelas de cartão agora aparecem no mês correto também na tela de Contas a Pagar/Receber (não só em Movimentações). Quem vence em cada mês é a fatura do cartão, então as parcelas que entram naquela fatura aparecem juntas no mesmo período.";
+export const VERSION_NOTES = "Cada conta bancária ganhou um botão 'Ver movimentações' que abre o histórico filtrado por aquela conta, com um resumo claro de saldo inicial, entradas, saídas e saldo atual — você passa a ver de onde veio cada centavo do saldo.";

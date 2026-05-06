@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Filter, X, Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -13,6 +13,7 @@ import { SignedLink } from '@/components/ui/SignedLink';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { formatBRL } from '@/utils/currency';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
 import { RelatedTransactionsDialog } from './RelatedTransactionsDialog';
 import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRelatedTransactions';
@@ -58,6 +59,10 @@ interface TransactionListPanelProps {
   onDelete: (id: string) => Promise<any>;
   onMarkAsPaid: (params: any) => Promise<any>;
   buttonColor?: string;
+  /** Pré-aplica o filtro de conta (deep-link a partir da tela "Contas e Cartões"). */
+  initialAccountFilter?: string | null;
+  /** Chamado quando o usuário remove o filtro de conta vindo do deep-link. */
+  onClearAccountFilter?: () => void;
 }
 
 function getAccIcon(type: string) {
@@ -69,6 +74,7 @@ function getAccIcon(type: string) {
 export function TransactionListPanel({
   title, type = 'all', transactions, isLoading,
   onNew, onEdit, onDelete, onMarkAsPaid, buttonColor,
+  initialAccountFilter, onClearAccountFilter,
 }: TransactionListPanelProps) {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -76,14 +82,19 @@ export function TransactionListPanel({
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [accountFilter, setAccountFilter] = useState('all');
+  const [accountFilter, setAccountFilter] = useState(initialAccountFilter || 'all');
+
+  // Mantém o filtro sincronizado com o deep-link (ex: usuário muda de conta na URL).
+  useEffect(() => {
+    if (initialAccountFilter) setAccountFilter(initialAccountFilter);
+  }, [initialAccountFilter]);
   const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
-  const { accounts: allAccounts } = useFinancialAccounts();
+  const { accounts: allAccounts, balances: accountBalances } = useFinancialAccounts();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -118,6 +129,12 @@ export function TransactionListPanel({
     setStatusFilter('all');
     setAccountFilter('all');
     setTypeFilter('all');
+    onClearAccountFilter?.();
+  };
+
+  const clearAccountFilterOnly = () => {
+    setAccountFilter('all');
+    onClearAccountFilter?.();
   };
 
   const effectiveType = type === 'all' ? typeFilter : type;
@@ -128,6 +145,33 @@ export function TransactionListPanel({
     .filter((t) => statusFilter === 'all' || (statusFilter === 'paid' ? t.is_paid : !t.is_paid))
     .filter((t) => accountFilter === 'all' || (t as any).account_id === accountFilter)
     .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
+
+  // Resumo financeiro da conta filtrada (visível só quando há filtro ativo de conta).
+  // Considera apenas as transações já filtradas (respeita período, tipo, categoria, status).
+  // - Entradas no período: somatório de receitas pagas;
+  // - Saídas no período: somatório de despesas pagas;
+  // - Saldo inicial: vem do cadastro da conta;
+  // - Saldo atual: usa o cálculo global do hook (atemporal — todas as transações pagas).
+  const filteredAccount = accountFilter !== 'all'
+    ? allAccounts.find((a) => a.id === accountFilter) ?? null
+    : null;
+
+  const accountSummary = useMemo(() => {
+    if (!filteredAccount) return null;
+    let entradas = 0;
+    let saidas = 0;
+    filtered.forEach((t) => {
+      if (!t.is_paid) return;
+      if (t.transaction_type === 'entrada') entradas += Number(t.amount);
+      else saidas += Number(t.amount);
+    });
+    return {
+      initialBalance: Number(filteredAccount.initial_balance),
+      entradas,
+      saidas,
+      currentBalance: accountBalances[filteredAccount.id] ?? Number(filteredAccount.initial_balance),
+    };
+  }, [filtered, filteredAccount, accountBalances]);
 
   // Contagem de anexos da nova tabela — pra exibir paperclip quando há anexos
   const visibleIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
@@ -294,6 +338,55 @@ export function TransactionListPanel({
           )}
         </Button>
       </div>
+
+      {filteredAccount && accountSummary && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-3 sm:p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="rounded-full p-1.5 shrink-0"
+                  style={{ backgroundColor: filteredAccount.color }}
+                >
+                  {(() => { const Icon = getAccIcon(filteredAccount.type); return <Icon className="h-3.5 w-3.5 text-white" />; })()}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground leading-tight">Filtrado por conta</p>
+                  <p className="font-semibold text-sm truncate">{filteredAccount.name}</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                onClick={clearAccountFilterOnly}
+              >
+                <X className="h-3.5 w-3.5" /> Remover filtro
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs">
+              <div>
+                <p className="text-muted-foreground">Saldo inicial</p>
+                <p className="font-semibold">{formatBRL(accountSummary.initialBalance)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Entradas no período</p>
+                <p className="font-semibold text-success">+ {formatBRL(accountSummary.entradas)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Saídas no período</p>
+                <p className="font-semibold text-destructive">− {formatBRL(accountSummary.saidas)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Saldo atual</p>
+                <p className={`font-semibold ${accountSummary.currentBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {formatBRL(accountSummary.currentBalance)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">

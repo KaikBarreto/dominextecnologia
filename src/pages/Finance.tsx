@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinancial } from '@/hooks/useFinancial';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { FinanceOverview } from '@/components/financial/FinanceOverview';
@@ -34,7 +34,16 @@ const TAB_ROUTE_MAP: Record<string, string> = {
 export default function Finance() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = ROUTE_TAB_MAP[location.pathname] || 'visao-geral';
+  // Deep-link de "Contas e Cartões" → "Movimentações" pré-filtrada por conta.
+  const accountFilterParam = searchParams.get('account');
+  const clearAccountFilterParam = () => {
+    if (!searchParams.get('account')) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('account');
+    setSearchParams(next, { replace: true });
+  };
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
@@ -169,6 +178,8 @@ export default function Finance() {
             onEdit={handleEdit}
             onDelete={(id) => deleteTransaction.mutateAsync(id)}
             onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
+            initialAccountFilter={accountFilterParam}
+            onClearAccountFilter={clearAccountFilterParam}
           />
         )}
 

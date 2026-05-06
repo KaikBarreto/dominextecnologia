@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Plus, Pencil, Trash2, ArrowLeftRight, Landmark, Wallet, CreditCard,
-  ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle,
+  ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowRight,
 } from 'lucide-react';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
 import { useCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
@@ -336,6 +337,7 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
 // ─── Componente Principal ────────────────────────────────────────────────────
 
 export function FinanceBanks() {
+  const navigate = useNavigate();
   const { accounts, balances, cardBillTotals, isLoading, createAccount, updateAccount, deleteAccount, transfer } = useFinancialAccounts();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialAccount | null>(null);
@@ -523,6 +525,15 @@ export function FinanceBanks() {
                         {formatBRL(balance)}
                       </p>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3 gap-2 text-xs h-8"
+                      onClick={() => navigate(`/financeiro/movimentacoes?account=${a.id}`)}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                      Ver movimentações
+                    </Button>
                   </CardContent>
                 </Card>
               );
