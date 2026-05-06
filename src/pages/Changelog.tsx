@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.12',
+    date: '05 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Parcelas de cartão aparecem no mês correto também em Contas a Pagar/Receber',
+        description: 'A correção que aplicamos na tela de Movimentações na versão anterior (parcelas aparecerem no mês da fatura do cartão) agora vale também para Contas a Pagar/Receber, DRE e Visão Geral. Antes, uma compra parcelada feita em abril aparecia em Contas a Pagar do mês de maio com a numeração da segunda parcela; agora aparece com a primeira parcela, junto com as outras compras que entram na mesma fatura. A lógica foi centralizada para evitar que esse problema apareça em outras telas no futuro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.11',
     date: '05 de maio de 2026',
     type: 'patch',

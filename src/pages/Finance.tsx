@@ -9,6 +9,7 @@ import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { FinanceBanks } from '@/components/financial/FinanceBanks';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
+import { isTransactionInDateRange } from '@/lib/finance-date';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const ROUTE_TAB_MAP: Record<string, string> = {
@@ -38,7 +39,7 @@ export default function Finance() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
-  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
+  const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
   const {
     transactions, isLoading,
@@ -49,43 +50,25 @@ export default function Finance() {
   // o filtro de período deve usar o mês da fatura, não a data da compra/parcela.
   // Isso alinha a tela "Movimentações" com a tela "Contas e Cartões" (faturas).
   // Sem essa regra, parcelas de cartão aparecem no mês da compra em vez do mês da fatura.
-  const filteredTransactions = useMemo(() => {
-    if (!range.from && !range.to) return transactions;
-    return transactions.filter((t) => {
-      const dateField = (t as any).credit_card_bill_date ? 'credit_card_bill_date' : 'transaction_date';
-      const raw = (t as any)[dateField] ?? t.transaction_date;
-      if (!raw) return false;
-      const dateStr = String(raw);
-      const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
-      if (isNaN(d.getTime())) return false;
-      if (range.from && d < range.from) return false;
-      if (range.to && d > range.to) return false;
-      return true;
-    });
-  }, [transactions, range]);
+  // Regra centralizada em `@/lib/finance-date`.
+  const filteredTransactions = useMemo(
+    () => transactions.filter((t) => isTransactionInDateRange(t, range, 'caixa')),
+    [transactions, range]
+  );
 
   // Resumo: despesas de cartão entram no mês da fatura; demais itens pagos
   // usam transaction_date e não pagos usam due_date.
-  const summaryTransactions = useMemo(() => {
-    if (!range.from && !range.to) return transactions;
-    return transactions.filter((t) => {
-      let raw: string | null | undefined;
-      if ((t as any).credit_card_bill_date) {
-        raw = (t as any).credit_card_bill_date;
-      } else {
-        const dateField = t.is_paid ? 'transaction_date' : 'due_date';
-        const fallback = 'transaction_date';
-        raw = (t[dateField as keyof typeof t] ?? t[fallback as keyof typeof t]) as string | null | undefined;
-      }
-      if (!raw) return false;
-      const dateStr = String(raw);
-      const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
-      if (isNaN(d.getTime())) return false;
-      if (range.from && d < range.from) return false;
-      if (range.to && d > range.to) return false;
-      return true;
-    });
-  }, [transactions, range]);
+  const summaryTransactions = useMemo(
+    () => transactions.filter((t) => isTransactionInDateRange(t, range, 'caixa-misto')),
+    [transactions, range]
+  );
+
+  // Contas a Pagar/Receber: vencimento individual da parcela, exceto cartões
+  // (esses caem na data da fatura, igual ao filtro de Movimentações).
+  const contasTransactions = useMemo(
+    () => transactions.filter((t) => isTransactionInDateRange(t, range, 'pagar')),
+    [transactions, range]
+  );
 
   const summary = useMemo(() => {
     const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
@@ -191,7 +174,7 @@ export default function Finance() {
 
         {activeTab === 'contas' && (
           <FinanceContas
-            transactions={filterByDate(transactions, 'due_date', 'transaction_date')}
+            transactions={contasTransactions}
             isLoading={isLoading}
             onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
           />
