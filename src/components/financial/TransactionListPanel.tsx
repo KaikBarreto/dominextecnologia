@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Filter, X, Wallet, Landmark, CreditCard } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTransactionAttachmentsCounts } from '@/hooks/useTransactionAttachments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -127,6 +129,10 @@ export function TransactionListPanel({
     .filter((t) => accountFilter === 'all' || (t as any).account_id === accountFilter)
     .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
 
+  // Contagem de anexos da nova tabela — pra exibir paperclip quando há anexos
+  const visibleIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
+  const { data: attachmentCounts = {} } = useTransactionAttachmentsCounts(visibleIds);
+
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
   const pagination = useDataPagination(sortedItems);
 
@@ -202,13 +208,52 @@ export function TransactionListPanel({
     return <Badge variant="outline" className="text-[10px] ml-1">{t.installment_number}/{t.installment_total}</Badge>;
   };
 
+  // Mostra paperclip se tem comprovante legado (receipt_url) OU anexos na nova tabela.
+  // Linka pro receipt_url quando existe (compatibilidade); senão um indicador estático
+  // (a edição mostra a lista completa de anexos).
   const renderReceiptLink = (t: any) => {
-    if (!t.receipt_url) return null;
+    const hasLegacy = !!t.receipt_url;
+    const newCount = attachmentCounts[t.id] ?? 0;
+    if (!hasLegacy && newCount === 0) return null;
+
+    if (hasLegacy) {
+      return (
+        <SignedLink src={t.receipt_url} className="text-primary hover:text-primary/80" title="Ver comprovante">
+          <Paperclip className="h-3.5 w-3.5" />
+        </SignedLink>
+      );
+    }
+    // Sem legado, mas tem anexos novos: ícone + contagem (abrir pela edição)
     return (
-      <SignedLink src={t.receipt_url} className="text-primary hover:text-primary/80" title="Ver comprovante">
+      <span className="inline-flex items-center gap-0.5 text-primary" title={`${newCount} anexo${newCount !== 1 ? 's' : ''}`}>
         <Paperclip className="h-3.5 w-3.5" />
-      </SignedLink>
+        {newCount > 1 && <span className="text-[10px] font-medium">{newCount}</span>}
+      </span>
     );
+  };
+
+  // Para parcelas de cartão, exibe a data da fatura (credit_card_bill_date) com tooltip
+  // da data original da compra. Para outras transações, exibe transaction_date normalmente.
+  const renderTransactionDate = (t: any) => {
+    const billDate: string | null = t.credit_card_bill_date ?? null;
+    if (billDate) {
+      const original = formatDate(t.transaction_date);
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 cursor-help">
+              <span>{formatDate(billDate)}</span>
+              <CreditCard className="h-3 w-3 text-muted-foreground" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">Compra em {original}</p>
+            <p className="text-[10px] text-muted-foreground">Data exibida: vencimento da fatura</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+    return <span>{formatDate(t.transaction_date)}</span>;
   };
 
   return (
@@ -366,7 +411,7 @@ export function TransactionListPanel({
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{formatDate(t.transaction_date)}</span>
+                    <span className="text-xs text-muted-foreground">{renderTransactionDate(t)}</span>
                     {showTypeColumn && (
                       <Badge className={`text-[10px] ${t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}`}>
                         {t.transaction_type === 'entrada' ? 'Receita' : 'Despesa'}
@@ -417,7 +462,7 @@ export function TransactionListPanel({
                   {pagination.paginatedItems.map((t) => (
                     <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
                       {type !== 'all' && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
-                      <TableCell className="text-sm">{formatDate(t.transaction_date)}</TableCell>
+                      <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
                       {showTypeColumn && (
                         <TableCell>
                           <Badge className={t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}>

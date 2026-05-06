@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Filter, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Filter, Star, PauseCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,6 +19,8 @@ interface ScheduleHeaderProps {
   onNext: () => void;
   onToday: () => void;
   onNewOrder?: () => void;
+  onOpenPaused?: () => void;
+  pausedCount?: number;
   // Filters
   technicianFilter: string;
   onTechnicianFilterChange: (val: string) => void;
@@ -47,6 +49,8 @@ export function ScheduleHeader({
   onNext,
   onToday,
   onNewOrder,
+  onOpenPaused,
+  pausedCount = 0,
   technicianFilter,
   onTechnicianFilterChange,
   technicians,
@@ -133,6 +137,24 @@ export function ScheduleHeader({
               </div>
             </PopoverContent>
           </Popover>
+
+          {onOpenPaused && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenPaused}
+              className={pausedCount > 0 ? 'border-amber-500/40 text-amber-600 hover:bg-amber-500 hover:text-white' : ''}
+              aria-label="Ver OS pausadas"
+            >
+              <PauseCircle className="h-4 w-4 mr-2" />
+              {isMobile ? 'Pausadas' : 'OS Pausadas'}
+              {pausedCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-semibold">
+                  {pausedCount}
+                </span>
+              )}
+            </Button>
+          )}
 
           {onNewOrder && (
             <Button size="sm" onClick={onNewOrder}>

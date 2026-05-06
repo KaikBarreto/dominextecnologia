@@ -17,10 +17,17 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "prompt",
+      // autoUpdate + skipWaiting + clientsClaim: o SW novo assume controle
+      // imediato no próximo load. Sem isso, o cliente fica preso ao bundle
+      // JS antigo e tem que "limpar cache" pra ver release novo (incidente
+      // do 1.8.10 — Glacial Cold reportou 10min de cache).
+      registerType: "autoUpdate",
       injectRegister: false,
       manifest: false,
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,otf}"],
         navigateFallback: "/index.html",

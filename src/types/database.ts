@@ -105,6 +105,11 @@ export interface ServiceOrder {
   form_template_id?: string;
   created_at: string;
   updated_at: string;
+  // Timestamps de auditoria (preenchidos por trigger BEFORE UPDATE)
+  started_at?: string | null;
+  paused_at?: string | null;
+  resumed_at?: string | null;
+  completed_at?: string | null;
   // Relations
   customer?: Customer;
   equipment?: Equipment;

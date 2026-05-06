@@ -45,15 +45,38 @@ export default function Finance() {
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
 
-  const filteredTransactions = filterByDate(transactions, 'transaction_date');
+  // Para transações de cartão de crédito (com `credit_card_bill_date` preenchido),
+  // o filtro de período deve usar o mês da fatura, não a data da compra/parcela.
+  // Isso alinha a tela "Movimentações" com a tela "Contas e Cartões" (faturas).
+  // Sem essa regra, parcelas de cartão aparecem no mês da compra em vez do mês da fatura.
+  const filteredTransactions = useMemo(() => {
+    if (!range.from && !range.to) return transactions;
+    return transactions.filter((t) => {
+      const dateField = (t as any).credit_card_bill_date ? 'credit_card_bill_date' : 'transaction_date';
+      const raw = (t as any)[dateField] ?? t.transaction_date;
+      if (!raw) return false;
+      const dateStr = String(raw);
+      const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      if (range.from && d < range.from) return false;
+      if (range.to && d > range.to) return false;
+      return true;
+    });
+  }, [transactions, range]);
 
-  // For summary: unpaid items should be filtered by due_date, paid by transaction_date
+  // Resumo: despesas de cartão entram no mês da fatura; demais itens pagos
+  // usam transaction_date e não pagos usam due_date.
   const summaryTransactions = useMemo(() => {
     if (!range.from && !range.to) return transactions;
     return transactions.filter((t) => {
-      const dateField = t.is_paid ? 'transaction_date' : 'due_date';
-      const fallback = 'transaction_date';
-      const raw = t[dateField as keyof typeof t] ?? t[fallback as keyof typeof t];
+      let raw: string | null | undefined;
+      if ((t as any).credit_card_bill_date) {
+        raw = (t as any).credit_card_bill_date;
+      } else {
+        const dateField = t.is_paid ? 'transaction_date' : 'due_date';
+        const fallback = 'transaction_date';
+        raw = (t[dateField as keyof typeof t] ?? t[fallback as keyof typeof t]) as string | null | undefined;
+      }
       if (!raw) return false;
       const dateStr = String(raw);
       const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
@@ -91,12 +114,16 @@ export default function Finance() {
   };
 
   const handleSubmit = async (data: any) => {
+    let result: any = null;
     if (editingTransaction) {
-      await updateTransaction.mutateAsync({ ...data, id: editingTransaction.id });
+      result = await updateTransaction.mutateAsync({ ...data, id: editingTransaction.id });
     } else {
-      await createTransaction.mutateAsync(data);
+      result = await createTransaction.mutateAsync(data);
     }
     setEditingTransaction(null);
+    // Retorna a transação criada/editada para que o form possa anexar arquivos.
+    // Quando é parcelamento, createTransaction retorna null — anexos só funcionam à vista.
+    return result;
   };
 
   const handleEdit = (t: FinancialTransaction) => {

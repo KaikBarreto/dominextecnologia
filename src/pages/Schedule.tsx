@@ -1,12 +1,14 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle } from 'lucide-react';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { DailyCalendar } from '@/components/schedule/DailyCalendar';
 import { MobileAgendaView } from '@/components/schedule/MobileAgendaView';
 import { ScheduleHeader, type ViewMode } from '@/components/schedule/ScheduleHeader';
+import { PausedOrdersDialog } from '@/components/schedule/PausedOrdersDialog';
+import { usePausedOrders } from '@/hooks/usePausedOrders';
 import { ScheduleDetailPanel } from '@/components/schedule/ScheduleDetailPanel';
 import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
@@ -57,6 +59,8 @@ export default function Schedule() {
   const [summaryOrder, setSummaryOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | undefined>();
   const [defaultTime, setDefaultTime] = useState<string | undefined>();
+  const [isPausedDialogOpen, setIsPausedDialogOpen] = useState(false);
+  const { pausedOrders } = usePausedOrders();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -125,7 +129,57 @@ export default function Schedule() {
       const { assignees, team } = getAssignees(order);
       return { ...order, _assignees: assignees, _team: team };
     });
-    return [...osFiltered, ...financialEvents];
+
+    // Expansão de OS retomadas: uma OS pausada e depois retomada precisa
+    // aparecer também nas datas a partir da retomada (até ser concluída/cancelada),
+    // sem perder a aparição na data original (scheduled_date).
+    //
+    // Critério B: status em [em_andamento, a_caminho, pendente]
+    //   AND resumed_at preenchido AND scheduled_date < resumed_at::date
+    //
+    // Para cada OS que cumpre B, geramos instâncias adicionais com
+    // scheduled_date sobrescrito para cada data entre resumed_at::date e hoje.
+    // Status concluida/cancelada NÃO expande — finalizada não polui o "hoje".
+    const expanded: typeof osFiltered = [];
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
+
+    for (const order of osFiltered) {
+      // Sempre inclui na data original (critério A)
+      expanded.push(order);
+
+      // Critério B
+      const resumedAtRaw = (order as any).resumed_at as string | null | undefined;
+      const status = order.status;
+      const isActiveStatus = status === 'em_andamento' || status === 'a_caminho' || status === 'pendente';
+      if (!resumedAtRaw || !isActiveStatus || !order.scheduled_date) continue;
+
+      const resumedDate = new Date(resumedAtRaw);
+      if (isNaN(resumedDate.getTime())) continue;
+      const resumedKey = format(resumedDate, 'yyyy-MM-dd');
+
+      // Só expande se a data original era anterior à retomada
+      if (order.scheduled_date >= resumedKey) continue;
+
+      // Gera entradas de resumedKey até hoje (inclusive)
+      let cursor = new Date(resumedKey + 'T12:00:00');
+      const todayDate = new Date(todayKey + 'T12:00:00');
+      while (cursor <= todayDate) {
+        const cursorKey = format(cursor, 'yyyy-MM-dd');
+        // Evita duplicar se por acaso scheduled_date == cursorKey (defensivo)
+        if (cursorKey !== order.scheduled_date) {
+          expanded.push({
+            ...order,
+            scheduled_date: cursorKey,
+            // Marcador pra UI distinguir esta instância como "Retomada"
+            _resumedDisplay: true,
+            _originalScheduledDate: order.scheduled_date,
+          } as any);
+        }
+        cursor = addDays(cursor, 1);
+      }
+    }
+
+    return [...expanded, ...financialEvents];
   }, [serviceOrders, technicianFilter, customerFilter, statusFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees]);
 
   const handlePrev = () => {
@@ -243,6 +297,17 @@ export default function Schedule() {
   const handleResumeFromSummary = (id: string) => {
     updateServiceOrder.mutate({ id, status: 'em_andamento' as any });
     setSummaryOrder(null);
+  };
+
+  const handleViewPausedDetails = (order: ServiceOrder & { customer: any; equipment: any }) => {
+    setSummaryOrder(order);
+    setIsPausedDialogOpen(false);
+  };
+
+  const handleResumePaused = (order: ServiceOrder & { customer: any; equipment: any }) => {
+    updateServiceOrder.mutate({ id: order.id, status: 'em_andamento' as any });
+    setIsPausedDialogOpen(false);
+    toast({ title: 'OS retomada', description: `OS #${order.order_number} voltou para a agenda.` });
   };
 
   const handleNewOrder = () => {
@@ -463,6 +528,25 @@ export default function Schedule() {
           </Tabs>
         </div>
 
+        {/* OS Pausadas (mobile) */}
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsPausedDialogOpen(true)}
+            className={pausedOrders.length > 0 ? 'border-amber-500/40 text-amber-600 hover:bg-amber-500 hover:text-white' : ''}
+            aria-label="Ver OS pausadas"
+          >
+            <PauseCircle className="h-4 w-4 mr-2" />
+            OS Pausadas
+            {pausedOrders.length > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-semibold">
+                {pausedOrders.length}
+              </span>
+            )}
+          </Button>
+        </div>
+
         {/* Moving indicator */}
         {touchDrag.movingOrderId && (
           <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 border border-primary/30">
@@ -594,6 +678,12 @@ export default function Schedule() {
           defaultDate={defaultDate}
           defaultTime={defaultTime}
         />
+        <PausedOrdersDialog
+          open={isPausedDialogOpen}
+          onOpenChange={setIsPausedDialogOpen}
+          onViewDetails={handleViewPausedDetails}
+          onResume={handleResumePaused}
+        />
       </div>
     );
   }
@@ -614,6 +704,8 @@ export default function Schedule() {
         onNext={handleNext}
         onToday={handleToday}
         onNewOrder={canCreateOS ? handleNewOrder : undefined}
+        onOpenPaused={() => setIsPausedDialogOpen(true)}
+        pausedCount={pausedOrders.length}
         technicianFilter={technicianFilter}
         onTechnicianFilterChange={setTechnicianFilter}
         technicians={allProfiles}
@@ -700,6 +792,12 @@ export default function Schedule() {
         task={editingTask}
         defaultDate={defaultDate}
         defaultTime={defaultTime}
+      />
+      <PausedOrdersDialog
+        open={isPausedDialogOpen}
+        onOpenChange={setIsPausedDialogOpen}
+        onViewDetails={handleViewPausedDetails}
+        onResume={handleResumePaused}
       />
     </div>
   );

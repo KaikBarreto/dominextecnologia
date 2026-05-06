@@ -40,6 +40,53 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.10',
+    date: '05 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Veja todas as OS pausadas em qualquer data e retome com 1 clique',
+        description: 'Agora você consegue ver todas as OS pausadas em qualquer mês ou ano sem precisar voltar pela agenda. Use o botão "OS Pausadas" no topo da agenda para abrir a lista completa, busque pelo cliente ou número da OS e retome quando quiser. Ao retomar uma OS antiga, ela passa a aparecer tanto na data original (preservando o histórico) quanto na agenda do dia atual, com um destaque visual para você não confundir.',
+        category: 'recurso',
+      },
+      {
+        title: 'Linha do tempo completa em cada OS',
+        description: 'No detalhe de cada OS você passa a ver a linha do tempo completa: quando começou a obra, quando foi pausada, quando foi retomada e quando foi finalizada. Útil para auditoria e para acompanhar o progresso de obras longas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Múltiplos comprovantes em uma transação financeira',
+        description: 'Ao registrar uma transação financeira você passa a poder anexar várias fotos e PDFs (nota fiscal, recibo, foto do produto) em vez de só um arquivo. Também é possível adicionar ou remover anexos depois, ao editar a transação.',
+        category: 'recurso',
+      },
+      {
+        title: 'Parcelas de cartão aparecem no mês correto em Movimentações',
+        description: 'Despesas parceladas no cartão de crédito apareciam com a numeração e o mês trocados na lista de Movimentações. Agora a parcela aparece no mês da fatura correspondente, com indicação clara de que é uma despesa de cartão. Ao passar o mouse, você vê a data original da compra.',
+        category: 'correcao',
+      },
+      {
+        title: 'Atualizações chegam automaticamente sem precisar limpar cache',
+        description: 'Algumas instalações ficavam com versões antigas do app armazenadas e exigiam limpeza manual de cache toda vez que saía uma atualização. A partir desta versão, qualquer atualização nova é baixada e ativada automaticamente quando o app é aberto, sem nenhuma ação sua.',
+        category: 'correcao',
+      },
+      {
+        title: 'Modal de edição de conta a pagar agora rola em telas pequenas',
+        description: 'Ao editar uma conta a pagar ou a receber em telas menores (celular, tablet, notebook compacto), o conteúdo do modal cortava o botão Salvar. Agora o miolo do modal rola e os botões Cancelar e Salvar ficam sempre visíveis.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tela de login mais resistente a travamentos',
+        description: 'Reforçamos de vez a tela de login para eliminar o problema do carregamento infinito em situações específicas (login em outra aba, troca rápida de usuário, conexão lenta). Agora o sistema descarta dados de carregamento que ficaram pra trás e libera a tela em até 5 segundos mesmo se algum serviço externo demorar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Ícone do app aparece corretamente em todos os navegadores',
+        description: 'Em alguns navegadores e instalações, o ícone (favicon) do Dominex não carregava na aba do navegador. Adicionamos referências adicionais para garantir que o ícone apareça em todos os contextos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.9',
     date: '05 de maio de 2026',
     type: 'patch',

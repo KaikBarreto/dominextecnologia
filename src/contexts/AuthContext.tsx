@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,68 +46,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
+  // Race protection: guarda o userId atual para descartar resultados de
+  // fetchUserData "em vôo" caso o usuário troque (logout + login rápido,
+  // multi-aba). Sem isso, um fetch antigo pode sobrescrever o estado novo.
+  const currentUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
+    // Fallback de defesa em profundidade: se INITIAL_SESSION não disparar por
+    // qualquer motivo (lock travado, bug do client), ainda assim soltamos o
+    // skeleton em 5s. Limpado assim que o primeiro evento chega.
+    const loadingFallback = setTimeout(() => {
+      console.warn('[Auth] onAuthStateChange did not fire within 5s — releasing loading state');
+      setLoading(false);
+    }, 5000);
+
+    // IMPORTANTE: callback é SÍNCRONO. A doc do Supabase é explícita:
+    // "Avoid using async functions as callbacks. Calling other Supabase
+    // functions inside the callback can cause deadlocks."
+    // Ref: https://supabase.com/docs/reference/javascript/auth-onauthstatechange
+    //
+    // O callback segura um lock interno do GoTrue enquanto executa. Se
+    // fizermos queries (await) aqui dentro, autoRefreshToken / getSession /
+    // signOut e sincronização multi-aba ficam em fila atrás — é o deadlock
+    // que causou o skeleton infinito (incidente 1.8.9 e residuais).
+    //
+    // Solução: deferir fetchUserData com setTimeout(..., 0), saindo da fila
+    // de execução do GoTrue antes de tocar no banco. Lock libera na hora.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        clearTimeout(loadingFallback);
+
         setSession(session);
         setUser(session?.user ?? null);
+        currentUserIdRef.current = session?.user?.id ?? null;
 
         if (session?.user) {
-          // Refetch profile/roles/permissions for the new user. We deliberately
-          // await here so consumers (sidebar, white-label, route guards) only
-          // re-render once the user's identity is fully resolved — otherwise
-          // they get a brief window where roles=[] and may apply tenant
-          // styling to a super_admin or vice-versa.
-          await fetchUserData(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
+          const userId = session.user.id;
+          // Defer pra fora do callback — não segurar o lock do GoTrue.
+          setTimeout(() => {
+            fetchUserData(userId).catch((err) => {
+              console.error('[Auth] fetchUserData failed:', err);
+            });
+          }, 0);
+        } else if (event === 'SIGNED_OUT' || !session) {
           setProfile(null);
           setRoles([]);
           setPermissions([]);
           setAdminPermissions([]);
         }
+
+        // Soltar skeleton imediatamente. UI já tem session/user; profile/roles
+        // chegam logo depois via setState do fetchUserData deferido. Consumers
+        // que dependem de roles devem checar roles.length > 0 (já fazem).
+        setLoading(false);
       }
     );
 
-    (async () => {
-      try {
-        // Timeout de 5s no getSession: se outro GoTrueClient travar o lock do
-        // navigator.locks (ex: storageKey duplicada, aba zumbi), seguimos sem
-        // sessão em vez de prender o app no skeleton. onAuthStateChange ainda
-        // dispara depois e corrige o estado quando o lock liberar.
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-          setTimeout(() => {
-            console.warn('[Auth] getSession timed out — proceeding without session');
-            resolve({ data: { session: null } });
-          }, 5000)
-        );
-        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await fetchUserData(session.user.id);
-        }
-      } finally {
-        // finally garante que o skeleton nunca fica infinito mesmo que algo
-        // futuro lance dentro do try.
-        setLoading(false);
-      }
-    })();
-
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingFallback);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserData = async (userId: string) => {
-    try {
+    // Helper: descarta resultado se o usuário trocou enquanto a query estava em vôo.
+    const isStillCurrent = () => currentUserIdRef.current === userId;
+
+    // Timeout de 5s envolvendo as 4 queries. Se estourar, segue com o que
+    // conseguiu carregar — estado parcial é melhor que skeleton travado.
+    const TIMEOUT_MS = 5000;
+    const timeoutPromise = new Promise<'timeout'>((resolve) =>
+      setTimeout(() => resolve('timeout'), TIMEOUT_MS)
+    );
+
+    const fetchAll = async () => {
       // Fetch profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
-      
-      if (profileData) {
+
+      if (profileData && isStillCurrent()) {
         setProfile(profileData as Profile);
       }
 
@@ -116,8 +136,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('user_roles')
         .select('role')
         .eq('user_id', userId);
-      
-      if (rolesData) {
+
+      if (rolesData && isStillCurrent()) {
         setRoles(rolesData.map(r => r.role as AppRole));
       }
 
@@ -127,11 +147,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('permissions, is_active')
         .eq('user_id', userId)
         .maybeSingle();
-      
-      if (permData && permData.is_active) {
-        setPermissions((permData.permissions as any) || []);
-      } else {
-        setPermissions([]);
+
+      if (isStillCurrent()) {
+        if (permData && permData.is_active) {
+          setPermissions((permData.permissions as any) || []);
+        } else {
+          setPermissions([]);
+        }
       }
 
       // Fetch admin panel permissions (vendedores / admin users)
@@ -140,7 +162,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('permission')
         .eq('user_id', userId);
 
-      setAdminPermissions((adminPermData ?? []).map((r: any) => r.permission as string));
+      if (isStillCurrent()) {
+        setAdminPermissions((adminPermData ?? []).map((r: any) => r.permission as string));
+      }
+    };
+
+    try {
+      const result = await Promise.race([fetchAll(), timeoutPromise]);
+      if (result === 'timeout') {
+        console.warn('[Auth] fetchUserData timed out after 5s — proceeding with partial state');
+      }
     } catch (error) {
       console.error('Error fetching user data:', error);
     }

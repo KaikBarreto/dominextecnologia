@@ -14,7 +14,6 @@ import type { TransactionType, FinancialTransaction } from '@/types/database';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useContracts } from '@/hooks/useContracts';
 import { useCustomers } from '@/hooks/useCustomers';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 
@@ -179,22 +178,31 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     }
   };
 
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount || !accountId}>
+        {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? 'Salvando...' : 'Criando...'}</> : (isEditing ? 'Salvar' : 'Criar Conta')}
+      </Button>
+    </div>
+  );
+
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
       title={isEditing ? 'Editar Conta' : 'Nova Conta'}
-      className="sm:max-w-lg max-h-[90vh]"
+      className="sm:max-w-lg"
+      footer={footer}
     >
       <p className="text-sm text-muted-foreground -mt-2 mb-4">
-        {isEditing 
+        {isEditing
           ? `Editando conta ${tipo === 'saida' ? 'a pagar' : 'a receber'}`
           : `Crie uma conta a ${tipo === 'saida' ? 'pagar' : 'receber'}, com opção de recorrência.`
         }
       </p>
 
-      <ScrollArea className="max-h-[calc(90vh-180px)] pr-4">
-        <div className="space-y-4">
+      <div className="space-y-4 pb-2">
           <div className="space-y-1.5">
             <Label>Tipo</Label>
             <Select value={tipo} onValueChange={(v) => { setTipo(v as TransactionType); setCategory(''); setEmployeeId(''); setContractId(''); }}>
@@ -325,15 +333,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             <Label>Observações</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Notas internas" />
           </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || !description.trim() || !amount || !accountId}>
-              {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? 'Salvando...' : 'Criando...'}</> : (isEditing ? 'Salvar' : 'Criar Conta')}
-            </Button>
-          </div>
         </div>
-      </ScrollArea>
     </ResponsiveModal>
   );
 }

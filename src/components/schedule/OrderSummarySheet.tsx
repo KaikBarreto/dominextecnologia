@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { TechnicianDistanceBadge } from '@/components/service-orders/TechnicianDistanceBadge';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { OrderTimeline } from './OrderTimeline';
 
 interface OrderSummarySheetProps {
   order: (ServiceOrder & { customer: any; equipment: any }) | null;
@@ -230,6 +231,19 @@ function OrderContent({ order, onEdit, onReopen, onPause, onResume }: { order: S
               </div>
               <p className="text-sm text-muted-foreground pl-6 break-words">{order.description}</p>
             </div>
+          </>
+        )}
+
+        {/* Linha do tempo da OS */}
+        {((order as any).started_at || (order as any).paused_at || (order as any).resumed_at || (order as any).completed_at) && (
+          <>
+            <Separator />
+            <OrderTimeline
+              startedAt={(order as any).started_at}
+              pausedAt={(order as any).paused_at}
+              resumedAt={(order as any).resumed_at}
+              completedAt={(order as any).completed_at}
+            />
           </>
         )}
 

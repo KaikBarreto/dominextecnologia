@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -10,7 +11,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -641,7 +642,7 @@ export type Database = {
           revoked_at?: string | null
           user_agent?: string | null
           user_id?: string | null
-          version: string
+          version?: string
         }
         Update: {
           accepted_at?: string
@@ -1713,6 +1714,11 @@ export type Database = {
           monthly_cost: number | null
           monthly_cost_breakdown: Json | null
           name: string
+          payment_day: number | null
+          payment_day_2: number | null
+          payment_day_type: string
+          payment_frequency: string
+          payment_weekday: number | null
           phone: string | null
           photo_url: string | null
           pix_key: string | null
@@ -1733,6 +1739,11 @@ export type Database = {
           monthly_cost?: number | null
           monthly_cost_breakdown?: Json | null
           name: string
+          payment_day?: number | null
+          payment_day_2?: number | null
+          payment_day_type?: string
+          payment_frequency?: string
+          payment_weekday?: number | null
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
@@ -1753,6 +1764,11 @@ export type Database = {
           monthly_cost?: number | null
           monthly_cost_breakdown?: Json | null
           name?: string
+          payment_day?: number | null
+          payment_day_2?: number | null
+          payment_day_type?: string
+          payment_frequency?: string
+          payment_weekday?: number | null
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
@@ -2043,6 +2059,7 @@ export type Database = {
           company_id: string
           created_at: string
           credit_limit: number | null
+          due_day: number | null
           icon: string | null
           id: string
           initial_balance: number
@@ -2063,6 +2080,7 @@ export type Database = {
           company_id: string
           created_at?: string
           credit_limit?: number | null
+          due_day?: number | null
           icon?: string | null
           id?: string
           initial_balance?: number
@@ -2083,6 +2101,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           credit_limit?: number | null
+          due_day?: number | null
           icon?: string | null
           id?: string
           initial_balance?: number
@@ -2159,10 +2178,53 @@ export type Database = {
           },
         ]
       }
+      financial_transaction_attachments: {
+        Row: {
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          transaction_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          transaction_id: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          transaction_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transaction_attachments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_transactions: {
         Row: {
           account_id: string | null
           amount: number
+          cancelled_at: string | null
+          cancelled_reason: string | null
           category: string | null
           company_id: string
           contract_id: string | null
@@ -2172,6 +2234,7 @@ export type Database = {
           customer_id: string | null
           description: string
           due_date: string | null
+          employee_id: string | null
           id: string
           installment_group_id: string | null
           installment_number: number | null
@@ -2181,6 +2244,8 @@ export type Database = {
           paid_date: string | null
           parent_transaction_id: string | null
           payment_method: string | null
+          payroll_kind: string | null
+          payroll_period: string | null
           receipt_url: string | null
           service_order_id: string | null
           transaction_date: string
@@ -2191,6 +2256,8 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
           category?: string | null
           company_id: string
           contract_id?: string | null
@@ -2200,6 +2267,7 @@ export type Database = {
           customer_id?: string | null
           description: string
           due_date?: string | null
+          employee_id?: string | null
           id?: string
           installment_group_id?: string | null
           installment_number?: number | null
@@ -2209,6 +2277,8 @@ export type Database = {
           paid_date?: string | null
           parent_transaction_id?: string | null
           payment_method?: string | null
+          payroll_kind?: string | null
+          payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
           transaction_date?: string
@@ -2219,6 +2289,8 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
           category?: string | null
           company_id?: string
           contract_id?: string | null
@@ -2228,6 +2300,7 @@ export type Database = {
           customer_id?: string | null
           description?: string
           due_date?: string | null
+          employee_id?: string | null
           id?: string
           installment_group_id?: string | null
           installment_number?: number | null
@@ -2237,6 +2310,8 @@ export type Database = {
           paid_date?: string | null
           parent_transaction_id?: string | null
           payment_method?: string | null
+          payroll_kind?: string | null
+          payroll_period?: string | null
           receipt_url?: string | null
           service_order_id?: string | null
           transaction_date?: string
@@ -2271,6 +2346,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
@@ -2480,6 +2562,41 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      holidays: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          date: string
+          id: string
+          is_recurring: boolean
+          name: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          is_recurring?: boolean
+          name: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          is_recurring?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holidays_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -2864,6 +2981,42 @@ export type Database = {
           },
         ]
       }
+      password_reset_codes: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          used_at: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          used_at?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          used_at?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       permission_presets: {
         Row: {
           created_at: string
@@ -3214,7 +3367,7 @@ export type Database = {
           {
             foreignKeyName: "pricing_settings_company_id_fkey"
             columns: ["company_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -3344,76 +3497,43 @@ export type Database = {
       }
       quote_items: {
         Row: {
-          bdi: number
           created_at: string
           description: string
           id: string
           inventory_id: string | null
           item_type: string
           position: number
-          price_override: number | null
-          profit_rate: number
           quantity: number
           quote_id: string
           service_type_id: string | null
-          sort_order: number | null
-          total_cost: number | null
           total_price: number
-          unit_extras_cost: number
-          unit_hourly_rate: number
-          unit_hours: number
-          unit_labor_cost: number
-          unit_materials_cost: number
           unit_price: number
-          unit_total_cost: number
         }
         Insert: {
-          bdi?: number
           created_at?: string
           description: string
           id?: string
           inventory_id?: string | null
           item_type?: string
           position?: number
-          price_override?: number | null
-          profit_rate?: number
           quantity?: number
           quote_id: string
           service_type_id?: string | null
-          sort_order?: number | null
-          total_cost?: number | null
           total_price?: number
-          unit_extras_cost?: number
-          unit_hourly_rate?: number
-          unit_hours?: number
-          unit_labor_cost?: number
-          unit_materials_cost?: number
           unit_price?: number
-          unit_total_cost?: number
         }
         Update: {
-          bdi?: number
           created_at?: string
           description?: string
           id?: string
           inventory_id?: string | null
           item_type?: string
           position?: number
-          price_override?: number | null
-          profit_rate?: number
           quantity?: number
           quote_id?: string
           service_type_id?: string | null
-          sort_order?: number | null
-          total_cost?: number | null
           total_price?: number
-          unit_extras_cost?: number
-          unit_hourly_rate?: number
-          unit_hours?: number
-          unit_labor_cost?: number
-          unit_materials_cost?: number
           unit_price?: number
-          unit_total_cost?: number
         }
         Relationships: [
           {
@@ -3441,30 +3561,21 @@ export type Database = {
       }
       quotes: {
         Row: {
-          admin_indirect_rate: number
           assigned_to: string | null
-          bdi: number
           card_discount_rate: number
           card_installments: number
           company_id: string
-          converted_to_os_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
           discount_amount: number | null
           discount_type: string | null
           discount_value: number | null
-          displacement_cost: number | null
-          distance_km: number | null
-          final_price: number | null
           financial_generated_at: string | null
           financial_transaction_id: string | null
           id: string
           include_gifts: boolean
-          km_cost: number
           notes: string | null
-          price_override: number | null
-          profit_rate: number
           proposal_template_id: string | null
           prospect_email: string | null
           prospect_name: string | null
@@ -3472,40 +3583,28 @@ export type Database = {
           quote_number: number
           status: string
           subtotal: number | null
-          tax_rate: number
           terms: string | null
           token: string
-          total_cost: number
-          total_price: number
           total_value: number | null
           updated_at: string
           valid_until: string | null
         }
         Insert: {
-          admin_indirect_rate?: number
           assigned_to?: string | null
-          bdi?: number
           card_discount_rate?: number
           card_installments?: number
           company_id: string
-          converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
-          displacement_cost?: number | null
-          distance_km?: number | null
-          final_price?: number | null
           financial_generated_at?: string | null
           financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
-          km_cost?: number
           notes?: string | null
-          price_override?: number | null
-          profit_rate?: number
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -3513,40 +3612,28 @@ export type Database = {
           quote_number?: number
           status?: string
           subtotal?: number | null
-          tax_rate?: number
           terms?: string | null
           token?: string
-          total_cost?: number
-          total_price?: number
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
         }
         Update: {
-          admin_indirect_rate?: number
           assigned_to?: string | null
-          bdi?: number
           card_discount_rate?: number
           card_installments?: number
           company_id?: string
-          converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
-          displacement_cost?: number | null
-          distance_km?: number | null
-          final_price?: number | null
           financial_generated_at?: string | null
           financial_transaction_id?: string | null
           id?: string
           include_gifts?: boolean
-          km_cost?: number
           notes?: string | null
-          price_override?: number | null
-          profit_rate?: number
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -3554,11 +3641,8 @@ export type Database = {
           quote_number?: number
           status?: string
           subtotal?: number | null
-          tax_rate?: number
           terms?: string | null
           token?: string
-          total_cost?: number
-          total_price?: number
           total_value?: number | null
           updated_at?: string
           valid_until?: string | null
@@ -3569,13 +3653,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quotes_converted_to_os_id_fkey"
-            columns: ["converted_to_os_id"]
-            isOneToOne: false
-            referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
           {
@@ -3879,6 +3956,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "service_costs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_costs_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -3984,6 +4068,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "service_materials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_materials_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -4082,6 +4173,7 @@ export type Database = {
           check_out_time: string | null
           client_signature: string | null
           company_id: string
+          completed_at: string | null
           contract_id: string | null
           created_at: string
           created_by: string | null
@@ -4101,17 +4193,20 @@ export type Database = {
           os_type: Database["public"]["Enums"]["os_type"]
           parts_used: Json | null
           parts_value: number | null
+          paused_at: string | null
           recurrence_end_date: string | null
           recurrence_group_id: string | null
           recurrence_interval: number | null
           recurrence_type: string | null
           require_client_signature: boolean | null
           require_tech_signature: boolean | null
+          resumed_at: string | null
           scheduled_date: string | null
           scheduled_time: string | null
           service_type_id: string | null
           snapshot_data: Json | null
           solution: string | null
+          started_at: string | null
           status: Database["public"]["Enums"]["os_status"]
           task_title: string | null
           task_type_id: string | null
@@ -4128,6 +4223,7 @@ export type Database = {
           check_out_time?: string | null
           client_signature?: string | null
           company_id: string
+          completed_at?: string | null
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -4147,17 +4243,20 @@ export type Database = {
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
+          paused_at?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_interval?: number | null
           recurrence_type?: string | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
+          resumed_at?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type_id?: string | null
           snapshot_data?: Json | null
           solution?: string | null
+          started_at?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           task_title?: string | null
           task_type_id?: string | null
@@ -4174,6 +4273,7 @@ export type Database = {
           check_out_time?: string | null
           client_signature?: string | null
           company_id?: string
+          completed_at?: string | null
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -4193,17 +4293,20 @@ export type Database = {
           os_type?: Database["public"]["Enums"]["os_type"]
           parts_used?: Json | null
           parts_value?: number | null
+          paused_at?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_interval?: number | null
           recurrence_type?: string | null
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
+          resumed_at?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           service_type_id?: string | null
           snapshot_data?: Json | null
           solution?: string | null
+          started_at?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           task_title?: string | null
           task_type_id?: string | null
@@ -4938,9 +5041,23 @@ export type Database = {
       }
     }
     Functions: {
+      auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
+      auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       can_bootstrap_admin: { Args: never; Returns: boolean }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      compute_payroll_periods: {
+        Args: { p_employee_id: string; p_from: string; p_to: string }
+        Returns: {
+          amount_factor: number
+          due_date: string
+          period: string
+        }[]
+      }
+      generate_payroll_for_employee: {
+        Args: { p_employee_id: string; p_lookahead_days?: number }
+        Returns: number
+      }
       get_portal_by_token: {
         Args: { _token: string }
         Returns: {
@@ -4954,30 +5071,21 @@ export type Database = {
       get_quote_by_token: {
         Args: { _token: string }
         Returns: {
-          admin_indirect_rate: number
           assigned_to: string | null
-          bdi: number
           card_discount_rate: number
           card_installments: number
           company_id: string
-          converted_to_os_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
           discount_amount: number | null
           discount_type: string | null
           discount_value: number | null
-          displacement_cost: number | null
-          distance_km: number | null
-          final_price: number | null
           financial_generated_at: string | null
           financial_transaction_id: string | null
           id: string
           include_gifts: boolean
-          km_cost: number
           notes: string | null
-          price_override: number | null
-          profit_rate: number
           proposal_template_id: string | null
           prospect_email: string | null
           prospect_name: string | null
@@ -4985,11 +5093,8 @@ export type Database = {
           quote_number: number
           status: string
           subtotal: number | null
-          tax_rate: number
           terms: string | null
           token: string
-          total_cost: number
-          total_price: number
           total_value: number | null
           updated_at: string
           valid_until: string | null
@@ -5025,6 +5130,10 @@ export type Database = {
       }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }
+      has_admin_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
       has_full_permissions: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -5034,12 +5143,37 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_gestor: { Args: { _user_id: string }; Returns: boolean }
+      is_business_day: {
+        Args: { d: string; p_company_id?: string }
+        Returns: boolean
+      }
       is_customer_in_active_portal: {
         Args: { _customer_id: string }
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      nth_business_day: {
+        Args: {
+          p_company_id?: string
+          p_month: number
+          p_n: number
+          p_year: number
+        }
+        Returns: string
+      }
+      pay_payroll_transaction: {
+        Args: {
+          p_account_id: string
+          p_net_amount?: number
+          p_notes?: string
+          p_paid_date?: string
+          p_payment_method?: string
+          p_transaction_id: string
+          p_vale_discount?: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role:
@@ -5232,3 +5366,4 @@ export const Constants = {
     },
   },
 } as const
+<claude-code-hint v="1" type="plugin" value="supabase@claude-plugins-official" />

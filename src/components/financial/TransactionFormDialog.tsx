@@ -1,8 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -14,17 +13,24 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, TrendingUp, TrendingDown, Upload, X, Paperclip, CreditCard, Info } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
-import { SignedLink } from '@/components/ui/SignedLink';
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { BankLogo } from '@/components/financial/BankInstitutionCombobox';
 import { computeBillDate } from '@/hooks/useCreditCardBills';
+import {
+  useTransactionAttachments,
+  useUploadTransactionAttachment,
+  useRemoveTransactionAttachment,
+  createAttachmentSignedUrl,
+  formatAttachmentSize,
+  type TransactionAttachment,
+} from '@/hooks/useTransactionAttachments';
 import { format, parseISO, addMonths, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
@@ -146,11 +152,206 @@ function CreditCardBillSection({ form, cardName, account, installmentCount, tota
   );
 }
 
+// ============================================================================
+// Anexos — sub-componente
+// ============================================================================
+
+interface PendingFile {
+  id: string; // uuid local, só pra key/remover
+  file: File;
+  preview: string | null;
+}
+
+function readImagePreview(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string) ?? null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+interface AttachmentsSectionProps {
+  isEditing: boolean;
+  transactionId?: string;
+  pendingFiles: PendingFile[];
+  setPendingFiles: React.Dispatch<React.SetStateAction<PendingFile[]>>;
+}
+
+function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPendingFiles }: AttachmentsSectionProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  // Anexos persistidos (modo edit)
+  const { data: savedAttachments = [], isLoading: loadingSaved } = useTransactionAttachments(
+    isEditing ? transactionId : undefined,
+  );
+  const uploadMutation = useUploadTransactionAttachment();
+  const removeMutation = useRemoveTransactionAttachment();
+
+  const handlePick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+
+    if (isEditing && transactionId) {
+      // No modo edit, sobe imediatamente para feedback rápido
+      for (const file of files) {
+        try {
+          await uploadMutation.mutateAsync({ transactionId, file });
+        } catch {
+          // erro já é exibido pelo onError do hook
+        }
+      }
+    } else {
+      // No modo novo, acumula pra subir após criar a transação
+      const newOnes: PendingFile[] = await Promise.all(
+        files.map(async (file) => ({
+          id: crypto.randomUUID(),
+          file,
+          preview: await readImagePreview(file),
+        })),
+      );
+      setPendingFiles((prev) => [...prev, ...newOnes]);
+    }
+
+    // Reset do input pra permitir reanexar mesmo arquivo se removido
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removePending = (id: string) => {
+    setPendingFiles((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleDownloadSaved = async (att: TransactionAttachment) => {
+    const url = await createAttachmentSignedUrl(att.storage_path);
+    if (!url) {
+      toast({ variant: 'destructive', title: 'Não foi possível gerar o link', description: 'Tente novamente.' });
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleRemoveSaved = (att: TransactionAttachment) => {
+    removeMutation.mutate({ id: att.id, storage_path: att.storage_path, transaction_id: att.transaction_id });
+  };
+
+  const totalCount = savedAttachments.length + pendingFiles.length;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <FormLabel>Comprovantes / Notas Fiscais</FormLabel>
+        {totalCount > 0 && (
+          <span className="text-xs text-muted-foreground">{totalCount} anexo{totalCount !== 1 ? 's' : ''}</span>
+        )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,.pdf"
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Lista — anexos já salvos (modo edit) */}
+      {isEditing && loadingSaved && (
+        <p className="text-xs text-muted-foreground">Carregando anexos…</p>
+      )}
+
+      {savedAttachments.length > 0 && (
+        <ul className="space-y-2">
+          {savedAttachments.map((att) => (
+            <li key={att.id} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-muted/40">
+              <div className="h-10 w-10 shrink-0 rounded bg-muted flex items-center justify-center">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm truncate">{att.file_name}</p>
+                <p className="text-xs text-muted-foreground">{formatAttachmentSize(att.size_bytes)}</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleDownloadSaved(att)}
+                title="Baixar"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+                onClick={() => handleRemoveSaved(att)}
+                disabled={removeMutation.isPending}
+                title="Remover"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Lista — arquivos pendentes (modo novo, ainda não enviados) */}
+      {pendingFiles.length > 0 && (
+        <ul className="space-y-2">
+          {pendingFiles.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-muted/40">
+              {p.preview ? (
+                <img src={p.preview} alt={p.file.name} className="h-10 w-10 rounded object-cover shrink-0" />
+              ) : (
+                <div className="h-10 w-10 shrink-0 rounded bg-muted flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm truncate">{p.file.name}</p>
+                <p className="text-xs text-muted-foreground">{formatAttachmentSize(p.file.size)}</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+                onClick={() => removePending(p.id)}
+                title="Remover"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Button type="button" variant="outline" className="w-full gap-2" onClick={handlePick} disabled={uploadMutation.isPending}>
+        {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+        {totalCount > 0 ? 'Adicionar mais' : 'Anexar comprovantes'}
+      </Button>
+      <p className="text-xs text-muted-foreground">Aceita imagens (JPG, PNG) e PDFs. Você pode anexar vários.</p>
+    </div>
+  );
+}
+
+// ============================================================================
+// Form principal
+// ============================================================================
+
 interface TransactionFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: FinancialTransaction | null;
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: any) => Promise<any>;
   isLoading?: boolean;
   defaultType?: TransactionType;
 }
@@ -163,10 +364,9 @@ export function TransactionFormDialog({
   const { toast } = useToast();
   const isEditing = !!transaction;
   const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const uploadMutation = useUploadTransactionAttachment();
 
   const getCategoriesForType = (type: 'entrada' | 'saida') => {
     const fromDb = dbCategories.filter((c) => c.is_active && (c.type === type || c.type === 'ambos'));
@@ -176,7 +376,7 @@ export function TransactionFormDialog({
   const lastPaymentMethod = localStorage.getItem('fin_last_payment_method') || '';
   const lastAccountId = localStorage.getItem('fin_last_account_id') || '';
 
-  const defaults: TransactionFormData = {
+  const defaults: TransactionFormData = useMemo(() => ({
     transaction_type: (transaction?.transaction_type as TransactionType) ?? defaultType,
     category: transaction?.category ?? '',
     description: transaction?.description ?? '',
@@ -187,7 +387,8 @@ export function TransactionFormDialog({
     payment_method: (transaction as any)?.payment_method ?? lastPaymentMethod,
     installment_count: 1,
     account_id: (transaction as any)?.account_id ?? lastAccountId,
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [transaction, defaultType]);
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
@@ -201,8 +402,7 @@ export function TransactionFormDialog({
 
   useEffect(() => {
     if (open) {
-      setReceiptFile(null);
-      setReceiptPreview((transaction as any)?.receipt_url || null);
+      setPendingFiles([]);
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
@@ -231,57 +431,76 @@ export function TransactionFormDialog({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCardAccount, watchedDate, watchedAccountId, open]);
 
-  const uploadReceipt = async (): Promise<string | null> => {
-    if (!receiptFile) return (transaction as any)?.receipt_url || null;
-    setUploading(true);
-    try {
-      const ext = receiptFile.name.split('.').pop();
-      const path = `${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from('financial-receipts').upload(path, receiptFile);
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('financial-receipts').getPublicUrl(path);
-      return publicUrl;
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar comprovante', description: err.message });
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleSubmit = async (data: TransactionFormData) => {
-    const receiptUrl = await uploadReceipt();
-    const payload = {
-      ...data,
-      paid_date: data.is_paid ? data.transaction_date : undefined,
-      receipt_url: receiptUrl,
-      payment_method: data.payment_method || null,
-      account_id: data.account_id || null,
-      credit_card_bill_date: data.credit_card_bill_date || null,
-    };
-    if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
-    if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
-    await onSubmit(payload);
-    draft.clearDraft();
-    form.reset();
-    onOpenChange(false);
-  };
+    setSubmitting(true);
+    try {
+      const payload = {
+        ...data,
+        paid_date: data.is_paid ? data.transaction_date : undefined,
+        payment_method: data.payment_method || null,
+        account_id: data.account_id || null,
+        credit_card_bill_date: data.credit_card_bill_date || null,
+      };
+      if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
+      if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setReceiptFile(file);
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => setReceiptPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setReceiptPreview(null);
+      const result: any = await onSubmit(payload);
+
+      // Após criar/editar, sobe os anexos pendentes (se houver)
+      if (pendingFiles.length > 0) {
+        // Modo novo: precisa do id da transação criada. Modo edit: já existe.
+        const txnId: string | undefined = isEditing ? transaction?.id : (result?.id || result?.[0]?.id);
+
+        if (!txnId) {
+          // Caso típico: parcelamento (várias transações criadas, sem id único de retorno).
+          // Anexos pendentes ficam descartados — orientamos a anexar pela edição de cada parcela.
+          toast({
+            variant: 'destructive',
+            title: 'Anexos não foram enviados',
+            description: 'Para anexar comprovantes em compras parceladas, edite a parcela específica e anexe lá.',
+          });
+        } else {
+          let failures = 0;
+          for (const pf of pendingFiles) {
+            try {
+              await uploadMutation.mutateAsync({ transactionId: txnId, file: pf.file });
+            } catch {
+              failures += 1;
+            }
+          }
+          if (failures > 0) {
+            toast({
+              variant: 'destructive',
+              title: `${failures} anexo${failures !== 1 ? 's' : ''} não enviado${failures !== 1 ? 's' : ''}`,
+              description: 'A transação foi salva. Reabra para anexar novamente.',
+            });
+          }
+        }
+      }
+
+      draft.clearDraft();
+      form.reset();
+      setPendingFiles([]);
+      onOpenChange(false);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const isEntrada = transactionType === 'entrada';
   const dbCats = getCategoriesForType(transactionType);
+  const busy = isLoading || submitting;
+
+  const footer = (
+    <div className="flex justify-end gap-3">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+      <Button type="submit" form="transaction-form" disabled={busy}
+        className={isEntrada ? 'bg-success hover:bg-success/90 text-white' : 'bg-destructive hover:bg-destructive/90 text-white'}>
+        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Salvar
+      </Button>
+    </div>
+  );
 
   return (
     <ResponsiveModal
@@ -289,6 +508,7 @@ export function TransactionFormDialog({
       onOpenChange={onOpenChange}
       title={transaction ? 'Editar Transação' : 'Nova Transação'}
       className="sm:max-w-[520px]"
+      footer={footer}
     >
       <DraftResumeDialog
         open={draft.showResumePrompt}
@@ -301,7 +521,7 @@ export function TransactionFormDialog({
       <p className="text-sm text-muted-foreground -mt-2 mb-4">Registre uma receita ou despesa</p>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <form id="transaction-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           {/* Type toggle */}
           <FormField control={form.control} name="transaction_type" render={({ field }) => (
             <FormItem>
@@ -474,31 +694,13 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Receipt upload */}
-          <div className="space-y-2">
-            <FormLabel>Comprovante / Nota Fiscal</FormLabel>
-            <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
-            {receiptPreview || receiptFile ? (
-              <div className="flex items-center gap-3 p-2 rounded-lg border border-border bg-muted/50">
-                {receiptPreview && receiptPreview.startsWith('data:image') ? (
-                  <img src={receiptPreview} alt="Comprovante" className="h-12 w-12 rounded object-cover" />
-                ) : receiptPreview ? (
-                  <SignedLink src={receiptPreview} className="flex items-center gap-1 text-xs text-primary hover:underline">
-                    <Paperclip className="h-3.5 w-3.5" /> Ver comprovante
-                  </SignedLink>
-                ) : (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" /> {receiptFile?.name}</span>
-                )}
-                <Button type="button" variant="ghost" size="icon" className="ml-auto h-7 w-7" onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" variant="outline" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="h-4 w-4" /> Anexar comprovante
-              </Button>
-            )}
-          </div>
+          {/* Anexos múltiplos */}
+          <AttachmentsSection
+            isEditing={isEditing}
+            transactionId={transaction?.id}
+            pendingFiles={pendingFiles}
+            setPendingFiles={setPendingFiles}
+          />
 
           {/* Is Paid toggle — hidden for credit card expenses (always committed) */}
           {!(isCardAccount && transactionType === 'saida') && (
@@ -518,15 +720,6 @@ export function TransactionFormDialog({
             )} />
           )}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={isLoading || uploading}
-              className={isEntrada ? 'bg-success hover:bg-success/90 text-white' : 'bg-destructive hover:bg-destructive/90 text-white'}>
-              {(isLoading || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar
-            </Button>
-          </div>
         </form>
       </Form>
     </ResponsiveModal>

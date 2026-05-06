@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EventCard, getStatusBadgeClass } from './EventCard';
+import { OrderTimeline } from './OrderTimeline';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -312,8 +313,16 @@ function OrderDetail({
             </div>
           )}
           {!isTask && (
-            <Button 
-              onClick={() => navigate(`/os-tecnico/${order.id}`)} 
+            <OrderTimeline
+              startedAt={(order as any).started_at}
+              pausedAt={(order as any).paused_at}
+              resumedAt={(order as any).resumed_at}
+              completedAt={(order as any).completed_at}
+            />
+          )}
+          {!isTask && (
+            <Button
+              onClick={() => navigate(`/os-tecnico/${order.id}`)}
               className="w-full mt-4"
             >
               <ClipboardList className="h-4 w-4 mr-2" />
