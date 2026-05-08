@@ -112,11 +112,11 @@ export function useFinancial() {
 
         // For card accounts, compute the bill date per installment from its due date
         const isCardInstallment = !!rest.credit_card_bill_date && rest.transaction_type === 'saida';
-        let cardAccount: { id: string; closing_day?: number | null; payment_due_days?: number | null; type: string } | null = null;
+        let cardAccount: { id: string; closing_day?: number | null; payment_due_days?: number | null; due_day?: number | null; type: string } | null = null;
         if (isCardInstallment && rest.account_id) {
           const { data } = await supabase
             .from('financial_accounts')
-            .select('id, closing_day, payment_due_days, type')
+            .select('id, closing_day, payment_due_days, due_day, type')
             .eq('id', rest.account_id)
             .single();
           cardAccount = data?.type === 'cartao' ? data : null;
@@ -206,7 +206,7 @@ export function useFinancial() {
       if (rest.credit_card_bill_date && rest.account_id && rest.transaction_type === 'saida') {
         const { data: account } = await supabase
           .from('financial_accounts')
-          .select('id, closing_day, payment_due_days, type')
+          .select('id, closing_day, payment_due_days, due_day, type')
           .eq('id', rest.account_id)
           .single();
         if (account?.type === 'cartao') {

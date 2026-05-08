@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.14',
+    date: '05 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compras no dia do fechamento do cartão agora vão para a fatura correta',
+        description: 'Antes, uma compra feita exatamente no dia em que o cartão fecha entrava na fatura corrente — quando deveria entrar na próxima (regra padrão dos bancos). Em alguns casos, isso fazia parcelas sumirem do mês esperado. Corrigimos: agora compras feitas no próprio dia do fechamento ou depois entram na próxima fatura, igual ao seu banco faz. Compras feitas no dia anterior ao fechamento continuam na fatura corrente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Vencimento da fatura agora respeita o dia configurado no cartão',
+        description: 'Em alguns cenários, o vencimento da fatura agregada do cartão estava sendo calculado pela quantidade de dias após o fechamento em vez do dia configurado de vencimento. Despesas individuais já apareciam no mês correto, mas a fatura "fechada" mostrava data de vencimento divergente. Corrigido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Botão "Recalcular faturas" nos cartões existentes',
+        description: 'Cartões cadastrados antes desta correção podem ter despesas em faturas erradas. Adicionamos um botão "Recalcular faturas" no card de cada cartão de crédito (em Contas e Cartões) que reorganiza automaticamente as despesas para a fatura certa. Os valores e as despesas em si não mudam — só a fatura em que cada uma aparece. Pode ser executado quantas vezes quiser; rodar duas vezes seguidas não muda nada.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.8.13',
     date: '05 de maio de 2026',
     type: 'patch',

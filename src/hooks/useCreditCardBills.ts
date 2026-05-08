@@ -32,6 +32,10 @@ export interface PayBillInput {
 /**
  * Given a card account and a transaction date, compute which bill month
  * the transaction belongs to (as first day of that month, YYYY-MM-DD).
+ *
+ * Regra de mercado: o próprio dia de fechamento já entra na próxima fatura.
+ * Ex.: closing_day=20 → compra dia 19 cai no mês corrente, dia 20 vai para o
+ * mês seguinte. Confirmado pelo cliente Glacial Cold (mai/2026).
  */
 export function computeBillDate(account: Pick<FinancialAccount, 'closing_day'>, transactionDate: string): string {
   const closingDay = account.closing_day ?? 10;
@@ -40,7 +44,7 @@ export function computeBillDate(account: Pick<FinancialAccount, 'closing_day'>, 
   const effectiveClosingDay = Math.min(closingDay, getDaysInMonth(txDate));
   const txDay = txDate.getDate();
 
-  if (txDay <= effectiveClosingDay) {
+  if (txDay < effectiveClosingDay) {
     return format(startOfMonth(txDate), 'yyyy-MM-dd');
   } else {
     return format(startOfMonth(addMonths(txDate, 1)), 'yyyy-MM-dd');

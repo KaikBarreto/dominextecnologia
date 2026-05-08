@@ -21,9 +21,12 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Plus, Pencil, Trash2, ArrowLeftRight, Landmark, Wallet, CreditCard,
   ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowRight,
+  Calculator, Loader2,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
 import { useCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { useRecalculateBills } from '@/hooks/useRecalculateBills';
 import { TransferFormDialog } from './TransferFormDialog';
 import { BankInstitutionCombobox, BankLogo } from './BankInstitutionCombobox';
 import { cn } from '@/lib/utils';
@@ -344,6 +347,8 @@ export function FinanceBanks() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<FinancialAccount | null>(null);
+  const [recalcCard, setRecalcCard] = useState<FinancialAccount | null>(null);
+  const recalculateBills = useRecalculateBills();
 
   // Form state
   const [name, setName] = useState('');
@@ -631,15 +636,35 @@ export function FinanceBanks() {
                       )}
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-3 gap-2 text-xs h-8"
-                      onClick={() => setSelectedCard(a)}
-                    >
-                      <Receipt className="h-3.5 w-3.5" />
-                      Ver Faturas
-                    </Button>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-2 text-xs h-8"
+                        onClick={() => setSelectedCard(a)}
+                      >
+                        <Receipt className="h-3.5 w-3.5" />
+                        Ver Faturas
+                      </Button>
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 shrink-0"
+                              onClick={() => setRecalcCard(a)}
+                              aria-label="Recalcular faturas"
+                            >
+                              <Calculator className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[220px] text-xs">
+                            Recalcula a fatura correta de todas as despesas deste cartão. Útil após mudanças de configuração de fechamento/vencimento.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -816,6 +841,43 @@ export function FinanceBanks() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmar recálculo de faturas */}
+      <AlertDialog open={!!recalcCard} onOpenChange={(o) => { if (!o && !recalculateBills.isPending) setRecalcCard(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recalcular faturas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? Isso vai recalcular a fatura de todas as despesas deste cartão{recalcCard ? ` "${recalcCard.name}"` : ''}.
+              As suas despesas e valores não serão alterados, só a fatura em que cada uma aparece.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={recalculateBills.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={recalculateBills.isPending}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!recalcCard) return;
+                try {
+                  await recalculateBills.mutateAsync(recalcCard.id);
+                } finally {
+                  setRecalcCard(null);
+                }
+              }}
+            >
+              {recalculateBills.isPending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Recalculando...
+                </>
+              ) : (
+                'Recalcular'
+              )}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
