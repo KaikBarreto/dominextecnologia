@@ -51,11 +51,11 @@ export function useAdminPermissions(): AdminPermissionsResult {
   });
 
   const { data: linkedSalespersonId = null, isLoading: spLoading } = useQuery({
-    queryKey: ['linked-salesperson', user?.id],
+    queryKey: ['linked-salesperson-basic', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('salespeople')
+        .from('salespeople_basic')
         .select('id')
         .eq('user_id', user!.id as any)
         .maybeSingle();

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.15',
+    date: '12 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vendedores voltam a aparecer nos dropdowns do painel master',
+        description: 'No painel administrativo, vendedores admin não conseguiam mais ver a lista de vendedores ao gerar links de cadastro, criar ou editar empresas, ou vincular usuários admin a vendedores. Os dropdowns vinham vazios. Corrigido — agora qualquer administrador do painel master enxerga a lista de vendedores para fazer essas operações de rotina, mantendo dados sensíveis (salário, meta) acessíveis somente para super administrador.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.14',
     date: '05 de maio de 2026',
     type: 'patch',

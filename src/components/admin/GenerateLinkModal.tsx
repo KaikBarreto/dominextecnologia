@@ -59,10 +59,10 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   });
 
   const { data: salespeople = [] } = useQuery({
-    queryKey: ['salespeople-link'],
+    queryKey: ['salespeople-basic-link'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('salespeople')
+        .from('salespeople_basic')
         .select('id, name, referral_code')
         .eq('is_active', true)
         .order('name');

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.14";
+export const APP_VERSION = "1.8.15";
 
-export const VERSION_NOTES = "Compras feitas no dia exato do fechamento do cartão agora vão para a fatura do mês seguinte (regra padrão dos bancos). Cartões já cadastrados ganham um botão 'Recalcular faturas' que reorganiza despesas antigas para a fatura correta sem alterar valores.";
+export const VERSION_NOTES = "Vendedores do painel master voltam a aparecer nos dropdowns do admin (gerar link de cadastro, criar/editar empresa, vincular usuário admin). Dados sensíveis como salário e meta continuam visíveis só para super admin.";

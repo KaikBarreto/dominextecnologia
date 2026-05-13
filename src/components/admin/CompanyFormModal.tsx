@@ -99,10 +99,10 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   });
 
   const { data: salespeople = [] } = useQuery({
-    queryKey: ['salespeople-form'],
+    queryKey: ['salespeople-basic-form'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('salespeople')
+        .from('salespeople_basic')
         .select('id, name, email')
         .eq('is_active', true)
         .order('name');

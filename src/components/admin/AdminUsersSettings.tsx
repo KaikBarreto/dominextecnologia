@@ -49,9 +49,9 @@ export function AdminUsersSettings() {
   });
 
   const { data: salespeople = [] } = useQuery({
-    queryKey: ['salespeople-for-admin-link'],
+    queryKey: ['salespeople-basic-for-admin-link'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('salespeople').select('id, name, user_id');
+      const { data, error } = await supabase.from('salespeople_basic').select('id, name, user_id');
       if (error) throw error;
       return data as { id: string; name: string; user_id: string | null }[];
     },

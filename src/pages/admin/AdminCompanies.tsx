@@ -81,9 +81,9 @@ export default function AdminCompanies() {
   });
 
   const { data: salespeople = [] } = useQuery({
-    queryKey: ['salespeople-map'],
+    queryKey: ['salespeople-basic-map'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('salespeople').select('id, name').order('name');
+      const { data, error } = await supabase.from('salespeople_basic').select('id, name').order('name');
       if (error) throw error;
       return data || [];
     },

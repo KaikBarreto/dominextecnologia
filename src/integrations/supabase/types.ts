@@ -400,6 +400,13 @@ export type Database = {
             referencedRelation: "salespeople"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "companies_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople_basic"
+            referencedColumns: ["id"]
+          },
         ]
       }
       company_modules: {
@@ -3762,6 +3769,13 @@ export type Database = {
             referencedRelation: "salespeople"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "salesperson_advances_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople_basic"
+            referencedColumns: ["id"]
+          },
         ]
       }
       salesperson_payments: {
@@ -3807,6 +3821,13 @@ export type Database = {
             columns: ["salesperson_id"]
             isOneToOne: false
             referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesperson_payments_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople_basic"
             referencedColumns: ["id"]
           },
         ]
@@ -3870,6 +3891,13 @@ export type Database = {
             columns: ["salesperson_id"]
             isOneToOne: false
             referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesperson_sales_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople_basic"
             referencedColumns: ["id"]
           },
         ]
@@ -5039,6 +5067,33 @@ export type Database = {
           },
         ]
       }
+      salespeople_basic: {
+        Row: {
+          email: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          referral_code: string | null
+          user_id: string | null
+        }
+        Insert: {
+          email?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          referral_code?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          email?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          referral_code?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
@@ -5143,6 +5198,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_gestor: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_business_day: {
         Args: { d: string; p_company_id?: string }
         Returns: boolean
