@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.15";
+export const APP_VERSION = "1.8.16";
 
-export const VERSION_NOTES = "Vendedores do painel master voltam a aparecer nos dropdowns do admin (gerar link de cadastro, criar/editar empresa, vincular usuário admin). Dados sensíveis como salário e meta continuam visíveis só para super admin.";
+export const VERSION_NOTES = "FAQ da página pública agora diz 14 dias de teste grátis (estava desalinhado com o resto da landing, que já mencionava 14).";

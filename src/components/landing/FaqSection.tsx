@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     q: 'Como funciona o teste grátis?',
-    a: 'São 7 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
+    a: 'São 14 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
   },
   {
     q: 'Os dados das ordens de serviço ficam guardados para sempre?',

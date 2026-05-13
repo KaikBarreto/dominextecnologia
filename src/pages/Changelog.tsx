@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.16',
+    date: '13 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'FAQ da página pública agora menciona 14 dias de teste grátis',
+        description: 'O FAQ da landing page ainda dizia "7 dias" no card "Como funciona o teste grátis?", desalinhado com o resto da página e com a duração real do trial (14 dias). Corrigido.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.15',
     date: '12 de maio de 2026',
     type: 'patch',
