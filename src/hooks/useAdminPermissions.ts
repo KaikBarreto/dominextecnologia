@@ -9,6 +9,7 @@ export const ADMIN_SCREEN_PERMISSIONS = [
   { key: 'admin_vendedores', label: 'Vendedores' },
   { key: 'admin_assinaturas', label: 'Assinaturas' },
   { key: 'admin_financeiro', label: 'Financeiro' },
+  { key: 'admin_domiflix', label: 'Domiflix' },
   { key: 'admin_configuracoes', label: 'Configurações' },
   { key: 'admin_usuarios', label: 'Usuários Admin' },
 ] as const;

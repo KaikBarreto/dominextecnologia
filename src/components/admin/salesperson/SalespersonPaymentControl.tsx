@@ -17,11 +17,13 @@ interface Props {
   allSales: SalespersonSale[];
   allAdvances: SalespersonAdvance[];
   payments: SalespersonPayment[];
+  /** Modo read-only para vendedor admin restrito vendo o próprio registro — só consulta de comissão/saldo. */
+  readOnly?: boolean;
 }
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, payments }: Props) {
+export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, payments, readOnly = false }: Props) {
   const [editingSalary, setEditingSalary] = useState(false);
   const [newSalary, setNewSalary] = useState(Number(salesperson.salary) || 0);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -111,14 +113,19 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
           <span>{isCurrent ? 'Total (Próx. Mês):' : 'Total a Receber:'}</span>
           <span className={data.totalToReceive >= 0 ? 'text-emerald-600' : 'text-destructive'}>{fmt(data.totalToReceive)}</span>
         </div>
-        <Button
-          variant={isCurrent ? 'outline' : 'default'}
-          className="w-full"
-          onClick={() => handlePay(data)}
-          disabled={data.isPaid || data.totalToReceive <= 0 || createPayment.isPending}
-        >
-          {data.isPaid ? 'Pago ✓' : isCurrent ? 'Pagar Antecipado' : 'Marcar como Pago'}
-        </Button>
+        {!readOnly && (
+          <Button
+            variant={isCurrent ? 'outline' : 'default'}
+            className="w-full"
+            onClick={() => handlePay(data)}
+            disabled={data.isPaid || data.totalToReceive <= 0 || createPayment.isPending}
+          >
+            {data.isPaid ? 'Pago ✓' : isCurrent ? 'Pagar Antecipado' : 'Marcar como Pago'}
+          </Button>
+        )}
+        {readOnly && data.isPaid && (
+          <div className="text-center text-sm font-semibold text-emerald-600">Pago ✓</div>
+        )}
       </CardContent>
     </Card>
   );
@@ -142,9 +149,11 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
           ) : (
             <div className="flex items-center justify-between gap-4">
               <span className="text-2xl font-bold">{fmt(Number(salesperson.salary) || 0)}</span>
-              <Button variant="outline" size="sm" onClick={() => { setNewSalary(Number(salesperson.salary) || 0); setEditingSalary(true); }}>
-                Editar
-              </Button>
+              {!readOnly && (
+                <Button variant="outline" size="sm" onClick={() => { setNewSalary(Number(salesperson.salary) || 0); setEditingSalary(true); }}>
+                  Editar
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

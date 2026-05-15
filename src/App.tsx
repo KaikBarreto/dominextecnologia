@@ -174,6 +174,21 @@ function PermissionRoute({ screenKey, children }: { screenKey: string; children:
   return <>{children}</>;
 }
 
+// Admin-screen-gated route — protege rotas /admin/* via admin_permissions.
+// super_admin sempre passa (hasAdminScreenAccess retorna true). Vendedor admin
+// só passa se a screenKey estiver listada em admin_permissions.
+function AdminScreenRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
+  const { hasAdminScreenAccess, loading, user, roles, permissions, adminPermissions } = useAuth();
+  const defaultRoute = useDefaultRoute();
+
+  if (loading) return <LoadingSpinner />;
+  // Espera permissions/roles carregarem antes de decidir redirect (evita flicker e race)
+  if (user && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
+  if (!hasAdminScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
+
+  return <>{children}</>;
+}
+
 // Module-gated route — shows gate modal if module not available
 function ModuleRoute({ moduleKey, children }: { moduleKey: ModuleCode; children: React.ReactNode }) {
   const { hasModule, isLoading } = useCompanyModules();
@@ -298,7 +313,7 @@ const AppRoutes = () => (
       <Route path="/admin/vendedores" element={<AdminSalespeople />} />
       <Route path="/admin/vendedores/:id" element={<AdminSalespersonDetail />} />
       <Route path="/admin/configuracoes" element={<AdminSettings />} />
-      <Route path="/admin/domiflix" element={<AdminDomiflix />} />
+      <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
       <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />

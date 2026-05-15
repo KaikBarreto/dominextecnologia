@@ -22,15 +22,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import logoWhiteHorizontal from '@/assets/logo-white-horizontal.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
 
-const ADMIN_MENU_ITEMS: { label: string; path: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'CRM', path: '/admin/crm', icon: Target },
-  { label: 'Empresas', path: '/admin/empresas', icon: Building2 },
-  { label: 'Vendedores', path: '/admin/vendedores', icon: Briefcase },
-  { label: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
-  { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet },
-  { label: 'Domiflix', path: '/admin/domiflix', icon: Clapperboard },
-  { label: 'Configurações', path: '/admin/configuracoes', icon: Settings },
+const ADMIN_MENU_ITEMS: {
+  label: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** Chave em admin_permissions. Sem chave = visível pra todo admin. */
+  screenKey?: string;
+}[] = [
+  { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, screenKey: 'admin_dashboard' },
+  { label: 'CRM', path: '/admin/crm', icon: Target, screenKey: 'admin_crm' },
+  { label: 'Empresas', path: '/admin/empresas', icon: Building2, screenKey: 'admin_empresas' },
+  { label: 'Vendedores', path: '/admin/vendedores', icon: Briefcase, screenKey: 'admin_vendedores' },
+  { label: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard, screenKey: 'admin_assinaturas' },
+  { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet, screenKey: 'admin_financeiro' },
+  { label: 'Domiflix', path: '/admin/domiflix', icon: Clapperboard, screenKey: 'admin_domiflix' },
+  { label: 'Configurações', path: '/admin/configuracoes', icon: Settings, screenKey: 'admin_configuracoes' },
 ];
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
@@ -42,8 +48,12 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 export function AdminSidebarNav() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, hasAdminScreenAccess } = useAuth();
   const navigate = useNavigate();
+
+  const visibleMenuItems = ADMIN_MENU_ITEMS.filter(
+    (item) => !item.screenKey || hasAdminScreenAccess(item.screenKey),
+  );
 
   const initials = profile?.full_name
     ?.split(' ')
@@ -68,7 +78,7 @@ export function AdminSidebarNav() {
       {/* Menu */}
       <div className="flex-1 overflow-y-auto px-4 pt-2">
         <nav className="space-y-0.5">
-          {ADMIN_MENU_ITEMS.map((item) => (
+          {visibleMenuItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}

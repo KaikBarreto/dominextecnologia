@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.18',
+    date: '15 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Teste gratuito agora libera todos os módulos',
+        description: 'Empresas no período de teste gratuito passam a ter acesso a todos os módulos do Dominex enquanto o trial estiver ativo. Quando o teste acaba ou a empresa contrata um plano, o acesso volta a respeitar os módulos contratados. Antes, o acesso durante o teste já era limitado ao que estava configurado para o plano escolhido — agora você pode experimentar tudo antes de decidir.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.17',
     date: '13 de maio de 2026',
     type: 'patch',

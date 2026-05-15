@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,28 @@ import { SalespersonSalesList } from '@/components/admin/salesperson/Salesperson
 import { SalespersonAdvanceForm } from '@/components/admin/salesperson/SalespersonAdvanceForm';
 import { SalespersonAdvancesList } from '@/components/admin/salesperson/SalespersonAdvancesList';
 import { SalespersonPaymentControl } from '@/components/admin/salesperson/SalespersonPaymentControl';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function AdminSalespersonDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { hasFunctionAccess, linkedSalespersonId } = useAdminPermissions();
+  const canSeeAllSalespeople = hasFunctionAccess('admin_vendedores_ver_todos');
+  const isViewingOwnRecord = !!linkedSalespersonId && id === linkedSalespersonId;
+  // Vendedor admin restrito (sem ver_todos) só pode ver o próprio registro.
+  // Vê seus dados mas NÃO pode trocar o vendedor selecionado nem registrar vales (ações de admin).
+  const isRestrictedSelfView = !canSeeAllSalespeople && isViewingOwnRecord;
+
+  // Guard: vendedor admin restrito tentando acessar outro vendedor pela URL é
+  // redirecionado pro próprio registro. (Defesa em profundidade — a RLS de
+  // salespeople libera SELECT a todos os admin_users, então o filtro de UI é a
+  // fronteira de privacidade entre vendedores.)
+  useEffect(() => {
+    if (!canSeeAllSalespeople && linkedSalespersonId && id && id !== linkedSalespersonId) {
+      navigate(`/admin/vendedores/${linkedSalespersonId}`, { replace: true });
+    }
+  }, [canSeeAllSalespeople, linkedSalespersonId, id, navigate]);
 
   const { data: salesperson, isLoading } = useSalesperson(id);
   const { data: allSalespeople = [] } = useSalespeople();
@@ -54,20 +71,27 @@ export default function AdminSalespersonDetail() {
     <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-6 max-w-full">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/admin/vendedores')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          {canSeeAllSalespeople && (
+            <Button variant="ghost" size="icon" onClick={() => navigate('/admin/vendedores')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div className="flex-1 min-w-0">
-            <Select value={id} onValueChange={(v) => navigate(`/admin/vendedores/${v}`)}>
-              <SelectTrigger className="w-full sm:w-auto border-none p-0 h-auto text-xl sm:text-2xl font-bold shadow-none focus:ring-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {allSalespeople.map((sp) => (
-                  <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isRestrictedSelfView ? (
+              // Vendedor admin restrito: nome estático, sem dropdown pra outros vendedores
+              <h1 className="text-xl sm:text-2xl font-bold">{salesperson.name}</h1>
+            ) : (
+              <Select value={id} onValueChange={(v) => navigate(`/admin/vendedores/${v}`)}>
+                <SelectTrigger className="w-full sm:w-auto border-none p-0 h-auto text-xl sm:text-2xl font-bold shadow-none focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {allSalespeople.map((sp) => (
+                    <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <p className="text-xs sm:text-sm text-muted-foreground">Dashboard de Vendas</p>
           </div>
         </div>
@@ -103,8 +127,9 @@ export default function AdminSalespersonDetail() {
         </TabsContent>
 
         <TabsContent value="advances" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <SalespersonAdvanceForm salespersonId={salesperson.id} />
+          <div className={isRestrictedSelfView ? '' : 'grid gap-4 lg:grid-cols-2'}>
+            {/* Registrar vale é ação administrativa: vendedor admin restrito só visualiza. */}
+            {!isRestrictedSelfView && <SalespersonAdvanceForm salespersonId={salesperson.id} />}
             <SalespersonAdvancesList advances={filteredAdvances} />
           </div>
         </TabsContent>
@@ -115,6 +140,7 @@ export default function AdminSalespersonDetail() {
             allSales={allSales}
             allAdvances={allAdvances}
             payments={payments}
+            readOnly={isRestrictedSelfView}
           />
         </TabsContent>
       </Tabs>
