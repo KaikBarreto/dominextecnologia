@@ -212,6 +212,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           probability: number | null
+          responsible_id: string | null
           segment: string | null
           source: string | null
           stage_id: string | null
@@ -231,6 +232,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           probability?: number | null
+          responsible_id?: string | null
           segment?: string | null
           source?: string | null
           stage_id?: string | null
@@ -250,6 +252,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           probability?: number | null
+          responsible_id?: string | null
           segment?: string | null
           source?: string | null
           stage_id?: string | null
@@ -3695,6 +3698,7 @@ export type Database = {
           no_commission: boolean
           notes: string | null
           phone: string | null
+          photo_url: string | null
           referral_code: string | null
           salary: number
           updated_at: string
@@ -3710,6 +3714,7 @@ export type Database = {
           no_commission?: boolean
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           referral_code?: string | null
           salary?: number
           updated_at?: string
@@ -3725,6 +3730,7 @@ export type Database = {
           no_commission?: boolean
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           referral_code?: string | null
           salary?: number
           updated_at?: string
@@ -5072,6 +5078,7 @@ export type Database = {
           id: string | null
           is_active: boolean | null
           name: string | null
+          photo_url: string | null
           referral_code: string | null
           user_id: string | null
         }
@@ -5080,6 +5087,7 @@ export type Database = {
           id?: string | null
           is_active?: boolean | null
           name?: string | null
+          photo_url?: string | null
           referral_code?: string | null
           user_id?: string | null
         }
@@ -5088,6 +5096,7 @@ export type Database = {
           id?: string | null
           is_active?: boolean | null
           name?: string | null
+          photo_url?: string | null
           referral_code?: string | null
           user_id?: string | null
         }
@@ -5421,4 +5430,3 @@ export const Constants = {
     },
   },
 } as const
-<claude-code-hint v="1" type="plugin" value="supabase@claude-plugins-official" />

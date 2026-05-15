@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
+import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -28,7 +29,7 @@ interface CompanyTableProps {
   companies: any[];
   masterUserMap: Map<string, string>;
   origins: any[] | undefined;
-  salespersonMap?: Map<string, string>;
+  salespersonMap?: Map<string, { name: string; photo_url: string | null }>;
   onEdit: (company: any) => void;
   onRefetch: () => void;
 }
@@ -325,7 +326,15 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                     </TableCell>
                     <TableCell>
                       {company.salesperson_id && salespersonMap?.get(company.salesperson_id) ? (
-                        <span className="text-sm">{salespersonMap.get(company.salesperson_id)}</span>
+                        (() => {
+                          const sp = salespersonMap.get(company.salesperson_id)!;
+                          return (
+                            <div className="flex items-center gap-2">
+                              <SalespersonAvatar name={sp.name} photoUrl={sp.photo_url} size="sm" />
+                              <span className="text-sm">{sp.name}</span>
+                            </div>
+                          );
+                        })()
                       ) : (
                         <span className="text-muted-foreground text-sm">—</span>
                       )}

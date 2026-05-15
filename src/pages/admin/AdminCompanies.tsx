@@ -83,15 +83,17 @@ export default function AdminCompanies() {
   const { data: salespeople = [] } = useQuery({
     queryKey: ['salespeople-basic-map'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('salespeople_basic').select('id, name').order('name');
+      const { data, error } = await supabase.from('salespeople_basic').select('id, name, photo_url').order('name');
       if (error) throw error;
       return data || [];
     },
   });
 
   const salespersonMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const s of salespeople) m.set(s.id, s.name);
+    const m = new Map<string, { name: string; photo_url: string | null }>();
+    for (const s of salespeople) {
+      if (s.id && s.name) m.set(s.id, { name: s.name, photo_url: s.photo_url ?? null });
+    }
     return m;
   }, [salespeople]);
 

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +17,7 @@ import { useAdminLeadInteractions, useAdminCrmStages, useAdminLeads, ADMIN_INTER
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSegment } from '@/utils/companySegments';
+import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { AdminLeadFormDialog } from './AdminLeadFormDialog';
 import {
   AlertDialog,
@@ -48,6 +51,21 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
 
   const lead = leads.find(l => l.id === leadProp.id) || leadProp;
   const stage = stages.find(s => s.id === lead.stage_id);
+
+  // Vendedores (com foto) p/ resolver o responsável pelo lead.
+  const { data: salespeople = [] } = useQuery({
+    queryKey: ['salespeople-basic-lead-detail'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('salespeople_basic')
+        .select('id, name, user_id, photo_url');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const responsibleSalesperson = lead.responsible_id
+    ? salespeople.find((sp: any) => sp.user_id === lead.responsible_id) || null
+    : null;
 
   const [newType, setNewType] = useState('ligacao');
   const [newDesc, setNewDesc] = useState('');
@@ -178,6 +196,23 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                   <div>
                     <span className="text-[11px] text-muted-foreground/70">Previsão de Fechamento</span>
                     <p className="font-medium">{lead.expected_close_date ? format(new Date(lead.expected_close_date + 'T12:00:00'), 'dd/MM/yyyy') : <span className="text-muted-foreground/40 italic font-normal">—</span>}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-[11px] text-muted-foreground/70">Responsável</span>
+                    <div className="mt-0.5">
+                      {responsibleSalesperson ? (
+                        <div className="flex items-center gap-2">
+                          <SalespersonAvatar
+                            name={responsibleSalesperson.name}
+                            photoUrl={(responsibleSalesperson as any).photo_url}
+                            size="sm"
+                          />
+                          <span className="font-medium">{responsibleSalesperson.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground/40 italic">Sem responsável</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -14,6 +14,7 @@ export interface Salesperson {
   no_commission: boolean;
   referral_code: string | null;
   notes: string | null;
+  photo_url: string | null;
   created_at: string;
   updated_at: string;
 }

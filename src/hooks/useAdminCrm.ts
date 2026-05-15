@@ -29,6 +29,7 @@ export interface AdminLead {
   notes: string | null;
   loss_reason: string | null;
   created_by: string | null;
+  responsible_id: string | null;
   created_at: string;
   updated_at: string;
 }

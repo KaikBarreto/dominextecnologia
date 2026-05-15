@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { phoneMask } from '@/utils/masks';
 import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 
@@ -25,12 +29,30 @@ interface Props {
   editingLead?: AdminLead | null;
 }
 
+// Sentinel pra opção "Nenhum responsável" no Select (Radix não aceita value="")
+const UNASSIGNED = '__unassigned__';
+
 export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) {
   const { createLead, updateLead } = useAdminLeads();
   const { stages } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
   const { user } = useAuth();
+  const { linkedSalespersonId } = useAdminPermissions();
   const isEditing = !!editingLead;
+
+  // Lista de vendedores (com foto) para o dropdown de responsável.
+  const { data: salespeople = [] } = useQuery({
+    queryKey: ['salespeople-basic-lead-form'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('salespeople_basic')
+        .select('id, name, user_id, photo_url, is_active')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   const [form, setForm] = useState({
     title: '',
@@ -45,6 +67,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
     expected_close_date: '',
     notes: '',
     loss_reason: '',
+    responsible_id: '' as string,
   });
 
   const [emailError, setEmailError] = useState('');
@@ -65,17 +88,22 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
         expected_close_date: editingLead.expected_close_date || '',
         notes: editingLead.notes || '',
         loss_reason: editingLead.loss_reason || '',
+        responsible_id: editingLead.responsible_id || '',
       });
     } else {
       const firstStage = stages.find(s => !s.is_won && !s.is_lost);
+      // Default em "Novo Lead": current user, se ele for vendedor.
+      // linkedSalespersonId aponta pra salespeople.id; aqui guardamos auth.users.id.
+      const defaultResponsible = linkedSalespersonId && user?.id ? user.id : '';
       setForm({
         title: '', company_name: '', contact_name: '', email: '', phone: '',
         value: '', source: '', segment: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
         loss_reason: '',
+        responsible_id: defaultResponsible,
       });
     }
     setEmailError('');
-  }, [editingLead?.id, open, stages]);
+  }, [editingLead?.id, open, stages, linkedSalespersonId, user?.id]);
 
   const validateEmail = (email: string) => {
     if (!email) return true;
@@ -104,6 +132,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       expected_close_date: form.expected_close_date || null,
       notes: form.notes || null,
       loss_reason: isLostStage ? (form.loss_reason || null) : null,
+      responsible_id: form.responsible_id || null,
     };
     if (isEditing) {
       updateLead.mutate(
@@ -119,6 +148,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
   const isSaving = createLead.isPending || updateLead.isPending;
 
   const selectedOrigin = origins.find(o => o.name === form.source);
+  const selectedResponsible = salespeople.find((s: any) => s.user_id === form.responsible_id);
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? 'Editar Lead' : 'Novo Lead'}>
@@ -262,6 +292,51 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
             <div>
               <Label>Previsão de Fechamento</Label>
               <Input type="date" value={form.expected_close_date} onChange={e => setForm(f => ({ ...f, expected_close_date: e.target.value }))} />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Responsável</Label>
+              <Select
+                value={form.responsible_id || UNASSIGNED}
+                onValueChange={v => setForm(f => ({ ...f, responsible_id: v === UNASSIGNED ? '' : v }))}
+              >
+                <SelectTrigger>
+                  {selectedResponsible ? (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <SalespersonAvatar
+                        name={selectedResponsible.name}
+                        photoUrl={selectedResponsible.photo_url}
+                        size="sm"
+                      />
+                      <span className="truncate">{selectedResponsible.name}</span>
+                    </div>
+                  ) : (
+                    <SelectValue placeholder="Sem responsável" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED} className="cursor-pointer rounded-md my-0.5">
+                    <span className="text-muted-foreground">Sem responsável</span>
+                  </SelectItem>
+                  {salespeople
+                    .filter((sp: any) => !!sp.user_id)
+                    .map((sp: any) => (
+                      <SelectItem
+                        key={sp.id}
+                        value={sp.user_id}
+                        className="cursor-pointer rounded-md my-0.5"
+                      >
+                        <div className="flex items-center gap-2">
+                          <SalespersonAvatar
+                            name={sp.name}
+                            photoUrl={sp.photo_url}
+                            size="sm"
+                          />
+                          <span>{sp.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="sm:col-span-2">
               <Label>Observações</Label>

@@ -16,6 +16,7 @@ import { SalespersonSalesList } from '@/components/admin/salesperson/Salesperson
 import { SalespersonAdvanceForm } from '@/components/admin/salesperson/SalespersonAdvanceForm';
 import { SalespersonAdvancesList } from '@/components/admin/salesperson/SalespersonAdvancesList';
 import { SalespersonPaymentControl } from '@/components/admin/salesperson/SalespersonPaymentControl';
+import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export default function AdminSalespersonDetail() {
@@ -76,6 +77,12 @@ export default function AdminSalespersonDetail() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
+          <SalespersonAvatar
+            name={salesperson.name}
+            photoUrl={salesperson.photo_url}
+            size="lg"
+            className="shrink-0"
+          />
           <div className="flex-1 min-w-0">
             {isRestrictedSelfView ? (
               // Vendedor admin restrito: nome estático, sem dropdown pra outros vendedores

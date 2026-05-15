@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Plus, Search, DollarSign, TrendingUp, Users, Filter } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +20,7 @@ import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useProfiles } from '@/hooks/useProfiles';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
+import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
 import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -52,6 +55,29 @@ export default function AdminCRM() {
   const { stages, isLoading: stagesLoading } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
   const { data: profiles } = useProfiles();
+
+  // Mapa user_id -> vendedor (pra mostrar avatar do responsável no card quando o
+  // lead tem responsible_id apontando pra um usuário vinculado a um vendedor).
+  const { data: salespeopleBasic = [] } = useQuery({
+    queryKey: ['salespeople-basic-with-photo'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('salespeople_basic')
+        .select('id, name, user_id, photo_url');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const salespersonByUserId = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; photo_url: string | null }>();
+    for (const sp of salespeopleBasic) {
+      if (sp.user_id && sp.id && sp.name) {
+        m.set(sp.user_id, { id: sp.id, name: sp.name, photo_url: sp.photo_url ?? null });
+      }
+    }
+    return m;
+  }, [salespeopleBasic]);
 
   const isMobile = useIsMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -240,6 +266,9 @@ export default function AdminCRM() {
                         const originInfo = getOriginInfo(lead.source);
                         const segmentData = getSegment(lead.segment);
                         const owner = getOwnerProfile(lead.created_by);
+                        const assignedSalesperson = lead.responsible_id
+                          ? salespersonByUserId.get(lead.responsible_id) ?? null
+                          : null;
                         const isDragging = draggedLeadId === lead.id;
                         return (
                           <div
@@ -266,6 +295,23 @@ export default function AdminCRM() {
                                     <p className="text-primary text-sm font-medium truncate">{lead.company_name}</p>
                                   )}
                                 </div>
+                                {assignedSalesperson && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="shrink-0">
+                                        <SalespersonAvatar
+                                          name={assignedSalesperson.name}
+                                          photoUrl={assignedSalesperson.photo_url}
+                                          size="sm"
+                                          className="border-2 border-background"
+                                        />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="text-xs">
+                                      <p className="font-medium">Responsável: {assignedSalesperson.name}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
                               </div>
                             </div>
 
