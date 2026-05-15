@@ -68,14 +68,14 @@ export default function AdminCRM() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterOrigin, setFilterOrigin] = useState<string>('all');
   const [filterSegment, setFilterSegment] = useState<string>('all');
-  const [filterDatePreset, setFilterDatePreset] = useState<DatePreset>('this_month');
+  const [filterDatePreset, setFilterDatePreset] = useState<DatePreset>('all');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
 
   const activeFilterCount =
     (filterOrigin !== 'all' ? 1 : 0) +
     (filterSegment !== 'all' ? 1 : 0) +
-    (filterDatePreset !== 'this_month' ? 1 : 0);
+    (filterDatePreset !== 'all' ? 1 : 0);
 
   const filteredLeads = useMemo(() => {
     const q = search.toLowerCase();
@@ -99,11 +99,14 @@ export default function AdminCRM() {
 
   const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
 
-  const totalValue = leads.reduce((s, l) => s + Number(l.value || 0), 0);
-  const activeLeads = leads.filter(l => {
+  // Métricas refletem o mesmo conjunto exibido no kanban (filteredLeads),
+  // pra evitar inconsistência entre cards e colunas quando há filtro aplicado.
+  const totalValue = filteredLeads.reduce((s, l) => s + Number(l.value || 0), 0);
+  const activeLeads = filteredLeads.filter(l => {
     const stage = stages.find(s => s.id === l.stage_id);
     return !stage?.is_won && !stage?.is_lost;
   });
+  const wonLeadsCount = filteredLeads.filter(l => stages.find(s => s.id === l.stage_id)?.is_won).length;
 
   const handleDrop = (stageId: string) => {
     setDropTargetStageId(null);
@@ -173,10 +176,10 @@ export default function AdminCRM() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Total de Leads</p><p className="text-lg font-bold">{leads.length}</p></div></div></CardContent></Card>
+          <Card><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Total de Leads</p><p className="text-lg font-bold">{filteredLeads.length}</p></div></div></CardContent></Card>
           <Card><CardContent className="p-3"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Em Negociação</p><p className="text-lg font-bold">{activeLeads.length}</p></div></div></CardContent></Card>
           <Card><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Valor Total</p><p className="text-lg font-bold">{formatCurrency(totalValue)}</p></div></div></CardContent></Card>
-          <Card><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" /><div><p className="text-xs text-muted-foreground">Ganhos</p><p className="text-lg font-bold text-green-600">{leads.filter(l => stages.find(s => s.id === l.stage_id)?.is_won).length}</p></div></div></CardContent></Card>
+          <Card><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" /><div><p className="text-xs text-muted-foreground">Ganhos</p><p className="text-lg font-bold text-green-600">{wonLeadsCount}</p></div></div></CardContent></Card>
         </div>
 
         {/* Search + Actions */}
@@ -373,7 +376,7 @@ export default function AdminCRM() {
               <DrawerFooter>
                 <Button variant="outline" onClick={() => {
                   setFilterOrigin('all'); setFilterSegment('all');
-                  setFilterDatePreset('this_month'); setFilterDateFrom(''); setFilterDateTo('');
+                  setFilterDatePreset('all'); setFilterDateFrom(''); setFilterDateTo('');
                 }}>Limpar</Button>
                 <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
               </DrawerFooter>
@@ -396,7 +399,7 @@ export default function AdminCRM() {
               <SheetFooter className="gap-2">
                 <Button variant="outline" onClick={() => {
                   setFilterOrigin('all'); setFilterSegment('all');
-                  setFilterDatePreset('this_month'); setFilterDateFrom(''); setFilterDateTo('');
+                  setFilterDatePreset('all'); setFilterDateFrom(''); setFilterDateTo('');
                 }}>Limpar</Button>
                 <Button onClick={() => setFiltersOpen(false)}>Aplicar</Button>
               </SheetFooter>

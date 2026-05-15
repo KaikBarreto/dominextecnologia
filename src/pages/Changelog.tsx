@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.17',
+    date: '13 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'CRM do painel master mostra todos os leads ao abrir',
+        description: 'A tela do CRM master abria com um filtro de data ativo ("este mês") que escondia leads criados em outros períodos — mas os contadores no topo (Total de Leads, Em Negociação) ignoravam esse filtro e somavam todos os leads, criando inconsistência: o card dizia "3 leads" enquanto o kanban mostrava "Nenhum lead". Corrigido. Agora a tela abre mostrando todos os leads e, quando você aplica um filtro, contadores e kanban refletem o mesmo conjunto.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.16',
     date: '13 de maio de 2026',
     type: 'patch',
