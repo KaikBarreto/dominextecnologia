@@ -22,7 +22,7 @@ const plans = [
       'Relatórios básicos',
       'Suporte por email',
     ],
-    cta: 'Testar 7 Dias Grátis',
+    cta: 'Testar 14 Dias Grátis',
     ctaLink: '/cadastro?plano=essencial&origem=Site',
   },
   {
@@ -40,7 +40,7 @@ const plans = [
       'Contas a pagar/receber',
       'DRE e relatórios financeiros',
     ],
-    cta: 'Testar 7 Dias Grátis',
+    cta: 'Testar 14 Dias Grátis',
     ctaLink: '/cadastro?plano=avancado&origem=Site',
   },
   {
@@ -58,7 +58,7 @@ const plans = [
       'Portal do cliente',
       'Suporte prioritário',
     ],
-    cta: 'Testar 7 Dias Grátis',
+    cta: 'Testar 14 Dias Grátis',
     ctaLink: '/cadastro?plano=master&origem=Site',
   },
 ];

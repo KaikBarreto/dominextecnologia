@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.19',
+    date: '16 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Botões da página de preços agora dizem "14 dias grátis"',
+        description: 'Os três botões "Testar X Dias Grátis" da seção de preços da página pública ainda diziam "7 dias", desalinhados com a duração real do teste gratuito (14 dias) e com o restante da landing — o FAQ já havia sido corrigido na versão anterior. Agora todos os botões mostram "Testar 14 Dias Grátis", coerentes com o tempo real de trial.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.18',
     date: '15 de maio de 2026',
     type: 'patch',
