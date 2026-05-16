@@ -10,6 +10,13 @@ export interface CompanyOrigin {
   created_at: string | null;
 }
 
+function isDuplicateOriginError(e: any): boolean {
+  if (!e) return false;
+  if (e.code === '23505') return true;
+  const msg = String(e.message || '').toLowerCase();
+  return msg.includes('duplicate key') || msg.includes('company_origins_name_unique');
+}
+
 export function useCompanyOrigins() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -33,7 +40,13 @@ export function useCompanyOrigins() {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-origins'] }); toast({ title: 'Origem criada!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: any) => {
+      if (isDuplicateOriginError(e)) {
+        toast({ variant: 'destructive', title: 'Nome já utilizado', description: 'Já existe uma origem com esse nome. Escolha outro nome.' });
+        return;
+      }
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    },
   });
 
   const updateOrigin = useMutation({
@@ -42,7 +55,13 @@ export function useCompanyOrigins() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-origins'] }); toast({ title: 'Origem atualizada!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: any) => {
+      if (isDuplicateOriginError(e)) {
+        toast({ variant: 'destructive', title: 'Nome já utilizado', description: 'Já existe uma origem com esse nome. Escolha outro nome.' });
+        return;
+      }
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    },
   });
 
   const deleteOrigin = useMutation({

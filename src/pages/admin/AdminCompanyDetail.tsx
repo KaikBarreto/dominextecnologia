@@ -60,7 +60,7 @@ export default function AdminCompanyDetail() {
     queryKey: ['company-origin', company?.origin],
     queryFn: async () => {
       if (!company?.origin) return null;
-      const { data } = await supabase.from('company_origins').select('*').eq('name', company.origin).single();
+      const { data } = await supabase.from('company_origins').select('*').eq('name', company.origin).maybeSingle();
       return data;
     },
     enabled: !!company?.origin,
