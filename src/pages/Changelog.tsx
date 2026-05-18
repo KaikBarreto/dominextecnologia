@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.20',
+    date: '18 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Foto na OS agora abre a câmera no Android',
+        description: 'No campo de foto de uma pergunta da OS, o botão único "Enviar Foto" foi substituído por dois botões lado a lado: "Tirar Foto" (abre a câmera do celular direto) e "Galeria" (escolhe uma foto já existente). Antes, no Chrome do Android, o botão único abria apenas a galeria, o que obrigava o técnico a tirar a foto fora do aplicativo e depois voltar. Quando a pergunta foi configurada para exigir câmera, segue aparecendo só o botão "Tirar Foto" (o de galeria some).',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.19',
     date: '16 de maio de 2026',
     type: 'patch',

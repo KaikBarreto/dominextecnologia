@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Camera, Upload, Check, X, Pencil, Trash2 } from 'lucide-react';
+import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
@@ -386,23 +386,43 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 <Camera className="h-8 w-8 text-muted-foreground/50" />
               </div>
             )}
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                {...(cameraOnly ? { capture: "environment" as const } : {})}
-                className="hidden"
-                onChange={(e) => handlePhotoUpload(e, question.id)}
-                disabled={uploadingPhotos.has(question.id)}
-              />
-              <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
-                <span>
-                  <Upload className="h-3 w-3 mr-1" />
-                  {uploadingPhotos.has(question.id) ? 'Enviando...' : photoUrls.length > 0 ? 'Adicionar Foto' : cameraOnly ? 'Tirar Foto' : 'Enviar Foto'}
-                </span>
-              </Button>
-            </label>
+            <div className={cameraOnly ? '' : 'grid grid-cols-2 gap-2'}>
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => handlePhotoUpload(e, question.id)}
+                  disabled={uploadingPhotos.has(question.id)}
+                />
+                <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
+                  <span>
+                    <Camera className="h-3 w-3 mr-1" />
+                    {uploadingPhotos.has(question.id) ? 'Enviando...' : 'Tirar Foto'}
+                  </span>
+                </Button>
+              </label>
+              {!cameraOnly && (
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handlePhotoUpload(e, question.id)}
+                    disabled={uploadingPhotos.has(question.id)}
+                  />
+                  <Button variant="outline" size="sm" className="w-full" asChild disabled={uploadingPhotos.has(question.id)}>
+                    <span>
+                      <ImageIcon className="h-3 w-3 mr-1" />
+                      {uploadingPhotos.has(question.id) ? 'Enviando...' : 'Galeria'}
+                    </span>
+                  </Button>
+                </label>
+              )}
+            </div>
             {photoUrls.length > 0 && (
               <p className="text-xs text-muted-foreground text-center">{photoUrls.length} foto{photoUrls.length > 1 ? 's' : ''}</p>
             )}

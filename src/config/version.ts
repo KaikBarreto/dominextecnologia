@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.19";
+export const APP_VERSION = "1.8.20";
 
-export const VERSION_NOTES = "Os botões da página de preços agora mostram 14 dias de teste grátis, alinhados com a duração real do trial. Antes diziam 7 dias por engano.";
+export const VERSION_NOTES = "No campo de foto da OS, agora aparecem dois botões separados: 'Tirar Foto' (abre a câmera direto) e 'Galeria' (escolhe foto já existente). Antes, no Android, alguns aparelhos abriam só a galeria.";
