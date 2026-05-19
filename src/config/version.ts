@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.20";
+export const APP_VERSION = "1.8.21";
 
-export const VERSION_NOTES = "No campo de foto da OS, agora aparecem dois botões separados: 'Tirar Foto' (abre a câmera direto) e 'Galeria' (escolhe foto já existente). Antes, no Android, alguns aparelhos abriam só a galeria.";
+export const VERSION_NOTES = "Agora dá pra vincular vários questionários ao mesmo equipamento numa OS — igual já funcionava na OS sem equipamento. Útil quando o atendimento exige mais de um checklist no mesmo aparelho (ex: PMOC + check interno + NPS).";

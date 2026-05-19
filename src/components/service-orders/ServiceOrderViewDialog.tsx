@@ -30,7 +30,15 @@ interface FormResponseData {
   question_id: string;
   response_value: string | null;
   response_photo_url: string | null;
-  question: FormQuestion;
+  equipment_id: string | null;
+  question: FormQuestion & { template_id?: string };
+}
+
+interface EquipmentItem {
+  equipment_id: string | null;
+  form_template_id: string | null;
+  equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
+  form_template: { id: string; name: string } | null;
 }
 
 interface ServiceOrderViewDialogProps {
@@ -54,6 +62,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder & { customer: any; equipment: any; form_template: any } | null>(null);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
+  const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
   const { toast } = useToast();
   const { createRatingToken } = useServiceRatings();
   const isCompact = useIsCompact();
@@ -82,10 +91,40 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
       setServiceOrder(enriched as any);
       const { data: photosData } = await supabase.from('os_photos').select('*').eq('service_order_id', serviceOrderId).order('created_at', { ascending: true });
       setPhotos(photosData || []);
-      if (osData.form_template_id) {
-        const { data: responsesData } = await supabase.from('form_responses').select(`id, question_id, response_value, response_photo_url, question:form_questions(*)`).eq('service_order_id', serviceOrderId);
-        const sorted = [...(responsesData || [])].sort((a: any, b: any) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
+
+      // Load equipment_items junction (one row per equipment+template — same equip can repeat)
+      const { data: eqItemsData } = await supabase
+        .from('service_order_equipment')
+        .select(`
+          equipment_id,
+          form_template_id,
+          equipment:equipment(id, name, brand, model),
+          form_template:form_templates(id, name)
+        `)
+        .eq('service_order_id', serviceOrderId);
+      const unwrap = (v: any) => Array.isArray(v) ? (v[0] || null) : v;
+      const normalizedEqItems = ((eqItemsData || []) as any[]).map(item => ({
+        ...item,
+        equipment: unwrap(item.equipment),
+        form_template: unwrap(item.form_template),
+      })) as EquipmentItem[];
+      setEquipmentItems(normalizedEqItems);
+
+      // Always load responses (junction or legacy)
+      const hasAnyTemplate = normalizedEqItems.some(i => i.form_template_id) || !!osData.form_template_id;
+      if (hasAnyTemplate) {
+        const { data: responsesData } = await supabase
+          .from('form_responses')
+          .select(`id, question_id, response_value, response_photo_url, equipment_id, question:form_questions(*)`)
+          .eq('service_order_id', serviceOrderId);
+        const normalized = ((responsesData || []) as any[]).map(r => ({
+          ...r,
+          question: unwrap(r.question),
+        }));
+        const sorted = normalized.sort((a: any, b: any) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
         setFormResponses(sorted as any);
+      } else {
+        setFormResponses([]);
       }
     } catch (error) { console.error('Error fetching OS data:', error); }
     finally { setLoading(false); }
@@ -167,42 +206,88 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
         </Card>
       )}
 
-      {formResponses.length > 0 && (
-        <Card>
-          <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><ClipboardCheck className="h-4 w-4" /> Questionário: {serviceOrder.form_template?.name}</CardTitle></CardHeader>
-          <CardContent className="pt-0 space-y-3">
-            {formResponses.map((response) => {
-              const hasTextValue = response.response_value && response.response_value.trim() !== '' && response.response_value.trim() !== '-';
-              const hasPhoto = !!response.response_photo_url;
-              return (
-              <div key={response.id} className="text-sm border-b last:border-0 pb-2 last:pb-0">
-                <p className="font-medium text-muted-foreground">{response.question?.question}</p>
-                {response.question?.question_type === 'boolean' ? (
-                  <Badge variant={response.response_value === 'true' ? 'success' : 'destructive'} className="mt-1 gap-1">
-                    {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                    {response.response_value === 'true' ? 'Sim' : 'Não'}
-                  </Badge>
-                ) : (
-                  <div className="space-y-1 mt-1">
-                    {hasTextValue && <p>{response.response_value}</p>}
-                    {hasPhoto && (
-                      <div className="flex flex-wrap gap-2">
-                        {response.response_photo_url!.split(',').filter(Boolean).map((url, i) => (
-                          <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer">
-                            <img src={url.trim()} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                    {!hasTextValue && !hasPhoto && <p>-</p>}
-                  </div>
-                )}
-              </div>
-            );})}
+      {formResponses.length > 0 && (() => {
+        // Render one card per equipment_items row (equip+template).
+        // Fallback: when no junction rows, fall back to legacy single template.
+        const renderResponse = (response: FormResponseData) => {
+          const hasTextValue = response.response_value && response.response_value.trim() !== '' && response.response_value.trim() !== '-';
+          const hasPhoto = !!response.response_photo_url;
+          return (
+            <div key={response.id} className="text-sm border-b last:border-0 pb-2 last:pb-0">
+              <p className="font-medium text-muted-foreground">{response.question?.question}</p>
+              {response.question?.question_type === 'boolean' ? (
+                <Badge variant={response.response_value === 'true' ? 'success' : 'destructive'} className="mt-1 gap-1">
+                  {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                  {response.response_value === 'true' ? 'Sim' : 'Não'}
+                </Badge>
+              ) : (
+                <div className="space-y-1 mt-1">
+                  {hasTextValue && <p>{response.response_value}</p>}
+                  {hasPhoto && (
+                    <div className="flex flex-wrap gap-2">
+                      {response.response_photo_url!.split(',').filter(Boolean).map((url, i) => (
+                        <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer">
+                          <img src={url.trim()} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {!hasTextValue && !hasPhoto && <p>-</p>}
+                </div>
+              )}
+            </div>
+          );
+        };
 
-          </CardContent>
-        </Card>
-      )}
+        const itemsWithTemplate = equipmentItems.filter(i => i.form_template_id);
+
+        if (itemsWithTemplate.length > 0) {
+          return (
+            <div className="space-y-3">
+              {itemsWithTemplate.map((item, idx) => {
+                // Filter responses by template_id; when also have equipment_id, scope further
+                const itemResponses = formResponses.filter(r => {
+                  if (r.question?.template_id !== item.form_template_id) return false;
+                  if (item.equipment_id) return r.equipment_id === item.equipment_id;
+                  return !r.equipment_id;
+                });
+                if (itemResponses.length === 0) return null;
+                const cardKey = `${item.equipment_id || 'standalone'}::${item.form_template_id}::${idx}`;
+                const titleParts: string[] = [];
+                if (item.equipment?.name) titleParts.push(item.equipment.name);
+                if (item.form_template?.name) titleParts.push(item.form_template.name);
+                const title = titleParts.join(' — ') || 'Questionário';
+                return (
+                  <Card key={cardKey}>
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <ClipboardCheck className="h-4 w-4" /> {title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-3">
+                      {itemResponses.map(renderResponse)}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          );
+        }
+
+        // Legacy fallback: single template on the OS, no junction rows
+        return (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4" /> Questionário: {serviceOrder.form_template?.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {formResponses.map(renderResponse)}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {(serviceOrder.diagnosis || serviceOrder.solution || serviceOrder.notes) && (
         <Card>

@@ -147,14 +147,31 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     const groups: { label: string; responses: FormResponseData[]; categoryBadge?: { name: string; color: string } | null }[] = [];
     for (const item of equipmentItems) {
       if (!item.form_template_id) continue;
+      // Filter responses scoped to BOTH this equipment AND this template — same equip can
+      // appear in multiple rows with different templates, so equipment_id alone is ambiguous.
       const eqResponses = otherResponses.filter(r => {
-        if ((r as any).equipment_id) return (r as any).equipment_id === item.equipment_id;
-        return r.question?.template_id === item.form_template_id;
+        const rEqId = (r as any).equipment_id;
+        const rTplId = r.question?.template_id;
+        if (rEqId) {
+          // Scoped response: must match BOTH equipment and template
+          return rEqId === item.equipment_id && rTplId === item.form_template_id;
+        }
+        // Legacy response (no equipment_id): match by template only when the row is standalone
+        if (!item.equipment_id) return rTplId === item.form_template_id;
+        return false;
       });
       if (eqResponses.length > 0) {
-        const label = item.equipment?.name
+        // When the same equipment has multiple templates, suffix the template name for clarity
+        const sameEquipCount = item.equipment_id
+          ? equipmentItems.filter(i => i.equipment_id === item.equipment_id && i.form_template_id).length
+          : 0;
+        const hasMultipleOnSameEquip = sameEquipCount > 1;
+        const baseLabel = item.equipment?.name
           ? `${item.equipment.name}${item.equipment.brand ? ` — ${item.equipment.brand} ${item.equipment.model || ''}` : ''}`
           : (item.form_template?.name || 'Checklist');
+        const label = hasMultipleOnSameEquip && item.form_template?.name
+          ? `${baseLabel} (${item.form_template.name})`
+          : baseLabel;
         groups.push({ label, responses: eqResponses, categoryBadge: item.equipment?.category || null });
       }
     }
@@ -483,67 +500,78 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               </div>
             </div>
 
-            {/* Equipment(s) - show all from junction or fallback */}
-            {equipmentItems.length > 0 ? (
-              <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
-                  <span className="ml-auto text-slate-400 font-normal">{equipmentItems.filter(i => i.equipment).length}</span>
-                </h3>
-                {(() => {
-                  const renderEquipmentItem = (item: EquipmentItem) => item.equipment && (
-                    <div key={item.equipment_id} className="flex items-start gap-3">
-                      {item.equipment.photo_url && (
-                        <img
-                          src={item.equipment.photo_url}
-                          alt={item.equipment.name}
-                          className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
-                          onClick={() => setPreviewImage(item.equipment!.photo_url)}
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-slate-900">{item.equipment.name}</p>
-                          {item.equipment.category && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: item.equipment.category.color }}>
-                              {item.equipment.category.name}
-                            </span>
+            {/* Equipment(s) - show all from junction or fallback (dedupe equipment_id) */}
+            {(() => {
+              // Same equipment may appear in N rows with different templates;
+              // collapse to a single visual card per equipment for this section.
+              const uniqueEquipmentItems: EquipmentItem[] = [];
+              const seenEqIds = new Set<string>();
+              for (const item of equipmentItems) {
+                if (!item.equipment_id || !item.equipment) continue;
+                if (seenEqIds.has(item.equipment_id)) continue;
+                seenEqIds.add(item.equipment_id);
+                uniqueEquipmentItems.push(item);
+              }
+              return uniqueEquipmentItems.length > 0 ? (
+                <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
+                    <span className="ml-auto text-slate-400 font-normal">{uniqueEquipmentItems.length}</span>
+                  </h3>
+                  {(() => {
+                    const renderEquipmentItem = (item: EquipmentItem) => item.equipment && (
+                      <div key={item.equipment_id} className="flex items-start gap-3">
+                        {item.equipment.photo_url && (
+                          <img
+                            src={item.equipment.photo_url}
+                            alt={item.equipment.name}
+                            className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
+                            onClick={() => setPreviewImage(item.equipment!.photo_url)}
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-slate-900">{item.equipment.name}</p>
+                            {item.equipment.category && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: item.equipment.category.color }}>
+                                {item.equipment.category.name}
+                              </span>
+                            )}
+                          </div>
+                          {item.equipment.brand && (
+                            <p className="text-sm text-slate-600">{item.equipment.brand} {item.equipment.model}</p>
+                          )}
+                          {item.equipment.location && (
+                            <p className="text-xs text-slate-400 mt-0.5">📍 {item.equipment.location}</p>
                           )}
                         </div>
-                        {item.equipment.brand && (
-                          <p className="text-sm text-slate-600">{item.equipment.brand} {item.equipment.model}</p>
-                        )}
-                        {item.equipment.location && (
-                          <p className="text-xs text-slate-400 mt-0.5">📍 {item.equipment.location}</p>
-                        )}
                       </div>
-                    </div>
-                  );
-
-                  if (equipmentItems.length > 3) {
-                    return (
-                      <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value="equipments" className="border-0">
-                          <AccordionTrigger className="hover:no-underline py-2 text-sm text-slate-600">
-                            Ver {equipmentItems.filter(i => i.equipment).length} equipamentos
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-3">
-                              {equipmentItems.map(renderEquipmentItem)}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
                     );
-                  }
-                  return (
-                    <div className="space-y-3">
-                      {equipmentItems.map(renderEquipmentItem)}
-                    </div>
-                  );
-                })()}
-              </div>
-            ) : serviceOrder.equipment && (
+
+                    if (uniqueEquipmentItems.length > 3) {
+                      return (
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="equipments" className="border-0">
+                            <AccordionTrigger className="hover:no-underline py-2 text-sm text-slate-600">
+                              Ver {uniqueEquipmentItems.length} equipamentos
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-3">
+                                {uniqueEquipmentItems.map(renderEquipmentItem)}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      );
+                    }
+                    return (
+                      <div className="space-y-3">
+                        {uniqueEquipmentItems.map(renderEquipmentItem)}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : serviceOrder.equipment && (
               <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Equipamento(s)
@@ -559,7 +587,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   <p className="text-xs text-slate-400">Local: {serviceOrder.equipment.location}</p>
                 )}
               </div>
-            )}
+            );
+            })()}
           </div>
 
           {/* Description */}

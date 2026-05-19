@@ -669,92 +669,103 @@ export default function TechnicianOS() {
 
           {/* Description hidden from public view - only visible to technician */}
 
-          {/* Equipment list - read only */}
-          {equipmentItems.length > 0 && (
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Wrench className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equipamento{equipmentItems.length > 1 ? 's' : ''}</span>
-                  <span className="text-xs text-muted-foreground ml-auto">{equipmentItems.filter(i => i.equipment).length}</span>
-                </div>
-                {equipmentItems.length > 3 ? (
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="equipments" className="border-0">
-                      <AccordionTrigger className="hover:no-underline py-2 text-sm text-primary">
-                        Ver {equipmentItems.filter(i => i.equipment).length} equipamentos
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-3">
-                          {equipmentItems.map(item => item.equipment && (
-                            <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
-                              {item.equipment.photo_url ? (
-                                <img
-                                  src={item.equipment.photo_url}
-                                  alt={item.equipment.name}
-                                  className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
-                                  onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
-                                />
-                              ) : null}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="font-medium">{item.equipment.name}</p>
-                                  {(item.equipment as any).category && (
-                                    <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: (item.equipment as any).category.color }}>
-                                      {(item.equipment as any).category.name}
-                                    </Badge>
+          {/* Equipment list - read only (dedupe by equipment_id; same equip may appear in N rows with diff templates) */}
+          {(() => {
+            const uniqueEquipmentItems: EquipmentItem[] = [];
+            const seenEqIds = new Set<string>();
+            for (const item of equipmentItems) {
+              if (!item.equipment_id || !item.equipment) continue;
+              if (seenEqIds.has(item.equipment_id)) continue;
+              seenEqIds.add(item.equipment_id);
+              uniqueEquipmentItems.push(item);
+            }
+            if (uniqueEquipmentItems.length === 0) return null;
+            return (
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wrench className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equipamento{uniqueEquipmentItems.length > 1 ? 's' : ''}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">{uniqueEquipmentItems.length}</span>
+                  </div>
+                  {uniqueEquipmentItems.length > 3 ? (
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="equipments" className="border-0">
+                        <AccordionTrigger className="hover:no-underline py-2 text-sm text-primary">
+                          Ver {uniqueEquipmentItems.length} equipamentos
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3">
+                            {uniqueEquipmentItems.map(item => item.equipment && (
+                              <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
+                                {item.equipment.photo_url ? (
+                                  <img
+                                    src={item.equipment.photo_url}
+                                    alt={item.equipment.name}
+                                    className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
+                                    onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
+                                  />
+                                ) : null}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-medium">{item.equipment.name}</p>
+                                    {(item.equipment as any).category && (
+                                      <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: (item.equipment as any).category.color }}>
+                                        {(item.equipment as any).category.name}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
+                                  {item.equipment.location && (
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                      <MapPinned className="h-3 w-3 shrink-0" />
+                                      {item.equipment.location}
+                                    </p>
                                   )}
                                 </div>
-                                {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
-                                {item.equipment.location && (
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                    <MapPinned className="h-3 w-3 shrink-0" />
-                                    {item.equipment.location}
-                                  </p>
-                                )}
                               </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  ) : (
+                    <div className="space-y-3">
+                      {uniqueEquipmentItems.map(item => item.equipment && (
+                        <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
+                          {item.equipment.photo_url ? (
+                            <img
+                              src={item.equipment.photo_url}
+                              alt={item.equipment.name}
+                              className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
+                              onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
+                            />
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium">{item.equipment.name}</p>
+                              {(item.equipment as any).category && (
+                                <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: (item.equipment as any).category.color }}>
+                                  {(item.equipment as any).category.name}
+                                </Badge>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                ) : (
-                  <div className="space-y-3">
-                    {equipmentItems.map(item => item.equipment && (
-                      <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
-                        {item.equipment.photo_url ? (
-                          <img
-                            src={item.equipment.photo_url}
-                            alt={item.equipment.name}
-                            className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
-                            onClick={() => setPreviewPhoto(item.equipment!.photo_url)}
-                          />
-                        ) : null}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium">{item.equipment.name}</p>
-                            {(item.equipment as any).category && (
-                              <Badge className="text-[10px] text-white border-0" style={{ backgroundColor: (item.equipment as any).category.color }}>
-                                {(item.equipment as any).category.name}
-                              </Badge>
+                            {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
+                            {item.equipment.location && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <MapPinned className="h-3 w-3 shrink-0" />
+                                {item.equipment.location}
+                              </p>
                             )}
                           </div>
-                          {item.equipment.brand && <p className="text-muted-foreground text-xs">{item.equipment.brand} {item.equipment.model}</p>}
-                          {item.equipment.location && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <MapPinned className="h-3 w-3 shrink-0" />
-                              {item.equipment.location}
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Status info */}
           <Card>
@@ -776,30 +787,34 @@ export default function TechnicianOS() {
             <PublicTrackingMap serviceOrderId={serviceOrder.id} />
           )}
 
-          {/* Real-time questionnaire responses grouped by equipment */}
+          {/* Real-time questionnaire responses grouped by (equipment_id, template_id) */}
           {publicFormResponses.length > 0 && (() => {
-            // Group responses by equipment_id (or fallback to template_id for legacy data)
-            const equipmentMap = new Map<string, EquipmentItem>();
+            // Index by composite key — same equipment may have multiple templates
+            const itemByPair = new Map<string, EquipmentItem>();
             equipmentItems.forEach(item => {
-              equipmentMap.set(item.equipment_id, item);
+              if (item.equipment_id && item.form_template_id) {
+                itemByPair.set(`${item.equipment_id}::${item.form_template_id}`, item);
+              }
             });
 
-            // Group responses by equipment_id
+            // Group responses by composite (equipment_id, template_id) so the same
+            // equipment can appear in multiple questionnaire cards.
             const groupedByEquipment = new Map<string, { equipment: EquipmentItem | null; responses: typeof publicFormResponses; totalQuestions: number }>();
-            
+
             publicFormResponses.forEach(r => {
-              // Use equipment_id if available, fallback to template_id-based grouping for legacy responses
               const eqId = r.equipment_id;
               const templateId = r.question?.template_id || 'unknown';
-              
+
               let groupKey: string;
               let equipmentItem: EquipmentItem | null = null;
-              
+
               if (eqId) {
-                groupKey = eqId;
-                equipmentItem = equipmentMap.get(eqId) || null;
+                groupKey = `${eqId}::${templateId}`;
+                equipmentItem = itemByPair.get(groupKey)
+                  || equipmentItems.find(item => item.equipment_id === eqId)
+                  || null;
               } else {
-                // Legacy: group by template_id, find first matching equipment
+                // Legacy / standalone: group by template_id only
                 groupKey = `template-${templateId}`;
                 equipmentItem = equipmentItems.find(item => item.form_template_id === templateId) || null;
               }
@@ -831,13 +846,19 @@ export default function TechnicianOS() {
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Questionários</span>
                     </div>
                     <Accordion type="multiple" className="w-full">
-                      {groups.map(([templateId, group]) => {
+                      {groups.map(([groupKey, group]) => {
                         const answered = group.responses.filter(r => r.response_value || r.response_photo_url).length;
                         const total = group.totalQuestions;
                         const isComplete = answered === total && total > 0;
                         const pending = total - answered;
+                        // Show template name as subtitle when the same equipment has multiple templates
+                        const eqId = group.equipment?.equipment_id;
+                        const sameEquipCount = eqId
+                          ? equipmentItems.filter(i => i.equipment_id === eqId).length
+                          : 0;
+                        const hasMultipleOnSameEquip = sameEquipCount > 1;
                         return (
-                          <AccordionItem key={templateId} value={templateId} className="border-b last:border-0">
+                          <AccordionItem key={groupKey} value={groupKey} className="border-b last:border-0">
                             <AccordionTrigger className="hover:no-underline py-3 gap-2">
                               <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                                 {group.equipment?.equipment?.photo_url ? (
@@ -854,7 +875,7 @@ export default function TechnicianOS() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
                                     <p className="font-medium text-sm truncate">
-                                      {group.equipment?.equipment?.name || 'Questionário'}
+                                      {group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Questionário'}
                                     </p>
                                     {(group.equipment?.equipment as any)?.category && (
                                       <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: (group.equipment!.equipment as any).category.color }}>
@@ -862,6 +883,11 @@ export default function TechnicianOS() {
                                       </Badge>
                                     )}
                                   </div>
+                                  {hasMultipleOnSameEquip && group.equipment?.form_template?.name && (
+                                    <p className="text-xs font-medium text-primary truncate">
+                                      {group.equipment.form_template.name}
+                                    </p>
+                                  )}
                                   {group.equipment?.equipment?.brand && (
                                     <p className="text-xs text-muted-foreground truncate">
                                       {group.equipment.equipment.brand} {group.equipment.equipment.model}
@@ -1261,10 +1287,18 @@ export default function TechnicianOS() {
               <Accordion type="multiple" className="w-full">
                 {equipmentItems.map((item, idx) => {
                   if (!item.form_template_id) return null;
-                  const itemKey = item.equipment_id || `standalone-${item.form_template_id}-${idx}`;
+                  // Composite key — same equipment can carry multiple templates
+                  const itemKey = item.equipment_id
+                    ? `${item.equipment_id}::${item.form_template_id}`
+                    : `standalone-${item.form_template_id}-${idx}`;
                   const validation = formValidations[itemKey];
                   const isComplete = validation && validation.isValid;
                   const pendingCount = validation ? validation.missingQuestions.length : 0;
+                  // When multiple templates share the same equipment, show template name as subtitle
+                  const sameEquipCount = item.equipment_id
+                    ? equipmentItems.filter(i => i.equipment_id === item.equipment_id).length
+                    : 0;
+                  const hasMultipleOnSameEquip = sameEquipCount > 1;
                   return (
                     <AccordionItem key={itemKey} value={itemKey} className="border-b last:border-0">
                       <AccordionTrigger className="hover:no-underline py-3 gap-2">
@@ -1292,6 +1326,11 @@ export default function TechnicianOS() {
                                 </Badge>
                               )}
                             </div>
+                            {hasMultipleOnSameEquip && item.form_template?.name && (
+                              <p className="text-xs font-medium text-primary truncate">
+                                {item.form_template.name}
+                              </p>
+                            )}
                             {item.equipment?.brand && (
                               <p className="text-xs text-muted-foreground mt-0.5 truncate">
                                 {item.equipment.brand} {item.equipment.model}

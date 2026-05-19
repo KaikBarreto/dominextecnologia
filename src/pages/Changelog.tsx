@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.21',
+    date: '18 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vários questionários no mesmo equipamento',
+        description: 'Ao criar ou editar uma OS, agora dá pra adicionar mais de um questionário no mesmo equipamento — igual já funcionava em OS sem equipamento vinculado. Útil quando o atendimento exige checklists separados no mesmo aparelho (por exemplo: PMOC obrigatório por lei + checklist interno da empresa + NPS final). Cada questionário fica como um "badge" que pode ser adicionado ou removido livremente. O app do técnico em campo, o modal "Ver OS" e o relatório final mostram cada questionário separadamente, sem misturar respostas. OS antigas com um único questionário continuam funcionando normalmente, sem alteração.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.20',
     date: '18 de maio de 2026',
     type: 'patch',
