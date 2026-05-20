@@ -40,6 +40,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { Boxes } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const ALL_SIDEBAR_TABS = [
   { value: 'quotes', label: 'Orçamentos', icon: FileText },
@@ -451,15 +452,11 @@ export default function Quotes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-          <FileText className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
-          <p className="text-sm text-muted-foreground">Gerencie orçamentos, custos e precificação</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Orçamentos"
+        subtitle="Gerencie orçamentos, custos e precificação"
+        icon={FileText}
+      />
 
       <SettingsSidebarLayout
         tabs={sidebarTabs}

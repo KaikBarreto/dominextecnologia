@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -973,10 +974,11 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie as configurações do sistema</p>
-      </div>
+      <PageHeader
+        title="Configurações"
+        subtitle="Gerencie as configurações do sistema"
+        icon={SettingsIcon}
+      />
 
       <SettingsSidebarLayout
         tabs={visibleTabs}

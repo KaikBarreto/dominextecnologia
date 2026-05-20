@@ -10,6 +10,8 @@ import { FinanceContas } from '@/components/financial/FinanceContas';
 import { FinanceBanks } from '@/components/financial/FinanceBanks';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { isTransactionInDateRange } from '@/lib/finance-date';
+import { DollarSign } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const ROUTE_TAB_MAP: Record<string, string> = {
@@ -145,10 +147,11 @@ export default function Finance() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{meta.title}</h1>
-        <p className="text-muted-foreground">{meta.description}</p>
-      </div>
+      <PageHeader
+        title={meta.title}
+        subtitle={meta.description}
+        icon={DollarSign}
+      />
 
       <DateRangeFilter
         value={range}

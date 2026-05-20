@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
+import { LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { osTypeLabels } from '@/types/database';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, differenceInDays, format, startOfISOWeek,
@@ -40,7 +41,6 @@ function formatCurrency(value: number) {
 export default function Dashboard() {
   const { profile } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
-  const isMobile = useIsMobile();
 
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
@@ -288,23 +288,19 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className={isMobile ? 'text-center' : ''}>
-          <h1 className="text-xl font-bold text-foreground lg:text-3xl">
-            Olá, {firstName}! 👋
-          </h1>
-          <p className="text-sm text-muted-foreground">{getGreeting()}</p>
-        </div>
-        <div className={isMobile ? 'flex justify-center' : ''}>
+      <PageHeader
+        title={`Olá, ${firstName}! 👋`}
+        subtitle={getGreeting()}
+        icon={LayoutDashboard}
+        actions={
           <DateRangeFilter
             value={range}
             preset={preset}
             onPresetChange={setPreset}
             onRangeChange={setRange}
           />
-        </div>
-      </div>
+        }
+      />
 
       {/* KPIs - always full width, first */}
       <DashboardKPIs data={kpiData} isLoading={isLoading} />

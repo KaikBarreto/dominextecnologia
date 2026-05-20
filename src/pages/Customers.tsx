@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, ImageIcon, Settings2 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,10 +73,22 @@ export default function Customers() {
 
   return (
     <div className="space-y-6 min-w-0 w-full max-w-full overflow-x-hidden">
-      <div>
-        <h1 className="text-2xl font-bold">Clientes</h1>
-        <p className="text-muted-foreground">Gerencie seus clientes</p>
-      </div>
+      <PageHeader
+        title="Clientes"
+        subtitle="Gerencie seus clientes"
+        icon={Users}
+        actions={
+          <>
+            <Button variant="outline" size="icon" onClick={() => setOriginConfigOpen(true)} title="Configurar origens">
+              <Settings2 className="h-4 w-4" />
+            </Button>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingCustomer(null); setFormOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Cliente
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
@@ -86,15 +99,6 @@ export default function Customers() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setOriginConfigOpen(true)} title="Configurar origens">
-            <Settings2 className="h-4 w-4" />
-          </Button>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingCustomer(null); setFormOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Cliente
-          </Button>
         </div>
       </div>
 

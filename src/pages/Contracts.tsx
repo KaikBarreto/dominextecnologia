@@ -3,6 +3,7 @@ import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
 import { ScrollText, Plus, Search, Calendar, CheckCircle, Clock, AlertTriangle, Edit, Pause, Play, Trash2, XCircle } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -59,15 +60,16 @@ export default function Contracts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Contratos</h1>
-          <p className="text-muted-foreground">Gerencie contratos recorrentes e manutenções programadas</p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Novo Contrato
-        </Button>
-      </div>
+      <PageHeader
+        title="Contratos"
+        subtitle="Gerencie contratos recorrentes e manutenções programadas"
+        icon={ScrollText}
+        actions={
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Novo Contrato
+          </Button>
+        }
+      />
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

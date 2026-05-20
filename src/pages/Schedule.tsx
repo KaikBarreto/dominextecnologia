@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, PauseCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { DailyCalendar } from '@/components/schedule/DailyCalendar';
@@ -485,10 +486,11 @@ export default function Schedule() {
   if (isLoading) {
     return (
       <div className="space-y-6 p-1">
-        <div>
-          <h1 className="text-2xl font-bold">Agenda</h1>
-          <p className="text-muted-foreground">Visualize e gerencie os agendamentos de ordens de serviço</p>
-        </div>
+        <PageHeader
+          title="Agenda"
+          subtitle="Visualize e gerencie os agendamentos de ordens de serviço"
+          icon={CalendarIcon}
+        />
         <ScheduleSkeleton />
       </div>
     );
@@ -498,11 +500,12 @@ export default function Schedule() {
   if (isMobile) {
     return (
       <div className="flex flex-col gap-4">
-        {/* Title */}
-        <div>
-          <h1 className="text-2xl font-bold">Agenda</h1>
-          <p className="text-muted-foreground text-sm">Gerencie suas tarefas e compromissos</p>
-        </div>
+        <PageHeader
+          title="Agenda"
+          subtitle="Gerencie suas tarefas e compromissos"
+          icon={CalendarIcon}
+          className="mb-0"
+        />
 
         {/* Navigation: arrows + month centered */}
         <div className="flex items-center justify-center gap-3">
@@ -691,10 +694,12 @@ export default function Schedule() {
   // Desktop layout
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold">Agenda</h1>
-        <p className="text-muted-foreground">Visualize e gerencie os agendamentos de ordens de serviço</p>
-      </div>
+      <PageHeader
+        title="Agenda"
+        subtitle="Visualize e gerencie os agendamentos de ordens de serviço"
+        icon={CalendarIcon}
+        className="mb-4"
+      />
 
       <ScheduleHeader
         currentDate={currentDate}

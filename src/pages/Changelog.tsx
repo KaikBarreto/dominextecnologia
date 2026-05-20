@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.28',
+    date: '20 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cabeçalho padronizado em todas as telas principais',
+        description: 'Os títulos e subtítulos das telas principais (Dashboard, Ordens de Serviço, Clientes, Equipamentos, Agenda, Financeiro, CRM, Estoque, Orçamentos, Contratos, Configurações e Perfil) agora seguem um padrão visual único — mesmo tamanho, peso e espaçamento em todas elas. Cada tela ganhou também um ícone identificador no cabeçalho, deixando mais fácil reconhecer onde você está. Mudança puramente visual, não altera nenhuma função.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.26',
     date: '20 de maio de 2026',
     type: 'minor',

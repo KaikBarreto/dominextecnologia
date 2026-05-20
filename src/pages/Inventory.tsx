@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Package, Plus, Search, AlertTriangle, DollarSign, Edit, Trash2, TrendingUp, Boxes } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,17 +63,17 @@ export default function Inventory() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Estoque</h1>
-          <p className="text-muted-foreground">Controle de peças e materiais</p>
-        </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Novo Item
-        </Button>
-      </div>
+      <PageHeader
+        title="Estoque"
+        subtitle="Controle de peças e materiais"
+        icon={Package}
+        actions={
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Novo Item
+          </Button>
+        }
+      />
 
       {/* Stats Cards - Dashboard style */}
       {isLoading ? (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { phoneMask } from '@/utils/masks';
-import { Camera, Loader2, ArrowLeft } from 'lucide-react';
+import { Camera, Loader2, ArrowLeft, UserCircle } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { getFriendlyPasswordError } from '@/utils/passwordHelpers';
@@ -111,15 +112,16 @@ export default function Profile() {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Meu Perfil</h1>
-          <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Meu Perfil"
+        subtitle="Gerencie suas informações pessoais"
+        icon={UserCircle}
+        actions={
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} title="Voltar">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       {/* Avatar + Info */}
       <Card>

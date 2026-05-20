@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
 import { TrendingUp, Plus, DollarSign, Filter, Search, X, Users, Target, Settings2, Webhook } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,29 +181,29 @@ export default function CRM() {
 
   return (
     <div className="space-y-6 min-w-0">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">CRM</h1>
-          <p className="text-muted-foreground">Gerencie oportunidades e leads</p>
-        </div>
-        <div className="flex gap-2">
-          <StageManagerDialog>
-            <Button variant="outline" size="icon" title="Gerenciar Estágios">
-              <Settings2 className="h-4 w-4" />
+      <PageHeader
+        title="CRM"
+        subtitle="Gerencie oportunidades e leads"
+        icon={TrendingUp}
+        actions={
+          <>
+            <StageManagerDialog>
+              <Button variant="outline" size="icon" title="Gerenciar Estágios">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </StageManagerDialog>
+            <WebhookManagerDialog>
+              <Button variant="outline" size="icon" title="Configurar Webhooks">
+                <Webhook className="h-4 w-4" />
+              </Button>
+            </WebhookManagerDialog>
+            <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Plus className="h-4 w-4" />
+              Nova Oportunidade
             </Button>
-          </StageManagerDialog>
-          <WebhookManagerDialog>
-            <Button variant="outline" size="icon" title="Configurar Webhooks">
-              <Webhook className="h-4 w-4" />
-            </Button>
-          </WebhookManagerDialog>
-          <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Plus className="h-4 w-4" />
-            Nova Oportunidade
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">

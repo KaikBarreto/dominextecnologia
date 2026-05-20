@@ -56,6 +56,7 @@ import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebar
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
   agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500' },
@@ -186,10 +187,11 @@ export default function ServiceOrders() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
-        <p className="text-muted-foreground">Gerencie suas ordens de serviço</p>
-      </div>
+      <PageHeader
+        title="Ordens de Serviço"
+        subtitle="Gerencie suas ordens de serviço"
+        icon={ClipboardList}
+      />
 
       <SettingsSidebarLayout tabs={sidebarTabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'nps' && <NpsDashboard />}
