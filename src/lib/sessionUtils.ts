@@ -67,6 +67,18 @@ export async function registerActiveSession(userId: string): Promise<string> {
 export async function clearActiveSession(userId: string): Promise<void> {
   const sessionToken = localStorage.getItem("session_token");
   if (!sessionToken) return;
+  // CRÍTICO: limpa localStorage ANTES do delete no banco. O realtime DELETE
+  // dispara em paralelo no `useForcedLogout` (mesmo no próprio dispositivo).
+  // Se chegar lá enquanto `localStorage.session_token` ainda existe, o hook
+  // interpreta como "outra sessão me desconectou" e dispara `signOut()`
+  // global, criando race condition com o `refreshSession` da nova conta
+  // (incidente do AccountSwitcher 1.8.30: trocar de conta apagava a sessão
+  // recém-aberta e jogava o user pra /login).
+  //
+  // Limpando localStorage antes, quando o realtime DELETE chega no callback
+  // do useForcedLogout, o `getItem("session_token")` retorna null e o hook
+  // ignora — o que é o comportamento certo pra self-deletion.
+  localStorage.removeItem("session_token");
   const { error } = await supabase
     .from("active_sessions")
     .delete()
@@ -76,5 +88,4 @@ export async function clearActiveSession(userId: string): Promise<void> {
     console.warn("[sessionUtils] Falha ao limpar active_session:", error.message);
     // Não bloqueia
   }
-  localStorage.removeItem("session_token");
 }

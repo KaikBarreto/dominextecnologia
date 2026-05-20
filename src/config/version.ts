@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.30";
+export const APP_VERSION = "1.8.31";
 
-export const VERSION_NOTES = "Menu de troca de contas reformulado: design mais limpo, sempre disponível pra qualquer usuário, e clicar em 'Adicionar conta' agora leva direto pra tela de login.";
+export const VERSION_NOTES = "Correção: trocar de conta no menu do perfil agora funciona corretamente. Em alguns casos a nova conta era apagada logo após o login, levando você de volta pra tela de login.";

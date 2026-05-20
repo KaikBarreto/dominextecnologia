@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.31',
+    date: '20 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Troca de conta no menu de perfil funcionando direito',
+        description: 'Corrigida uma condição de corrida que afetava o switcher de contas: ao clicar numa conta salva, em alguns casos a sessão recém-aberta era apagada e você voltava pra tela de login. Agora a troca funciona como esperado — clique numa conta e ela carrega imediatamente. Se uma conta estiver expirada, ela é removida da lista e você vai pra tela de login com o email já preenchido (comportamento que já existia, agora confiável).',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.30',
     date: '20 de maio de 2026',
     type: 'minor',
