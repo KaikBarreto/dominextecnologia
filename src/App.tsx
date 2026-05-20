@@ -3,11 +3,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
+import { trackUsage } from "@/lib/trackUsage";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -227,6 +228,19 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 const PageTitleUpdater = () => { usePageTitle(); return null; };
 
+// Instrumentação MVP — page views.
+// Só dispara quando há user autenticado (evita request em landing/login/cadastro).
+// trackUsage internamente também checa user, mas pular o getUser() aqui economiza chamadas.
+const UsageTracker = () => {
+  const location = useLocation();
+  const { user } = useAuth();
+  React.useEffect(() => {
+    if (!user) return;
+    trackUsage('page_view', { path: location.pathname });
+  }, [location.pathname, user]);
+  return null;
+};
+
 const AppRoutes = () => (
   <React.Suspense fallback={<LoadingSpinner />}>
   <Routes>
@@ -368,6 +382,7 @@ const App = () => (
         <BrowserRouter>
           <PageTitleUpdater />
           <AuthProvider>
+            <UsageTracker />
             <AppRoutes />
           </AuthProvider>
         </BrowserRouter>

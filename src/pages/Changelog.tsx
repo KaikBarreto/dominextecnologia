@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.23',
+    date: '20 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Painel administrativo da Auctus agora mostra atividade de uso por empresa',
+        description: 'A página de detalhe de cada empresa-cliente no painel administrativo da Auctus passou a ter três abas: Informações (dados cadastrais e financeiros, como antes), Plano e Histórico (registro de mudanças de plano, valor e status ao longo do tempo) e Atividade (gráfico de eventos por dia, dias ativos no período, taxa de engajamento e lista dos últimos eventos). O sistema também passou a registrar automaticamente quando um usuário faz login, navega entre páginas e conclui uma OS — esses sinais alimentam a aba de atividade. Como super administrador, isso te ajuda a identificar empresas em risco de churn e oportunidades de retenção.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.8.22',
     date: '18 de maio de 2026',
     type: 'patch',

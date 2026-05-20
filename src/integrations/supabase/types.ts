@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -3390,6 +3415,7 @@ export type Database = {
           deletion_requested_at: string | null
           full_name: string
           id: string
+          navigation_style: string
           phone: string | null
           updated_at: string
           user_id: string
@@ -3401,6 +3427,7 @@ export type Database = {
           deletion_requested_at?: string | null
           full_name: string
           id?: string
+          navigation_style?: string
           phone?: string | null
           updated_at?: string
           user_id: string
@@ -3412,6 +3439,7 @@ export type Database = {
           deletion_requested_at?: string | null
           full_name?: string
           id?: string
+          navigation_style?: string
           phone?: string | null
           updated_at?: string
           user_id?: string
@@ -4505,6 +4533,56 @@ export type Database = {
           },
         ]
       }
+      subscription_history: {
+        Row: {
+          changed_by: string | null
+          company_id: string
+          created_at: string
+          id: string
+          new_plan: string | null
+          new_status: string | null
+          new_value: number | null
+          previous_plan: string | null
+          previous_status: string | null
+          previous_value: number | null
+          reason: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          new_plan?: string | null
+          new_status?: string | null
+          new_value?: number | null
+          previous_plan?: string | null
+          previous_status?: string | null
+          previous_value?: number | null
+          reason?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          new_plan?: string | null
+          new_status?: string | null
+          new_value?: number | null
+          previous_plan?: string | null
+          previous_status?: string | null
+          previous_value?: number | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_modules: {
         Row: {
           code: string
@@ -4986,6 +5064,41 @@ export type Database = {
           },
         ]
       }
+      usage_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           created_at: string
@@ -5393,6 +5506,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: [
@@ -5430,5 +5546,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.100.0 (currently installed v)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

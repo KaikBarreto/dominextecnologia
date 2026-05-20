@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check } from 'lucide-react';
@@ -9,11 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState } from 'react';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
+import { CompanyActivityTab } from '@/components/admin/CompanyActivityTab';
+import { SubscriptionHistoryTab } from '@/components/admin/SubscriptionHistoryTab';
 import { cn } from '@/lib/utils';
 import { cpfCnpjMask } from '@/utils/masks';
 
@@ -22,6 +25,8 @@ export default function AdminCompanyDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'info';
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -136,6 +141,15 @@ export default function AdminCompanyDetail() {
         <p className="text-muted-foreground break-all">{company.email}</p>
       </div>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(tab) => setSearchParams({ tab })}>
+        <TabsList>
+          <TabsTrigger value="info">Informações</TabsTrigger>
+          <TabsTrigger value="plano">Plano e Histórico</TabsTrigger>
+          <TabsTrigger value="atividade">Atividade</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="info" className="mt-4">
       {/* Info cards */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -264,6 +278,17 @@ export default function AdminCompanyDetail() {
           </CardContent>
         </Card>
       </div>
+
+        </TabsContent>
+
+        <TabsContent value="plano" className="mt-4">
+          <SubscriptionHistoryTab companyId={id!} />
+        </TabsContent>
+
+        <TabsContent value="atividade" className="mt-4">
+          <CompanyActivityTab companyId={id!} />
+        </TabsContent>
+      </Tabs>
 
       {/* Delete confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmText(''); }}>

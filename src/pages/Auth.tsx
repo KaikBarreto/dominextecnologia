@@ -18,6 +18,7 @@ import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 import { supabase } from '@/integrations/supabase/client';
+import { trackUsage } from '@/lib/trackUsage';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
@@ -135,6 +136,8 @@ export default function Auth() {
       localStorage.removeItem('rememberedEmail');
     }
     await registerSession(userId);
+    // Instrumentação MVP — fire-and-forget, não bloqueia UX
+    trackUsage('login');
     toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
 
     // Check if super_admin → redirect to admin dashboard

@@ -31,6 +31,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
+import { trackUsage } from '@/lib/trackUsage';
 import { DynamicFormQuestions, type FormValidationResult } from '@/components/technician/DynamicFormQuestions';
 import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
@@ -405,6 +406,9 @@ export default function TechnicianOS() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Instrumentação MVP — fire-and-forget, não bloqueia UX
+      trackUsage('os_completion', { os_id: id });
 
       if (id) {
         const { error: ratingError } = await supabase

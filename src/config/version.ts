@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.22";
+export const APP_VERSION = "1.8.23";
 
-export const VERSION_NOTES = "Corrigido um bug onde o nome de outra empresa aparecia no cabeçalho da tela de OS após trocar de ordem na agenda. As mensagens de erro do GPS no check-in agora aparecem em português, com orientação prática (antes vinham em inglês).";
+export const VERSION_NOTES = "O painel administrativo da Auctus agora mostra a atividade de uso de cada empresa-cliente (gráfico de eventos por dia, dias ativos no período, taxa de engajamento e últimos eventos) e o histórico de mudanças de plano. Essa visibilidade ajuda a identificar empresas em risco de churn e oportunidades de retenção.";
