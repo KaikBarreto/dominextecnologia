@@ -161,7 +161,8 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
   // O tablet (≥lg) tem botão Menu visível. Mobile usa só o bottom nav.
   // (lg breakpoint do tailwind = 1024px, mesmo do MOBILE_BREAKPOINT.)
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background px-4">
+      {/* Lado esquerdo: w-10 fixo no mobile, w-10 lg pra acomodar Menu — peso simétrico ao direito */}
       <div className="flex items-center gap-2 w-10">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
@@ -177,18 +178,19 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
 
       <div className="flex-1 flex justify-center">
         {logoLoading ? (
-          <div className="h-6 w-24 rounded bg-muted animate-pulse" />
+          <div className="h-10 w-32 rounded bg-muted animate-pulse" />
         ) : (
           <img
             src={logoUrl || (document.documentElement.classList.contains('dark') ? logoGreen : logoDark)}
             alt="Dominex"
-            className="h-6 w-auto cursor-pointer object-contain"
+            className="h-10 w-auto max-h-[44px] cursor-pointer object-contain"
             onClick={() => navigate(adminTarget)}
           />
         )}
       </div>
 
-      <div className="flex items-center gap-1 w-auto justify-end">
+      {/* Lado direito: simétrico ao esquerdo no mobile (w-10), expande no tablet+ pra acomodar ícones */}
+      <div className="flex items-center gap-1 w-10 lg:w-auto justify-end">
         {user && (
           <>
             {/* Atalhos compactos só em tablet: no mobile (<lg) o bottom nav é o caminho. */}

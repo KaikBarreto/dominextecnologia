@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.26";
+export const APP_VERSION = "1.8.27";
 
-export const VERSION_NOTES = "Nova navegação no app: barra lateral, barra superior alternativa (alterna nas configurações) e atalho destacado da Agenda no celular. Sua preferência de layout agora fica salva na conta e segue você entre dispositivos.";
+export const VERSION_NOTES = "Ajustes visuais no cabeçalho do celular: a logomarca agora aparece maior e bem centralizada. Pequenas limpezas no menu lateral pra remover itens duplicados.";
