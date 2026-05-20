@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.30',
+    date: '20 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Menu de troca de contas mais bonito e sempre disponível',
+        description: 'O switcher de contas foi reformulado: agora abre direto dentro do menu do perfil quando você clica no avatar, com layout mais limpo (sua conta no topo, outras embaixo, "+ Adicionar conta" e "Sair de todas"). Disponível pra qualquer usuário do sistema (não só para administradores). Ao clicar em "Adicionar conta", você vai direto pra tela de login pra entrar com a outra credencial. Sessões expiradas somem da lista automaticamente, e se você clicar em uma conta que precisa relogin, a tela de login já abre com o email preenchido. Limite de 5 contas salvas por navegador, agora com criptografia simples no armazenamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.29',
     date: '20 de maio de 2026',
     type: 'minor',

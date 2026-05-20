@@ -13,7 +13,7 @@ import {
   TrendingUp,
   Wrench,
   ChevronDown,
-  GraduationCap,
+  ChevronsUpDown,
   Briefcase,
   CreditCard,
   Building2,
@@ -33,6 +33,7 @@ import {
   HelpCircle,
   Clapperboard,
   Crown,
+  Video,
 } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -45,7 +46,7 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
-import { AccountSwitcherInline } from './AccountSwitcherDropdown';
+import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -174,50 +175,58 @@ function MoreMenuHeader() {
       ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS]
       : 'Usuário';
 
+  const isCompanyAdmin = roles.includes('admin');
+
   return (
     <div className="shrink-0 px-4 pt-3 pb-3 border-b border-border bg-background">
-      <div className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
-        <Avatar className="h-11 w-11 shrink-0">
-          <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
-          <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{initials}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-sm font-semibold text-foreground truncate leading-tight">
-              {profileName.split(' ').slice(0, 2).join(' ')}
-            </p>
-            {isSuperAdmin && (
-              <Badge className="bg-red-600 hover:bg-red-600 text-white font-semibold text-[10px] px-1.5 py-0">
-                MASTER
-              </Badge>
+      {/* Card horizontal envolvido por AccountSwitcherDropdown — click expande
+          INLINE revelando outras contas (padrão EcoSistema). Substitui o card
+          estático antigo + AccountSwitcherInline separado. */}
+      <AccountSwitcherDropdown>
+        <div
+          className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors cursor-pointer"
+          aria-label="Trocar de conta"
+        >
+          <Avatar className="h-11 w-11 shrink-0">
+            <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{initials}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-foreground truncate leading-tight">
+                {profileName.split(' ').slice(0, 2).join(' ')}
+              </p>
+              {isCompanyAdmin && !isSuperAdmin && (
+                <Badge className="bg-green-600 hover:bg-green-600 text-white font-semibold text-[10px] px-1.5 py-0 gap-1 inline-flex">
+                  <Crown className="h-2.5 w-2.5" />
+                  MASTER
+                </Badge>
+              )}
+              {isSuperAdmin && (
+                <Badge className="bg-red-600 hover:bg-red-600 text-white font-semibold text-[10px] px-1.5 py-0">
+                  ADMIN
+                </Badge>
+              )}
+            </div>
+            {user?.email && (
+              <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                {user.email}
+              </p>
             )}
-            {isAdminUser && !isSuperAdmin && (
-              <Badge className="bg-orange-600 hover:bg-orange-600 text-white font-semibold text-[10px] px-1.5 py-0 gap-1 inline-flex">
-                <Crown className="h-2.5 w-2.5" />
-                ADMIN
-              </Badge>
+            {!isAdminUser && settings?.name && (
+              <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                {settings.name}
+              </p>
+            )}
+            {isAdminUser && (
+              <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                {roleLabel}
+              </p>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
-            {user?.email}
-          </p>
-          {!isAdminUser && settings?.name && (
-            <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
-              {settings.name}
-            </p>
-          )}
-          {isAdminUser && (
-            <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
-              {roleLabel}
-            </p>
-          )}
+          <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
         </div>
-      </div>
-
-      {/* Switcher de contas — header da conta ativa já vem do card acima */}
-      <div className="mt-2 rounded-xl border border-border/60 bg-muted/30 overflow-hidden">
-        <AccountSwitcherInline hideHeader noSeparators />
-      </div>
+      </AccountSwitcherDropdown>
     </div>
   );
 }
@@ -262,12 +271,27 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
     navigate(path);
   };
 
-  const accountShortcuts = isAdminUser
+  // `hoverVariant` controla a cor de hover de cada item:
+  //   - "default":   hover verde primary (mesmo do active state)
+  //   - "domiflix":  hover vermelho Netflix (#E50914) — hardcoded
+  //   - "whatsapp":  hover verde WhatsApp (#25D366) — hardcoded
+  type HoverVariant = 'default' | 'domiflix' | 'whatsapp';
+  const accountShortcuts: Array<{
+    icon: React.ElementType;
+    label: string;
+    onClick: () => void;
+    hoverVariant?: HoverVariant;
+  }> = isAdminUser
     ? []
     : [
         { icon: UserCircle, label: 'Perfil', onClick: () => handleNavigate('/perfil') },
         { icon: CreditCard, label: 'Assinatura', onClick: () => handleNavigate('/assinatura') },
-        { icon: GraduationCap, label: 'Domiflix', onClick: () => handleNavigate('/domiflix') },
+        {
+          icon: Video,
+          label: 'Tutoriais | Domiflix',
+          onClick: () => handleNavigate('/domiflix'),
+          hoverVariant: 'domiflix',
+        },
         {
           icon: HelpCircle,
           label: 'Central de Ajuda',
@@ -280,8 +304,21 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
             onClose();
             window.open(WHATSAPP_SUPPORT_URL, '_blank');
           },
+          hoverVariant: 'whatsapp',
         },
       ];
+
+  const hoverClassFor = (variant: HoverVariant = 'default') => {
+    switch (variant) {
+      case 'domiflix':
+        return 'hover:bg-[#E50914] hover:text-white';
+      case 'whatsapp':
+        return 'hover:bg-[#25D366] hover:text-white';
+      case 'default':
+      default:
+        return 'hover:bg-primary hover:text-primary-foreground';
+    }
+  };
 
   return (
     <>
@@ -383,7 +420,10 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
                       key={shortcut.label}
                       type="button"
                       onClick={shortcut.onClick}
-                      className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-left"
+                      className={cn(
+                        'w-full flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-foreground transition-colors text-left',
+                        hoverClassFor(shortcut.hoverVariant),
+                      )}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
                       <span className="flex-1">{shortcut.label}</span>

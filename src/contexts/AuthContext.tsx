@@ -88,6 +88,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error('[Auth] fetchUserData failed:', err);
             });
           }, 0);
+
+          // Auto-save da sessão atual no switcher de contas a cada SIGNED_IN
+          // (login normal, refresh restaurando sessão em tab focus, etc).
+          // Fire-and-forget + dynamic import pra evitar dependência circular
+          // e não bloquear o callback do GoTrue.
+          if (event === 'SIGNED_IN') {
+            import('@/lib/savedSessions')
+              .then((m) => m.addCurrentSessionToSavedStandalone())
+              .catch((e) =>
+                console.warn('[Auth] addCurrentSessionToSavedStandalone (SIGNED_IN) failed:', e),
+              );
+          }
         } else if (event === 'SIGNED_OUT' || !session) {
           setProfile(null);
           setRoles([]);

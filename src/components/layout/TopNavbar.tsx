@@ -9,11 +9,11 @@ import {
   DollarSign,
   FileText,
   Settings as SettingsIcon,
-  UserCircle,
+  User,
   TrendingUp,
   Wrench,
   ChevronDown,
-  GraduationCap,
+  ChevronsUpDown,
   Briefcase,
   CreditCard,
   Building2,
@@ -32,6 +32,8 @@ import {
   Moon,
   HelpCircle,
   Clapperboard,
+  Video,
+  Crown,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,9 +58,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
-import { ROLE_LABELS } from '@/hooks/useUsers';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
-import { AccountSwitcherInline } from './AccountSwitcherDropdown';
+import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -123,7 +124,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={cn('h-4 w-4 fill-current shrink-0', className)}>
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
   </svg>
 );
@@ -158,6 +159,7 @@ export const TopNavbar = memo(() => {
   };
 
   const isSuperAdmin = roles.includes('super_admin');
+  const isCompanyAdmin = roles.includes('admin');
 
   const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
     return items.filter((item) => {
@@ -177,20 +179,13 @@ export const TopNavbar = memo(() => {
         .map((item) => (item.children ? { ...item, children: filterByAccess(item.children) } : item))
         .filter((item) => !item.children || item.children.length > 0);
 
-  const roleLabel = isAdminUser
-    ? (isSuperAdmin ? 'Administrador Auctus' : 'Administrador')
-    : roles.length > 0
-      ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS]
-      : 'Usuário';
-
-  const initials = profile?.full_name
-    ?.split(' ')
+  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Usuário';
+  const initials = profileName
+    .split(' ')
     .map((n) => n[0])
     .slice(0, 2)
     .join('')
     .toUpperCase() || '?';
-
-  const firstName = profile?.full_name?.split(' ')[0] || 'Usuário';
 
   const isSubmenuActive = (children?: MenuItem['children']) =>
     children?.some((c) => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))) ?? false;
@@ -293,96 +288,182 @@ export const TopNavbar = memo(() => {
             </nav>
           </div>
 
+          {/* User Menu — padrão EcoSistema.
+              Trigger = botão retangular (avatar + nome em 2xl + chevron).
+              DENTRO do dropdown, AccountSwitcher no TOPO (card horizontal
+              envolvido pelo wrapper inline) — click expande revelando outras
+              contas. Botão Sair FORA do dropdown ao lado, com Tooltip. */}
           <div className="flex items-center gap-1 shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-xl border border-border/60 hover:bg-muted/60 transition-colors text-left px-2 py-1.5 2xl:max-w-[240px]"
+                  aria-label="Menu da conta"
+                >
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium text-foreground">{firstName}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  {/* Texto (nome + email) só aparece em telas ≥2xl (1536px).
+                      Em notebooks típicos (1280-1440), trigger fica compacto
+                      pra não colidir com os itens do menu central. */}
+                  <div className="min-w-0 flex-1 overflow-hidden hidden 2xl:block">
+                    <p className="text-[13px] font-semibold truncate text-foreground leading-tight">
+                      {profileName.split(' ').slice(0, 2).join(' ')}
+                    </p>
+                    {user?.email && (
+                      <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
+                  <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 p-1.5">
-                <div className="px-2 py-2 border-b mb-1">
-                  <p className="text-sm font-medium truncate">{profile?.full_name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
-                  <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] px-1.5 py-0 mt-1 hover:bg-primary">
-                    {roleLabel}
-                  </Badge>
-                </div>
-
-                <AccountSwitcherInline hideHeader />
+              <DropdownMenuContent align="end" sideOffset={8} className="w-80 z-50 p-1.5">
+                {/* Card horizontal no TOPO — expansão INLINE via AccountSwitcherDropdown */}
+                <AccountSwitcherDropdown>
+                  <div
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 rounded-md transition-colors text-left cursor-pointer"
+                    aria-label="Trocar de conta"
+                  >
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-[13px] font-semibold text-foreground truncate leading-tight">
+                          {profileName.split(' ').slice(0, 2).join(' ')}
+                        </p>
+                        {isCompanyAdmin && !isSuperAdmin && (
+                          <Badge className="bg-green-600 hover:bg-green-600 text-white font-semibold text-[10px] px-1.5 py-0 gap-1 inline-flex">
+                            <Crown className="h-2.5 w-2.5" />
+                            MASTER
+                          </Badge>
+                        )}
+                        {isSuperAdmin && (
+                          <Badge className="bg-red-600 hover:bg-red-600 text-white font-semibold text-[10px] px-1.5 py-0">
+                            ADMIN
+                          </Badge>
+                        )}
+                      </div>
+                      {user?.email && (
+                        <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                          {user.email}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </div>
+                </AccountSwitcherDropdown>
 
                 <DropdownMenuSeparator />
 
                 {!isAdminUser && (
                   <>
-                    <DropdownMenuItem onClick={() => navigate('/perfil')} className="cursor-pointer">
-                      <UserCircle className="h-4 w-4 mr-2" /> Meu Perfil
+                    <DropdownMenuItem
+                      onClick={() => navigate('/perfil')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                    >
+                      <User className="h-5 w-5 mr-3 shrink-0" />
+                      Perfil
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/assinatura')} className="cursor-pointer">
-                      <CreditCard className="h-4 w-4 mr-2" /> Assinatura
+
+                    <DropdownMenuItem
+                      onClick={() => navigate('/assinatura')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                    >
+                      <CreditCard className="h-5 w-5 mr-3 shrink-0" />
+                      Assinatura
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/domiflix')} className="cursor-pointer">
-                      <GraduationCap className="h-4 w-4 mr-2" /> Domiflix
-                    </DropdownMenuItem>
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground">
+                        {theme === 'dark' ? <Moon className="h-5 w-5 mr-3 shrink-0" /> : <Sun className="h-5 w-5 mr-3 shrink-0" />}
+                        Tema
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="w-40 p-1.5">
+                          <DropdownMenuItem
+                            onClick={() => applyTheme('light')}
+                            className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                          >
+                            <Sun className="h-5 w-5 mr-3 shrink-0" />
+                            Claro
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => applyTheme('dark')}
+                            className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                          >
+                            <Moon className="h-5 w-5 mr-3 shrink-0" />
+                            Escuro
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
                   </>
                 )}
 
                 <DropdownMenuItem
                   onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/configuracoes')}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                 >
-                  <SettingsIcon className="h-4 w-4 mr-2" /> Configurações
+                  <SettingsIcon className="h-5 w-5 mr-3 shrink-0" />
+                  Configurações
                 </DropdownMenuItem>
 
                 {!isAdminUser && (
                   <>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="cursor-pointer">
-                        <Sun className="h-4 w-4 mr-2" /> Tema
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          <DropdownMenuItem onClick={() => applyTheme('light')} className={cn('cursor-pointer', theme === 'light' && 'bg-accent')}>
-                            <Sun className="h-4 w-4 mr-2" /> Claro
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => applyTheme('dark')} className={cn('cursor-pointer', theme === 'dark' && 'bg-accent')}>
-                            <Moon className="h-4 w-4 mr-2" /> Escuro
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
 
-                    <DropdownMenuItem onClick={() => setHelpOpen(true)} className="cursor-pointer">
-                      <HelpCircle className="h-4 w-4 mr-2" /> Central de Ajuda
+                    {/* Tutoriais Domiflix — hover vermelho Netflix HARDCODED. */}
+                    <DropdownMenuItem
+                      onClick={() => navigate('/domiflix')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#E50914] focus:text-white hover:!bg-[#E50914] hover:!text-white"
+                    >
+                      <Video className="h-5 w-5 mr-3 shrink-0" />
+                      Tutoriais | Domiflix
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem asChild>
-                      <a
-                        href={WHATSAPP_SUPPORT_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="cursor-pointer hover:!bg-success hover:!text-success-foreground focus:!bg-success focus:!text-success-foreground"
-                      >
-                        <WhatsAppIcon className="mr-2" /> Suporte
-                      </a>
+                    <DropdownMenuItem
+                      onClick={() => setHelpOpen(true)}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                    >
+                      <HelpCircle className="h-5 w-5 mr-3 shrink-0" />
+                      Central de Ajuda
+                    </DropdownMenuItem>
+
+                    {/* Falar com o Suporte — hover verde WhatsApp HARDCODED. */}
+                    <DropdownMenuItem
+                      onClick={() => window.open(WHATSAPP_SUPPORT_URL, '_blank')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#25D366] focus:text-white hover:!bg-[#25D366] hover:!text-white"
+                    >
+                      <WhatsAppIcon className="h-5 w-5 mr-3 shrink-0 fill-current" />
+                      Falar com o Suporte
                     </DropdownMenuItem>
                   </>
                 )}
-
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={signOut}
-                  className="cursor-pointer text-destructive hover:!bg-destructive hover:!text-destructive-foreground focus:!bg-destructive focus:!text-destructive-foreground"
-                >
-                  <LogOut className="h-4 w-4 mr-2" /> Sair
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={signOut}
+                  aria-label="Sair"
+                  className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Sair</TooltipContent>
+            </Tooltip>
           </div>
         </header>
       </TooltipProvider>

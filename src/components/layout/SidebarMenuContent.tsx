@@ -7,12 +7,10 @@ import {
   DollarSign,
   FileText,
   Settings as SettingsIcon,
-  UserCircle,
+  User,
   TrendingUp,
   Wrench,
   ChevronDown,
-  ChevronRight,
-  GraduationCap,
   Briefcase,
   CreditCard,
   Building2,
@@ -32,22 +30,33 @@ import {
   Moon,
   HelpCircle,
   Clapperboard,
+  Video,
+  Crown,
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+} from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
-import { ROLE_LABELS } from '@/hooks/useUsers';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
-import { AccountSwitcherInline } from './AccountSwitcherDropdown';
+import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -118,7 +127,7 @@ const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
 const ICON_SIZE = 'h-[20px] w-[20px] shrink-0';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={cn('h-4 w-4 fill-current shrink-0', className)}>
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
   </svg>
 );
@@ -130,6 +139,10 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  * Decide internamente entre menu de tenant e menu admin via `useAuth().isAdminUser`.
  * `useSidebar()` é opcional (try/catch) porque dentro do mobile sheet não há
  * `SidebarProvider` — nesse caso assumimos `expanded`.
+ *
+ * Rodapé: padrão EcoSistema — DropdownMenu (Perfil/Assinatura/Tema/Tutoriais
+ * Domiflix/Ajuda/Suporte) + AccountSwitcherDropdown no fundo do dropdown.
+ * Abaixo do dropdown, botões Configurações + Sair lado a lado.
  */
 export function SidebarMenuContent() {
   const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
@@ -161,6 +174,23 @@ export function SidebarMenuContent() {
     return 'light';
   });
 
+  // ResizeObserver no trigger do rodapé — mede a altura em runtime pra que
+  // o DropdownMenuContent receba `sideOffset={-profileTriggerHeight}` e fique
+  // EXATAMENTE por cima do card de perfil. Cobre o trigger independente do
+  // collapsed/expanded, presença de empresa, ou tamanho do nome.
+  const profileTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [profileTriggerHeight, setProfileTriggerHeight] = useState(0);
+  useLayoutEffect(() => {
+    const el = profileTriggerRef.current;
+    if (!el) return;
+    setProfileTriggerHeight(el.offsetHeight);
+    const ro = new ResizeObserver(() => {
+      setProfileTriggerHeight(el.offsetHeight);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [collapsed]);
+
   useEffect(() => {
     if (collapsed && menuScrollRef.current) {
       menuScrollRef.current.scrollTop = 0;
@@ -174,6 +204,7 @@ export function SidebarMenuContent() {
   };
 
   const isSuperAdmin = roles.includes('super_admin');
+  const isCompanyAdmin = roles.includes('admin');
   const showLogoLoading = logoLoading && !isAdminUser;
 
   const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
@@ -203,44 +234,13 @@ export function SidebarMenuContent() {
     setOpenMenus((prev) => (prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]));
   };
 
-  const roleLabel = isAdminUser
-    ? 'Administrador'
-    : roles.length > 0
-      ? ROLE_LABELS[roles[0] as keyof typeof ROLE_LABELS]
-      : 'Usuário';
-
-  const initials = profile?.full_name
-    ?.split(' ')
+  const profileName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Usuário';
+  const initials = profileName
+    .split(' ')
     .map((n) => n[0])
     .slice(0, 2)
     .join('')
     .toUpperCase() || '?';
-
-  const tenantUserMenuItems = [
-    { label: 'Perfil', icon: UserCircle, action: () => navigate('/perfil') },
-    { label: 'Assinatura', icon: CreditCard, action: () => navigate('/assinatura') },
-    { label: 'Domiflix', icon: GraduationCap, action: () => navigate('/domiflix') },
-    { label: 'Configurações', icon: SettingsIcon, action: () => navigate('/configuracoes'), screenKey: 'screen:settings' },
-  ];
-
-  const adminUserMenuItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, action: () => navigate('/admin/dashboard'), screenKey: 'admin_dashboard' },
-    { label: 'CRM', icon: Target, action: () => navigate('/admin/crm'), screenKey: 'admin_crm' },
-    { label: 'Empresas', icon: Building2, action: () => navigate('/admin/empresas'), screenKey: 'admin_empresas' },
-    { label: 'Configurações', icon: SettingsIcon, action: () => navigate('/admin/configuracoes'), screenKey: 'admin_configuracoes' },
-  ];
-
-  const visibleUserMenuItems = isAdminUser
-    ? (isSuperAdmin
-        ? adminUserMenuItems
-        : adminUserMenuItems.filter(item => !item.screenKey || hasAdminScreenAccess(item.screenKey)))
-    : tenantUserMenuItems.filter(item => !item.screenKey || hasScreenAccess(item.screenKey));
-
-  const themeOptionClass = (active: boolean) =>
-    cn(
-      'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors',
-      active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'
-    );
 
   return (
     <>
@@ -416,128 +416,228 @@ export function SidebarMenuContent() {
           </nav>
         </div>
 
-        {/* Footer: card de perfil + logout */}
-        <div className={cn('border-t border-border shrink-0 flex gap-1', collapsed ? 'flex-col p-1.5' : 'items-center p-2')}>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                className={cn(
-                  'flex min-w-0 flex-1 items-center rounded-lg transition-colors hover:bg-muted/50',
-                  collapsed ? 'justify-center p-2' : 'gap-3 px-3 py-2.5'
-                )}
-              >
-                <Avatar className={cn('shrink-0', collapsed ? 'h-8 w-8' : 'h-9 w-9')}>
-                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
-                </Avatar>
-                {!collapsed && (
-                  <>
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="text-sm font-semibold text-sidebar-foreground truncate leading-tight">
-                        {profile?.full_name?.split(' ').slice(0, 2).join(' ')}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">{roleLabel}</p>
-                    </div>
-                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </>
-                )}
-              </button>
-            </PopoverTrigger>
-
-            <PopoverContent side="top" align="start" sideOffset={8} className="w-64 overflow-visible p-0">
-              <div className="border-b px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9 shrink-0">
-                    <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
+        {/* ============ FOOTER — Profile DropdownMenu + AccountSwitcher embaixo ============
+            Padrão EcoSistema: card do avatar abre dropdown clássico
+            (Perfil/Assinatura/Tema/Tutoriais Domiflix/Ajuda/Suporte). DENTRO do
+            dropdown, no FUNDO, card horizontal envolvido pelo AccountSwitcherDropdown
+            — click expande inline o próprio card revelando outras contas.
+            Abaixo do DropdownMenu, botões Configurações + Sair (só no expanded). */}
+        <div className={cn('border-t border-border shrink-0', collapsed ? 'p-1.5' : 'p-3')}>
+          <div className={cn('flex flex-col', collapsed ? 'items-center gap-1' : 'gap-2')}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  ref={profileTriggerRef}
+                  className={cn(
+                    'min-w-0 flex items-center rounded-xl border border-border/60 hover:bg-muted/60 transition-colors text-left',
+                    collapsed ? 'justify-center p-1.5' : 'w-full gap-3 px-2.5 py-2'
+                  )}
+                  aria-label="Menu da conta"
+                >
+                  <Avatar className={cn('shrink-0', collapsed ? 'h-8 w-8' : 'h-9 w-9')}>
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{profile?.full_name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{user?.email}</p>
-                    <Badge className="mt-0.5 bg-primary px-1.5 py-0 text-[10px] font-semibold text-primary-foreground hover:bg-primary">
-                      {roleLabel}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <AccountSwitcherInline hideHeader noSeparators />
-
-              <div className="py-1">
-                {visibleUserMenuItems.map((item) => (
-                  <button
-                    key={item.label}
-                    onClick={item.action}
-                    className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-
+                  {!collapsed && (
+                    <>
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[13px] font-semibold text-sidebar-foreground truncate leading-tight tracking-[0.01em]">
+                            {profileName.split(' ').slice(0, 2).join(' ')}
+                          </p>
+                          {isCompanyAdmin && !isSuperAdmin && (
+                            <Badge className="bg-green-600 hover:bg-green-600 text-white font-semibold text-[10px] px-1.5 py-0 gap-1 inline-flex">
+                              <Crown className="h-2.5 w-2.5" />
+                              MASTER
+                            </Badge>
+                          )}
+                          {isSuperAdmin && (
+                            <Badge className="bg-red-600 hover:bg-red-600 text-white font-semibold text-[10px] px-1.5 py-0">
+                              ADMIN
+                            </Badge>
+                          )}
+                        </div>
+                        {user?.email && (
+                          <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                            {user.email}
+                          </p>
+                        )}
+                      </div>
+                      <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                side="top"
+                /* Offset negativo dinâmico = dropdown desce EXATAMENTE a altura
+                   do trigger (medida via ResizeObserver) e fica POR CIMA do
+                   botão de avatar do rodapé. Cobre 100% independente do estado
+                   collapsed, da presença de email, ou tamanho do nome. */
+                sideOffset={-profileTriggerHeight}
+                alignOffset={0}
+                className="w-80 z-50 p-1.5"
+              >
                 {!isAdminUser && (
                   <>
-                    <div className="group/theme relative">
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
-                      >
-                        <Sun className="h-4 w-4 shrink-0" />
-                        <span>Tema</span>
-                        <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
-                      </button>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/perfil')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                    >
+                      <User className="h-5 w-5 mr-3 shrink-0" />
+                      Perfil
+                    </DropdownMenuItem>
 
-                      <div className="pointer-events-none invisible absolute left-full top-0 z-50 ml-1 w-40 rounded-md border bg-popover p-1 text-popover-foreground opacity-0 shadow-md transition-all duration-150 group-hover/theme:pointer-events-auto group-hover/theme:visible group-hover/theme:opacity-100 group-focus-within/theme:pointer-events-auto group-focus-within/theme:visible group-focus-within/theme:opacity-100">
-                        <button type="button" onClick={() => applyTheme('dark')} className={themeOptionClass(theme === 'dark')}>
-                          <Moon className="h-4 w-4 shrink-0" />
-                          <span>Escuro</span>
-                        </button>
-                        <button type="button" onClick={() => applyTheme('light')} className={themeOptionClass(theme === 'light')}>
-                          <Sun className="h-4 w-4 shrink-0" />
-                          <span>Claro</span>
-                        </button>
-                      </div>
-                    </div>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/assinatura')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                    >
+                      <CreditCard className="h-5 w-5 mr-3 shrink-0" />
+                      Assinatura
+                    </DropdownMenuItem>
 
-                    <button
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground">
+                        {theme === 'dark' ? <Moon className="h-5 w-5 mr-3 shrink-0" /> : <Sun className="h-5 w-5 mr-3 shrink-0" />}
+                        Tema
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="w-40 p-1.5">
+                          <DropdownMenuItem
+                            onClick={() => applyTheme('light')}
+                            className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                          >
+                            <Sun className="h-5 w-5 mr-3 shrink-0" />
+                            Claro
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => applyTheme('dark')}
+                            className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
+                          >
+                            <Moon className="h-5 w-5 mr-3 shrink-0" />
+                            Escuro
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Tutoriais Domiflix — hover vermelho Netflix HARDCODED.
+                        Independe de white-label (cor da marca Domiflix). */}
+                    <DropdownMenuItem
+                      onClick={() => navigate('/domiflix')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#E50914] focus:text-white hover:!bg-[#E50914] hover:!text-white"
+                    >
+                      <Video className="h-5 w-5 mr-3 shrink-0" />
+                      Tutoriais | Domiflix
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
                       onClick={() => setHelpOpen(true)}
-                      className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-primary focus:text-primary-foreground hover:!bg-primary hover:!text-primary-foreground"
                     >
-                      <HelpCircle className="h-4 w-4 shrink-0" />
-                      <span>Central de Ajuda</span>
-                    </button>
+                      <HelpCircle className="h-5 w-5 mr-3 shrink-0" />
+                      Central de Ajuda
+                    </DropdownMenuItem>
 
-                    <a
-                      href={WHATSAPP_SUPPORT_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground transition-colors hover:bg-success hover:text-success-foreground"
+                    {/* Falar com o Suporte — hover verde WhatsApp HARDCODED.
+                        Independe de white-label (cor da marca WhatsApp). */}
+                    <DropdownMenuItem
+                      onClick={() => window.open(WHATSAPP_SUPPORT_URL, '_blank')}
+                      className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#25D366] focus:text-white hover:!bg-[#25D366] hover:!text-white"
                     >
-                      <WhatsAppIcon />
-                      <span>Suporte</span>
-                    </a>
+                      <WhatsAppIcon className="h-5 w-5 mr-3 shrink-0 fill-current" />
+                      Falar com o Suporte
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
                   </>
                 )}
-              </div>
-            </PopoverContent>
-          </Popover>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={signOut}
-                aria-label="Sair"
-                className={cn(
-                  'flex shrink-0 items-center justify-center rounded-lg text-destructive transition-colors hover:bg-destructive hover:text-white',
-                  collapsed ? 'h-9 w-full' : 'h-9 w-9'
-                )}
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? 'right' : 'top'}>Sair</TooltipContent>
-          </Tooltip>
+                {/* Card horizontal no FUNDO — expansão INLINE via AccountSwitcherDropdown.
+                    Mostra avatar + nome + badges (MASTER/ADMIN) + email + chevron.
+                    Click expande o próprio card revelando outras contas salvas. */}
+                <AccountSwitcherDropdown>
+                  <div
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 rounded-md transition-colors text-left cursor-pointer"
+                    aria-label="Trocar de conta"
+                  >
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarImage src={profile?.avatar_url || undefined} alt={profileName} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-[13px] font-semibold text-foreground truncate leading-tight">
+                          {profileName.split(' ').slice(0, 2).join(' ')}
+                        </p>
+                        {isCompanyAdmin && !isSuperAdmin && (
+                          <Badge className="bg-green-600 hover:bg-green-600 text-white font-semibold text-[10px] px-1.5 py-0 gap-1 inline-flex">
+                            <Crown className="h-2.5 w-2.5" />
+                            MASTER
+                          </Badge>
+                        )}
+                        {isSuperAdmin && (
+                          <Badge className="bg-red-600 hover:bg-red-600 text-white font-semibold text-[10px] px-1.5 py-0">
+                            ADMIN
+                          </Badge>
+                        )}
+                      </div>
+                      {user?.email && (
+                        <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                          {user.email}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </div>
+                </AccountSwitcherDropdown>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {!collapsed && (
+              <div className="flex gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/configuracoes')}
+                  aria-label="Configurações"
+                  className="flex-[3] h-9 flex items-center justify-center gap-2 rounded-md text-[13px] font-semibold text-sidebar-foreground hover:bg-gradient-to-r hover:from-gray-800 hover:to-gray-900 hover:text-white transition-colors duration-300"
+                >
+                  <SettingsIcon className="h-4 w-4 shrink-0" />
+                  <span>Configurações</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  aria-label="Sair"
+                  className="flex-[2] h-9 flex items-center justify-center gap-2 rounded-md text-[13px] font-semibold text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  <span>Sair</span>
+                </button>
+              </div>
+            )}
+            {collapsed && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => signOut()}
+                    aria-label="Sair"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Sair</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         </div>
       </TooltipProvider>
 

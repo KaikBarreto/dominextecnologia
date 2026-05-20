@@ -20,6 +20,11 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import { supabase } from '@/integrations/supabase/client';
 import { trackUsage } from '@/lib/trackUsage';
 import { generateSessionToken, getDeviceInfo } from '@/lib/sessionUtils';
+import {
+  isAddingAccountStandalone,
+  addCurrentSessionToSavedStandalone,
+  clearAddAccountFlagStandalone,
+} from '@/lib/savedSessions';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
@@ -49,10 +54,23 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Replace PublicRoute behavior: redirect to dashboard if already logged in
-  // BUT skip if login flow is in progress (session check / dialog)
+  // Limpa a flag de "relogin email" assim que o componente monta. Mantemos
+  // pra o defaultValues capturar (linha abaixo) — usuário não pode ver email
+  // de outra conta da próxima vez que abrir /auth manualmente.
   useEffect(() => {
-    if (!loading && user && !loginInProgressRef.current) {
+    return () => {
+      // Cleanup: ao desmontar, limpa o email de relogin do storage.
+      localStorage.removeItem('__relogin_email');
+    };
+  }, []);
+
+  // Replace PublicRoute behavior: redirect to dashboard if already logged in
+  // BUT skip if login flow is in progress (session check / dialog) OR se o
+  // fluxo "Adicionar conta" está ativo (flag setada antes de chegar aqui).
+  // Sem essa checagem, o Supabase pode auto-restaurar a sessão e redirecionar
+  // de volta pro dashboard antes do user digitar credenciais da outra conta.
+  useEffect(() => {
+    if (!loading && user && !loginInProgressRef.current && !isAddingAccountStandalone()) {
       // Check role + company status to determine redirect target
       const checkAndRedirect = async () => {
         const { data: roleData } = await supabase
@@ -91,7 +109,13 @@ export default function Auth() {
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: localStorage.getItem('rememberedEmail') || '',
+      // Prioridade: email salvo do "relogin" (sessão expirada no switcher)
+      // > email "lembrar-me" persistido. Limpa __relogin_email no cleanup
+      // do useEffect acima — só usa 1x.
+      email:
+        localStorage.getItem('__relogin_email') ||
+        localStorage.getItem('rememberedEmail') ||
+        '',
       password: '',
       rememberMe: !!localStorage.getItem('rememberedEmail'),
     },
@@ -128,6 +152,14 @@ export default function Auth() {
       localStorage.removeItem('rememberedEmail');
     }
     await registerSession(userId);
+
+    // Adiciona/atualiza a sessão no switcher de contas e libera futuros
+    // redirects automáticos. Fire-and-forget — se falhar, segue o fluxo.
+    addCurrentSessionToSavedStandalone().catch((e) =>
+      console.warn('[Auth] addCurrentSessionToSavedStandalone failed:', e),
+    );
+    clearAddAccountFlagStandalone();
+
     // Instrumentação MVP — fire-and-forget, não bloqueia UX
     trackUsage('login');
     toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
