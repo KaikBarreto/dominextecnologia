@@ -73,7 +73,6 @@ import ContractDetail from "./pages/ContractDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
-import MobileMenu from "./pages/MobileMenu";
 import Teams from "./pages/Teams";
 // Lazy: TechnicianOS importa o anonClient. Carregando sob demanda,
 // o bundle do /login fica livre de inicializar dois GoTrueClient na mesma aba.
@@ -96,7 +95,6 @@ import CustomerPortal from "./pages/CustomerPortal";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminFinancial from "./pages/admin/AdminFinancial";
 import AdminCRM from "./pages/admin/AdminCRM";
 import AdminSettings from "./pages/admin/AdminSettings";
@@ -135,7 +133,6 @@ function useDefaultRoute() {
       ['admin_crm', '/admin/crm'],
       ['admin_empresas', '/admin/empresas'],
       ['admin_vendedores', '/admin/vendedores'],
-      ['admin_assinaturas', '/admin/assinaturas'],
       ['admin_financeiro', '/admin/financeiro'],
       ['admin_configuracoes', '/admin/configuracoes'],
     ];
@@ -321,14 +318,12 @@ const AppRoutes = () => (
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/empresas" element={<AdminCompanies />} />
       <Route path="/admin/empresas/:id" element={<AdminCompanyDetail />} />
-      <Route path="/admin/assinaturas" element={<AdminSubscriptions />} />
       <Route path="/admin/financeiro" element={<AdminFinancial />} />
       <Route path="/admin/crm" element={<AdminCRM />} />
       <Route path="/admin/vendedores" element={<AdminSalespeople />} />
       <Route path="/admin/vendedores/:id" element={<AdminSalespersonDetail />} />
       <Route path="/admin/configuracoes" element={<AdminSettings />} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
-      <Route path="/menu" element={<MobileMenu />} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />
     </Route>

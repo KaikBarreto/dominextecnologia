@@ -33,7 +33,6 @@ const ADMIN_MENU_ITEMS: {
   { label: 'CRM', path: '/admin/crm', icon: Target, screenKey: 'admin_crm' },
   { label: 'Empresas', path: '/admin/empresas', icon: Building2, screenKey: 'admin_empresas' },
   { label: 'Vendedores', path: '/admin/vendedores', icon: Briefcase, screenKey: 'admin_vendedores' },
-  { label: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard, screenKey: 'admin_assinaturas' },
   { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet, screenKey: 'admin_financeiro' },
   { label: 'Domiflix', path: '/admin/domiflix', icon: Clapperboard, screenKey: 'admin_domiflix' },
   { label: 'Configurações', path: '/admin/configuracoes', icon: Settings, screenKey: 'admin_configuracoes' },

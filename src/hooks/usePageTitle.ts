@@ -39,7 +39,6 @@ const ROUTE_TITLES: Record<string, string> = {
   // Admin
   "/admin/dashboard": "Admin | Dashboard",
   "/admin/empresas": "Admin | Empresas",
-  "/admin/assinaturas": "Admin | Assinaturas",
   "/admin/financeiro": "Admin | Financeiro",
 };
 
