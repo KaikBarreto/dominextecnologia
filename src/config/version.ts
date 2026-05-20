@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.28";
+export const APP_VERSION = "1.8.29";
 
-export const VERSION_NOTES = "Os títulos e subtítulos das telas principais agora seguem um padrão visual único — mesmo tamanho, peso e espaçamento em todas as páginas. Cada tela tem um ícone identificador no cabeçalho.";
+export const VERSION_NOTES = "Agora dá pra salvar várias contas no mesmo navegador e alternar entre elas com um clique, sem precisar deslogar.";

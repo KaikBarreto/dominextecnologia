@@ -19,6 +19,7 @@ import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 import { supabase } from '@/integrations/supabase/client';
 import { trackUsage } from '@/lib/trackUsage';
+import { generateSessionToken, getDeviceInfo } from '@/lib/sessionUtils';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
@@ -27,15 +28,6 @@ const loginSchema = z.object({
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
-
-const generateSessionToken = () => crypto.randomUUID();
-
-const getDeviceInfo = () => {
-  const ua = navigator.userAgent;
-  const isMobile = /Mobile|Android|iPhone|iPad/.test(ua);
-  const browser = /Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "Outro";
-  return `${isMobile ? "Mobile" : "Desktop"} - ${browser}`;
-};
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);

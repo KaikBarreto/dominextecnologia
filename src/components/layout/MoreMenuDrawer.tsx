@@ -45,7 +45,7 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
-import { AccountSwitcherDropdown } from './AccountSwitcherDropdown';
+import { AccountSwitcherInline } from './AccountSwitcherDropdown';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -214,9 +214,9 @@ function MoreMenuHeader() {
         </div>
       </div>
 
-      {/* Visualizador da conta ativa (Fase 1 — stub, sem switching) */}
-      <div className="mt-2">
-        <AccountSwitcherDropdown />
+      {/* Switcher de contas — header da conta ativa já vem do card acima */}
+      <div className="mt-2 rounded-xl border border-border/60 bg-muted/30 overflow-hidden">
+        <AccountSwitcherInline hideHeader noSeparators />
       </div>
     </div>
   );

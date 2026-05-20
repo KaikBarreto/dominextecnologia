@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.29',
+    date: '20 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Várias contas no mesmo navegador, troca com 1 clique',
+        description: 'Se você usa o Dominex com mais de uma conta — administrador e técnico, conta principal e conta de demonstração — agora dá pra salvar até 5 contas no menu do perfil e alternar entre elas com um único clique, sem precisar fazer logout e login de novo. A conta que você está usando agora aparece no topo do menu; as outras ficam listadas embaixo. Clique em "Adicionar conta" pra incluir mais uma. As contas salvas ficam só nesse navegador (não sincronizam entre dispositivos) e podem ser removidas quando você quiser.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.8.28',
     date: '20 de maio de 2026',
     type: 'patch',

@@ -47,7 +47,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
-import { AccountSwitcherDropdown } from './AccountSwitcherDropdown';
+import { AccountSwitcherInline } from './AccountSwitcherDropdown';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -290,13 +290,6 @@ export function SidebarMenuContent() {
           </div>
         )}
 
-        {/* AccountSwitcher stub (Fase 1: só visualizador) */}
-        {!collapsed && (
-          <div className="border-b border-border px-3 py-2 shrink-0">
-            <AccountSwitcherDropdown />
-          </div>
-        )}
-
         {/* Lista de itens */}
         <div ref={menuScrollRef} className={cn('flex-1 overflow-y-auto pt-2', collapsed ? 'px-1.5' : 'px-4')}>
           <nav className="space-y-0.5">
@@ -451,7 +444,7 @@ export function SidebarMenuContent() {
               </button>
             </PopoverTrigger>
 
-            <PopoverContent side="top" align="start" sideOffset={8} className="w-56 overflow-visible p-0">
+            <PopoverContent side="top" align="start" sideOffset={8} className="w-64 overflow-visible p-0">
               <div className="border-b px-3 py-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9 shrink-0">
@@ -467,6 +460,8 @@ export function SidebarMenuContent() {
                   </div>
                 </div>
               </div>
+
+              <AccountSwitcherInline hideHeader noSeparators />
 
               <div className="py-1">
                 {visibleUserMenuItems.map((item) => (

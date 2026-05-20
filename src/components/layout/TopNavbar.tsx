@@ -58,7 +58,7 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
-import { AccountSwitcherDropdown } from './AccountSwitcherDropdown';
+import { AccountSwitcherInline } from './AccountSwitcherDropdown';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -134,7 +134,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  * Diferente do Sidebar:
  * - Itens com submenu viram DropdownMenu na barra (hover-open).
  * - Logo full à esquerda, perfil + menu de conta à direita.
- * - O AccountSwitcher stub aparece dentro do dropdown do perfil (não inline na barra).
+ * - O AccountSwitcher (multi-conta) aparece dentro do dropdown do perfil (não inline na barra).
  * - Visível só em xl: (≥1280px). Abaixo disso, o header mobile/tablet entra em ação.
  */
 export const TopNavbar = memo(() => {
@@ -314,10 +314,7 @@ export const TopNavbar = memo(() => {
                   </Badge>
                 </div>
 
-                {/* AccountSwitcher stub (Fase 1) */}
-                <div className="px-1 py-1">
-                  <AccountSwitcherDropdown />
-                </div>
+                <AccountSwitcherInline hideHeader />
 
                 <DropdownMenuSeparator />
 
