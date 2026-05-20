@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.22',
+    date: '18 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nome da empresa não aparece mais errado no cabeçalho da OS',
+        description: 'Em alguns casos, ao trocar de uma OS para outra pela agenda sem recarregar a página, o cabeçalho da tela continuava mostrando o nome da empresa anterior por alguns instantes — ou até persistia, caso a próxima OS não tivesse uma empresa vinculada. Corrigido: agora o cabeçalho sempre limpa primeiro e mostra apenas a empresa correta da OS aberta.',
+        category: 'correcao',
+      },
+      {
+        title: 'Erros do GPS no check-in agora aparecem em português',
+        description: 'Quando o técnico tentava fazer check-in e o GPS falhava (sem sinal, sem permissão ou demorando demais), o sistema mostrava uma mensagem em inglês como "Position update is unavailable". Agora aparecem mensagens em português com orientação prática para cada caso: "verifique se o GPS está ligado", "libere a permissão de localização", "tente daqui a alguns segundos". Também foi adicionado um tempo limite de 15 segundos para evitar espera infinita quando o sinal está ruim.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.21',
     date: '18 de maio de 2026',
     type: 'patch',

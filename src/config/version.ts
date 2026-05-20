@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.21";
+export const APP_VERSION = "1.8.22";
 
-export const VERSION_NOTES = "Agora dá pra vincular vários questionários ao mesmo equipamento numa OS — igual já funcionava na OS sem equipamento. Útil quando o atendimento exige mais de um checklist no mesmo aparelho (ex: PMOC + check interno + NPS).";
+export const VERSION_NOTES = "Corrigido um bug onde o nome de outra empresa aparecia no cabeçalho da tela de OS após trocar de ordem na agenda. As mensagens de erro do GPS no check-in agora aparecem em português, com orientação prática (antes vinham em inglês).";

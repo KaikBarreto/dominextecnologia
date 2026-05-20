@@ -158,11 +158,12 @@ export default function TechnicianOS() {
   };
 
   const fetchCompany = useCallback(async (companyId?: string | null) => {
+    // SEMPRE limpa primeiro — não permite vazar nome/logo/cor entre OSes/empresas
+    // (regra-lei #2 — white-label não vaza entre tenants).
+    setCompany(null);
+
     const resolvedCompanyId = companyId || null;
     if (!resolvedCompanyId) return;
-
-    // Reset antes da fetch para nao herdar branding de outra empresa.
-    setCompany(null);
 
     const { data } = await db
       .from('company_settings')
@@ -296,7 +297,7 @@ export default function TechnicianOS() {
   const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Geolocalização não suportada'));
+        reject(new Error('Seu navegador não suporta geolocalização. Use um navegador atualizado.'));
         return;
       }
       navigator.geolocation.getCurrentPosition(
@@ -306,8 +307,24 @@ export default function TechnicianOS() {
             lng: position.coords.longitude,
           });
         },
-        (error) => reject(error),
-        { enableHighAccuracy: true }
+        (error: GeolocationPositionError) => {
+          let message: string;
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              message = 'Você precisa permitir o acesso à localização para fazer check-in. Abra as configurações do navegador, libere a localização para este site e tente novamente.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              message = 'Não conseguimos obter sua localização agora. Verifique se o GPS do aparelho está ligado e se você tem sinal. Saia e entre num local mais aberto, se possível, e tente de novo.';
+              break;
+            case error.TIMEOUT:
+              message = 'A localização demorou demais para responder. Tente de novo daqui a alguns segundos. Se persistir, verifique se o GPS do aparelho está ligado.';
+              break;
+            default:
+              message = 'Não foi possível obter sua localização. Verifique permissão e GPS, e tente novamente.';
+          }
+          reject(new Error(message));
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     });
   };
