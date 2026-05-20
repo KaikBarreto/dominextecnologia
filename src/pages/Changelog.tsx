@@ -40,14 +40,14 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
-    version: '1.8.23',
+    version: '1.8.26',
     date: '20 de maio de 2026',
-    type: 'patch',
+    type: 'minor',
     changes: [
       {
-        title: 'Painel administrativo da Auctus agora mostra atividade de uso por empresa',
-        description: 'A página de detalhe de cada empresa-cliente no painel administrativo da Auctus passou a ter três abas: Informações (dados cadastrais e financeiros, como antes), Plano e Histórico (registro de mudanças de plano, valor e status ao longo do tempo) e Atividade (gráfico de eventos por dia, dias ativos no período, taxa de engajamento e lista dos últimos eventos). O sistema também passou a registrar automaticamente quando um usuário faz login, navega entre páginas e conclui uma OS — esses sinais alimentam a aba de atividade. Como super administrador, isso te ajuda a identificar empresas em risco de churn e oportunidades de retenção.',
-        category: 'recurso',
+        title: 'Nova navegação no app: barra lateral, barra superior e atalho de Agenda no celular',
+        description: 'A navegação do sistema foi redesenhada para ficar mais rápida e consistente em qualquer dispositivo. No computador, você pode escolher entre a barra lateral à esquerda (padrão) ou uma barra horizontal no topo (alternativa), alternando em Configurações → Aparência — a preferência agora fica salva na sua conta e segue você entre dispositivos. No tablet, um botão de Menu no topo abre o menu completo em painel lateral. No celular, uma barra fixa na parte inferior dá acesso direto às telas principais (Início, OS, Clientes), com um botão destacado em verde no centro que leva direto pra Agenda, e um botão Menu que abre uma gaveta com todas as outras opções e o seu perfil. A página antiga /menu foi substituída por essa gaveta — não tem mais reload, abre por cima da tela.',
+        category: 'melhoria',
       },
     ],
   },

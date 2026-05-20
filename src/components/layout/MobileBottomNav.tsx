@@ -1,0 +1,158 @@
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, ClipboardList, CalendarDays, Users, Menu } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { MoreMenuDrawer } from './MoreMenuDrawer';
+
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  path?: string;
+  action?: 'openMore';
+  special?: boolean;
+}
+
+/**
+ * Bottom nav mobile (<1024px) — 5 slots fixos:
+ *   Início | OS | Agenda(FAB) | Clientes | Menu
+ *
+ * Customização-chave vs EcoSistema: o FAB central NÃO abre um arco de quick
+ * actions. Vira botão simples que navega pra `/agenda`. Decisão do Kaik.
+ *
+ * O slot Menu (último) abre o `<MoreMenuDrawer />` (bottom sheet) com tudo
+ * o que não cabe nesta barra de 5 ícones.
+ */
+const navItems: NavItem[] = [
+  { icon: LayoutDashboard, label: 'Início', path: '/dashboard' },
+  { icon: ClipboardList, label: 'OS', path: '/ordens-servico' },
+  { icon: CalendarDays, label: 'Agenda', path: '/agenda', special: true },
+  { icon: Users, label: 'Clientes', path: '/clientes' },
+  { icon: Menu, label: 'Menu', action: 'openMore' },
+];
+
+const triggerHaptic = () => {
+  if ('vibrate' in navigator) navigator.vibrate(10);
+};
+
+export function MobileBottomNav() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // Fecha o drawer ao trocar de rota.
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [location.pathname]);
+
+  const isActive = (path?: string) => {
+    if (!path) return false;
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
+  return (
+    <>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background border-t border-border pb-[env(safe-area-inset-bottom)]">
+        <div className="relative flex items-center justify-around px-0.5 py-2">
+          {navItems.map((item) => {
+            // FAB Agenda: botão grande, redondo, elevado.
+            if (item.special) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic();
+                    navigate(item.path!);
+                  }}
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 active:scale-90 transition-transform"
+                  aria-label="Ir para Agenda"
+                >
+                  <item.icon className="h-7 w-7 text-primary-foreground" />
+                </button>
+              );
+            }
+
+            // Slot "Menu" — abre MoreMenuDrawer
+            if (item.action === 'openMore') {
+              const moreActive = moreOpen;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic();
+                    setMoreOpen(true);
+                  }}
+                  className="flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 active:scale-90"
+                >
+                  <div
+                    className={cn(
+                      'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300',
+                      moreActive && 'bg-primary'
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        'h-5 w-5 transition-all duration-300',
+                        moreActive ? 'text-primary-foreground scale-110' : 'text-foreground'
+                      )}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[10px] font-medium transition-all duration-300',
+                      moreActive ? 'text-primary' : 'text-foreground'
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            // Slots normais (Início, OS, Clientes)
+            const active = isActive(item.path);
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path!}
+                onClick={triggerHaptic}
+                className="flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl transition-all duration-200 active:scale-90"
+              >
+                <div
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300',
+                    active && 'bg-primary'
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      'h-5 w-5 transition-all duration-300',
+                      active ? 'text-primary-foreground scale-110' : 'text-foreground'
+                    )}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    'text-[10px] font-medium transition-all duration-300',
+                    active ? 'text-primary' : 'text-foreground'
+                  )}
+                >
+                  {item.label}
+                </span>
+                <div
+                  className={cn(
+                    'h-1 w-1 rounded-full bg-primary transition-all duration-300',
+                    active ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+                  )}
+                />
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
+
+      <MoreMenuDrawer open={moreOpen} onOpenChange={setMoreOpen} />
+    </>
+  );
+}
