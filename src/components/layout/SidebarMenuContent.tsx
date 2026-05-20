@@ -110,7 +110,6 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Configurações', icon: SettingsIcon, path: '/financeiro/configuracoes', screenKey: 'screen:finance' },
     ],
   },
-  { title: 'Configurações', icon: SettingsIcon, path: '/configuracoes', screenKey: 'screen:settings' },
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
@@ -120,7 +119,6 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
-  { title: 'Configurações', icon: SettingsIcon, path: '/admin/configuracoes', screenKey: 'admin_configuracoes' },
 ];
 
 const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.32',
+    date: '20 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Item "Configurações" duplicado removido do menu lateral',
+        description: 'O item "Configurações" foi removido da lista de navegação do menu lateral porque já existe um botão de Configurações maior, lado a lado com o botão Sair, no rodapé do próprio menu. A funcionalidade segue a mesma — só tirou a duplicação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.31',
     date: '20 de maio de 2026',
     type: 'patch',

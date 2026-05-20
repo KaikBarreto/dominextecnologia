@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.31";
+export const APP_VERSION = "1.8.32";
 
-export const VERSION_NOTES = "Correção: trocar de conta no menu do perfil agora funciona corretamente. Em alguns casos a nova conta era apagada logo após o login, levando você de volta pra tela de login.";
+export const VERSION_NOTES = "Menu lateral mais limpo: o item 'Configurações' foi removido da lista de navegação porque já existe um botão de Configurações lado a lado com o Sair, no rodapé do menu.";
