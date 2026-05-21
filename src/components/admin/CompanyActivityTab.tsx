@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { Award, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,73 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   sale: 'Venda',
   os_completion: 'OS concluída',
 };
+
+const PATH_LABELS: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/agenda': 'Agenda',
+  '/ordens-servico': 'Ordens de Serviço',
+  '/ponto': 'Ponto Eletrônico',
+  '/mapa-ao-vivo': 'Mapa e Rastreamento',
+  '/orcamentos': 'Orçamentos',
+  '/clientes': 'Clientes',
+  '/servicos': 'Serviços',
+  '/equipamentos': 'Equipamentos',
+  '/estoque': 'Estoque',
+  '/funcionarios': 'Funcionários',
+  '/contratos': 'Contratos',
+  '/crm': 'CRM',
+  '/financeiro': 'Financeiro — Visão Geral',
+  '/financeiro/movimentacoes': 'Financeiro — Movimentações',
+  '/financeiro/contas': 'Financeiro — Contas',
+  '/financeiro/caixas-bancos': 'Financeiro — Contas e Cartões',
+  '/financeiro/dre': 'Financeiro — DRE',
+  '/financeiro/configuracoes': 'Financeiro — Configurações',
+  '/configuracoes': 'Configurações',
+  '/perfil': 'Perfil',
+  '/assinatura': 'Assinatura',
+  '/domiflix': 'Domiflix',
+};
+
+function getPathLabel(path: string): string {
+  if (PATH_LABELS[path]) return PATH_LABELS[path];
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length === 0) return path;
+  return segments[0]
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+interface ScoreCategory {
+  label: string;
+  bg: string;
+  text: string;
+  badge: string;
+}
+
+function getScoreCategory(score: number): ScoreCategory {
+  if (score >= 61) {
+    return {
+      label: 'Alto',
+      bg: 'bg-green-600',
+      text: 'text-green-600',
+      badge: 'bg-green-600 text-white hover:bg-green-600',
+    };
+  }
+  if (score >= 31) {
+    return {
+      label: 'Médio',
+      bg: 'bg-yellow-500',
+      text: 'text-yellow-600',
+      badge: 'bg-yellow-500 text-white hover:bg-yellow-500',
+    };
+  }
+  return {
+    label: 'Baixo',
+    bg: 'bg-red-600',
+    text: 'text-red-600',
+    badge: 'bg-red-600 text-white hover:bg-red-600',
+  };
+}
 
 export function CompanyActivityTab({ companyId }: Props) {
   const [periodDays, setPeriodDays] = useState<number>(30);
@@ -73,6 +141,46 @@ export function CompanyActivityTab({ companyId }: Props) {
   const engagementRate =
     periodDays > 0 ? Math.round((activeDays / periodDays) * 100) : 0;
 
+  const activityScore = useMemo(() => {
+    const engagement = engagementRate;
+    const avgEventsPerDay = activeDays > 0 ? totalEvents / activeDays : 0;
+    const VOLUME_CAP = 20;
+    const volume = Math.min(
+      100,
+      Math.round((avgEventsPerDay / VOLUME_CAP) * 100)
+    );
+    const uniqueEventTypes = new Set(events?.map((e) => e.event_type) ?? []).size;
+    const DIVERSITY_CAP = 4;
+    const diversity = Math.min(
+      100,
+      Math.round((uniqueEventTypes / DIVERSITY_CAP) * 100)
+    );
+    return Math.round(0.4 * engagement + 0.4 * volume + 0.2 * diversity);
+  }, [engagementRate, totalEvents, activeDays, events]);
+
+  const scoreCategory = getScoreCategory(activityScore);
+
+  const topPaths = useMemo(() => {
+    if (!events) return [];
+    const pathCounts: Record<string, number> = {};
+    events
+      .filter((e) => e.event_type === 'page_view' && e.metadata?.path)
+      .forEach((e) => {
+        const path = e.metadata!.path as string;
+        pathCounts[path] = (pathCounts[path] || 0) + 1;
+      });
+    const sorted = Object.entries(pathCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10);
+    const maxCount = sorted[0]?.[1] ?? 1;
+    return sorted.map(([path, count]) => ({
+      path,
+      count,
+      label: getPathLabel(path),
+      percentage: Math.round((count / maxCount) * 100),
+    }));
+  }, [events]);
+
   const chartData = useMemo(() => {
     if (!events) return [];
     const counts: Record<string, number> = {};
@@ -96,7 +204,8 @@ export function CompanyActivityTab({ companyId }: Props) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-40 ml-auto" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
@@ -128,7 +237,7 @@ export function CompanyActivityTab({ companyId }: Props) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Total de eventos</p>
@@ -147,6 +256,33 @@ export function CompanyActivityTab({ companyId }: Props) {
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Taxa de engajamento</p>
             <p className="text-2xl font-bold">{engagementRate}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Award className="h-4 w-4" />
+              Pontuação
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline justify-between mb-2">
+              <div className="flex items-baseline gap-1">
+                <span className={`text-3xl font-bold ${scoreCategory.text}`}>
+                  {activityScore}
+                </span>
+                <span className="text-sm text-muted-foreground">/ 100</span>
+              </div>
+              <Badge className={scoreCategory.badge}>
+                {scoreCategory.label}
+              </Badge>
+            </div>
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full ${scoreCategory.bg} transition-all`}
+                style={{ width: `${activityScore}%` }}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -181,6 +317,44 @@ export function CompanyActivityTab({ companyId }: Props) {
                 />
               </BarChart>
             </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top paths */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Telas mais acessadas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topPaths.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma navegação registrada neste período.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {topPaths.map((item) => (
+                <div key={item.path} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium truncate flex-1 pr-2">
+                      {item.label}
+                    </span>
+                    <span className="text-muted-foreground tabular-nums">
+                      {item.count}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${item.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
