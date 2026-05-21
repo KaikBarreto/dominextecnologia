@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.39',
+    date: '21 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Atalhos rápidos nas Ordens de Serviço no celular',
+        description: 'Cada Ordem de Serviço na lista do celular agora tem duas formas de acessar as ações sem precisar abrir o detalhe: (1) Toque no ícone de três pontinhos (⋮) no canto direito do item — abre um menu com Visualizar, Abrir como técnico, Editar (se você tem permissão) e Excluir (se você tem permissão). (2) Arraste o item pra esquerda — aparecem dois botões coloridos: Editar (azul) e Excluir (vermelho), basta tocar pra disparar. Padrão de Gmail, iOS Mail e Telegram. Tocar na linha continua abrindo a tela de detalhes como antes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.38',
     date: '21 de maio de 2026',
     type: 'patch',

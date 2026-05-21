@@ -60,7 +60,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
-import { MobileListItem } from '@/components/mobile/MobileListItem';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string; hex: string }> = {
@@ -401,51 +401,82 @@ export default function ServiceOrders() {
                   ) : (
                     <>
                       <div className="rounded-xl border bg-card overflow-hidden">
-                        {pagination.paginatedItems.map((os) => (
-                          <MobileListItem
-                            key={os.id}
-                            onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}
-                            leading={
-                              <div
-                                className="flex h-10 w-10 items-center justify-center rounded-full text-white"
-                                style={{ backgroundColor: getStatusColor(os.status) }}
-                              >
-                                <ClipboardList className="h-5 w-5" />
-                              </div>
-                            }
-                            title={
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-[11px] text-muted-foreground">{getOsCode(os)}</span>
-                                <span className="truncate">{os.customer?.name || 'N/A'}</span>
-                              </div>
-                            }
-                            subtitle={
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {os.service_type && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
-                                    {os.service_type.name}
-                                  </span>
-                                )}
-                                {os.scheduled_date && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
-                                  </span>
-                                )}
-                              </div>
-                            }
-                            trailing={
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px] px-2 py-0.5 whitespace-nowrap text-white border-0"
-                                style={{ backgroundColor: getStatusColor(os.status) }}
-                              >
-                                {getStatusLabel(os.status)}
-                              </Badge>
-                            }
-                          />
-                        ))}
+                        {pagination.paginatedItems.map((os) => {
+                          const itemActions: ItemAction[] = [
+                            {
+                              key: 'view',
+                              label: 'Visualizar',
+                              icon: <Eye className="h-4 w-4" />,
+                              onClick: () => { setViewingOsId(os.id); setViewDialogOpen(true); },
+                            },
+                            {
+                              key: 'open-tech',
+                              label: 'Abrir como técnico',
+                              icon: <ExternalLink className="h-4 w-4" />,
+                              onClick: () => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank'),
+                            },
+                            ...(canEditOS ? [{
+                              key: 'edit',
+                              label: 'Editar',
+                              icon: <Pencil className="h-4 w-4" />,
+                              variant: 'edit' as const,
+                              onClick: () => handleEdit(os),
+                            }] : []),
+                            ...(canDeleteOS ? [{
+                              key: 'delete',
+                              label: 'Excluir',
+                              icon: <Trash2 className="h-4 w-4" />,
+                              variant: 'destructive' as const,
+                              onClick: () => handleDeleteClick(os),
+                            }] : []),
+                          ];
+                          return (
+                            <MobileListItem
+                              key={os.id}
+                              onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}
+                              actions={itemActions}
+                              leading={
+                                <div
+                                  className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+                                  style={{ backgroundColor: getStatusColor(os.status) }}
+                                >
+                                  <ClipboardList className="h-5 w-5" />
+                                </div>
+                              }
+                              title={
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-[11px] text-muted-foreground">{getOsCode(os)}</span>
+                                  <span className="truncate">{os.customer?.name || 'N/A'}</span>
+                                </div>
+                              }
+                              subtitle={
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {os.service_type && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                      {os.service_type.name}
+                                    </span>
+                                  )}
+                                  {os.scheduled_date && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                    </span>
+                                  )}
+                                </div>
+                              }
+                              trailing={
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] px-2 py-0.5 whitespace-nowrap text-white border-0"
+                                  style={{ backgroundColor: getStatusColor(os.status) }}
+                                >
+                                  {getStatusLabel(os.status)}
+                                </Badge>
+                              }
+                            />
+                          );
+                        })}
                       </div>
                       <DataTablePagination
                         page={pagination.page}
