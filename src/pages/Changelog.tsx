@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.43',
+    date: '21 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Clientes e Equipamentos no celular ganharam cara de aplicativo',
+        description: 'As telas de Clientes e Equipamentos no celular foram redesenhadas para terem o mesmo visual de aplicativo nativo que a tela de Ordens de Serviço já tem: cabeçalho compacto, busca fixa no topo, lista no estilo iOS/Android (cada cliente/equipamento como uma linha alta com foto ou ícone à esquerda, nome em destaque, telefone+cidade ou categoria+cliente embaixo). Arrasta um item pra esquerda → aparecem os botões Editar (laranja) e Excluir (vermelho); ou toca no ícone de três pontinhos para abrir o menu de ações. Botão "Novo Cliente" e "Novo Equipamento" viraram botão flutuante no canto inferior direito. Em Equipamentos, os contadores por categoria viram chips coloridos que rolam de lado no topo, e o filtro por categoria/cliente entra numa gaveta de baixo. As permissões de criar/editar/excluir agora aparecem corretamente — quem não tem permissão não vê os botões. No computador, ambas as telas continuam exatamente como antes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.42',
     date: '21 de maio de 2026',
     type: 'minor',

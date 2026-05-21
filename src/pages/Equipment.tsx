@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Boxes, Package, Tag, Plus, Pencil, Trash2 } from 'lucide-react';
 import { EquipmentPanel } from '@/components/customers/EquipmentPanel';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ export default function EquipmentPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <MobilePageHeader
         title="Equipamentos"
         subtitle="Gerencie equipamentos e categorias"
         icon={Boxes}
