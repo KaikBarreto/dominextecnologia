@@ -56,16 +56,21 @@ import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebar
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { StatCarousel } from '@/components/mobile/StatCarousel';
+import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FABButton } from '@/components/mobile/FABButton';
+import { MobileListItem } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
-const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string }> = {
-  agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500' },
-  pendente: { icon: Clock, color: 'text-white', bgColor: 'bg-warning' },
-  a_caminho: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-indigo-500' },
-  em_andamento: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-info' },
-  pausada: { icon: Clock, color: 'text-white', bgColor: 'bg-amber-600' },
-  concluida: { icon: CheckCircle2, color: 'text-white', bgColor: 'bg-success' },
-  cancelada: { icon: XCircle, color: 'text-white', bgColor: 'bg-destructive' },
+const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string; hex: string }> = {
+  agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500', hex: '#8b5cf6' },
+  pendente: { icon: Clock, color: 'text-white', bgColor: 'bg-warning', hex: '#f59e0b' },
+  a_caminho: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-indigo-500', hex: '#6366f1' },
+  em_andamento: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-info', hex: '#0ea5e9' },
+  pausada: { icon: Clock, color: 'text-white', bgColor: 'bg-amber-600', hex: '#d97706' },
+  concluida: { icon: CheckCircle2, color: 'text-white', bgColor: 'bg-success', hex: '#22c55e' },
+  cancelada: { icon: XCircle, color: 'text-white', bgColor: 'bg-destructive', hex: '#ef4444' },
 };
 
 export default function ServiceOrders() {
@@ -100,7 +105,6 @@ export default function ServiceOrders() {
   };
 
   const filteredOrders = useMemo(() => {
-    // For kanban, don't apply date filter
     const baseOrders = viewMode === 'kanban' ? serviceOrders : filterByDate(serviceOrders, 'scheduled_date');
     return baseOrders.filter((os) => {
       const osCode = getOsCode(os);
@@ -141,7 +145,6 @@ export default function ServiceOrders() {
   const handleDelete = async () => {
     if (osToDelete) {
       if (deleteMode === 'group') {
-        // Delete only future OS in the same recurrence group or contract; keep past ones
         const today = new Date().toISOString().slice(0, 10);
         const recurrenceGroupId = (osToDelete as any).recurrence_group_id;
         const contractId = (osToDelete as any).contract_id;
@@ -151,7 +154,6 @@ export default function ServiceOrders() {
         } else if (contractId) {
           groupOrders = serviceOrders.filter((o: any) => o.contract_id === contractId);
         }
-        // Only delete OS with scheduled_date >= today
         const futureOrders = groupOrders.filter(o => (o.scheduled_date || '') >= today);
         for (const o of futureOrders) {
           await deleteServiceOrder.mutateAsync(o.id);
@@ -176,7 +178,6 @@ export default function ServiceOrders() {
     await updateServiceOrder.mutateAsync({ id: os.id, status: newStatus });
   };
 
-  // Kanban columns ordered by status position
   const kanbanColumns = statusOptions;
 
   const sidebarTabs: SettingsTab[] = [
@@ -185,9 +186,116 @@ export default function ServiceOrders() {
     { value: 'nps', label: 'NPS e Satisfação', icon: Star },
   ];
 
+  // Stat items para o StatCarousel — mesmos contadores/ícones/cores de antes.
+  const statItems = (Object.keys(statusConfig) as OsStatus[]).map((status) => {
+    const config = statusConfig[status];
+    const Icon = config.icon;
+    const count = serviceOrders.filter((os) => os.status === status).length;
+    return {
+      key: status,
+      label: getStatusLabel(status),
+      count,
+      icon: <Icon className="h-4 w-4" />,
+      accentColor: config.hex,
+      active: statusFilter === status,
+      onClick: () => setStatusFilter(statusFilter === status ? 'all' : status),
+    };
+  });
+
+  // Contagem de filtros ativos (busca, status, preset diferente do default).
+  const activeFilterCount =
+    (searchTerm ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) +
+    (preset !== 'this_month' ? 1 : 0);
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setPreset('this_month');
+  };
+
+  // Conteúdo da Sheet de filtros no mobile (também usado pra renderizar inline no desktop).
+  const filterContent = (
+    <div className={cn(isMobile ? 'space-y-4' : 'flex flex-col gap-3 sm:flex-row sm:items-center flex-1')}>
+      {!isMobile && (
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por cliente ou número..."
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      )}
+      {isMobile && (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Período</label>
+          <DateRangeFilter
+            value={range}
+            preset={preset}
+            onPresetChange={setPreset}
+            onRangeChange={setRange}
+          />
+        </div>
+      )}
+      <div className={isMobile ? '' : ''}>
+        {isMobile && <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>}
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className={isMobile ? 'w-full' : 'w-full sm:w-[180px]'}>
+            <SelectValue placeholder="Filtrar status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            {statusOptions.map((status) => (
+              <SelectItem key={status.key} value={status.key}>
+                {status.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {isMobile && (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Visualização</label>
+          <div className="flex rounded-lg border overflow-hidden w-fit">
+            <button
+              className={cn('flex items-center gap-2 px-3 py-2 text-sm transition-colors', viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+              onClick={() => setViewMode('list')}
+              type="button"
+            >
+              <LayoutList className="h-4 w-4" /> Lista
+            </button>
+            <button
+              className={cn('flex items-center gap-2 px-3 py-2 text-sm transition-colors', viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+              onClick={() => setViewMode('kanban')}
+              type="button"
+            >
+              <LayoutGrid className="h-4 w-4" /> Kanban
+            </button>
+          </div>
+        </div>
+      )}
+      {isMobile && (
+        <div className="pt-2 border-t">
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Configurações de visualização</label>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => setStatusConfigOpen(true)}
+            type="button"
+          >
+            <Settings className="h-4 w-4" />
+            Gerenciar status de OS
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className={cn('space-y-6', isMobile && 'pb-24')}>
+      <MobilePageHeader
         title="Ordens de Serviço"
         subtitle="Gerencie suas ordens de serviço"
         icon={ClipboardList}
@@ -197,432 +305,450 @@ export default function ServiceOrders() {
         {activeTab === 'nps' && <NpsDashboard />}
         {activeTab === 'report' && <OsReportDashboard />}
         {activeTab === 'orders' && (
-          <div className="space-y-6">
+          <div className={cn('space-y-4', !isMobile && 'space-y-6')}>
 
-      <DateRangeFilter
-        value={range}
-        preset={preset}
-        onPresetChange={setPreset}
-        onRangeChange={setRange}
-      />
-
-      {/* Actions bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por cliente ou número..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filtrar status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {statusOptions.map((status) => (
-                <SelectItem key={status.key} value={status.key}>
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => setStatusConfigOpen(true)}
-            className="bg-gradient-to-b from-gray-700 to-gray-900 text-white hover:from-gray-600 hover:to-gray-800"
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Configurações</span>
-          </Button>
-          {canCreateOS && (
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova OS
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Status Summary Cards */}
-      <div className="grid gap-3 grid-cols-3 md:grid-cols-6">
-        {(Object.keys(statusConfig) as OsStatus[]).map((status) => {
-          const config = statusConfig[status];
-          const count = serviceOrders.filter((os) => os.status === status).length;
-          return (
-            <Card
-              key={status}
-              className={`cursor-pointer transition-colors hover:bg-muted ${statusFilter === status ? 'ring-2 ring-primary' : ''}`}
-              onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}
-            >
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">{getStatusLabel(status)}</p>
-                    <p className="text-xl sm:text-2xl font-bold">{count}</p>
-                  </div>
-                  <div className={`rounded-full p-1.5 sm:p-2 ${config.bgColor}`}>
-                    <config.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* List View */}
-      {viewMode === 'list' && (
-        <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
-              Lista de OS
-            </h2>
-            <div className="flex rounded-lg border overflow-hidden">
-              <button
-                className={cn('px-3 py-2 text-sm', 'bg-primary text-primary-foreground')}
-                onClick={() => setViewMode('list')}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
-              <button
-                className={cn('px-3 py-2 text-sm', 'hover:bg-muted')}
-                onClick={() => setViewMode('kanban')}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <Card>
-            <CardContent className="p-0">
-              {isLoading ? (
-                <div className="space-y-4 p-6">
-                  {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                </div>
-              ) : filteredOrders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <ClipboardList className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-medium">
-                    {searchTerm || statusFilter !== 'all' ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
-                  </h3>
-                  <p className="text-muted-foreground">
-                    {searchTerm || statusFilter !== 'all' ? 'Tente filtros diferentes' : 'Clique em "Nova OS" para começar'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {isMobile ? (
-                    <div className="p-3 space-y-3">
-                      {pagination.paginatedItems.map((os) => (
-                        <Card key={os.id} className="hover:shadow-md transition-shadow">
-                          <CardContent className="p-3 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
-                              <Select value={os.status} onValueChange={(value) => handleStatusChange(os, value as OsStatus)}>
-                                <SelectTrigger className="h-7 w-[130px] text-xs" style={{ backgroundColor: getStatusColor(os.status), color: 'white' }}>
-                                  <SelectValue><span className="text-white">{getStatusLabel(os.status)}</span></SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {statusOptions.map((s) => (
-                                    <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <p className="font-medium text-sm truncate">{os.customer?.name || 'N/A'}</p>
-                            {os.equipment && <p className="text-xs text-muted-foreground truncate">{os.equipment.name}</p>}
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              {os.service_type && (
-                                <div className="flex items-center gap-1">
-                                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
-                                  <span>{os.service_type.name}</span>
-                                </div>
-                              )}
-                              {os.scheduled_date && (
-                                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
-                              )}
-                            </div>
-                            <div className="flex justify-end gap-1 pt-1 border-t">
-                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}><Eye className="h-3.5 w-3.5" />Visualizar</Button>
-                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 text-primary" />Abrir OS</Button>
-                              {canEditOS && <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(os)}><Pencil className="h-3.5 w-3.5" /></Button>}
-                              {canDeleteOS && <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteClick(os)}><Trash2 className="h-3.5 w-3.5" /></Button>}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <SortableTableHead sortKey="order_number" sortConfig={sortConfig} onSort={handleSort}>OS</SortableTableHead>
-                          <TableHead className="text-xs uppercase tracking-wider w-[40px]">Criador</TableHead>
-                          <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
-                          <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
-                          <SortableTableHead sortKey="scheduled_date" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                          <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                          <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pagination.paginatedItems.map((os) => {
-                          const status = statusConfig[os.status] || statusConfig.pendente;
-                          return (
-                            <TableRow key={os.id}>
-                              <TableCell>
-                                <span className="font-mono font-medium text-sm">
-                                  {getOsCode(os)}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                {(os as any).created_by_profile?.avatar_url ? (
-                                  <img
-                                    src={(os as any).created_by_profile.avatar_url}
-                                    alt={(os as any).created_by_profile.full_name || ''}
-                                    title={(os as any).created_by_profile.full_name || 'Usuário'}
-                                    className="h-7 w-7 rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground" title={(os as any).created_by_profile?.full_name || 'Usuário'}>
-                                    {((os as any).created_by_profile?.full_name || '?').slice(0, 2).toUpperCase()}
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium">{os.customer?.name || (os as any).snapshot_data?.customer?.name || 'N/A'}</p>
-                                  {(os.equipment || (os as any).snapshot_data?.equipment) && (
-                                    <p className="text-xs text-muted-foreground">{os.equipment?.name || (os as any).snapshot_data?.equipment?.name}</p>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {os.service_type ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: os.service_type.color }} />
-                                    <span className="text-sm">{os.service_type.name}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm">{osTypeLabels[os.os_type]}</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell">
-                                {os.scheduled_date ? (
-                                  <div className="flex items-center gap-1 text-sm">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
-                                  </div>
-                                ) : '-'}
-                              </TableCell>
-                              <TableCell>
-                                <Select
-                                  value={os.status}
-                                  onValueChange={(value) => handleStatusChange(os, value as OsStatus)}
-                                >
-                                  <SelectTrigger className="h-8 w-[140px] whitespace-nowrap" style={{ backgroundColor: getStatusColor(os.status), color: 'white' }}>
-                                    <SelectValue>
-                                      <span className="flex items-center gap-1 whitespace-nowrap text-white">
-                                        {getStatusLabel(os.status)}
-                                      </span>
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {statusOptions.map((s) => (
-                                      <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" title="Visualizar OS" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}>
-                                    <Eye className="h-4 w-4 text-muted-foreground" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" title="Abrir Questionário" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
-                                    <ExternalLink className="h-4 w-4 text-primary" />
-                                  </Button>
-                                  {canEditOS && (
-                                    <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(os)}>
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  {canDeleteOS && (
-                                    <Button variant="destructive-ghost" size="icon" onClick={() => handleDeleteClick(os)}>
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  )}
-                  <DataTablePagination
-                    page={pagination.page}
-                    totalPages={pagination.totalPages}
-                    totalItems={pagination.totalItems}
-                    from={pagination.from}
-                    to={pagination.to}
-                    pageSize={pagination.pageSize}
-                    onPageChange={pagination.setPage}
-                    onPageSizeChange={pagination.setPageSize}
-                  />
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {/* Kanban View */}
-      {viewMode === 'kanban' && (
-        <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
-              OS por Status
-            </h2>
-            <div className="flex rounded-lg border overflow-hidden">
-              <button
-                className={cn('px-3 py-2 text-sm', 'hover:bg-muted')}
-                onClick={() => setViewMode('list')}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
-              <button
-                className={cn('px-3 py-2 text-sm', 'bg-primary text-primary-foreground')}
-                onClick={() => setViewMode('kanban')}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {kanbanColumns.map((col) => {
-              const columnOrders = filteredOrders.filter((os) => os.status === col.key);
-              return (
-                <div
-                  key={col.key}
-                  className="min-w-[280px] flex-1 flex flex-col rounded-lg border bg-muted/30"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const osId = e.dataTransfer.getData('text/plain');
-                    if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key);
-                  }}
-                >
-                  <div className="flex items-center gap-2 p-3 border-b">
-                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: col.color }} />
-                    <span className="text-sm font-semibold">{col.label}</span>
-                    <Badge variant="secondary" className="ml-auto text-xs">{columnOrders.length}</Badge>
-                  </div>
-                  <div className="flex-1 p-2 space-y-2 max-h-[60vh] overflow-y-auto">
-                    {columnOrders.map((os) => (
-                      <Card
-                        key={os.id}
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
-                        className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
-                      >
-                        <CardContent className="p-3 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}>
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEdit(os)}>
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <p className="text-sm font-medium">{os.customer?.name || 'N/A'}</p>
-                          {os.service_type && (
-                            <div className="flex items-center gap-1">
-                              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
-                              <span className="text-xs text-muted-foreground">{os.service_type.name}</span>
-                            </div>
-                          )}
-                          {os.scheduled_date && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {columnOrders.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-4">Nenhuma OS</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      <ServiceOrderFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        serviceOrder={editingOS}
-        onSubmit={handleSubmit}
-        isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
-      />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteMode(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir OS #{osToDelete?.order_number}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode
-                ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
-                : 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className={((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
-            {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? (
+            {/* Mobile: busca sempre visível + botão filtros + FAB. Desktop: actions bar atual. */}
+            {isMobile ? (
               <>
-                <Button variant="destructive" onClick={() => setDeleteMode('single')} className="w-full">
-                  Excluir apenas esta
-                </Button>
-                <Button variant="destructive" onClick={() => setDeleteMode('group')} className="w-full">
-                  Excluir todas da recorrência
-                </Button>
-                <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar OS..."
+                      className="pl-10 h-10"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <FilterSheet
+                    triggerLabel="Filtros"
+                    activeCount={activeFilterCount}
+                    onClear={clearFilters}
+                  >
+                    {filterContent}
+                  </FilterSheet>
+                </div>
+
+                <StatCarousel items={statItems} loading={isLoading} />
               </>
             ) : (
               <>
-                <AlertDialogCancel onClick={() => setDeleteMode(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Excluir
-                </AlertDialogAction>
+                <DateRangeFilter
+                  value={range}
+                  preset={preset}
+                  onPresetChange={setPreset}
+                  onRangeChange={setRange}
+                />
+
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  {filterContent}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => setStatusConfigOpen(true)}
+                      className="bg-gradient-to-b from-gray-700 to-gray-900 text-white hover:from-gray-600 hover:to-gray-800"
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span className="hidden sm:inline">Configurações</span>
+                    </Button>
+                    {canCreateOS && (
+                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nova OS
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <StatCarousel items={statItems} loading={isLoading} />
               </>
             )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
-      <ServiceOrderViewDialog
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-        serviceOrderId={viewingOsId}
-      />
+            {/* List View */}
+            {viewMode === 'list' && (
+              <>
+                {!isMobile && (
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
+                      Lista de OS
+                    </h2>
+                    <div className="flex rounded-lg border overflow-hidden">
+                      <button
+                        className={cn('px-3 py-2 text-sm', 'bg-primary text-primary-foreground')}
+                        onClick={() => setViewMode('list')}
+                      >
+                        <LayoutList className="h-4 w-4" />
+                      </button>
+                      <button
+                        className={cn('px-3 py-2 text-sm', 'hover:bg-muted')}
+                        onClick={() => setViewMode('kanban')}
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {isMobile ? (
+                  isLoading ? (
+                    <div className="space-y-2">
+                      {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                    </div>
+                  ) : filteredOrders.length === 0 ? (
+                    <EmptyState
+                      icon={<ClipboardList className="h-12 w-12" />}
+                      title={searchTerm || statusFilter !== 'all' ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
+                      description={searchTerm || statusFilter !== 'all' ? 'Tente filtros diferentes' : 'Toque em "Nova OS" para começar'}
+                    />
+                  ) : (
+                    <>
+                      <div className="rounded-xl border bg-card overflow-hidden">
+                        {pagination.paginatedItems.map((os) => (
+                          <MobileListItem
+                            key={os.id}
+                            onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}
+                            leading={
+                              <div
+                                className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+                                style={{ backgroundColor: getStatusColor(os.status) }}
+                              >
+                                <ClipboardList className="h-5 w-5" />
+                              </div>
+                            }
+                            title={
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[11px] text-muted-foreground">{getOsCode(os)}</span>
+                                <span className="truncate">{os.customer?.name || 'N/A'}</span>
+                              </div>
+                            }
+                            subtitle={
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {os.service_type && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                    {os.service_type.name}
+                                  </span>
+                                )}
+                                {os.scheduled_date && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                  </span>
+                                )}
+                              </div>
+                            }
+                            trailing={
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-2 py-0.5 whitespace-nowrap text-white border-0"
+                                style={{ backgroundColor: getStatusColor(os.status) }}
+                              >
+                                {getStatusLabel(os.status)}
+                              </Badge>
+                            }
+                          />
+                        ))}
+                      </div>
+                      <DataTablePagination
+                        page={pagination.page}
+                        totalPages={pagination.totalPages}
+                        totalItems={pagination.totalItems}
+                        from={pagination.from}
+                        to={pagination.to}
+                        pageSize={pagination.pageSize}
+                        onPageChange={pagination.setPage}
+                        onPageSizeChange={pagination.setPageSize}
+                      />
+                    </>
+                  )
+                ) : (
+                  <Card>
+                    <CardContent className="p-0">
+                      {isLoading ? (
+                        <div className="space-y-4 p-6">
+                          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                        </div>
+                      ) : filteredOrders.length === 0 ? (
+                        <EmptyState
+                          icon={<ClipboardList className="h-12 w-12" />}
+                          title={searchTerm || statusFilter !== 'all' ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
+                          description={searchTerm || statusFilter !== 'all' ? 'Tente filtros diferentes' : 'Clique em "Nova OS" para começar'}
+                        />
+                      ) : (
+                        <>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <SortableTableHead sortKey="order_number" sortConfig={sortConfig} onSort={handleSort}>OS</SortableTableHead>
+                                  <TableHead className="text-xs uppercase tracking-wider w-[40px]">Criador</TableHead>
+                                  <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
+                                  <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
+                                  <SortableTableHead sortKey="scheduled_date" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                                  <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                                  <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {pagination.paginatedItems.map((os) => {
+                                  return (
+                                    <TableRow key={os.id}>
+                                      <TableCell>
+                                        <span className="font-mono font-medium text-sm">
+                                          {getOsCode(os)}
+                                        </span>
+                                      </TableCell>
+                                      <TableCell>
+                                        {(os as any).created_by_profile?.avatar_url ? (
+                                          <img
+                                            src={(os as any).created_by_profile.avatar_url}
+                                            alt={(os as any).created_by_profile.full_name || ''}
+                                            title={(os as any).created_by_profile.full_name || 'Usuário'}
+                                            className="h-7 w-7 rounded-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground" title={(os as any).created_by_profile?.full_name || 'Usuário'}>
+                                            {((os as any).created_by_profile?.full_name || '?').slice(0, 2).toUpperCase()}
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <div>
+                                          <p className="font-medium">{os.customer?.name || (os as any).snapshot_data?.customer?.name || 'N/A'}</p>
+                                          {(os.equipment || (os as any).snapshot_data?.equipment) && (
+                                            <p className="text-xs text-muted-foreground">{os.equipment?.name || (os as any).snapshot_data?.equipment?.name}</p>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="hidden md:table-cell">
+                                        {os.service_type ? (
+                                          <div className="flex items-center gap-2">
+                                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                            <span className="text-sm">{os.service_type.name}</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-sm">{osTypeLabels[os.os_type]}</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="hidden sm:table-cell">
+                                        {os.scheduled_date ? (
+                                          <div className="flex items-center gap-1 text-sm">
+                                            <Calendar className="h-3 w-3" />
+                                            {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                          </div>
+                                        ) : '-'}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Select
+                                          value={os.status}
+                                          onValueChange={(value) => handleStatusChange(os, value as OsStatus)}
+                                        >
+                                          <SelectTrigger className="h-8 w-[140px] whitespace-nowrap" style={{ backgroundColor: getStatusColor(os.status), color: 'white' }}>
+                                            <SelectValue>
+                                              <span className="flex items-center gap-1 whitespace-nowrap text-white">
+                                                {getStatusLabel(os.status)}
+                                              </span>
+                                            </SelectValue>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {statusOptions.map((s) => (
+                                              <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex gap-1">
+                                          <Button variant="ghost" size="icon" title="Visualizar OS" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}>
+                                            <Eye className="h-4 w-4 text-muted-foreground" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" title="Abrir Questionário" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
+                                            <ExternalLink className="h-4 w-4 text-primary" />
+                                          </Button>
+                                          {canEditOS && (
+                                            <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(os)}>
+                                              <Pencil className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                          {canDeleteOS && (
+                                            <Button variant="destructive-ghost" size="icon" onClick={() => handleDeleteClick(os)}>
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          <DataTablePagination
+                            page={pagination.page}
+                            totalPages={pagination.totalPages}
+                            totalItems={pagination.totalItems}
+                            from={pagination.from}
+                            to={pagination.to}
+                            pageSize={pagination.pageSize}
+                            onPageChange={pagination.setPage}
+                            onPageSizeChange={pagination.setPageSize}
+                          />
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
 
-      <OsStatusManagerDialog
-        open={statusConfigOpen}
-        onOpenChange={setStatusConfigOpen}
-      />
+            {/* Kanban View */}
+            {viewMode === 'kanban' && (
+              <>
+                {!isMobile && (
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
+                      OS por Status
+                    </h2>
+                    <div className="flex rounded-lg border overflow-hidden">
+                      <button
+                        className={cn('px-3 py-2 text-sm', 'hover:bg-muted')}
+                        onClick={() => setViewMode('list')}
+                      >
+                        <LayoutList className="h-4 w-4" />
+                      </button>
+                      <button
+                        className={cn('px-3 py-2 text-sm', 'bg-primary text-primary-foreground')}
+                        onClick={() => setViewMode('kanban')}
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-4 overflow-x-auto pb-4">
+                  {kanbanColumns.map((col) => {
+                    const columnOrders = filteredOrders.filter((os) => os.status === col.key);
+                    return (
+                      <div
+                        key={col.key}
+                        className="min-w-[280px] flex-1 flex flex-col rounded-lg border bg-muted/30"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const osId = e.dataTransfer.getData('text/plain');
+                          if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key);
+                        }}
+                      >
+                        <div className="flex items-center gap-2 p-3 border-b">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: col.color }} />
+                          <span className="text-sm font-semibold">{col.label}</span>
+                          <Badge variant="secondary" className="ml-auto text-xs">{columnOrders.length}</Badge>
+                        </div>
+                        <div className="flex-1 p-2 space-y-2 max-h-[60vh] overflow-y-auto">
+                          {columnOrders.map((os) => (
+                            <Card
+                              key={os.id}
+                              draggable
+                              onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
+                              className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+                            >
+                              <CardContent className="p-3 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
+                                  <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}>
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEdit(os)}>
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <p className="text-sm font-medium">{os.customer?.name || 'N/A'}</p>
+                                {os.service_type && (
+                                  <div className="flex items-center gap-1">
+                                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
+                                    <span className="text-xs text-muted-foreground">{os.service_type.name}</span>
+                                  </div>
+                                )}
+                                {os.scheduled_date && (
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                  </p>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                          {columnOrders.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-4">Nenhuma OS</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* FAB Nova OS no mobile */}
+            {isMobile && canCreateOS && (
+              <FABButton
+                icon={<Plus className="h-5 w-5" />}
+                label="Nova OS"
+                onClick={() => { setEditingOS(null); setFormOpen(true); }}
+              />
+            )}
+
+            <ServiceOrderFormDialog
+              open={formOpen}
+              onOpenChange={setFormOpen}
+              serviceOrder={editingOS}
+              onSubmit={handleSubmit}
+              isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
+            />
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteMode(null); }}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir OS #{osToDelete?.order_number}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode
+                      ? 'Esta OS faz parte de uma recorrência. O que deseja fazer?'
+                      : 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className={((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? 'flex-col gap-2 sm:flex-col' : ''}>
+                  {((osToDelete as any)?.recurrence_group_id || (osToDelete as any)?.contract_id) && !deleteMode ? (
+                    <>
+                      <Button variant="destructive" onClick={() => setDeleteMode('single')} className="w-full">
+                        Excluir apenas esta
+                      </Button>
+                      <Button variant="destructive" onClick={() => setDeleteMode('group')} className="w-full">
+                        Excluir todas da recorrência
+                      </Button>
+                      <AlertDialogCancel className="w-full">Cancelar</AlertDialogCancel>
+                    </>
+                  ) : (
+                    <>
+                      <AlertDialogCancel onClick={() => setDeleteMode(null)}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Excluir
+                      </AlertDialogAction>
+                    </>
+                  )}
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <ServiceOrderViewDialog
+              open={viewDialogOpen}
+              onOpenChange={setViewDialogOpen}
+              serviceOrderId={viewingOsId}
+            />
+
+            <OsStatusManagerDialog
+              open={statusConfigOpen}
+              onOpenChange={setStatusConfigOpen}
+            />
           </div>
         )}
       </SettingsSidebarLayout>

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.37',
+    date: '21 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Tela de Ordens de Serviço com cara de aplicativo no celular',
+        description: 'A tela de Ordens de Serviço foi redesenhada pra ficar com visual de aplicativo no celular: cabeçalho mais compacto, os contadores de status (Agendada, Pendente, A Caminho, Em Andamento, Pausada, Concluída, Cancelada) agora ficam numa fileira que desliza pro lado, os filtros foram agrupados num botão "Filtros" que abre uma gaveta de baixo (com período, status, alternar entre Lista/Kanban e gerenciar status, tudo num só lugar), a busca fica fixa no topo, e o botão "Nova OS" virou um botão flutuante no canto inferior direito. A lista de OS ficou mais limpa: cada item mostra o número, cliente, tipo de serviço e data — toque na linha pra abrir os detalhes e trocar status, editar ou excluir. No computador, a tela continua exatamente como era antes, com a tabela completa e todos os botões inline.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.35',
     date: '21 de maio de 2026',
     type: 'patch',
