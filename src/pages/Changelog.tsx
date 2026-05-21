@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.34',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Erro de localização ao finalizar OS em locais com sinal fraco',
+        description: 'Quando o técnico estava num local com sinal de celular fraco ou em ambiente fechado, o app esperava 15 segundos pelo GPS e mostrava erro "A localização demorou demais para responder", impedindo a finalização da OS. Agora o app tenta uma segunda estratégia automaticamente: se o GPS não responde no tempo, busca a localização via rede do celular/Wi-Fi com tolerância maior (até 30 segundos e aceitando posição capturada nos últimos 60 segundos). Só mostra erro se as duas tentativas falharem — o que cobre praticamente todos os casos reais de campo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.32',
     date: '20 de maio de 2026',
     type: 'patch',

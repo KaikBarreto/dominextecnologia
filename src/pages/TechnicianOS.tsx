@@ -301,29 +301,52 @@ export default function TechnicianOS() {
         reject(new Error('Seu navegador não suporta geolocalização. Use um navegador atualizado.'));
         return;
       }
+
+      const successHandler = (position: GeolocationPosition) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      };
+
+      const buildMessage = (code: number, isFallback: boolean): string => {
+        switch (code) {
+          case 1 /* PERMISSION_DENIED */:
+            return 'Você precisa permitir o acesso à localização para registrar o serviço. Abra as configurações do navegador, libere a localização para este site e tente novamente.';
+          case 2 /* POSITION_UNAVAILABLE */:
+            return isFallback
+              ? 'Não conseguimos obter sua localização nem pelo GPS, nem pelas redes próximas. Verifique se o GPS do aparelho está ligado, se você tem sinal de internet, e tente sair pra um local mais aberto.'
+              : 'Não conseguimos obter sua localização agora. Verifique se o GPS do aparelho está ligado e se você tem sinal.';
+          case 3 /* TIMEOUT */:
+            return isFallback
+              ? 'A localização demorou demais pra responder, mesmo tentando GPS e redes próximas. Tente sair pra um local mais aberto e finalize a OS daqui a alguns segundos.'
+              : 'A localização demorou demais para responder. Tente de novo daqui a alguns segundos.';
+          default:
+            return 'Não foi possível obter sua localização. Verifique permissão e GPS, e tente novamente.';
+        }
+      };
+
+      // Tentativa 1: GPS preciso, sem cache
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error: GeolocationPositionError) => {
-          let message: string;
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              message = 'Você precisa permitir o acesso à localização para fazer check-in. Abra as configurações do navegador, libere a localização para este site e tente novamente.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              message = 'Não conseguimos obter sua localização agora. Verifique se o GPS do aparelho está ligado e se você tem sinal. Saia e entre num local mais aberto, se possível, e tente de novo.';
-              break;
-            case error.TIMEOUT:
-              message = 'A localização demorou demais para responder. Tente de novo daqui a alguns segundos. Se persistir, verifique se o GPS do aparelho está ligado.';
-              break;
-            default:
-              message = 'Não foi possível obter sua localização. Verifique permissão e GPS, e tente novamente.';
+        successHandler,
+        (errorHighAccuracy: GeolocationPositionError) => {
+          // Fail-fast: permissão negada nunca melhora com retry
+          if (errorHighAccuracy.code === errorHighAccuracy.PERMISSION_DENIED) {
+            reject(new Error(buildMessage(errorHighAccuracy.code, false)));
+            return;
           }
-          reject(new Error(message));
+
+          // Tentativa 2: low accuracy (cell tower / wifi) com cache de 60s
+          navigator.geolocation.getCurrentPosition(
+            successHandler,
+            (errorLowAccuracy: GeolocationPositionError) => {
+              // Se a 2ª tentativa também falhou, usa o código da 2ª tentativa
+              // (mais informativo — TIMEOUT no fallback significa que nem GPS
+              // nem rede deram conta no tempo combinado).
+              reject(new Error(buildMessage(errorLowAccuracy.code, true)));
+            },
+            { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
+          );
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
