@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.41',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos da Ordem de Serviço abrem dentro do app',
+        description: 'Antes, ao tocar em uma foto na visualização da Ordem de Serviço, o navegador abria a imagem em uma nova aba — quebrava o fluxo, especialmente no celular. Agora a foto abre em um visualizador sutil em cima da tela: imagem grande centralizada, fundo escurecido, setas para passar entre fotos do mesmo grupo, botão para baixar e botão para fechar. Vale tanto para as fotos uploadadas direto na OS quanto para as fotos enviadas nas respostas do questionário do técnico.',
+        category: 'correcao',
+      },
+      {
+        title: 'Carrossel de status da OS no celular mais polido',
+        description: 'Os cartões coloridos de status no topo da tela de Ordens de Serviço (no celular) ficaram um pouco mais altos, com layout redesenhado: ícone colorido no canto superior esquerdo, nome do status na direita e o número grande embaixo em destaque. O cartão ativo ganhou uma sombra suave para ficar mais óbvio. E agora o próximo cartão aparece "cortado pela metade" na borda direita — fica claro que dá pra rolar de lado pra ver mais status.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.40',
     date: '21 de maio de 2026',
     type: 'patch',

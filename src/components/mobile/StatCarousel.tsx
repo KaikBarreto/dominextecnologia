@@ -27,9 +27,9 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
 
   if (loading) {
     return isMobile ? (
-      <div className="flex gap-2 overflow-hidden">
+      <div className="flex gap-2 overflow-hidden px-3 -mx-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-32 shrink-0 rounded-xl" />
+          <Skeleton key={i} className="h-[88px] w-[140px] shrink-0 rounded-2xl" />
         ))}
       </div>
     ) : (
@@ -45,30 +45,32 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
     return (
       <div className="relative -mx-3">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-background to-transparent" />
-        <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x snap-mandatory scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
+        <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {items.map((item) => (
             <button
               key={item.key}
               type="button"
               onClick={item.onClick}
               className={cn(
-                'snap-start shrink-0 flex items-center gap-2 h-16 min-w-[128px] px-3 rounded-xl border bg-card text-left transition-all active:scale-95',
-                item.active ? 'ring-2 ring-primary border-primary/60' : 'border-border'
+                'snap-start shrink-0 flex flex-col justify-between h-[88px] min-w-[140px] p-3 rounded-2xl border bg-card text-left transition-all active:scale-95',
+                item.active
+                  ? 'ring-2 ring-primary border-primary/60 shadow-md'
+                  : 'border-border shadow-sm'
               )}
             >
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
-                style={{ backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
-              >
-                {item.icon}
-              </span>
-              <span className="flex flex-col min-w-0">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">
+              <div className="flex items-start justify-between gap-2">
+                <span
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
+                  style={{ backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
+                >
+                  {item.icon}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate text-right mt-1">
                   {item.label}
                 </span>
-                <span className="text-lg font-bold leading-tight">{item.count}</span>
-              </span>
+              </div>
+              <span className="text-2xl font-bold leading-none">{item.count}</span>
             </button>
           ))}
         </div>

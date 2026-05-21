@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { useServiceRatings } from '@/hooks/useServiceRatings';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 interface OSPhoto {
   id: string;
@@ -63,9 +64,24 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([]);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const { toast } = useToast();
   const { createRatingToken } = useServiceRatings();
   const isCompact = useIsCompact();
+
+  const openPreview = (urls: string[], index: number) => {
+    setGalleryImages(urls);
+    setGalleryIndex(index);
+    setPreviewPhoto(urls[index] ?? null);
+  };
+
+  const closePreview = () => {
+    setPreviewPhoto(null);
+    setGalleryImages([]);
+    setGalleryIndex(0);
+  };
 
   useEffect(() => {
     if (open && serviceOrderId) fetchData();
@@ -195,12 +211,20 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
           <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Fotos ({photos.length})</CardTitle></CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-3 gap-2">
-              {photos.map((photo) => (
-                <a key={photo.id} href={photo.photo_url} target="_blank" rel="noopener noreferrer" className="relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-80 transition-opacity">
-                  <img src={photo.photo_url} alt={photo.photo_type} className="w-full h-full object-cover" />
-                  <Badge variant="secondary" className="absolute bottom-1 left-1 text-[10px] capitalize">{photo.photo_type}</Badge>
-                </a>
-              ))}
+              {photos.map((photo, idx) => {
+                const urls = photos.map((p) => p.photo_url);
+                return (
+                  <button
+                    key={photo.id}
+                    type="button"
+                    onClick={() => openPreview(urls, idx)}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <img src={photo.photo_url} alt={photo.photo_type} className="w-full h-full object-cover" />
+                    <Badge variant="secondary" className="absolute bottom-1 left-1 text-[10px] capitalize">{photo.photo_type}</Badge>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -223,15 +247,26 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
               ) : (
                 <div className="space-y-1 mt-1">
                   {hasTextValue && <p>{response.response_value}</p>}
-                  {hasPhoto && (
-                    <div className="flex flex-wrap gap-2">
-                      {response.response_photo_url!.split(',').filter(Boolean).map((url, i) => (
-                        <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer">
-                          <img src={url.trim()} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                  {hasPhoto && (() => {
+                    const urls = response.response_photo_url!
+                      .split(',')
+                      .map((u) => u.trim())
+                      .filter(Boolean);
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {urls.map((url, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => openPreview(urls, i)}
+                            className="rounded-lg overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:opacity-80 transition-opacity"
+                          >
+                            <img src={url} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {!hasTextValue && !hasPhoto && <p>-</p>}
                 </div>
               )}
@@ -336,25 +371,46 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
     </span>
   ) : 'Detalhes da OS';
 
+  const previewModal = (
+    <ImagePreviewModal
+      src={previewPhoto || ''}
+      alt="Foto"
+      open={!!previewPhoto}
+      onClose={closePreview}
+      images={galleryImages.length > 1 ? galleryImages : undefined}
+      currentIndex={galleryIndex}
+      onNavigate={(i) => {
+        setGalleryIndex(i);
+        setPreviewPhoto(galleryImages[i] ?? null);
+      }}
+    />
+  );
+
   if (isCompact) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90dvh]">
-          <DrawerHeader><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
-          <div className="px-4 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(90dvh - 80px)' }}>{content}</div>
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="max-h-[90dvh]">
+            <DrawerHeader><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
+            <div className="px-4 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(90dvh - 80px)' }}>{content}</div>
+          </DrawerContent>
+        </Drawer>
+        {previewModal}
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-0"><DialogTitle>{title}</DialogTitle></DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-80px)]">
-          <div className="p-6 pt-4">{content}</div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-0"><DialogTitle>{title}</DialogTitle></DialogHeader>
+          <ScrollArea className="max-h-[calc(90vh-80px)]">
+            <div className="p-6 pt-4">{content}</div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+      {previewModal}
+    </>
   );
 }

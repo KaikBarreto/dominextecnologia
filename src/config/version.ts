@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.40";
+export const APP_VERSION = "1.8.41";
 
-export const VERSION_NOTES = "Botão Editar volta para a cor laranja da marca.";
+export const VERSION_NOTES = "Fotos da OS abrem dentro do app + carrossel de status mais polido no celular.";
