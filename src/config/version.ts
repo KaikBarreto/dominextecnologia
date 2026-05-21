@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.34";
+export const APP_VERSION = "1.8.35";
 
-export const VERSION_NOTES = "Captura de GPS ao finalizar OS agora tenta uma segunda estratégia (rede do celular) quando o GPS sozinho demora demais — ajuda em locais com sinal fraco ou ambiente fechado.";
+export const VERSION_NOTES = "Rodapé com a versão do sistema, créditos e botão de atualizar voltou a aparecer no celular/tablet — tanto no rodapé das páginas quanto no menu 'Mais'.";

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.35',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Rodapé com versão e botão de atualizar voltou no celular',
+        description: 'O rodapé com a versão do sistema, link "Desenvolvido por Auctus", copyright e botão de atualizar (limpa cache e recarrega) tinha sumido do celular e tablet depois da reformulação do menu lateral. Agora voltou em dois lugares: no fim de cada tela do app (rolando até o final) e no rodapé do menu "Mais". Quem usa no computador continua vendo o rodapé como antes.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.34',
     date: '21 de maio de 2026',
     type: 'patch',

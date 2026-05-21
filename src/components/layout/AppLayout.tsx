@@ -139,6 +139,9 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
         <div className="min-w-0 max-w-full">
           <Outlet />
         </div>
+        <div className="mt-6 pb-2">
+          <SystemFooter />
+        </div>
       </main>
       <MobileBottomNav />
     </div>

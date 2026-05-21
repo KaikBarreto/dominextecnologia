@@ -47,6 +47,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { ROLE_LABELS } from '@/hooks/useUsers';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
+import { SystemFooter } from '@/components/layout/SystemFooter';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -531,6 +532,10 @@ function MoreMenuFooter({ onClose }: { onClose: () => void }) {
           <LogOut className="h-4 w-4" />
           <span className="text-sm font-semibold">Sair</span>
         </Button>
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-border/60">
+        <SystemFooter />
       </div>
     </div>
   );
