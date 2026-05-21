@@ -215,7 +215,7 @@ export function MobileListItem({
                 className={cn(
                   'gap-2 cursor-pointer',
                   action.variant === 'destructive' && 'text-destructive focus:text-destructive',
-                  action.variant === 'edit' && 'text-blue-600 focus:text-blue-600',
+                  action.variant === 'edit' && 'text-warning focus:text-warning',
                 )}
               >
                 <span className="shrink-0">{action.icon}</span>
@@ -258,7 +258,7 @@ export function MobileListItem({
             }}
             className={cn(
               'flex flex-col items-center justify-center gap-1 text-xs font-medium',
-              action.variant === 'edit' && 'bg-blue-500 text-white hover:bg-blue-600',
+              action.variant === 'edit' && 'bg-warning text-warning-foreground hover:bg-warning/90',
               action.variant === 'destructive' &&
                 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
             )}

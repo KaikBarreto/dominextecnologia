@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.40',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Botão Editar volta para a cor laranja da marca',
+        description: 'O botão Editar no menu de três pontinhos e no swipe das Ordens de Serviço no celular estava aparecendo em azul, fora do padrão visual do Dominex. Voltou para o laranja oficial da marca, igual aos botões Editar das outras telas do sistema.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.39',
     date: '21 de maio de 2026',
     type: 'minor',
