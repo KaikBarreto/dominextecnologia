@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.38',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novo loading com a cor da marca',
+        description: 'O carregamento de telas e do app inteiro foi atualizado: agora aparece um círculo verde Dominex girando de forma mais elegante (anel completo, mais fluido), no lugar do spinner de borda tracejada anterior. O visual fica mais consistente com a identidade da marca e parece mais com aplicativo nativo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Acertos visuais da tela de Ordens de Serviço no celular',
+        description: 'Três ajustes finos no celular: (1) o botão flutuante "Nova OS" sumia atrás do menu "Mais" e de outras janelas — agora desaparece automaticamente quando qualquer menu, gaveta ou diálogo é aberto. (2) Subimos o botão flutuante um pouco mais alto para não ficar colado no menu inferior. (3) Aumentamos o espaço entre as Ordens de Serviço na lista para dar visual mais de aplicativo nativo, com cada item respirando melhor.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.8.37',
     date: '21 de maio de 2026',
     type: 'minor',

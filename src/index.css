@@ -234,6 +234,27 @@ Design Premium com Verde da Marca #00C597
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Esconde o FAB quando qualquer dialog/drawer/sheet do radix está aberto. */
+  body:has([role="dialog"][data-state="open"]) .mobile-fab {
+    display: none;
+  }
+
+  /* Loader Dominex (ring spinner) — usa cor primária automaticamente. */
+  .loader {
+    width: 50px;
+    padding: 8px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    --_m: conic-gradient(#0000 10%, #000), linear-gradient(#000 0 0) content-box;
+    -webkit-mask: var(--_m);
+            mask: var(--_m);
+    -webkit-mask-composite: source-out;
+            mask-composite: subtract;
+    animation: dominex-loader-spin 1s infinite linear;
+  }
+  @keyframes dominex-loader-spin { to { transform: rotate(1turn); } }
 }
 
 /* Destructive buttons (excluir, cancelar, sair) - vermelho com texto branco */

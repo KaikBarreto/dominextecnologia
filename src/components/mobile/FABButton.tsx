@@ -33,10 +33,10 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
         onClick={onClick}
         aria-label={label}
         className={cn(
-          'fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-90 animate-in fade-in zoom-in-90',
+          'mobile-fab fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-90 animate-in fade-in zoom-in-90',
           className
         )}
-        style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}
+        style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
       >
         <span className="flex h-6 w-6 items-center justify-center">{icon}</span>
       </button>
@@ -49,10 +49,10 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
       onClick={onClick}
       aria-label={label}
       className={cn(
-        'fixed right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95 animate-in fade-in zoom-in-90',
+        'mobile-fab fixed right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95 animate-in fade-in zoom-in-90',
         className
       )}
-      style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}
+      style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
     >
       <span className="flex h-5 w-5 items-center justify-center">{icon}</span>
       <span className="text-sm font-semibold">{label}</span>

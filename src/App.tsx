@@ -112,15 +112,11 @@ import DomiflixAvatarPicker from "./pages/DomiflixAvatarPicker";
 
 // Layout
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PageLoading } from "@/components/ui/page-loading";
 
 const queryClient = new QueryClient();
 
-// Loading spinner component
-const LoadingSpinner = () => (
-  <div className="flex min-h-screen items-center justify-center">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-  </div>
-);
+const LoadingSpinner = () => <PageLoading />;
 
 // Determine the default authenticated route based on permissions
 function useDefaultRoute() {
