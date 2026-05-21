@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.42',
+    date: '21 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Todas as janelas do app no celular agora deslizam de baixo',
+        description: 'Antes, ao confirmar uma exclusão, abrir um cadastro ou ver detalhes de algo no celular, aparecia uma janela retangular no meio da tela — comum em sites, mas estranha em aplicativo. Agora todas essas janelas (de confirmação, formulário, alerta) deslizam de baixo pra cima como gaveta, com cantos arredondados no topo e botões cheios espalmados — igual app nativo de iOS e Android. Os botões de Cancelar e Confirmar ficam empilhados, com a ação principal embaixo, mais perto do polegar. No computador, as janelas continuam aparecendo no centro como antes. Mudança vale automaticamente pra todas as janelas do sistema, sem precisar atualizar tela por tela.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.41',
     date: '21 de maio de 2026',
     type: 'patch',
