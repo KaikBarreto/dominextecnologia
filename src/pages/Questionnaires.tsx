@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Trash2 } from 'lucide-react';
+import { Plus, FileText, Trash2, Search, Pencil } from 'lucide-react';
+import { cn, fuzzyIncludes } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
@@ -14,25 +16,42 @@ import {
 } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { FABButton } from '@/components/mobile/FABButton';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
+
+type TemplateWithServiceIds = { service_type_ids?: string[] };
+
+function getServiceIds(template: unknown): string[] | undefined {
+  return (template as TemplateWithServiceIds).service_type_ids;
+}
 
 export default function QuestionnairesPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
+
   const activeTemplates = templates.filter((template) => template.is_active);
-  const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(activeTemplates);
+  const filteredTemplates = activeTemplates.filter((t) => fuzzyIncludes(t.name, searchTerm));
+  const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(filteredTemplates);
+  const pagination = useDataPagination(sortedTemplates, 10, 'questionnaires-list');
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -67,110 +86,234 @@ export default function QuestionnairesPage() {
     }
   };
 
+  const templateToDelete = activeTemplates.find((t) => t.id === deleteId);
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Questionários</h1>
-          <p className="text-muted-foreground">Gerencie modelos e perguntas por tipo de serviço</p>
+    <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
+      <MobilePageHeader
+        title="Questionários"
+        subtitle="Gerencie modelos e perguntas por tipo de serviço"
+        icon={FileText}
+        actions={
+          isMobile ? undefined : (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Questionário
+            </Button>
+          )
+        }
+      />
+
+      {/* Busca fixa no topo */}
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative min-w-0 flex-1 sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={isMobile ? 'Buscar questionários...' : 'Buscar por nome do questionário...'}
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
-      {/* Button above table */}
-      <div className="flex justify-end">
-        <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo questionário
-        </Button>
-      </div>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {activeTemplates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">Nenhum questionário criado</h3>
-              <p className="text-muted-foreground">Clique em "Novo questionário" para começar</p>
-            </div>
+      {isMobile ? (
+        // -----------------------------------------------------------------
+        // Mobile: lista nativa, sem Card wrapper.
+        // -----------------------------------------------------------------
+        <>
+          {filteredTemplates.length === 0 ? (
+            <EmptyState
+              icon={<FileText className="h-12 w-12" />}
+              title={
+                searchTerm
+                  ? 'Nenhum questionário encontrado'
+                  : 'Nenhum questionário criado'
+              }
+              description={
+                searchTerm
+                  ? 'Tente uma busca diferente'
+                  : 'Toque em "Novo Questionário" para começar'
+              }
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden sm:table-cell">Perguntas</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden md:table-cell">Serviços</SortableTableHead>
-                    <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Ações</SortableTableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedTemplates.map((template) => {
-                    const serviceIds = (template as any).service_type_ids as string[] | undefined;
-                    const appliesToAll = !serviceIds || serviceIds.length === 0;
-                    const linkedServices = appliesToAll
-                      ? []
-                      : serviceTypes.filter(st => serviceIds!.includes(st.id));
+            <>
+              <div className="rounded-xl border bg-card overflow-hidden">
+                {pagination.paginatedItems.map((template) => {
+                  const serviceIds = getServiceIds(template);
+                  const appliesToAll = !serviceIds || serviceIds.length === 0;
+                  const questionsCount = template.questions?.length || 0;
+                  const scopeLabel = appliesToAll
+                    ? 'Todos os serviços'
+                    : `${serviceIds!.length} serviço${serviceIds!.length === 1 ? '' : 's'}`;
+                  const questionsLabel = `${questionsCount} pergunta${questionsCount === 1 ? '' : 's'}`;
 
-                    return (
-                      <TableRow
-                        key={template.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/questionarios/${template.id}`)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="font-medium">{template.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <span className="text-sm">{template.questions?.length || 0}</span>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {appliesToAll ? (
-                            <Badge variant="secondary" className="text-xs">Todos</Badge>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {linkedServices.slice(0, 3).map(st => (
-                                <Badge key={st.id} variant="outline" className="text-xs">
-                                  <span className="inline-block h-2 w-2 rounded-full mr-1" style={{ backgroundColor: st.color }} />
-                                  {st.name}
-                                </Badge>
-                              ))}
-                              {linkedServices.length > 3 && (
-                                <Badge variant="outline" className="text-xs">+{linkedServices.length - 3}</Badge>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
-                            {template.is_active ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="destructive-ghost"
-                            size="icon"
-                            onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                  const itemActions: ItemAction[] = [
+                    {
+                      key: 'edit',
+                      label: 'Visualizar / Editar',
+                      icon: <Pencil className="h-4 w-4" />,
+                      variant: 'edit',
+                      onClick: () => navigate(`/questionarios/${template.id}`),
+                    },
+                    {
+                      key: 'delete',
+                      label: 'Excluir',
+                      icon: <Trash2 className="h-4 w-4" />,
+                      variant: 'destructive',
+                      onClick: () => setDeleteId(template.id),
+                    },
+                  ];
+
+                  return (
+                    <MobileListItem
+                      key={template.id}
+                      onClick={() => navigate(`/questionarios/${template.id}`)}
+                      actions={itemActions}
+                      leading={
+                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                      }
+                      title={template.name}
+                      subtitle={`${questionsLabel} • ${scopeLabel}`}
+                    />
+                  );
+                })}
+              </div>
+              <DataTablePagination
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                from={pagination.from}
+                to={pagination.to}
+                pageSize={pagination.pageSize}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+            </>
           )}
-        </CardContent>
-      </Card>
+        </>
+      ) : (
+        // -----------------------------------------------------------------
+        // Desktop: mantém Card + tabela 100% como estava.
+        // -----------------------------------------------------------------
+        <Card>
+          <CardContent className="p-0">
+            {filteredTemplates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+                <h3 className="text-lg font-medium">
+                  {searchTerm
+                    ? 'Nenhum questionário encontrado'
+                    : 'Nenhum questionário criado'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {searchTerm
+                    ? 'Tente uma busca diferente'
+                    : 'Clique em "Novo Questionário" para começar'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden sm:table-cell">Perguntas</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden md:table-cell">Serviços</SortableTableHead>
+                        <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Ações</SortableTableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagination.paginatedItems.map((template) => {
+                        const serviceIds = getServiceIds(template);
+                        const appliesToAll = !serviceIds || serviceIds.length === 0;
+                        const linkedServices = appliesToAll
+                          ? []
+                          : serviceTypes.filter(st => serviceIds!.includes(st.id));
+
+                        return (
+                          <TableRow
+                            key={template.id}
+                            className="cursor-pointer"
+                            onClick={() => navigate(`/questionarios/${template.id}`)}
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="font-medium">{template.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <span className="text-sm">{template.questions?.length || 0}</span>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {appliesToAll ? (
+                                <Badge variant="secondary" className="text-xs">Todos</Badge>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {linkedServices.slice(0, 3).map(st => (
+                                    <Badge key={st.id} variant="outline" className="text-xs">
+                                      <span className="inline-block h-2 w-2 rounded-full mr-1" style={{ backgroundColor: st.color }} />
+                                      {st.name}
+                                    </Badge>
+                                  ))}
+                                  {linkedServices.length > 3 && (
+                                    <Badge variant="outline" className="text-xs">+{linkedServices.length - 3}</Badge>
+                                  )}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
+                                {template.is_active ? 'Ativo' : 'Inativo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="destructive-ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <DataTablePagination
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.totalItems}
+                  from={pagination.from}
+                  to={pagination.to}
+                  pageSize={pagination.pageSize}
+                  onPageChange={pagination.setPage}
+                  onPageSizeChange={pagination.setPageSize}
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* FAB mobile-only — desktop usa botão inline no header. */}
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Novo Questionário"
+          onClick={() => setCreateOpen(true)}
+        />
+      )}
 
       {/* Create Modal */}
       <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Questionário">
@@ -230,7 +373,9 @@ export default function QuestionnairesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Desativar questionário?</AlertDialogTitle>
             <AlertDialogDescription>
-              O questionário deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.
+              {templateToDelete
+                ? `O questionário "${templateToDelete.name}" deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.`
+                : 'O questionário deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
