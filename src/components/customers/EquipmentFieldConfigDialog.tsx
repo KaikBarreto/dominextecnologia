@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, GripVertical, Eye, EyeOff } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Plus, Trash2, GripVertical, Eye, EyeOff, Type, Hash, Calendar, ToggleLeft } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEquipmentFieldConfig, type EquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -18,7 +20,20 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+// Mapeia tipo de campo → ícone + label PT-BR.
+const FIELD_TYPE_META: Record<string, { icon: ReactNode; label: string }> = {
+  text: { icon: <Type className="h-4 w-4" />, label: 'Texto' },
+  number: { icon: <Hash className="h-4 w-4" />, label: 'Número' },
+  date: { icon: <Calendar className="h-4 w-4" />, label: 'Data' },
+  boolean: { icon: <ToggleLeft className="h-4 w-4" />, label: 'Sim/Não' },
+};
+
+function getFieldTypeMeta(type: string) {
+  return FIELD_TYPE_META[type] ?? { icon: <Type className="h-4 w-4" />, label: type };
+}
+
 export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
+  const isMobile = useIsMobile();
   const { fields, isLoading, updateField, createField, deleteField } = useEquipmentFieldConfig();
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<string>('text');
@@ -57,6 +72,36 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
     setDeleteId(null);
   };
 
+  // Bloco "adicionar novo campo" — usado em ambos viewports.
+  const addBlock = (
+    <div className="border-t pt-4">
+      <p className="text-sm font-medium mb-2">Adicionar novo campo</p>
+      <div className="flex gap-2">
+        <Input
+          placeholder="Nome do campo"
+          value={newFieldLabel}
+          onChange={(e) => setNewFieldLabel(e.target.value)}
+          className="flex-1"
+          onKeyDown={(e) => e.key === 'Enter' && handleAddField()}
+        />
+        <Select value={newFieldType} onValueChange={setNewFieldType}>
+          <SelectTrigger className="w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="text">Texto</SelectItem>
+            <SelectItem value="number">Número</SelectItem>
+            <SelectItem value="date">Data</SelectItem>
+            <SelectItem value="boolean">Sim/Não</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button size="sm" onClick={handleAddField} disabled={!newFieldLabel.trim()}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Configurar Campos do Equipamento">
@@ -69,7 +114,86 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
+          ) : isMobile ? (
+            // Mobile: cada campo em MobileListItem. Rename inline preservado no leading-content.
+            // Ações secundárias (toggle visível, toggle obrigatório, excluir) vão no overflow menu.
+            <div className="rounded-xl border bg-card overflow-hidden">
+              {fields.map((field) => {
+                const meta = getFieldTypeMeta(field.field_type);
+
+                const actions: ItemAction[] = [
+                  {
+                    key: 'toggle-visible',
+                    label: field.is_visible ? 'Ocultar' : 'Mostrar',
+                    icon: field.is_visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />,
+                    onClick: () => handleToggleVisible(field),
+                  },
+                  {
+                    key: 'toggle-required',
+                    label: field.is_required ? 'Tornar opcional' : 'Tornar obrigatório',
+                    icon: <ToggleLeft className="h-4 w-4" />,
+                    onClick: () => handleToggleRequired(field),
+                  },
+                  {
+                    key: 'delete',
+                    label: 'Excluir',
+                    icon: <Trash2 className="h-4 w-4" />,
+                    variant: 'destructive',
+                    onClick: () => setDeleteId(field.id),
+                  },
+                ];
+
+                return (
+                  <MobileListItem
+                    key={field.id}
+                    leading={
+                      <div
+                        className="h-10 w-10 rounded-lg flex items-center justify-center bg-muted text-muted-foreground"
+                        aria-hidden
+                      >
+                        {meta.icon}
+                      </div>
+                    }
+                    title={
+                      // Rename inline — central no UX. onClick não navega; só edita.
+                      <Input
+                        className="h-8 text-[15px] font-medium border-0 shadow-none px-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                        defaultValue={field.label}
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={(e) => {
+                          if (e.target.value !== field.label) handleLabelChange(field, e.target.value);
+                        }}
+                      />
+                    }
+                    subtitle={
+                      <span className="inline-flex items-center gap-1.5 flex-wrap">
+                        <span>{meta.label}</span>
+                        {!field.is_visible && (
+                          <>
+                            <span className="text-muted-foreground/50">•</span>
+                            <span className="inline-flex items-center gap-1">
+                              <EyeOff className="h-3 w-3" /> Oculto
+                            </span>
+                          </>
+                        )}
+                        {field.is_required && (
+                          <>
+                            <span className="text-muted-foreground/50">•</span>
+                            <span className="text-warning">Obrigatório</span>
+                          </>
+                        )}
+                      </span>
+                    }
+                    actions={actions}
+                  />
+                );
+              })}
+              {fields.length === 0 && (
+                <p className="text-sm text-center text-muted-foreground py-6">Nenhum campo configurado</p>
+              )}
+            </div>
           ) : (
+            // Desktop: layout original preservado.
             <div className="space-y-2">
               {fields.map((field) => (
                 <div key={field.id} className="flex items-center gap-2 rounded-lg border p-3">
@@ -108,32 +232,7 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
             </div>
           )}
 
-          <div className="border-t pt-4">
-            <p className="text-sm font-medium mb-2">Adicionar novo campo</p>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Nome do campo"
-                value={newFieldLabel}
-                onChange={(e) => setNewFieldLabel(e.target.value)}
-                className="flex-1"
-                onKeyDown={(e) => e.key === 'Enter' && handleAddField()}
-              />
-              <Select value={newFieldType} onValueChange={setNewFieldType}>
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="text">Texto</SelectItem>
-                  <SelectItem value="number">Número</SelectItem>
-                  <SelectItem value="date">Data</SelectItem>
-                  <SelectItem value="boolean">Sim/Não</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button size="sm" onClick={handleAddField} disabled={!newFieldLabel.trim()}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          {addBlock}
         </div>
       </ResponsiveModal>
 
