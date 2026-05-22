@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { fuzzyIncludes } from '@/lib/utils';
-import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck } from 'lucide-react';
+import { fuzzyIncludes, cn } from '@/lib/utils';
+import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Plus } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,17 +9,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
-import { useUserPermissions, usePermissionPresets, getAllPermissionKeys } from '@/hooks/usePermissions';
+import { useUserPermissions, usePermissionPresets, getAllPermissionKeys, type PermissionPreset } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { useEmployees } from '@/hooks/useEmployees';
 import { PermissionPresetDialog } from '@/components/users/PermissionPresetDialog';
+import { UserListMobile } from '@/components/users/UserListMobile';
+import { PresetListMobile } from '@/components/users/PresetListMobile';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { FABButton } from '@/components/mobile/FABButton';
 
 export default function Users() {
+  const isMobile = useIsMobile();
   const { users, isLoading, updateUserRole, canManageRoles, currentUserRole } = useUsers();
   const { userPermissions, upsertPermissions, toggleActive } = useUserPermissions();
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
@@ -29,14 +36,20 @@ export default function Users() {
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'presets'>('users');
   const [deletingUser, setDeletingUser] = useState<UserWithRole | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deletingPreset, setDeletingPreset] = useState<PermissionPreset | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   const filteredUsers = users.filter(u =>
     fuzzyIncludes(u.full_name, searchQuery) ||
     fuzzyIncludes(u.phone, searchQuery)
+  );
+
+  const filteredPresets = presets.filter(p =>
+    fuzzyIncludes(p.name, searchQuery) ||
+    fuzzyIncludes(p.description, searchQuery)
   );
 
   const getInitials = (name: string) =>
@@ -62,7 +75,7 @@ export default function Users() {
     try {
       // Use chosen_email if there was a conflict resolution
       const finalEmail = data.chosen_email || data.email;
-      
+
       const { data: result, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: finalEmail,
@@ -244,6 +257,190 @@ export default function Users() {
     return !perm || perm.is_active;
   }).length;
 
+  // ---------------------------------------------------------------------------
+  // Preset handlers (lista nas tabs mobile abre dialog em modo edit/create)
+  // ---------------------------------------------------------------------------
+  const handleCreatePreset = () => {
+    // Abre o dialog. O fluxo interno do dialog cuida de "Novo Cargo".
+    setPresetDialogOpen(true);
+  };
+
+  const handleEditPreset = (preset: PermissionPreset) => {
+    // Reaproveita o mesmo dialog — a lista interna do dialog mostra todos
+    // e o usuário toca em "Editar". Aceitável: scope mantém dialog intacto.
+    setPresetDialogOpen(true);
+  };
+
+  const handleDuplicatePreset = async (preset: PermissionPreset) => {
+    try {
+      await createPreset.mutateAsync({
+        name: `${preset.name} (cópia)`,
+        description: preset.description || undefined,
+        permissions: [...preset.permissions],
+      });
+      toast({ title: 'Cargo duplicado!' });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erro inesperado';
+      toast({ title: 'Erro ao duplicar', description: message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeletePresetConfirm = async () => {
+    if (!deletingPreset) return;
+    try {
+      await deletePreset.mutateAsync(deletingPreset.id);
+      toast({ title: 'Cargo excluído!' });
+      setDeletingPreset(null);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erro inesperado';
+      toast({ title: 'Erro ao excluir', description: message, variant: 'destructive' });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // MOBILE — 2 tabs (Usuários / Presets), padrão app nativo.
+  // ---------------------------------------------------------------------------
+  if (isMobile) {
+    return (
+      <div className={cn('space-y-4 min-w-0 w-full max-w-full overflow-x-hidden pb-24')}>
+        <MobilePageHeader
+          title="Usuários"
+          subtitle={`${users.length} usuários • ${activeCount} ativos`}
+          icon={ShieldCheck}
+        />
+
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'users' | 'presets')} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-10">
+            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="presets">Cargos</TabsTrigger>
+          </TabsList>
+
+          {/* Busca compartilhada (placeholder muda conforme tab) */}
+          <div className="relative mt-3">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={activeTab === 'users' ? 'Buscar usuários...' : 'Buscar cargos...'}
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <TabsContent value="users" className="mt-3">
+            <UserListMobile
+              users={filteredUsers}
+              isLoading={isLoading}
+              searchQuery={searchQuery}
+              currentUserId={user?.id}
+              canManageRoles={canManageRoles}
+              userPermissions={userPermissions}
+              presets={presets}
+              onEdit={openEditUser}
+              onToggleActive={handleToggleActive}
+              onDelete={(u) => setDeletingUser(u)}
+              onPreviewPhoto={(src, alt) => setPreviewPhoto({ src, alt })}
+            />
+          </TabsContent>
+
+          <TabsContent value="presets" className="mt-3">
+            <PresetListMobile
+              presets={filteredPresets}
+              canManage={canManageRoles}
+              onEdit={handleEditPreset}
+              onDuplicate={handleDuplicatePreset}
+              onDelete={(p) => setDeletingPreset(p)}
+            />
+          </TabsContent>
+        </Tabs>
+
+        {/* FAB contextual: Usuários → criar usuário | Presets → abrir dialog */}
+        {canManageRoles && activeTab === 'users' && (
+          <FABButton
+            icon={<Plus className="h-5 w-5" />}
+            label="Novo Usuário"
+            onClick={() => { setEditingUser(null); setUserFormOpen(true); }}
+          />
+        )}
+        {canManageRoles && activeTab === 'presets' && (
+          <FABButton
+            icon={<Plus className="h-5 w-5" />}
+            label="Novo Cargo"
+            onClick={handleCreatePreset}
+          />
+        )}
+
+        {/* Dialogs compartilhados */}
+        <UserFormDialog
+          open={userFormOpen}
+          onOpenChange={(open) => { setUserFormOpen(open); if (!open) setEditingUser(null); }}
+          onSubmit={editingUser ? handleEditUser : handleCreateUser}
+          presets={presets}
+          editingUser={editingUser}
+        />
+
+        <PermissionPresetDialog
+          open={presetDialogOpen}
+          onOpenChange={setPresetDialogOpen}
+          presets={presets}
+          onCreate={async (d) => { await createPreset.mutateAsync(d); }}
+          onUpdate={async (d) => { await updatePreset.mutateAsync(d); }}
+          onDelete={async (id) => { await deletePreset.mutateAsync(id); }}
+        />
+
+        <AlertDialog open={!!deletingUser} onOpenChange={(open) => { if (!open) setDeletingUser(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação é irreversível. O usuário <strong>{deletingUser?.full_name}</strong> será removido permanentemente do sistema, incluindo login, permissões e vínculos.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteUser}
+                disabled={deleteLoading}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteLoading ? 'Excluindo...' : 'Excluir Permanentemente'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!deletingPreset} onOpenChange={(open) => { if (!open) setDeletingPreset(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir cargo?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O cargo <strong>{deletingPreset?.name}</strong> será removido. Usuários que estavam vinculados a ele mantêm as permissões individuais. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeletePresetConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <ImagePreviewModal
+          src={previewPhoto?.src || ''}
+          alt={previewPhoto?.alt}
+          open={!!previewPhoto}
+          onClose={() => setPreviewPhoto(null)}
+        />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // DESKTOP — 100% inalterado (UI atual preservada).
+  // ---------------------------------------------------------------------------
   return (
     <div className="space-y-6">
       {/* Header */}
