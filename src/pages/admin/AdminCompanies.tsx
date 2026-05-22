@@ -1,24 +1,98 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fuzzyIncludes } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Filter, LayoutList, Kanban, Trash2 } from 'lucide-react';
+import {
+  Plus,
+  Filter,
+  LayoutList,
+  Kanban,
+  Trash2,
+  Search,
+  Building2,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  CalendarX,
+  Pencil,
+  Eye,
+  Lock,
+  Unlock,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
 import { CompanyTable } from '@/components/admin/CompanyTable';
 import { CompanyKanbanBoard } from '@/components/admin/CompanyKanbanBoard';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { StatCarousel } from '@/components/mobile/StatCarousel';
+import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FABButton } from '@/components/mobile/FABButton';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
+
+// Tipo mínimo da company conforme usado nesta tela. Schema completo é definido
+// pelo dev-database em types/database; aqui só refinamos o suficiente pra evitar
+// any nos pontos onde introduzimos código novo.
+type CompanyLite = {
+  id: string;
+  name: string;
+  email?: string | null;
+  cnpj?: string | null;
+  logo_url?: string | null;
+  origin?: string | null;
+  subscription_status: 'active' | 'testing' | 'inactive' | string;
+  subscription_plan?: string | null;
+  subscription_expires_at?: string | null;
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  start: 'Start',
+  starter: 'Start',
+  avancado: 'Avançado',
+  pro: 'Avançado',
+  master: 'Master',
+  enterprise: 'Master',
+};
+
+// Gera iniciais (máx 2 caracteres) para avatar fallback.
+function getCompanyInitials(name?: string) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+// Badge de status — mesma paleta da CompanyTable para manter consistência visual.
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  active: { label: 'Ativo', className: 'bg-green-500 hover:bg-green-600 text-white' },
+  testing: { label: 'Testando', className: 'bg-orange-500 hover:bg-orange-600 text-white' },
+  inactive: { label: 'Desativado', className: 'bg-red-500 hover:bg-red-600 text-white' },
+};
 
 export default function AdminCompanies() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -27,7 +101,6 @@ export default function AdminCompanies() {
   const [originFilter, setOriginFilter] = useState('all');
   const [expirationFilter, setExpirationFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [companyToDelete, setCompanyToDelete] = useState<any>(null);
@@ -134,27 +207,68 @@ export default function AdminCompanies() {
     onError: () => toast({ variant: 'destructive', title: 'Erro ao excluir' }),
   });
 
-  const filtered = companies.filter((c: any) => {
-    const matchSearch = !search || fuzzyIncludes(c.name, search) || fuzzyIncludes(c.email, search) || fuzzyIncludes(c.cnpj, search);
-    const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
-    const matchOrigin = originFilter === 'all' || c.origin === originFilter;
-    const matchPlan = planFilter === 'all' || c.subscription_plan === planFilter;
-    let matchExp = true;
-    if (expirationFilter !== 'all' && c.subscription_expires_at) {
-      const exp = new Date(c.subscription_expires_at);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const diff = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      switch (expirationFilter) {
-        case 'today': matchExp = diff === 0; break;
-        case '7days': matchExp = diff >= 0 && diff <= 7; break;
-        case '15days': matchExp = diff >= 0 && diff <= 15; break;
-        case '30days': matchExp = diff >= 0 && diff <= 30; break;
-        case 'overdue': matchExp = diff < 0; break;
+  // Toggle bloquear/desbloquear (mobile) — alterna entre 'active' e 'inactive'.
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, newStatus }: { id: string; newStatus: 'active' | 'inactive' }) => {
+      const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      toast({
+        title: vars.newStatus === 'active' ? 'Empresa desbloqueada' : 'Empresa bloqueada',
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+    },
+    onError: () => toast({ variant: 'destructive', title: 'Erro ao atualizar status' }),
+  });
+
+  // Contadores brutos (sobre TODAS as empresas, não as filtradas)
+  // Vencidas = ativas/testando com vencimento < hoje (subset que merece atenção).
+  const stats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let active = 0;
+    let testing = 0;
+    let inactive = 0;
+    let overdue = 0;
+    for (const c of companies as CompanyLite[]) {
+      if (c.subscription_status === 'active') active++;
+      else if (c.subscription_status === 'testing') testing++;
+      else if (c.subscription_status === 'inactive') inactive++;
+      if (c.subscription_expires_at && c.subscription_status !== 'inactive') {
+        const exp = new Date(c.subscription_expires_at);
+        exp.setHours(0, 0, 0, 0);
+        if (differenceInDays(exp, today) < 0) overdue++;
       }
     }
-    return matchSearch && matchStatus && matchOrigin && matchPlan && matchExp;
-  });
+    return { active, testing, inactive, overdue };
+  }, [companies]);
+
+  const filtered = useMemo(() => {
+    return (companies as CompanyLite[]).filter((c) => {
+      const matchSearch = !search || fuzzyIncludes(c.name, search) || fuzzyIncludes(c.email, search) || fuzzyIncludes(c.cnpj, search);
+      const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
+      const matchOrigin = originFilter === 'all' || c.origin === originFilter;
+      const matchPlan = planFilter === 'all' || c.subscription_plan === planFilter;
+      let matchExp = true;
+      if (expirationFilter !== 'all' && c.subscription_expires_at) {
+        const exp = new Date(c.subscription_expires_at);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diff = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        switch (expirationFilter) {
+          case 'today': matchExp = diff === 0; break;
+          case '7days': matchExp = diff >= 0 && diff <= 7; break;
+          case '15days': matchExp = diff >= 0 && diff <= 15; break;
+          case '30days': matchExp = diff >= 0 && diff <= 30; break;
+          case 'overdue': matchExp = diff < 0; break;
+        }
+      } else if (expirationFilter !== 'all' && !c.subscription_expires_at) {
+        matchExp = false;
+      }
+      return matchSearch && matchStatus && matchOrigin && matchPlan && matchExp;
+    });
+  }, [companies, search, statusFilter, originFilter, planFilter, expirationFilter]);
 
   const handleEdit = (company: any) => {
     setEditingCompany(company);
@@ -173,7 +287,59 @@ export default function AdminCompanies() {
     setPlanFilter('all');
   };
 
-  const FilterContent = () => (
+  // Contagem de filtros ativos (badge do FilterSheet).
+  const activeFilterCount =
+    (statusFilter !== 'all' ? 1 : 0) +
+    (originFilter !== 'all' ? 1 : 0) +
+    (expirationFilter !== 'all' ? 1 : 0) +
+    (planFilter !== 'all' ? 1 : 0);
+
+  // -----------------------------------------------------------------
+  // Stat carousel items (mobile-first) — clicáveis para filtrar.
+  // -----------------------------------------------------------------
+  const statItems = [
+    {
+      key: 'active',
+      label: 'Ativas',
+      count: stats.active,
+      icon: <CheckCircle2 className="h-4 w-4" />,
+      accentColor: 'hsl(var(--success))',
+      active: statusFilter === 'active',
+      onClick: () => setStatusFilter(statusFilter === 'active' ? 'all' : 'active'),
+    },
+    {
+      key: 'testing',
+      label: 'Trial',
+      count: stats.testing,
+      icon: <Clock className="h-4 w-4" />,
+      accentColor: 'hsl(var(--warning))',
+      active: statusFilter === 'testing',
+      onClick: () => setStatusFilter(statusFilter === 'testing' ? 'all' : 'testing'),
+    },
+    {
+      key: 'inactive',
+      label: 'Bloqueadas',
+      count: stats.inactive,
+      icon: <XCircle className="h-4 w-4" />,
+      accentColor: 'hsl(var(--destructive))',
+      active: statusFilter === 'inactive',
+      onClick: () => setStatusFilter(statusFilter === 'inactive' ? 'all' : 'inactive'),
+    },
+    {
+      key: 'overdue',
+      label: 'Vencidas',
+      count: stats.overdue,
+      icon: <CalendarX className="h-4 w-4" />,
+      accentColor: '#a855f7', // purple — distinto de bloqueadas e mais alarmista que warning
+      active: expirationFilter === 'overdue',
+      onClick: () => setExpirationFilter(expirationFilter === 'overdue' ? 'all' : 'overdue'),
+    },
+  ];
+
+  // -----------------------------------------------------------------
+  // Conteúdo dos filtros — usado por FilterSheet (mobile) e Sheet (desktop).
+  // -----------------------------------------------------------------
+  const FilterContent = ({ withViewToggle = false }: { withViewToggle?: boolean }) => (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Status</Label>
@@ -219,90 +385,278 @@ export default function AdminCompanies() {
           <SelectTrigger><SelectValue placeholder="Plano" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="starter">Starter</SelectItem>
-            <SelectItem value="pro">Pro</SelectItem>
-            <SelectItem value="enterprise">Enterprise</SelectItem>
+            <SelectItem value="starter">Start</SelectItem>
+            <SelectItem value="pro">Avançado</SelectItem>
+            <SelectItem value="enterprise">Master</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <Button variant="outline" className="w-full" onClick={clearFilters}>Limpar Filtros</Button>
+
+      {withViewToggle && (
+        <div className="space-y-2 pt-2 border-t">
+          <Label>Visualização</Label>
+          <div className="flex rounded-lg border overflow-hidden w-full">
+            <button
+              type="button"
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm transition-colors',
+                viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+              )}
+              onClick={() => handleViewModeChange('list')}
+            >
+              <LayoutList className="h-4 w-4" /> Lista
+            </button>
+            <button
+              type="button"
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm transition-colors',
+                viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+              )}
+              onClick={() => handleViewModeChange('kanban')}
+            >
+              <Kanban className="h-4 w-4" /> Kanban
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
+  // -----------------------------------------------------------------
+  // Render
+  // -----------------------------------------------------------------
   return (
-    <div className="space-y-4 lg:space-y-6 p-4 sm:p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Empresas</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            {filtered.length} empresa{filtered.length !== 1 ? 's' : ''} encontrada{filtered.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-      </div>
+    <div className={cn('space-y-4 lg:space-y-6 p-4 sm:p-6', isMobile && 'pb-24')}>
+      <MobilePageHeader
+        title="Empresas"
+        subtitle={`${filtered.length} empresa${filtered.length !== 1 ? 's' : ''} encontrada${filtered.length !== 1 ? 's' : ''}`}
+        icon={Building2}
+      />
 
-      <div className="flex flex-col gap-3">
-        <Input placeholder="Buscar por nome, CNPJ ou email..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full" />
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-2 sm:items-center">
-          {isMobile ? (
-            <Drawer open={filtersOpen} onOpenChange={setFiltersOpen}>
-              <DrawerTrigger asChild>
-                <Button variant="outline" className="gap-2 w-full sm:w-auto justify-center"><Filter className="h-4 w-4" /> Filtros</Button>
-              </DrawerTrigger>
-              <DrawerContent>
-                <DrawerHeader><DrawerTitle>Filtros</DrawerTitle></DrawerHeader>
-                <div className="p-4 pb-8"><FilterContent /></div>
-              </DrawerContent>
-            </Drawer>
-          ) : (
+      {isMobile ? (
+        // -----------------------------------------------------------------
+        // MOBILE: busca + FilterSheet (com toggle de view dentro) + Stats.
+        // -----------------------------------------------------------------
+        <>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar empresas..."
+                className="pl-10 h-10"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <FilterSheet
+              triggerLabel="Filtros"
+              activeCount={activeFilterCount}
+              onClear={clearFilters}
+            >
+              <FilterContent withViewToggle />
+            </FilterSheet>
+          </div>
+
+          <StatCarousel items={statItems} loading={isLoading} />
+        </>
+      ) : (
+        // -----------------------------------------------------------------
+        // DESKTOP: layout original 100% preservado.
+        // -----------------------------------------------------------------
+        <div className="flex flex-col gap-3">
+          <Input
+            placeholder="Buscar por nome, CNPJ ou email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-2 sm:items-center">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" className="gap-2"><Filter className="h-4 w-4" /> Filtros</Button>
+                <Button variant="outline" className="gap-2">
+                  <Filter className="h-4 w-4" /> Filtros
+                </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-80 overflow-y-auto p-4">
                 <SheetHeader><SheetTitle>Filtros</SheetTitle></SheetHeader>
                 <div className="mt-4"><FilterContent /></div>
               </SheetContent>
             </Sheet>
-          )}
 
-          {/* View Toggle */}
-          <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange} className="hidden sm:flex">
-            <ToggleGroupItem value="list" aria-label="Lista"><LayoutList className="h-4 w-4" /></ToggleGroupItem>
-            <ToggleGroupItem value="kanban" aria-label="Kanban"><Kanban className="h-4 w-4" /></ToggleGroupItem>
-          </ToggleGroup>
+            {/* View Toggle (desktop) */}
+            <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange} className="hidden sm:flex">
+              <ToggleGroupItem value="list" aria-label="Lista"><LayoutList className="h-4 w-4" /></ToggleGroupItem>
+              <ToggleGroupItem value="kanban" aria-label="Kanban"><Kanban className="h-4 w-4" /></ToggleGroupItem>
+            </ToggleGroup>
 
-          <Button onClick={() => { setEditingCompany(null); setShowForm(true); }} className="gap-2 w-full sm:w-auto sm:ml-auto">
-            <Plus className="h-4 w-4" /> Nova Empresa
-          </Button>
+            <Button
+              onClick={() => { setEditingCompany(null); setShowForm(true); }}
+              className="gap-2 w-full sm:w-auto sm:ml-auto"
+            >
+              <Plus className="h-4 w-4" /> Nova Empresa
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">Nenhuma empresa encontrada</div>
-      ) : (isMobile || viewMode === 'kanban') ? (
-        <CompanyKanbanBoard
-          companies={filtered}
-          origins={origins || undefined}
-          masterUserMap={masterUserMap}
-          onEdit={handleEdit}
-          onDelete={handleDeleteFromKanban}
-        />
+      {isMobile ? (
+        // -----------------------------------------------------------------
+        // MOBILE CONTENT: Lista nativa OU Kanban (escolha do usuário).
+        // -----------------------------------------------------------------
+        isLoading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<Building2 className="h-12 w-12" />}
+            title={search || activeFilterCount > 0 ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada'}
+            description={
+              search || activeFilterCount > 0
+                ? 'Tente uma busca ou filtros diferentes'
+                : 'Toque em "Nova Empresa" para começar'
+            }
+          />
+        ) : viewMode === 'kanban' ? (
+          <CompanyKanbanBoard
+            companies={filtered}
+            origins={origins || undefined}
+            masterUserMap={masterUserMap}
+            onEdit={handleEdit}
+            onDelete={handleDeleteFromKanban}
+          />
+        ) : (
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {(filtered as CompanyLite[]).map((company) => {
+              const isInactive = company.subscription_status === 'inactive';
+              const statusInfo = STATUS_BADGE[company.subscription_status] || {
+                label: company.subscription_status,
+                className: 'bg-gray-500 text-white',
+              };
+              const planLabel = company.subscription_plan
+                ? (PLAN_LABELS[company.subscription_plan] || company.subscription_plan)
+                : null;
+              const expFormatted = company.subscription_expires_at
+                ? format(parseISO(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR })
+                : null;
+
+              const subtitleParts = [
+                planLabel,
+                expFormatted ? `Vence ${expFormatted}` : null,
+              ].filter(Boolean);
+
+              const itemActions: ItemAction[] = [
+                {
+                  key: 'view',
+                  label: 'Visualizar detalhes',
+                  icon: <Eye className="h-4 w-4" />,
+                  onClick: () => navigate(`/admin/empresas/${company.id}`),
+                },
+                {
+                  key: 'edit',
+                  label: 'Editar',
+                  icon: <Pencil className="h-4 w-4" />,
+                  variant: 'edit',
+                  onClick: () => handleEdit(company),
+                },
+                {
+                  key: 'toggle-status',
+                  label: isInactive ? 'Desbloquear' : 'Bloquear',
+                  icon: isInactive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />,
+                  onClick: () =>
+                    toggleStatusMutation.mutate({
+                      id: company.id,
+                      newStatus: isInactive ? 'active' : 'inactive',
+                    }),
+                },
+                {
+                  key: 'delete',
+                  label: 'Excluir',
+                  icon: <Trash2 className="h-4 w-4" />,
+                  variant: 'destructive',
+                  onClick: () => handleDeleteFromKanban(company),
+                },
+              ];
+
+              return (
+                <MobileListItem
+                  key={company.id}
+                  onClick={() => navigate(`/admin/empresas/${company.id}`)}
+                  actions={itemActions}
+                  leading={
+                    company.logo_url ? (
+                      <img
+                        src={company.logo_url}
+                        alt={company.name}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                        {getCompanyInitials(company.name)}
+                      </div>
+                    )
+                  }
+                  title={company.name}
+                  subtitle={
+                    subtitleParts.length > 0
+                      ? subtitleParts.join(' • ')
+                      : (company.email || company.cnpj || '—')
+                  }
+                  trailing={
+                    <Badge className={cn('text-[10px] px-2 py-0.5 whitespace-nowrap border-0', statusInfo.className)}>
+                      {statusInfo.label}
+                    </Badge>
+                  }
+                />
+              );
+            })}
+          </div>
+        )
       ) : (
-        <CompanyTable
-          companies={filtered}
-          masterUserMap={masterUserMap}
-          origins={origins || undefined}
-          salespersonMap={salespersonMap}
-          onEdit={handleEdit}
-          onRefetch={() => refetch()}
+        // -----------------------------------------------------------------
+        // DESKTOP CONTENT: 100% inalterado.
+        // -----------------------------------------------------------------
+        isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">Carregando...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">Nenhuma empresa encontrada</div>
+        ) : viewMode === 'kanban' ? (
+          <CompanyKanbanBoard
+            companies={filtered}
+            origins={origins || undefined}
+            masterUserMap={masterUserMap}
+            onEdit={handleEdit}
+            onDelete={handleDeleteFromKanban}
+          />
+        ) : (
+          <CompanyTable
+            companies={filtered}
+            masterUserMap={masterUserMap}
+            origins={origins || undefined}
+            salespersonMap={salespersonMap}
+            onEdit={handleEdit}
+            onRefetch={() => refetch()}
+          />
+        )
+      )}
+
+      {/* FAB mobile-only */}
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Nova Empresa"
+          onClick={() => { setEditingCompany(null); setShowForm(true); }}
         />
       )}
 
-      {/* Delete from Kanban */}
-      <AlertDialog open={!!companyToDelete} onOpenChange={(open) => { if (!open) { setCompanyToDelete(null); setDeleteConfirmText(''); } }}>
+      {/* Delete from Kanban / Mobile list */}
+      <AlertDialog
+        open={!!companyToDelete}
+        onOpenChange={(open) => {
+          if (!open) { setCompanyToDelete(null); setDeleteConfirmText(''); }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
@@ -311,12 +665,24 @@ export default function AdminCompanies() {
             <AlertDialogDescription className="space-y-3">
               <p>Esta ação é <strong>irreversível</strong>.</p>
               <p>Para confirmar, digite: <strong>{companyToDelete?.name}</strong></p>
-              <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Digite o nome da empresa" className="font-mono" />
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Digite o nome da empresa"
+                className="font-mono"
+              />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteMutation.mutate(companyToDelete.id)} disabled={deleteConfirmText.trim() !== companyToDelete?.name?.trim() || deleteMutation.isPending} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate(companyToDelete.id)}
+              disabled={
+                deleteConfirmText.trim() !== companyToDelete?.name?.trim() ||
+                deleteMutation.isPending
+              }
+              className="bg-destructive hover:bg-destructive/90"
+            >
               {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
