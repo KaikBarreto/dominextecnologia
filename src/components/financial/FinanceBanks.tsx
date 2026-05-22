@@ -21,7 +21,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Plus, Pencil, Trash2, ArrowLeftRight, Landmark, Wallet, CreditCard,
   ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowRight,
-  Calculator, Loader2,
+  Calculator, Loader2, ArrowLeft,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
@@ -36,6 +36,8 @@ import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 function formatMonth(dateStr: string) {
   return format(parseISO(dateStr + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
@@ -78,15 +80,25 @@ interface BillPanelProps {
 }
 
 function BillPanel({ account, accounts, onClose }: BillPanelProps) {
+  const isMobile = useIsMobile();
   const { bills, isLoading, payBill } = useCreditCardBills(account.id);
   const [expandedBill, setExpandedBill] = useState<string | null>(null);
+  const [detailBill, setDetailBill] = useState<CreditCardBillWithTransactions | null>(null);
   const [payingBill, setPayingBill] = useState<CreditCardBillWithTransactions | null>(null);
   const [payAccountId, setPayAccountId] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'partial' | 'paid'>('all');
+  const [draftStatusFilter, setDraftStatusFilter] = useState<typeof statusFilter>('all');
 
   const cashBankAccounts = accounts.filter(a => a.type !== 'cartao' && a.is_active);
+
+  const filteredBills = statusFilter === 'all'
+    ? bills
+    : bills.filter(b => b.status === statusFilter);
+
+  const activeFilterCount = statusFilter === 'all' ? 0 : 1;
 
   const openPayModal = (bill: CreditCardBillWithTransactions) => {
     const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
@@ -107,6 +119,8 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
       notes: payNotes || undefined,
     });
     setPayingBill(null);
+    // Se acabei de pagar a fatura mostrada no detalhe, fecho — dados ficam stale.
+    setDetailBill(null);
   };
 
   const handlePayAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,23 +128,130 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
     setPayAmount(parseInt(raw || '0', 10) / 100);
   };
 
+  // Header reaproveitado pra mobile (com seta voltar) e desktop (com botão Fechar).
+  const headerNode = isMobile ? (
+    <div className="flex items-center gap-2 -mx-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        onClick={onClose}
+        aria-label="Voltar"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </Button>
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        {(account.institution_name || account.bank_name) ? (
+          <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: account.color }}>
+            <BankLogo code={account.institution_code} name={account.institution_name || account.bank_name} size={28} />
+          </div>
+        ) : (
+          <div className="rounded-full p-2 shrink-0" style={{ backgroundColor: account.color }}>
+            <CreditCard className="h-4 w-4 text-white" />
+          </div>
+        )}
+        <div className="min-w-0">
+          <h3 className="font-semibold text-base leading-tight truncate">{account.name}</h3>
+          {account.institution_name && (
+            <p className="text-[11px] text-muted-foreground leading-tight truncate">{account.institution_name}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <CreditCard className="h-5 w-5 text-primary" />
+        <div>
+          <h3 className="font-semibold">{account.name}</h3>
+          {account.institution_name && (
+            <p className="text-xs text-muted-foreground">{account.institution_name}</p>
+          )}
+        </div>
+      </div>
+      <Button variant="ghost" size="sm" onClick={onClose}>Fechar</Button>
+    </div>
+  );
+
+  // Filtro por status — só faz sentido mostrar quando há ≥2 status entre as faturas.
+  const distinctStatuses = new Set(bills.map(b => b.status));
+  const showFilter = distinctStatuses.size > 1;
+
+  const filterContent = (
+    <div className="space-y-3">
+      <p className="text-sm font-medium">Status da fatura</p>
+      <RadioGroup
+        value={draftStatusFilter}
+        onValueChange={(v) => setDraftStatusFilter(v as typeof statusFilter)}
+        className="space-y-1"
+      >
+        {[
+          { value: 'all', label: 'Todas' },
+          { value: 'open', label: 'Aberta' },
+          { value: 'closed', label: 'Fechada' },
+          { value: 'partial', label: 'Parcial' },
+          { value: 'paid', label: 'Paga' },
+        ].map(opt => (
+          <label key={opt.value} className="flex items-center gap-2 py-2 cursor-pointer">
+            <RadioGroupItem value={opt.value} id={`bill-filter-${opt.value}`} />
+            <span className="text-sm">{opt.label}</span>
+          </label>
+        ))}
+      </RadioGroup>
+    </div>
+  );
+
+  // Renderiza linha de fatura — usado em mobile (MobileListItem) e detalhe.
+  const renderBillMobile = (bill: CreditCardBillWithTransactions) => {
+    const statusCfg = BILL_STATUS_CONFIG[bill.status] ?? BILL_STATUS_CONFIG.open;
+    const StatusIcon = statusCfg.icon;
+    const itemActions: ItemAction[] = [];
+    if (bill.status !== 'paid') {
+      itemActions.push({
+        key: 'pay',
+        label: 'Pagar fatura',
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        onClick: () => openPayModal(bill),
+      });
+    }
+    return (
+      <MobileListItem
+        key={bill.id}
+        onClick={() => setDetailBill(bill)}
+        actions={itemActions.length > 0 ? itemActions : undefined}
+        leading={
+          <div className={cn('rounded-full p-2.5 shrink-0 bg-muted', statusCfg.color)}>
+            <Receipt className="h-4 w-4" />
+          </div>
+        }
+        title={<span className="capitalize">{formatMonth(bill.reference_month)}</span>}
+        subtitle={
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 gap-1', statusCfg.color)}>
+              <StatusIcon className="h-2.5 w-2.5" />
+              {statusCfg.label}
+            </Badge>
+            <span>Vence {format(parseISO(bill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</span>
+          </div>
+        }
+        trailing={
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Valor</span>
+            <span className={cn('font-semibold text-sm whitespace-nowrap', bill.status === 'paid' ? 'text-muted-foreground' : 'text-destructive')}>
+              {formatBRL(bill.total_amount ?? 0)}
+            </span>
+          </div>
+        }
+      />
+    );
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5 text-primary" />
-          <div>
-            <h3 className="font-semibold">{account.name}</h3>
-            {account.institution_name && (
-              <p className="text-xs text-muted-foreground">{account.institution_name}</p>
-            )}
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>Fechar</Button>
-      </div>
+      {headerNode}
 
       {account.closing_day && (
-        <div className="flex gap-4 text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30 flex-wrap">
+        <div className="flex gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30 flex-wrap">
           <span>Fecha dia <strong>{account.closing_day}</strong></span>
           {account.due_day
             ? <span>Vence dia <strong>{account.due_day}</strong>{account.due_day <= (account.closing_day ?? 10) ? ' (mês seguinte)' : ''}</span>
@@ -140,14 +261,54 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
         </div>
       )}
 
+      {/* Barra de filtros — só aparece no mobile e quando há ≥2 status distintos. */}
+      {isMobile && showFilter && !isLoading && bills.length > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {filteredBills.length} de {bills.length} {bills.length === 1 ? 'fatura' : 'faturas'}
+          </p>
+          <FilterSheet
+            triggerLabel="Filtros"
+            activeCount={activeFilterCount}
+            onClear={() => {
+              setDraftStatusFilter('all');
+              setStatusFilter('all');
+            }}
+            onApply={() => setStatusFilter(draftStatusFilter)}
+          >
+            {filterContent}
+          </FilterSheet>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground py-4 text-center">Carregando faturas...</p>
       ) : bills.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <Receipt className="h-10 w-10 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">Nenhuma fatura registrada</p>
-          <p className="text-xs mt-1">As faturas aparecem automaticamente quando você lança despesas neste cartão</p>
-        </div>
+        isMobile ? (
+          <EmptyState
+            icon={<Receipt className="h-10 w-10" />}
+            title="Nenhuma fatura registrada"
+            description="As faturas aparecem automaticamente quando você lança despesas neste cartão"
+          />
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <Receipt className="h-10 w-10 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">Nenhuma fatura registrada</p>
+            <p className="text-xs mt-1">As faturas aparecem automaticamente quando você lança despesas neste cartão</p>
+          </div>
+        )
+      ) : isMobile ? (
+        filteredBills.length === 0 ? (
+          <EmptyState
+            icon={<Receipt className="h-10 w-10" />}
+            title="Nenhuma fatura encontrada"
+            description="Ajuste o filtro para ver outras faturas"
+          />
+        ) : (
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {filteredBills.map(renderBillMobile)}
+          </div>
+        )
       ) : (
         <div className="space-y-3">
           {bills.map(bill => {
@@ -233,6 +394,100 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
           })}
         </div>
       )}
+
+      {/* Modal Detalhes da fatura (mobile drilldown) */}
+      <ResponsiveModal
+        open={!!detailBill}
+        onOpenChange={(v) => { if (!v) setDetailBill(null); }}
+        title={detailBill ? formatMonth(detailBill.reference_month).replace(/^./, c => c.toUpperCase()) : 'Detalhes da fatura'}
+        className="sm:max-w-[480px]"
+      >
+        {detailBill && (() => {
+          const statusCfg = BILL_STATUS_CONFIG[detailBill.status] ?? BILL_STATUS_CONFIG.open;
+          const StatusIcon = statusCfg.icon;
+          const billTotal = detailBill.total_amount ?? 0;
+          const alreadyPaid = Number(detailBill.amount_paid ?? 0);
+          const remaining = billTotal - alreadyPaid;
+          const transactions = detailBill.transactions ?? [];
+          return (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-3 bg-muted/30 text-sm space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant="outline" className={cn('text-[10px] gap-1', statusCfg.color)}>
+                    <StatusIcon className="h-3 w-3" />
+                    {statusCfg.label}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Fecha {format(parseISO(detailBill.closing_date + 'T12:00:00'), 'dd/MM')} · Vence {format(parseISO(detailBill.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-1">
+                  <span className="text-muted-foreground">Total da fatura</span>
+                  <span className="font-medium">{formatBRL(billTotal)}</span>
+                </div>
+                {alreadyPaid > 0 && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Já pago</span>
+                      <span className="text-success">− {formatBRL(alreadyPaid)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1 mt-1">
+                      <span className="font-medium">Restante</span>
+                      <span className="font-bold">{formatBRL(remaining)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  Lançamentos ({transactions.length})
+                </p>
+                {transactions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-3 text-center border rounded-lg">
+                    Sem lançamentos nesta fatura
+                  </p>
+                ) : (
+                  <div className="rounded-lg border bg-card overflow-hidden max-h-[40vh] overflow-y-auto">
+                    {transactions.map(t => (
+                      <MobileListItem
+                        key={t.id}
+                        title={t.description}
+                        subtitle={
+                          <span>
+                            {format(parseISO(t.transaction_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                            {t.category && ` · ${t.category}`}
+                          </span>
+                        }
+                        trailing={
+                          <span className="font-medium text-destructive text-sm whitespace-nowrap">
+                            {formatBRL(Number(t.amount))}
+                          </span>
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {detailBill.status !== 'paid' && (
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const b = detailBill;
+                    setDetailBill(null);
+                    openPayModal(b);
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Pagar fatura
+                </Button>
+              )}
+            </div>
+          );
+        })()}
+      </ResponsiveModal>
+
 
       {/* Modal Pagar Fatura */}
       <ResponsiveModal
