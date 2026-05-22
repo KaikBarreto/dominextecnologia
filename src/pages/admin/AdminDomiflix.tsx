@@ -1,5 +1,8 @@
-import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, Star, Film, Tv, ChevronDown, ChevronRight, Layers, Image as ImageIcon, Upload } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Plus, Pencil, Trash2, Star, Film, Tv, Layers,
+  Image as ImageIcon, Upload, Search, Eye,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,12 +12,17 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useDomiflixTitles, useDomiflixTitle, useCreateTitle, useUpdateTitle, useDeleteTitle,
   useCreateSeason, useUpdateSeason, useDeleteSeason,
@@ -22,6 +30,12 @@ import {
   type DomiflixTitle, type DomiflixSeason, type DomiflixEpisode,
 } from "@/hooks/useDomiflix";
 import { AdminDomiflixSections } from "@/components/admin/AdminDomiflixSections";
+import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
+import { StatCarousel } from "@/components/mobile/StatCarousel";
+import { FilterSheet } from "@/components/mobile/FilterSheet";
+import { FABButton } from "@/components/mobile/FABButton";
+import { MobileListItem, type ItemAction } from "@/components/mobile/MobileListItem";
+import { EmptyState } from "@/components/mobile/EmptyState";
 
 // ─────────────── Image upload helper ───────────────
 async function uploadImage(file: File, folder: string): Promise<string> {
@@ -348,7 +362,10 @@ function SeasonFormDialog({ open, onOpenChange, titleId, season }: {
 }
 
 // ─────────────── Title detail (seasons + episodes) ───────────────
+// Níveis 2-3 (temporadas + episódios) preservam UX em cards/collapsibles.
+// Refatorar pra MobileListItem aninhado fica pra onda dedicada de Tree mobile.
 function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => void }) {
+  const isMobile = useIsMobile();
   const { data: full, isLoading } = useDomiflixTitle(titleId);
   const deleteSeason = useDeleteSeason();
   const deleteEpisode = useDeleteEpisode();
@@ -357,151 +374,507 @@ function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => v
   const [episodeDialog, setEpisodeDialog] = useState<{ open: boolean; episode: DomiflixEpisode | null }>({ open: false, episode: null });
   const [confirmDel, setConfirmDel] = useState<{ kind: "season" | "episode"; id: string } | null>(null);
 
-  if (isLoading || !full) return <div className="p-6 text-muted-foreground">Carregando...</div>;
+  if (isLoading || !full) {
+    return (
+      <div className={cn(isMobile ? "px-3 py-4" : "container mx-auto p-6 max-w-5xl")}>
+        <div className="text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">← Voltar</Button>
-          <h2 className="text-2xl font-bold">{full.title}</h2>
-          <p className="text-sm text-muted-foreground">{full.type === "series" ? "Série/Módulo" : "Filme/Live"}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setSeasonDialog({ open: true, season: null })}>
-            <Plus className="h-4 w-4 mr-1" /> Temporada
-          </Button>
-          <Button onClick={() => setEpisodeDialog({ open: true, episode: null })}>
-            <Plus className="h-4 w-4 mr-1" /> Episódio
-          </Button>
-        </div>
+    <div className={cn(isMobile ? "px-3 pb-24" : "container mx-auto p-6 max-w-5xl")}>
+      <div className="space-y-4">
+        {/* Cabeçalho do detalhe — mobile compactado, desktop como era */}
+        {isMobile ? (
+          <MobilePageHeader
+            title={full.title}
+            subtitle={full.type === "series" ? "Série/Módulo" : "Filme/Live"}
+            icon={full.type === "series" ? Tv : Film}
+            actions={
+              <Button variant="ghost" size="sm" onClick={onBack} className="h-9 px-2">
+                ← Voltar
+              </Button>
+            }
+          />
+        ) : (
+          <div className="flex items-center justify-between">
+            <div>
+              <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">← Voltar</Button>
+              <h2 className="text-2xl font-bold">{full.title}</h2>
+              <p className="text-sm text-muted-foreground">{full.type === "series" ? "Série/Módulo" : "Filme/Live"}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setSeasonDialog({ open: true, season: null })}>
+                <Plus className="h-4 w-4 mr-1" /> Temporada
+              </Button>
+              <Button onClick={() => setEpisodeDialog({ open: true, episode: null })}>
+                <Plus className="h-4 w-4 mr-1" /> Episódio
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Ações mobile (Temporada / Episódio) em row sticky de chips */}
+        {isMobile && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-9"
+              onClick={() => setSeasonDialog({ open: true, season: null })}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Temporada
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 h-9"
+              onClick={() => setEpisodeDialog({ open: true, episode: null })}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Episódio
+            </Button>
+          </div>
+        )}
+
+        {full.seasons.length === 0 && full.episodes.length === 0 && (
+          isMobile ? (
+            <EmptyState
+              icon={<Layers className="h-12 w-12" />}
+              title="Sem conteúdo ainda"
+              description='Toque em "Temporada" ou "Episódio" para começar'
+            />
+          ) : (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhum conteúdo. Crie uma temporada ou episódio.</CardContent></Card>
+          )
+        )}
+
+        {full.seasons.map((s) => (
+          <Card key={s.id}>
+            <CardHeader className="flex-row items-center justify-between space-y-0 py-3 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Layers className="h-4 w-4 text-primary shrink-0" />
+                <CardTitle className="text-base truncate">T{s.season_number} — {s.title}</CardTitle>
+                <Badge variant="outline" className="shrink-0">{s.episodes.length} ep</Badge>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-warning hover:text-warning"
+                  onClick={() => setSeasonDialog({ open: true, season: s })}
+                  aria-label="Editar temporada"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setConfirmDel({ kind: "season", id: s.id })}
+                  aria-label="Excluir temporada"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-1">
+              {s.episodes.map((ep) => (
+                <div key={ep.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-muted text-sm">
+                  <span className="truncate min-w-0">EP{ep.episode_number ?? "?"} — {ep.title}</span>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-warning hover:text-warning"
+                      onClick={() => setEpisodeDialog({ open: true, episode: ep })}
+                      aria-label="Editar episódio"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}
+                      aria-label="Excluir episódio"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {s.episodes.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum episódio nesta temporada</p>}
+            </CardContent>
+          </Card>
+        ))}
+
+        {full.episodes.length > 0 && (
+          <Card>
+            <CardHeader className="py-3"><CardTitle className="text-base">Episódios sem temporada</CardTitle></CardHeader>
+            <CardContent className="pt-0 space-y-1">
+              {full.episodes.map((ep) => (
+                <div key={ep.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-muted text-sm">
+                  <span className="truncate min-w-0">{ep.title}</span>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-warning hover:text-warning"
+                      onClick={() => setEpisodeDialog({ open: true, episode: ep })}
+                      aria-label="Editar episódio"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}
+                      aria-label="Excluir episódio"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {seasonDialog.open && (
+          <SeasonFormDialog open={seasonDialog.open} onOpenChange={(o) => !o && setSeasonDialog({ open: false, season: null })} titleId={titleId} season={seasonDialog.season} />
+        )}
+        {episodeDialog.open && (
+          <EpisodeFormDialog open={episodeDialog.open} onOpenChange={(o) => !o && setEpisodeDialog({ open: false, episode: null })} titleId={titleId} seasons={full.seasons} episode={episodeDialog.episode} />
+        )}
+
+        <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive hover:bg-destructive/90"
+                onClick={async () => {
+                  if (!confirmDel) return;
+                  if (confirmDel.kind === "season") await deleteSeason.mutateAsync({ id: confirmDel.id, title_id: titleId });
+                  else await deleteEpisode.mutateAsync({ id: confirmDel.id, title_id: titleId });
+                  setConfirmDel(null);
+                }}
+              >Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      {full.seasons.length === 0 && full.episodes.length === 0 && (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhum conteúdo. Crie uma temporada ou episódio.</CardContent></Card>
-      )}
-
-      {full.seasons.map((s) => (
-        <Card key={s.id}>
-          <CardHeader className="flex-row items-center justify-between space-y-0 py-3">
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-primary" />
-              <CardTitle className="text-base">T{s.season_number} — {s.title}</CardTitle>
-              <Badge variant="outline">{s.episodes.length} ep</Badge>
-            </div>
-            <div className="flex gap-1">
-              <Button size="icon" variant="ghost" onClick={() => setSeasonDialog({ open: true, season: s })}><Pencil className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setConfirmDel({ kind: "season", id: s.id })}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-1">
-            {s.episodes.map((ep) => (
-              <div key={ep.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded hover:bg-muted text-sm">
-                <span className="truncate">EP{ep.episode_number ?? "?"} — {ep.title}</span>
-                <div className="flex gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEpisodeDialog({ open: true, episode: ep })}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </div>
-            ))}
-            {s.episodes.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum episódio nesta temporada</p>}
-          </CardContent>
-        </Card>
-      ))}
-
-      {full.episodes.length > 0 && (
-        <Card>
-          <CardHeader className="py-3"><CardTitle className="text-base">Episódios sem temporada</CardTitle></CardHeader>
-          <CardContent className="pt-0 space-y-1">
-            {full.episodes.map((ep) => (
-              <div key={ep.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded hover:bg-muted text-sm">
-                <span className="truncate">{ep.title}</span>
-                <div className="flex gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEpisodeDialog({ open: true, episode: ep })}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {seasonDialog.open && (
-        <SeasonFormDialog open={seasonDialog.open} onOpenChange={(o) => !o && setSeasonDialog({ open: false, season: null })} titleId={titleId} season={seasonDialog.season} />
-      )}
-      {episodeDialog.open && (
-        <EpisodeFormDialog open={episodeDialog.open} onOpenChange={(o) => !o && setEpisodeDialog({ open: false, episode: null })} titleId={titleId} seasons={full.seasons} episode={episodeDialog.episode} />
-      )}
-
-      <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={async () => {
-                if (!confirmDel) return;
-                if (confirmDel.kind === "season") await deleteSeason.mutateAsync({ id: confirmDel.id, title_id: titleId });
-                else await deleteEpisode.mutateAsync({ id: confirmDel.id, title_id: titleId });
-                setConfirmDel(null);
-              }}
-            >Excluir</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
 
 // ─────────────── Page ───────────────
 export default function AdminDomiflix() {
+  const isMobile = useIsMobile();
   const { data: titles = [], isLoading } = useDomiflixTitles();
   const deleteTitle = useDeleteTitle();
   const [titleDialog, setTitleDialog] = useState<{ open: boolean; title: DomiflixTitle | null }>({ open: false, title: null });
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [selectedTitleId, setSelectedTitleId] = useState<string | null>(null);
 
-  if (selectedTitleId) {
-    return (
-      <div className="container mx-auto p-6 max-w-5xl">
-        <TitleDetailView titleId={selectedTitleId} onBack={() => setSelectedTitleId(null)} />
+  const [activeTab, setActiveTab] = useState<"titles" | "sections">("titles");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "series" | "movie">("all");
+  const [featuredOnly, setFeaturedOnly] = useState(false);
+
+  // Filtragem em memória (catálogo costuma ser pequeno) — não bate DB.
+  const filteredTitles = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return titles.filter((t) => {
+      if (typeFilter !== "all" && t.type !== typeFilter) return false;
+      if (featuredOnly && !t.is_featured) return false;
+      if (!q) return true;
+      const haystack = [t.title, t.description ?? "", ...(t.tags ?? [])].join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [titles, searchTerm, typeFilter, featuredOnly]);
+
+  // Stats: total, séries, filmes/lives, destaques
+  const statItems = useMemo(() => {
+    const total = titles.length;
+    const series = titles.filter((t) => t.type === "series").length;
+    const movies = titles.filter((t) => t.type === "movie").length;
+    const featured = titles.filter((t) => t.is_featured).length;
+    return [
+      {
+        key: "all",
+        label: "Total",
+        count: total,
+        icon: <Layers className="h-4 w-4" />,
+        accentColor: "#0ea5e9",
+        active: typeFilter === "all" && !featuredOnly,
+        onClick: () => { setTypeFilter("all"); setFeaturedOnly(false); },
+      },
+      {
+        key: "series",
+        label: "Séries",
+        count: series,
+        icon: <Tv className="h-4 w-4" />,
+        accentColor: "#8b5cf6",
+        active: typeFilter === "series",
+        onClick: () => setTypeFilter(typeFilter === "series" ? "all" : "series"),
+      },
+      {
+        key: "movie",
+        label: "Filmes/Lives",
+        count: movies,
+        icon: <Film className="h-4 w-4" />,
+        accentColor: "#22c55e",
+        active: typeFilter === "movie",
+        onClick: () => setTypeFilter(typeFilter === "movie" ? "all" : "movie"),
+      },
+      {
+        key: "featured",
+        label: "Destaque",
+        count: featured,
+        icon: <Star className="h-4 w-4" />,
+        accentColor: "#f59e0b",
+        active: featuredOnly,
+        onClick: () => setFeaturedOnly((v) => !v),
+      },
+    ];
+  }, [titles, typeFilter, featuredOnly]);
+
+  const activeFilterCount =
+    (searchTerm ? 1 : 0) +
+    (typeFilter !== "all" ? 1 : 0) +
+    (featuredOnly ? 1 : 0);
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setTypeFilter("all");
+    setFeaturedOnly(false);
+  };
+
+  // Conteúdo do FilterSheet (mobile) — busca já fica visível fora, então aqui só tipo + destaque.
+  const filterContent = (
+    <div className="space-y-4">
+      <div>
+        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tipo</label>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as "all" | "series" | "movie")}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="series">Séries / Módulos</SelectItem>
+            <SelectItem value="movie">Filmes / Lives</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-    );
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <label className="text-sm font-medium">Somente destaques</label>
+          <p className="text-xs text-muted-foreground">Mostrar apenas títulos marcados no banner</p>
+        </div>
+        <Switch checked={featuredOnly} onCheckedChange={setFeaturedOnly} />
+      </div>
+    </div>
+  );
+
+  // Detalhe de título toma a tela inteira (preserva o comportamento atual).
+  if (selectedTitleId) {
+    return <TitleDetailView titleId={selectedTitleId} onBack={() => setSelectedTitleId(null)} />;
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Domiflix — Gestão de Conteúdo</h1>
-          <p className="text-sm text-muted-foreground">Gerencie títulos, temporadas, episódios e seções da home</p>
-        </div>
-      </div>
+    <div className={cn(isMobile ? "px-3 pb-24" : "container mx-auto p-6 max-w-6xl")}>
+      <MobilePageHeader
+        title="Domiflix"
+        subtitle="Gerencie títulos, temporadas, episódios e seções"
+        icon={Tv}
+        actions={
+          isMobile ? undefined : (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setTitleDialog({ open: true, title: null })}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Título
+            </Button>
+          )
+        }
+      />
 
-      <Tabs defaultValue="titles">
-        <TabsList>
-          <TabsTrigger value="titles">Títulos</TabsTrigger>
-          <TabsTrigger value="sections">Seções da Home</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "titles" | "sections")}>
+        <TabsList className={cn(isMobile && "w-full")}>
+          <TabsTrigger value="titles" className={cn(isMobile && "flex-1")}>Títulos</TabsTrigger>
+          <TabsTrigger value="sections" className={cn(isMobile && "flex-1")}>Seções da Home</TabsTrigger>
         </TabsList>
 
         <TabsContent value="titles" className="space-y-4 mt-4">
-          <div className="flex justify-end">
-            <Button onClick={() => setTitleDialog({ open: true, title: null })}>
-              <Plus className="h-4 w-4 mr-1" /> Novo Título
-            </Button>
-          </div>
+          {isMobile ? (
+            <>
+              {/* Busca + FilterSheet */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar título..."
+                    className="pl-10 h-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <FilterSheet
+                  triggerLabel="Filtros"
+                  activeCount={activeFilterCount}
+                  onClear={clearFilters}
+                >
+                  {filterContent}
+                </FilterSheet>
+              </div>
 
-          {isLoading ? (
-            <p className="text-muted-foreground">Carregando...</p>
-          ) : titles.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhum título cadastrado. Crie o primeiro.</CardContent></Card>
+              <StatCarousel items={statItems} loading={isLoading} />
+            </>
           ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative w-full sm:max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar título, tag ou descrição..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap items-center">
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as "all" | "series" | "movie")}>
+                  <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os tipos</SelectItem>
+                    <SelectItem value="series">Séries / Módulos</SelectItem>
+                    <SelectItem value="movie">Filmes / Lives</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant={featuredOnly ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFeaturedOnly((v) => !v)}
+                  className="gap-1"
+                >
+                  <Star className="h-4 w-4" />
+                  Destaque
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista / Grid */}
+          {isLoading ? (
+            isMobile ? (
+              <div className="space-y-2">
+                {[...Array(4)].map((_, i) => <div key={i} className="h-[72px] w-full rounded-xl bg-muted animate-pulse" />)}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Carregando...</p>
+            )
+          ) : filteredTitles.length === 0 ? (
+            isMobile ? (
+              <EmptyState
+                icon={<Tv className="h-12 w-12" />}
+                title={activeFilterCount > 0 ? "Nenhum título encontrado" : "Nenhum título cadastrado"}
+                description={activeFilterCount > 0 ? "Tente filtros diferentes" : 'Toque em "Novo Título" para começar'}
+              />
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  {activeFilterCount > 0 ? "Nenhum título encontrado com esses filtros." : "Nenhum título cadastrado. Crie o primeiro."}
+                </CardContent>
+              </Card>
+            )
+          ) : isMobile ? (
+            // -----------------------------------------------------------------
+            // Mobile: lista nativa com MobileListItem.
+            // -----------------------------------------------------------------
+            <div className="rounded-xl border bg-card overflow-hidden">
+              {filteredTitles.map((t) => {
+                const itemActions: ItemAction[] = [
+                  {
+                    key: "manage",
+                    label: "Gerenciar episódios",
+                    icon: <Eye className="h-4 w-4" />,
+                    onClick: () => setSelectedTitleId(t.id),
+                  },
+                  {
+                    key: "edit",
+                    label: "Editar",
+                    icon: <Pencil className="h-4 w-4" />,
+                    variant: "edit" as const,
+                    onClick: () => setTitleDialog({ open: true, title: t }),
+                  },
+                  {
+                    key: "delete",
+                    label: "Excluir",
+                    icon: <Trash2 className="h-4 w-4" />,
+                    variant: "destructive" as const,
+                    onClick: () => setConfirmDel(t.id),
+                  },
+                ];
+
+                const thumb = t.thumbnail_url || t.banner_url;
+                const TypeIcon = t.type === "series" ? Tv : Film;
+
+                return (
+                  <MobileListItem
+                    key={t.id}
+                    onClick={() => setSelectedTitleId(t.id)}
+                    actions={itemActions}
+                    leading={
+                      thumb ? (
+                        <img
+                          src={thumb}
+                          alt={t.title}
+                          className="h-12 w-12 rounded-md object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-md bg-muted text-muted-foreground flex items-center justify-center">
+                          <TypeIcon className="h-5 w-5" />
+                        </div>
+                      )
+                    }
+                    title={
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate">{t.title}</span>
+                        {t.is_featured && (
+                          <Star className="h-3.5 w-3.5 text-warning shrink-0" aria-label="Destaque" />
+                        )}
+                      </div>
+                    }
+                    subtitle={
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1">
+                          <TypeIcon className="h-3 w-3" />
+                          {t.type === "series" ? "Série" : "Live/Filme"}
+                        </span>
+                        {(t.tags ?? []).slice(0, 2).map((tag) => (
+                          <span key={tag} className="text-[10px] uppercase tracking-wider opacity-80">#{tag}</span>
+                        ))}
+                      </div>
+                    }
+                    trailing={
+                      <Badge variant="outline" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+                        {t.type === "series" ? "Série" : "Live"}
+                      </Badge>
+                    }
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            // -----------------------------------------------------------------
+            // Desktop: grid de cards (preservado).
+            // -----------------------------------------------------------------
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {titles.map((t) => (
+              {filteredTitles.map((t) => (
                 <Card key={t.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-video bg-muted relative">
                     {t.banner_url ? (
@@ -523,8 +896,22 @@ export default function AdminDomiflix() {
                       <Button size="sm" variant="outline" onClick={() => setSelectedTitleId(t.id)} className="flex-1">
                         Gerenciar episódios
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => setTitleDialog({ open: true, title: t })}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setConfirmDel(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                      <Button
+                        size="icon"
+                        variant="edit-ghost"
+                        onClick={() => setTitleDialog({ open: true, title: t })}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="destructive-ghost"
+                        onClick={() => setConfirmDel(t.id)}
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -537,6 +924,15 @@ export default function AdminDomiflix() {
           <AdminDomiflixSections />
         </TabsContent>
       </Tabs>
+
+      {/* FAB no mobile — só na aba de Títulos */}
+      {isMobile && activeTab === "titles" && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Novo Título"
+          onClick={() => setTitleDialog({ open: true, title: null })}
+        />
+      )}
 
       {titleDialog.open && (
         <TitleFormDialog open={titleDialog.open} onOpenChange={(o) => !o && setTitleDialog({ open: false, title: null })} title={titleDialog.title} />
