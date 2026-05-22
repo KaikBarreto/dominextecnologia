@@ -12,6 +12,9 @@ import { ManualPunchModal } from './ManualPunchModal';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { StatCarousel } from '@/components/mobile/StatCarousel';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 const STATUS_CONFIG = {
   present: { label: 'Presente', className: 'bg-success text-white', dot: true },
@@ -35,83 +38,97 @@ export function TimeToday() {
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <StatCarousel items={[]} loading />
+        <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+      </div>
+    );
+  }
+
+  const statItems = [
+    { key: 'present', label: 'Presentes', count: kpis.present, icon: <Users className="h-4 w-4" />, accentColor: 'hsl(var(--success))' },
+    { key: 'absent', label: 'Ausentes', count: kpis.absent, icon: <UserX className="h-4 w-4" />, accentColor: 'hsl(var(--muted-foreground))' },
+    { key: 'onBreak', label: 'Em intervalo', count: kpis.onBreak, icon: <Coffee className="h-4 w-4" />, accentColor: 'hsl(var(--warning))' },
+    { key: 'finished', label: 'Concluídos', count: kpis.finished, icon: <CheckCircle2 className="h-4 w-4" />, accentColor: 'hsl(var(--info))' },
+  ];
 
   return (
     <div className="space-y-4">
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Presentes', value: kpis.present, icon: Users, color: 'text-success' },
-          { label: 'Ausentes', value: kpis.absent, icon: UserX, color: 'text-muted-foreground' },
-          { label: 'Em intervalo', value: kpis.onBreak, icon: Coffee, color: 'text-warning' },
-          { label: 'Concluídos', value: kpis.finished, icon: CheckCircle2, color: 'text-info' },
-        ].map(kpi => (
-          <Card key={kpi.label}>
-            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <kpi.icon className={cn('h-6 w-6 sm:h-8 sm:w-8', kpi.color)} />
-              <div>
-                <p className="text-xl sm:text-2xl font-bold">{kpi.value}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">{kpi.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatCarousel items={statItems} />
 
       {/* Employees */}
       {isMobile ? (
-        <div className="space-y-3">
-          {employees.map(emp => {
-            const records = getRecordsForEmployee(emp.id);
-            const status = getEmployeeStatus(emp.id);
-            const cfg = STATUS_CONFIG[status];
-            const clockIn = records.find(r => r.type === 'clock_in');
-            const clockOut = records.find(r => r.type === 'clock_out');
-            const { worked } = calculateWorkedMinutes(records);
+        employees.length === 0 ? (
+          <EmptyState
+            icon={<Clock className="h-12 w-12" />}
+            title="Nenhum funcionário cadastrado"
+            description="Cadastre funcionários para acompanhar o ponto do dia."
+          />
+        ) : (
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {employees.map(emp => {
+              const records = getRecordsForEmployee(emp.id);
+              const status = getEmployeeStatus(emp.id);
+              const cfg = STATUS_CONFIG[status];
+              const clockIn = records.find(r => r.type === 'clock_in');
+              const clockOut = records.find(r => r.type === 'clock_out');
+              const { worked } = calculateWorkedMinutes(records);
 
-            return (
-              <Card key={emp.id} className="cursor-pointer" onClick={() => setSelectedEmployee({ id: emp.id, name: emp.name })}>
-                <CardContent className="p-3 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <SignedAvatarImage src={emp.photo_url} />
-                      <AvatarFallback className="text-xs bg-muted">
+              const itemActions: ItemAction[] = [
+                {
+                  key: 'view',
+                  label: 'Ver detalhes',
+                  icon: <Eye className="h-4 w-4" />,
+                  onClick: () => setSelectedEmployee({ id: emp.id, name: emp.name }),
+                },
+                {
+                  key: 'manual',
+                  label: 'Registro manual',
+                  icon: <PenLine className="h-4 w-4" />,
+                  variant: 'edit' as const,
+                  onClick: () => setManualEmployee({ id: emp.id, name: emp.name }),
+                },
+              ];
+
+              const subtitleParts: string[] = [];
+              subtitleParts.push(`Entrada ${clockIn ? format(new Date(clockIn.recorded_at), 'HH:mm') : '—'}`);
+              subtitleParts.push(`Saída ${clockOut ? format(new Date(clockOut.recorded_at), 'HH:mm') : '—'}`);
+              subtitleParts.push(records.length > 0 ? formatMinutes(worked) : '—');
+
+              return (
+                <MobileListItem
+                  key={emp.id}
+                  onClick={() => setSelectedEmployee({ id: emp.id, name: emp.name })}
+                  actions={itemActions}
+                  leading={
+                    <Avatar className="h-10 w-10">
+                      <SignedAvatarImage src={emp.photo_url} alt={emp.name} />
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
                         {emp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{emp.name}</p>
-                      {emp.position && <p className="text-xs text-muted-foreground truncate">{emp.position}</p>}
-                    </div>
-                    <Badge className={cn('text-[10px] shrink-0', cfg.className)}>
-                      {cfg.dot && <span className="relative flex h-1.5 w-1.5 mr-1"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" /></span>}
+                  }
+                  title={emp.name}
+                  subtitle={subtitleParts.join(' • ')}
+                  trailing={
+                    <Badge className={cn('text-[10px] shrink-0 whitespace-nowrap', cfg.className)}>
+                      {cfg.dot && (
+                        <span className="relative flex h-1.5 w-1.5 mr-1">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                        </span>
+                      )}
                       {cfg.label}
                     </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      <span>Entrada: {clockIn ? format(new Date(clockIn.recorded_at), 'HH:mm') : '—'}</span>
-                      <span>Saída: {clockOut ? format(new Date(clockOut.recorded_at), 'HH:mm') : '—'}</span>
-                    </div>
-                    <span className="font-medium text-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {records.length > 0 ? formatMinutes(worked) : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-end gap-1 pt-1 border-t" onClick={e => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedEmployee({ id: emp.id, name: emp.name })}>
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setManualEmployee({ id: emp.id, name: emp.name })}>
-                      <PenLine className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  }
+                />
+              );
+            })}
+          </div>
+        )
       ) : (
         <Card>
           <CardContent className="p-0">
