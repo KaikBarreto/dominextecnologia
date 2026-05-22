@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.44',
+    date: '21 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Todas as telas do sistema com visual de aplicativo nativo no celular',
+        description: 'Fechamos o capítulo mobile-first do Dominex: 18 telas foram redesenhadas pra ter o mesmo visual de aplicativo nativo que Ordens de Serviço, Clientes e Equipamentos já tinham. As telas atualizadas agora têm cabeçalho compacto, lista no estilo iOS/Android (arrastar pra editar/excluir + ícone de três pontinhos com menu), botão flutuante de "Novo X" no canto inferior direito, filtros agrupados em gaveta de baixo, e contadores em chips coloridos que rolam de lado. Telas refatoradas: Agenda, PMOC, Rastreamento de Técnicos, Catálogo de Serviços, Estoque, Questionários, Financeiro (tabs de listagem), Orçamentos, Contratos, CRM (kanban + opção de lista), Funcionários, Usuários, Equipes, e os painéis de administração da Auctus (Empresas, Vendedores, Financeiro Auctus, CRM Auctus, Catálogo Domiflix). No computador, todas continuam exatamente como antes. Listagens com kanban (CRM) e árvores aninhadas (Domiflix) foram tratadas com cuidado pra preservar a funcionalidade existente.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.43',
     date: '21 de maio de 2026',
     type: 'minor',

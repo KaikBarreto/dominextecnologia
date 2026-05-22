@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.43";
+export const APP_VERSION = "1.8.44";
 
-export const VERSION_NOTES = "Telas de Clientes e Equipamentos no celular agora com visual de aplicativo nativo.";
+export const VERSION_NOTES = "Onda 3: todas as 18 telas restantes do sistema ganharam visual de aplicativo nativo no celular.";
