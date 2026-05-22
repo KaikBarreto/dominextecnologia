@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { fuzzyIncludes } from '@/lib/utils';
-import { FileText, Plus, Search, Calendar, DollarSign, CheckCircle, XCircle, Edit, Trash2, Pause, Play, ClipboardList, CalendarClock, ExternalLink, LayoutList, ScrollText, Clock, CalendarPlus } from 'lucide-react';
+import {
+  FileText, Plus, Search, Calendar, DollarSign, CheckCircle, XCircle, Edit, Trash2, Pause,
+  ClipboardList, CalendarClock, ExternalLink, ScrollText, CalendarPlus, Eye,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +12,11 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePmocPlans, type PmocPlan } from '@/hooks/usePmocPlans';
 import { usePmocContracts, type PmocContract } from '@/hooks/usePmocContracts';
 import { PmocPlanFormDialog } from '@/components/pmoc/PmocPlanFormDialog';
@@ -20,6 +27,12 @@ import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { format, addMonths, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { StatCarousel } from '@/components/mobile/StatCarousel';
+import { FABButton } from '@/components/mobile/FABButton';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 const FREQ_LABELS: Record<number, string> = { 1: 'Mensal', 2: 'Bimestral', 3: 'Trimestral', 6: 'Semestral', 12: 'Anual' };
 const CONTRACT_FREQ: Record<string, string> = { mensal: 'Mensal', bimestral: 'Bimestral', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual' };
@@ -36,6 +49,7 @@ const SECTIONS: { key: Section; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function PMOC() {
+  const isMobile = useIsMobile();
   const { plans, isLoading: plansLoading, stats: planStats, deletePlan } = usePmocPlans();
   const { contracts, isLoading: contractsLoading, stats: contractStats, deleteContract } = usePmocContracts();
   const { deleteServiceOrder } = useServiceOrders();
@@ -49,6 +63,8 @@ export default function PMOC() {
   const [deleteFutureOsDialog, setDeleteFutureOsDialog] = useState<PmocPlan | null>(null);
   const [deletingFutureOs, setDeletingFutureOs] = useState(false);
   const [postponeData, setPostponeData] = useState<{ plan: PmocPlan; os: PmocGeneratedOs } | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<PmocPlan | null>(null);
+  const [contractToDelete, setContractToDelete] = useState<PmocContract | null>(null);
 
   const filteredPlans = plans.filter(p =>
     fuzzyIncludes(p.name, searchQuery) ||
@@ -111,6 +127,486 @@ export default function PMOC() {
     }).length;
   };
 
+  // ------------------------------------------------------------------------
+  // Stat items (KPIs) — usados no StatCarousel mobile e grid desktop.
+  // ------------------------------------------------------------------------
+  const statItems = [
+    {
+      key: 'total',
+      label: 'Planos',
+      count: planStats.total,
+      icon: <ClipboardList className="h-4 w-4" />,
+      accentColor: 'hsl(var(--primary))',
+    },
+    {
+      key: 'active',
+      label: 'Ativos',
+      count: planStats.active,
+      icon: <CheckCircle className="h-4 w-4" />,
+      accentColor: '#22c55e',
+    },
+    {
+      key: 'paused',
+      label: 'Pausados',
+      count: planStats.paused,
+      icon: <Pause className="h-4 w-4" />,
+      accentColor: '#64748b',
+    },
+  ];
+
+  // KPI desktop tem o card de Receita Mensal (string formatada) — mantém separado.
+  // Mobile mostra essa info no header da seção de Contratos pra não quebrar o StatCarousel (que espera number).
+
+  // Botão criar muda conforme seção ativa.
+  const fabAction = activeSection === 'contratos'
+    ? () => { setEditingContract(null); setContractDialogOpen(true); }
+    : () => { setEditingPlan(null); setPlanDialogOpen(true); };
+  const fabLabel = activeSection === 'contratos' ? 'Novo Contrato' : 'Novo Plano';
+
+  // ------------------------------------------------------------------------
+  // Renderers de lista mobile
+  // ------------------------------------------------------------------------
+  const renderMobilePlans = () => {
+    if (plansLoading) {
+      return (
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+        </div>
+      );
+    }
+    if (filteredPlans.length === 0) {
+      return (
+        <EmptyState
+          icon={<ClipboardList className="h-12 w-12" />}
+          title={searchQuery ? 'Nenhum plano encontrado' : 'Nenhum plano cadastrado'}
+          description={searchQuery ? 'Tente outro termo de busca' : 'Toque em "Novo Plano" para começar'}
+        />
+      );
+    }
+    return (
+      <div className="rounded-xl border bg-card overflow-hidden">
+        {sortedPlans.map((plan) => {
+          const isOverdue = isBefore(new Date(plan.next_generation_date), new Date()) && plan.status === 'ativo';
+          const futureCount = futureOsCount(plan);
+          const equipmentCount = plan.pmoc_items?.filter(i => i.equipment?.status === 'active').length || 0;
+          const freqLabel = FREQ_LABELS[plan.frequency_months] || `${plan.frequency_months} meses`;
+          const nextDate = format(new Date(plan.next_generation_date), 'dd/MM/yyyy', { locale: ptBR });
+
+          const actions: ItemAction[] = [
+            {
+              key: 'edit',
+              label: 'Editar',
+              icon: <Edit className="h-4 w-4" />,
+              variant: 'edit' as const,
+              onClick: () => { setEditingPlan(plan); setPlanDialogOpen(true); },
+            },
+            ...(futureCount > 0
+              ? [{
+                  key: 'delete-future',
+                  label: 'Excluir OSs futuras',
+                  icon: <XCircle className="h-4 w-4" />,
+                  onClick: () => setDeleteFutureOsDialog(plan),
+                }]
+              : []),
+            {
+              key: 'delete',
+              label: 'Excluir plano',
+              icon: <Trash2 className="h-4 w-4" />,
+              variant: 'destructive' as const,
+              onClick: () => setPlanToDelete(plan),
+            },
+          ];
+
+          return (
+            <MobileListItem
+              key={plan.id}
+              actions={actions}
+              leading={
+                <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  <ClipboardList className="h-5 w-5" />
+                </div>
+              }
+              title={
+                <span className="flex items-center gap-2">
+                  <span className="truncate">{plan.name}</span>
+                  <Badge
+                    variant={plan.status === 'ativo' ? 'success' : 'outline'}
+                    className="text-[10px] px-1.5 py-0 shrink-0"
+                  >
+                    {plan.status === 'ativo' ? 'Ativo' : 'Pausado'}
+                  </Badge>
+                </span>
+              }
+              subtitle={
+                <span className="flex items-center gap-1">
+                  <span className="truncate">{plan.customers?.name || 'Sem cliente'}</span>
+                  <span>•</span>
+                  <span className="shrink-0">{freqLabel}</span>
+                  <span>•</span>
+                  <span className={cn('shrink-0', isOverdue && 'text-destructive font-medium')}>
+                    {nextDate}
+                  </span>
+                </span>
+              }
+              trailing={
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {equipmentCount} equip.
+                </Badge>
+              }
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderMobileContracts = () => {
+    if (contractsLoading) {
+      return (
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+        </div>
+      );
+    }
+    if (filteredContracts.length === 0) {
+      return (
+        <EmptyState
+          icon={<FileText className="h-12 w-12" />}
+          title={searchQuery ? 'Nenhum contrato encontrado' : 'Nenhum contrato cadastrado'}
+          description={searchQuery ? 'Tente outro termo de busca' : 'Cadastre contratos para o aspecto financeiro do PMOC'}
+        />
+      );
+    }
+    return (
+      <>
+        {/* Card resumo de receita mensal — só mobile, já que StatCarousel só aceita number. */}
+        <div className="mb-3 rounded-xl border bg-card p-3 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Receita Mensal</p>
+            {contractsLoading ? (
+              <Skeleton className="h-6 w-20 mt-1" />
+            ) : (
+              <p className="text-lg font-bold text-primary">{formatCurrency(contractStats.totalMonthlyValue)}</p>
+            )}
+          </div>
+          <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            <DollarSign className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card overflow-hidden">
+          {sortedContracts.map((contract) => {
+            const freqLabel = CONTRACT_FREQ[contract.maintenance_frequency || ''] || contract.maintenance_frequency || '—';
+            const period = `${format(new Date(contract.start_date), 'dd/MM/yy', { locale: ptBR })} – ${format(new Date(contract.end_date), 'dd/MM/yy', { locale: ptBR })}`;
+
+            const actions: ItemAction[] = [
+              {
+                key: 'edit',
+                label: 'Editar',
+                icon: <Edit className="h-4 w-4" />,
+                variant: 'edit' as const,
+                onClick: () => { setEditingContract(contract); setContractDialogOpen(true); },
+              },
+              {
+                key: 'delete',
+                label: 'Excluir contrato',
+                icon: <Trash2 className="h-4 w-4" />,
+                variant: 'destructive' as const,
+                onClick: () => setContractToDelete(contract),
+              },
+            ];
+
+            return (
+              <MobileListItem
+                key={contract.id}
+                actions={actions}
+                leading={
+                  <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                    <ScrollText className="h-5 w-5" />
+                  </div>
+                }
+                title={
+                  <span className="flex items-center gap-2">
+                    <span className="truncate">{contract.customers?.name || 'Sem cliente'}</span>
+                    <Badge
+                      variant={contract.is_active ? 'success' : 'outline'}
+                      className="text-[10px] px-1.5 py-0 shrink-0"
+                    >
+                      {contract.is_active ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </span>
+                }
+                subtitle={
+                  <span className="flex items-center gap-1">
+                    <span className="truncate">{contract.contract_number || 'Sem nº'}</span>
+                    <span>•</span>
+                    <span className="shrink-0">{freqLabel}</span>
+                    <span>•</span>
+                    <span className="shrink-0">{period}</span>
+                  </span>
+                }
+                trailing={
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    {contract.monthly_value ? formatCurrency(contract.monthly_value) : '—'}
+                  </Badge>
+                }
+              />
+            );
+          })}
+        </div>
+      </>
+    );
+  };
+
+  const renderMobileCronograma = () => (
+    <div className="space-y-4">
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold">Próximas Gerações</h3>
+        </div>
+        {timeline.length === 0 ? (
+          <p className="text-center text-sm text-muted-foreground py-8 px-4">
+            Nenhum plano ativo para exibir cronograma.
+          </p>
+        ) : (
+          <div className="max-h-[400px] overflow-y-auto divide-y divide-border/60">
+            {timeline.slice(0, 24).map((entry, i) => {
+              const isPast = isBefore(entry.date, new Date());
+              return (
+                <div
+                  key={`${entry.planId}-${i}`}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3',
+                    isPast && 'bg-destructive/5'
+                  )}
+                >
+                  <div className={cn(
+                    'text-center min-w-[48px] shrink-0',
+                    isPast ? 'text-destructive' : 'text-foreground'
+                  )}>
+                    <p className="text-base font-bold leading-none">{format(entry.date, 'dd')}</p>
+                    <p className="text-[10px] uppercase mt-0.5">{format(entry.date, 'MMM/yy', { locale: ptBR })}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{entry.planName}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {entry.customerName} • {entry.equipmentCount} equip.
+                    </p>
+                  </div>
+                  {isPast && (
+                    <Badge variant="destructive" className="text-[10px] shrink-0">
+                      Atrasado
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {generatedHistory.length > 0 && (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold">Histórico de OS Geradas</h3>
+          </div>
+          <div className="max-h-[320px] overflow-y-auto divide-y divide-border/60">
+            {generatedHistory.slice(0, 20).map((g) => {
+              const isPending = g.service_orders?.status === 'pendente';
+              const parentPlan = plans.find(p => p.id === g.plan_id);
+
+              const actions: ItemAction[] = [
+                {
+                  key: 'open',
+                  label: 'Abrir OS',
+                  icon: <Eye className="h-4 w-4" />,
+                  onClick: () => window.open(`/os-tecnico/${g.service_order_id}`, '_blank', 'noopener,noreferrer'),
+                },
+                ...(isPending && parentPlan
+                  ? [{
+                      key: 'postpone',
+                      label: 'Adiar OS',
+                      icon: <CalendarPlus className="h-4 w-4" />,
+                      onClick: () => setPostponeData({ plan: parentPlan, os: g }),
+                    }]
+                  : []),
+              ];
+
+              return (
+                <MobileListItem
+                  key={g.id}
+                  actions={actions}
+                  leading={
+                    <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                  }
+                  title={g.planName}
+                  subtitle={
+                    <span>
+                      {g.customerName} • {format(new Date(g.scheduled_for), 'dd/MM/yyyy')}
+                    </span>
+                  }
+                  trailing={
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      OS #{g.service_orders?.order_number || '?'}
+                    </Badge>
+                  }
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ========================================================================
+  // MOBILE LAYOUT
+  // ========================================================================
+  if (isMobile) {
+    return (
+      <div className="space-y-4 pb-24">
+        <MobilePageHeader
+          title="PMOC"
+          subtitle="Plano de Manutenção, Operação e Controle"
+          icon={ClipboardList}
+        />
+
+        {/* KPIs em carrossel */}
+        <StatCarousel items={statItems} loading={plansLoading} />
+
+        {/* Seção atual (segmented control via Select) */}
+        <Select value={activeSection} onValueChange={(v) => setActiveSection(v as Section)}>
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SECTIONS.map(({ key, label }) => (
+              <SelectItem key={key} value={key}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Busca — só nas seções Planos e Contratos */}
+        {activeSection !== 'cronograma' && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={activeSection === 'planos' ? 'Buscar plano ou cliente...' : 'Buscar contrato ou cliente...'}
+              className="pl-10 h-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        )}
+
+        {/* Conteúdo */}
+        {activeSection === 'planos' && renderMobilePlans()}
+        {activeSection === 'contratos' && renderMobileContracts()}
+        {activeSection === 'cronograma' && renderMobileCronograma()}
+
+        {/* FAB — só nas seções de listagem (planos/contratos). Cronograma não cria. */}
+        {activeSection !== 'cronograma' && (
+          <FABButton
+            icon={<Plus className="h-5 w-5" />}
+            label={fabLabel}
+            onClick={fabAction}
+          />
+        )}
+
+        {/* Dialogs compartilhados */}
+        <PmocPlanFormDialog open={planDialogOpen} onOpenChange={setPlanDialogOpen} plan={editingPlan} />
+        <PmocContractFormDialog open={contractDialogOpen} onOpenChange={setContractDialogOpen} contract={editingContract} />
+        {postponeData && (
+          <PmocPostponeDialog
+            open={!!postponeData}
+            onOpenChange={(open) => !open && setPostponeData(null)}
+            plan={postponeData.plan}
+            generatedOs={postponeData.os}
+          />
+        )}
+
+        {/* Excluir plano */}
+        <AlertDialog open={!!planToDelete} onOpenChange={(open) => !open && setPlanToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir plano PMOC</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o plano "{planToDelete?.name}"? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (planToDelete) deletePlan.mutate(planToDelete.id);
+                  setPlanToDelete(null);
+                }}
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Excluir contrato */}
+        <AlertDialog open={!!contractToDelete} onOpenChange={(open) => !open && setContractToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir contrato PMOC</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o contrato "{contractToDelete?.contract_number || 'sem número'}"?
+                Todas as OSs vinculadas serão excluídas. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (contractToDelete) deleteContract.mutate(contractToDelete.id);
+                  setContractToDelete(null);
+                }}
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Excluir OSs futuras */}
+        <AlertDialog open={!!deleteFutureOsDialog} onOpenChange={() => setDeleteFutureOsDialog(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir OSs futuras</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir todas as OSs pendentes futuras do plano "{deleteFutureOsDialog?.name}"?
+                ({deleteFutureOsDialog ? futureOsCount(deleteFutureOsDialog) : 0} OSs serão excluídas)
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deletingFutureOs}
+                onClick={() => deleteFutureOsDialog && handleDeleteFutureOs(deleteFutureOsDialog)}
+              >
+                {deletingFutureOs ? 'Excluindo...' : 'Excluir OSs'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+
+  // ========================================================================
+  // DESKTOP LAYOUT — inalterado em estrutura visual.
+  // ========================================================================
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -169,25 +665,9 @@ export default function PMOC() {
       </div>
 
       {/* Sidebar + Content layout */}
-      {/* Mobile horizontal nav */}
-      <div className="sm:hidden flex gap-1 border-b overflow-x-auto no-scrollbar">
-        {SECTIONS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setActiveSection(key)}
-            className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
-              activeSection === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       <div className="flex gap-6">
         {/* Vertical sidebar */}
-        <nav className="hidden sm:flex flex-col gap-1 w-48 shrink-0">
+        <nav className="flex flex-col gap-1 w-48 shrink-0">
           {SECTIONS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -459,7 +939,7 @@ export default function PMOC() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir OSs futuras</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir todas as OSs pendentes futuras do plano "{deleteFutureOsDialog?.name}"? 
+              Tem certeza que deseja excluir todas as OSs pendentes futuras do plano "{deleteFutureOsDialog?.name}"?
               ({deleteFutureOsDialog ? futureOsCount(deleteFutureOsDialog) : 0} OSs serão excluídas)
             </AlertDialogDescription>
           </AlertDialogHeader>
