@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.45',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Polish final do visual mobile no sistema',
+        description: 'Aplicamos o visual de aplicativo nativo nos últimos pedaços que ficaram fora das ondas anteriores: o Controle de Ponto Eletrônico (dentro de Funcionários), as Faturas de Cartão (dentro do Financeiro), as Temporadas e Episódios do Domiflix (quando o admin abre o detalhe de um título-série), o painel compartilhado de Questionários, os Custos Globais (dentro de Orçamentos) e a gestão de Categorias e Campos Customizados de Equipamento. Em todos os casos, o celular ganhou cabeçalho compacto, lista no estilo iOS/Android com arrastar pra editar/excluir e ícone de três pontinhos, e botão flutuante de "Novo X" quando aplicável. No computador, tudo continua exatamente como antes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.44',
     date: '21 de maio de 2026',
     type: 'minor',

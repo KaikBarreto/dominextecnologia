@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.44";
+export const APP_VERSION = "1.8.45";
 
-export const VERSION_NOTES = "Onda 3: todas as 18 telas restantes do sistema ganharam visual de aplicativo nativo no celular.";
+export const VERSION_NOTES = "Onda 4: polish dos subcomponentes mobile-first restantes. Backlog zerado.";
