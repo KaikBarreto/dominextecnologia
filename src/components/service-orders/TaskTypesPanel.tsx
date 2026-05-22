@@ -20,6 +20,9 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Badge } from '@/components/ui/badge';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { FABButton } from '@/components/mobile/FABButton';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 interface TaskTypeForm {
   name: string;
@@ -91,68 +94,94 @@ export function TaskTypesPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Tipos de Tarefas</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure os tipos de tarefas utilizadas na agenda
-          </p>
+      {/* Header: no mobile escondemos texto (já no MobilePageHeader da page) e o botão vira FAB. */}
+      {!isMobile && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Tipos de Tarefas</h2>
+            <p className="text-sm text-muted-foreground">
+              Configure os tipos de tarefas utilizadas na agenda
+            </p>
+          </div>
+          <Button onClick={handleNew}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Tipo
+          </Button>
         </div>
-        <Button onClick={handleNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Tipo
-        </Button>
-      </div>
+      )}
 
       {taskTypes.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <CheckSquare className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">Nenhum tipo de tarefa</h3>
-            <p className="text-muted-foreground">Cadastre tipos de tarefas para organizar sua agenda</p>
-          </CardContent>
-        </Card>
+        isMobile ? (
+          <EmptyState
+            icon={<CheckSquare className="h-12 w-12" />}
+            title="Nenhum tipo de tarefa"
+            description="Toque em Novo Tipo para cadastrar"
+          />
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <CheckSquare className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Nenhum tipo de tarefa</h3>
+              <p className="text-muted-foreground">Cadastre tipos de tarefas para organizar sua agenda</p>
+            </CardContent>
+          </Card>
+        )
       ) : isMobile ? (
-        <div className="grid gap-3">
-          {taskTypes.map((tt) => (
-            <Card key={tt.id} className={!tt.is_active ? 'opacity-60' : ''}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="h-10 w-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: tt.color }}
-                    >
-                      <CheckSquare className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{tt.name}</p>
-                      {tt.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">{tt.description}</p>
-                      )}
-                      {!tt.is_active && (
-                        <Badge variant="secondary" className="text-xs mt-1">Inativo</Badge>
-                      )}
-                    </div>
+        /* -------------------------------------------------------------------
+         * Mobile: lista nativa com MobileListItem (swipe + menu ⋮).
+         * ------------------------------------------------------------------- */
+        <div className="rounded-xl border bg-card overflow-hidden">
+          {sortedTypes.map((tt) => {
+            const itemActions: ItemAction[] = [
+              {
+                key: 'edit',
+                label: 'Editar',
+                icon: <Pencil className="h-4 w-4" />,
+                variant: 'edit',
+                onClick: () => handleEdit(tt),
+              },
+              {
+                key: 'delete',
+                label: 'Excluir',
+                icon: <Trash2 className="h-4 w-4" />,
+                variant: 'destructive',
+                onClick: () => { setToDeleteId(tt.id); setDeleteDialogOpen(true); },
+              },
+            ];
+
+            return (
+              <MobileListItem
+                key={tt.id}
+                onClick={() => handleEdit(tt)}
+                actions={itemActions}
+                className={!tt.is_active ? 'opacity-60' : ''}
+                leading={
+                  <div
+                    className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: tt.color }}
+                  >
+                    <CheckSquare className="h-5 w-5 text-white" />
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(tt)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive-ghost"
-                      size="icon"
-                      onClick={() => { setToDeleteId(tt.id); setDeleteDialogOpen(true); }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                }
+                title={tt.name}
+                subtitle={
+                  <span className="flex items-center gap-2 flex-wrap">
+                    {tt.description && (
+                      <span className="truncate">{tt.description}</span>
+                    )}
+                    {!tt.is_active && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Inativo</Badge>
+                    )}
+                  </span>
+                }
+              />
+            );
+          })}
         </div>
       ) : (
+        /* -------------------------------------------------------------------
+         * Desktop: tabela 100% intacta.
+         * ------------------------------------------------------------------- */
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -200,6 +229,15 @@ export function TaskTypesPanel() {
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {/* FAB mobile-only para criar novo tipo de tarefa. */}
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Novo Tipo"
+          onClick={handleNew}
+        />
       )}
 
       <ResponsiveModal

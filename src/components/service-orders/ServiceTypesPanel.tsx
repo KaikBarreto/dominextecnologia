@@ -20,6 +20,9 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Badge } from '@/components/ui/badge';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { FABButton } from '@/components/mobile/FABButton';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 interface ServiceTypeForm {
   name: string;
@@ -97,75 +100,101 @@ export function ServiceTypesPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Tipos de Serviço</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure os tipos de serviço utilizados nas OS e na agenda
-          </p>
+      {/* Header: no mobile escondemos texto explicativo (já está no MobilePageHeader da page) e o botão vira FAB. */}
+      {!isMobile && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Tipos de Serviço</h2>
+            <p className="text-sm text-muted-foreground">
+              Configure os tipos de serviço utilizados nas OS e na agenda
+            </p>
+          </div>
+          <Button onClick={handleNew}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Tipo
+          </Button>
         </div>
-        <Button onClick={handleNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Tipo
-        </Button>
-      </div>
+      )}
 
       {serviceTypes.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Wrench className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">Nenhum tipo de serviço</h3>
-            <p className="text-muted-foreground">Cadastre seus tipos de serviço para organizar as OS</p>
-          </CardContent>
-        </Card>
+        isMobile ? (
+          <EmptyState
+            icon={<Wrench className="h-12 w-12" />}
+            title="Nenhum tipo de serviço"
+            description="Toque em Novo Tipo para cadastrar"
+          />
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <Wrench className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Nenhum tipo de serviço</h3>
+              <p className="text-muted-foreground">Cadastre seus tipos de serviço para organizar as OS</p>
+            </CardContent>
+          </Card>
+        )
       ) : isMobile ? (
-        /* Cards view for mobile */
-        <div className="grid gap-3">
-          {serviceTypes.map((st) => (
-            <Card key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="h-10 w-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: st.color }}
-                    >
-                      <Wrench className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{st.name}</p>
-                      {st.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">{st.description}</p>
-                      )}
-                      <div className="flex gap-1 mt-1">
-                        {!st.is_active && (
-                          <Badge variant="secondary" className="text-xs">Inativo</Badge>
-                        )}
-                        {(st as any).requires_equipment && (
-                          <Badge variant="outline" className="text-xs">Equipamento</Badge>
-                        )}
-                      </div>
-                    </div>
+        /* -------------------------------------------------------------------
+         * Mobile: lista nativa com MobileListItem (swipe + menu ⋮).
+         * ------------------------------------------------------------------- */
+        <div className="rounded-xl border bg-card overflow-hidden">
+          {sortedTypes.map((st) => {
+            const itemActions: ItemAction[] = [
+              {
+                key: 'edit',
+                label: 'Editar',
+                icon: <Pencil className="h-4 w-4" />,
+                variant: 'edit',
+                onClick: () => handleEdit(st),
+              },
+              {
+                key: 'delete',
+                label: 'Excluir',
+                icon: <Trash2 className="h-4 w-4" />,
+                variant: 'destructive',
+                onClick: () => { setToDeleteId(st.id); setDeleteDialogOpen(true); },
+              },
+            ];
+
+            const subtitleParts: string[] = [];
+            if (st.description) subtitleParts.push(st.description);
+            if (st.number_prefix) subtitleParts.push(`Prefixo: ${st.number_prefix}`);
+
+            return (
+              <MobileListItem
+                key={st.id}
+                onClick={() => handleEdit(st)}
+                actions={itemActions}
+                className={!st.is_active ? 'opacity-60' : ''}
+                leading={
+                  <div
+                    className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: st.color }}
+                  >
+                    <Wrench className="h-5 w-5 text-white" />
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(st)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive-ghost"
-                      size="icon"
-                      onClick={() => { setToDeleteId(st.id); setDeleteDialogOpen(true); }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                }
+                title={st.name}
+                subtitle={
+                  <span className="flex items-center gap-2 flex-wrap">
+                    {subtitleParts.length > 0 && (
+                      <span className="truncate">{subtitleParts.join(' • ')}</span>
+                    )}
+                    {!st.is_active && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Inativo</Badge>
+                    )}
+                    {st.requires_equipment && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">Equipamento</Badge>
+                    )}
+                  </span>
+                }
+              />
+            );
+          })}
         </div>
       ) : (
-        /* Table view for desktop */
+        /* -------------------------------------------------------------------
+         * Desktop: tabela 100% intacta.
+         * ------------------------------------------------------------------- */
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -226,6 +255,15 @@ export function ServiceTypesPanel() {
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {/* FAB mobile-only para criar novo tipo de serviço. */}
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Novo Tipo"
+          onClick={handleNew}
+        />
       )}
 
       <ResponsiveModal

@@ -4,7 +4,10 @@ import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel
 import { TaskTypesPanel } from '@/components/service-orders/TaskTypesPanel';
 import { QuestionnairesPanel } from '@/components/service-orders/QuestionnairesPanel';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
-import { Settings, FileText, CheckSquare } from 'lucide-react';
+import { Settings, FileText, CheckSquare, Briefcase } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 
 const tabs = [
   { value: 'types', label: 'Tipos de Serviços', icon: Settings },
@@ -13,6 +16,7 @@ const tabs = [
 ];
 
 export default function ServicesPage() {
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
@@ -24,11 +28,12 @@ export default function ServicesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Serviços</h1>
-        <p className="text-muted-foreground">Configure os tipos de serviços, tarefas e questionários</p>
-      </div>
+    <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
+      <MobilePageHeader
+        title="Serviços"
+        subtitle="Configure os tipos de serviços, tarefas e questionários"
+        icon={Briefcase}
+      />
 
       <SettingsSidebarLayout
         tabs={tabs}
