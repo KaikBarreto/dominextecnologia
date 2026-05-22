@@ -1,16 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
-import { MapPin, Clock, Navigation, ExternalLink, CalendarIcon, User } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { MapPin, Navigation, Clock, ExternalLink, User, LogIn, LogOut } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { haversineDistance, formatDistance } from '@/utils/geolocation';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { StatCarousel } from '@/components/mobile/StatCarousel';
+import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { EmptyState } from '@/components/mobile/EmptyState';
+import { TrackingEventListItem } from '@/components/tracking/TrackingEventListItem';
 
 interface LocationRecord {
   id: string;
@@ -27,7 +33,16 @@ interface Profile {
   full_name: string;
 }
 
+// Gera iniciais (máx 2 caracteres) — usado no avatar dos eventos no mobile.
+function getInitials(name?: string) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export default function TechnicianTracking() {
+  const isMobile = useIsMobile();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -60,8 +75,14 @@ export default function TechnicianTracking() {
       });
   }, [selectedUserId, selectedDate]);
 
-  const sortedAsc = useMemo(() => [...locations].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [locations]);
+  const sortedAsc = useMemo(
+    () => [...locations].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    ),
+    [locations],
+  );
   const pagination = useDataPagination(locations);
+
   const stats = useMemo(() => {
     if (sortedAsc.length === 0) return { checkIns: 0, checkOuts: 0, totalDistance: 0, timeInField: 0 };
 
@@ -69,16 +90,16 @@ export default function TechnicianTracking() {
     for (let i = 1; i < sortedAsc.length; i++) {
       totalDistance += haversineDistance(
         sortedAsc[i - 1].lat, sortedAsc[i - 1].lng,
-        sortedAsc[i].lat, sortedAsc[i].lng
+        sortedAsc[i].lat, sortedAsc[i].lng,
       );
     }
 
-    const checkIns = sortedAsc.filter(l => l.event_type === 'check_in').length;
-    const checkOuts = sortedAsc.filter(l => l.event_type === 'check_out').length;
+    const checkIns = sortedAsc.filter((l) => l.event_type === 'check_in').length;
+    const checkOuts = sortedAsc.filter((l) => l.event_type === 'check_out').length;
 
     let timeInField = 0;
-    const firstCheckIn = sortedAsc.find(l => l.event_type === 'check_in');
-    const lastCheckOut = [...sortedAsc].reverse().find(l => l.event_type === 'check_out');
+    const firstCheckIn = sortedAsc.find((l) => l.event_type === 'check_in');
+    const lastCheckOut = [...sortedAsc].reverse().find((l) => l.event_type === 'check_out');
     if (firstCheckIn && lastCheckOut) {
       timeInField = (new Date(lastCheckOut.created_at).getTime() - new Date(firstCheckIn.created_at).getTime()) / 60000;
     }
@@ -98,17 +119,58 @@ export default function TechnicianTracking() {
     tracking: 'secondary',
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Rastreamento de Técnicos</h1>
-        <p className="text-muted-foreground">Histórico de deslocamentos por técnico e dia</p>
-      </div>
+  const selectedTechnician = profiles.find((p) => p.user_id === selectedUserId);
+  const selectedTechnicianName = selectedTechnician?.full_name;
+  const selectedTechnicianInitials = getInitials(selectedTechnicianName);
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+  // Stat items para o StatCarousel (mobile-first). Desktop reusa via grid auto-fit.
+  const formattedTimeInField =
+    stats.timeInField > 0
+      ? `${Math.floor(stats.timeInField / 60)}h${Math.round(stats.timeInField % 60)
+          .toString()
+          .padStart(2, '0')}`
+      : '0';
+  const formattedDistance = formatDistance(stats.totalDistance);
+
+  // StatCarousel espera `count: number`. Pra distância e tempo (que são strings
+  // formatadas), montamos cards customizados no desktop e versão própria no mobile.
+  // Opção conservadora: usa o StatCarousel pra check-in/check-out (numéricos) e
+  // mostra distância/tempo em chips adicionais com mesmo visual.
+  const statItems = [
+    {
+      key: 'check_ins',
+      label: 'Check-ins',
+      count: stats.checkIns,
+      icon: <LogIn className="h-4 w-4" />,
+      accentColor: 'hsl(142, 71%, 45%)', // verde
+    },
+    {
+      key: 'check_outs',
+      label: 'Check-outs',
+      count: stats.checkOuts,
+      icon: <LogOut className="h-4 w-4" />,
+      accentColor: 'hsl(0, 72%, 51%)', // vermelho
+    },
+  ];
+
+  // Contagem de filtros ativos no mobile (técnico + data diferente de hoje).
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const activeFilterCount = (selectedUserId ? 1 : 0) + (selectedDate !== todayStr ? 1 : 0);
+
+  const clearFilters = () => {
+    setSelectedUserId('');
+    setSelectedDate(todayStr);
+  };
+
+  // Conteúdo dos filtros — reusado inline no desktop e dentro da FilterSheet no mobile.
+  const filterContent = (
+    <div className={cn(isMobile ? 'space-y-4' : 'flex flex-col sm:flex-row gap-3')}>
+      <div className={isMobile ? '' : 'sm:w-[280px]'}>
+        {isMobile && (
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Técnico</label>
+        )}
         <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-          <SelectTrigger className="sm:w-[280px]">
+          <SelectTrigger className={isMobile ? 'w-full' : 'w-full'}>
             <SelectValue placeholder="Selecione um técnico" />
           </SelectTrigger>
           <SelectContent>
@@ -119,58 +181,215 @@ export default function TechnicianTracking() {
             ))}
           </SelectContent>
         </Select>
+      </div>
 
+      <div className={isMobile ? '' : 'sm:w-[200px]'}>
+        {isMobile && (
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Data</label>
+        )}
         <Input
           type="date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
-          className="sm:w-[200px]"
+          className="w-full"
         />
       </div>
+    </div>
+  );
 
-      {/* Stats */}
-      {locations.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold">{stats.checkIns}</p>
-              <p className="text-xs text-muted-foreground">Check-ins</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold">{stats.checkOuts}</p>
-              <p className="text-xs text-muted-foreground">Check-outs</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold">{formatDistance(stats.totalDistance)}</p>
-              <p className="text-xs text-muted-foreground">Distância total</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold">
-                {stats.timeInField > 0 ? `${Math.floor(stats.timeInField / 60)}h${Math.round(stats.timeInField % 60).toString().padStart(2, '0')}` : '-'}
-              </p>
-              <p className="text-xs text-muted-foreground">Tempo em campo</p>
-            </CardContent>
-          </Card>
+  // Chips de KPIs extras (distância + tempo em campo) — números formatados
+  // não cabem no StatCarousel (que exige count:number). Mantemos cards próprios
+  // no mesmo visual, alinhados ao carrossel.
+  const extraStatsMobile = (
+    <div className="relative -mx-3 mt-2">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
+      <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="snap-start shrink-0 flex flex-col justify-between h-[88px] min-w-[140px] p-3 rounded-2xl border border-border bg-card shadow-sm text-left">
+          <div className="flex items-start justify-between gap-2">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
+              style={{ backgroundColor: 'hsl(217, 91%, 60%)' }}
+            >
+              <Navigation className="h-4 w-4" />
+            </span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate text-right mt-1">
+              Distância
+            </span>
+          </div>
+          <span className="text-xl font-bold leading-none truncate">{formattedDistance}</span>
         </div>
+        <div className="snap-start shrink-0 flex flex-col justify-between h-[88px] min-w-[140px] p-3 rounded-2xl border border-border bg-card shadow-sm text-left">
+          <div className="flex items-start justify-between gap-2">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
+              style={{ backgroundColor: 'hsl(38, 92%, 50%)' }}
+            >
+              <Clock className="h-4 w-4" />
+            </span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate text-right mt-1">
+              Tempo em campo
+            </span>
+          </div>
+          <span className="text-xl font-bold leading-none truncate">{formattedTimeInField}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={cn('space-y-6', isMobile && 'pb-8 space-y-4')}>
+      <MobilePageHeader
+        title="Rastreamento de Técnicos"
+        subtitle="Histórico de deslocamentos por técnico e dia"
+        icon={Navigation}
+      />
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Filtros — mobile: chip resumo + FilterSheet. Desktop: inline.      */}
+      {/* ----------------------------------------------------------------- */}
+      {isMobile ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <FilterSheet
+              triggerLabel="Filtros"
+              activeCount={activeFilterCount}
+              onClear={clearFilters}
+            >
+              {filterContent}
+            </FilterSheet>
+            <div className="flex-1 min-w-0 flex items-center gap-2 text-xs text-muted-foreground truncate">
+              {selectedTechnician ? (
+                <>
+                  <User className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{selectedTechnician.full_name}</span>
+                  <span className="opacity-50">•</span>
+                  <span className="shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+                </>
+              ) : (
+                <span className="truncate">Selecione um técnico</span>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        filterContent
       )}
 
-      {/* Timeline */}
+      {/* ----------------------------------------------------------------- */}
+      {/* Stats (KPIs do dia) — só renderiza com dados.                      */}
+      {/* ----------------------------------------------------------------- */}
+      {locations.length > 0 && (
+        <>
+          {isMobile ? (
+            <div className="space-y-2">
+              <StatCarousel items={statItems} />
+              {extraStatsMobile}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold">{stats.checkIns}</p>
+                  <p className="text-xs text-muted-foreground">Check-ins</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold">{stats.checkOuts}</p>
+                  <p className="text-xs text-muted-foreground">Check-outs</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold">{formattedDistance}</p>
+                  <p className="text-xs text-muted-foreground">Distância total</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold">
+                    {stats.timeInField > 0 ? formattedTimeInField : '-'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Tempo em campo</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Lista / Timeline                                                   */}
+      {/* ----------------------------------------------------------------- */}
       {loading ? (
-        <p className="text-muted-foreground text-sm">Carregando...</p>
+        isMobile ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">Carregando...</p>
+        )
       ) : locations.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p>{selectedUserId ? 'Nenhum registro encontrado para esta data.' : 'Selecione um técnico para ver o histórico.'}</p>
-          </CardContent>
-        </Card>
+        isMobile ? (
+          <EmptyState
+            icon={<MapPin className="h-12 w-12" />}
+            title={selectedUserId ? 'Nenhum registro encontrado' : 'Selecione um técnico'}
+            description={
+              selectedUserId
+                ? 'Nenhum deslocamento foi registrado nesta data.'
+                : 'Escolha um técnico e uma data para ver o histórico de deslocamentos.'
+            }
+          />
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p>
+                {selectedUserId
+                  ? 'Nenhum registro encontrado para esta data.'
+                  : 'Selecione um técnico para ver o histórico.'}
+              </p>
+            </CardContent>
+          </Card>
+        )
+      ) : isMobile ? (
+        // ---------------------------------------------------------------
+        // Mobile: lista nativa (sem timeline visual). Cada item é uma
+        // linha "estilo iOS" com avatar + horário/badge + coord + link.
+        // ---------------------------------------------------------------
+        <>
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {pagination.paginatedItems.map((loc) => (
+              <TrackingEventListItem
+                key={loc.id}
+                id={loc.id}
+                lat={loc.lat}
+                lng={loc.lng}
+                createdAt={loc.created_at}
+                eventType={loc.event_type}
+                technicianName={selectedTechnicianName}
+                technicianInitials={selectedTechnicianInitials}
+              />
+            ))}
+          </div>
+          <DataTablePagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            from={pagination.from}
+            to={pagination.to}
+            pageSize={pagination.pageSize}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </>
       ) : (
+        // ---------------------------------------------------------------
+        // Desktop: timeline original, 100% preservada.
+        // ---------------------------------------------------------------
         <div className="space-y-4">
           <div className="relative pl-6 border-l-2 border-border space-y-4">
             {pagination.paginatedItems.map((loc) => (
