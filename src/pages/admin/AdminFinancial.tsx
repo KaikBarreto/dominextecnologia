@@ -75,7 +75,7 @@ export default function AdminFinancial() {
   // FAB só aparece em abas que fazem sentido criar lançamento.
   const showFab = isMobile && ['income', 'expenses', 'history', 'overview'].includes(activeSection);
   const fabType: 'income' | 'expense' = activeSection === 'expenses' ? 'expense' : 'income';
-  const fabLabel = fabType === 'income' ? 'Nova Receita' : 'Nova Despesa';
+  const fabLabel = fabType === 'income' ? 'Receita' : 'Despesa';
 
   const renderContent = () => {
     switch (activeSection) {

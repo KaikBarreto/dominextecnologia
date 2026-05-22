@@ -357,14 +357,14 @@ export default function Users() {
         {canManageRoles && activeTab === 'users' && (
           <FABButton
             icon={<Plus className="h-5 w-5" />}
-            label="Novo Usuário"
+            label="Usuário"
             onClick={() => { setEditingUser(null); setUserFormOpen(true); }}
           />
         )}
         {canManageRoles && activeTab === 'presets' && (
           <FABButton
             icon={<Plus className="h-5 w-5" />}
-            label="Novo Cargo"
+            label="Cargo"
             onClick={handleCreatePreset}
           />
         )}

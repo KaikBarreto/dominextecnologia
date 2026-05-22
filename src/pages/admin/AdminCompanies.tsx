@@ -645,7 +645,7 @@ export default function AdminCompanies() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Nova Empresa"
+          label="Empresa"
           onClick={() => { setEditingCompany(null); setShowForm(true); }}
         />
       )}

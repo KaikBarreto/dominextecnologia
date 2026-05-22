@@ -567,7 +567,7 @@ export default function Contracts() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Contrato"
+          label="Contrato"
           onClick={() => setDialogOpen(true)}
         />
       )}

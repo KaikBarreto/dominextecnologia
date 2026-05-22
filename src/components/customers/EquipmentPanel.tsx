@@ -495,7 +495,7 @@ export function EquipmentPanel() {
       {isMobile && canManageEquipment && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Equipamento"
+          label="Equipamento"
           onClick={openNewEquipment}
         />
       )}

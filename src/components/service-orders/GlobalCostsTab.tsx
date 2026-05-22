@@ -443,7 +443,7 @@ export function GlobalCostsTab() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label={`Novo ${activeCfg.labelSingular}`}
+          label={activeCfg.labelSingular}
           onClick={handleOpenCreate}
         />
       )}

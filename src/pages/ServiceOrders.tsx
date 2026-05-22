@@ -724,7 +724,7 @@ export default function ServiceOrders() {
             {isMobile && canCreateOS && (
               <FABButton
                 icon={<Plus className="h-5 w-5" />}
-                label="Nova OS"
+                label="OS"
                 onClick={() => { setEditingOS(null); setFormOpen(true); }}
               />
             )}

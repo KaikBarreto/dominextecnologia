@@ -261,7 +261,7 @@ export function ServiceTypesPanel() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Tipo"
+          label="Tipo"
           onClick={handleNew}
         />
       )}

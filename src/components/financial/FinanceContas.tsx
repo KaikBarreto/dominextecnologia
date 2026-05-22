@@ -602,7 +602,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Nova Conta"
+          label="Conta"
           onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }}
         />
       )}

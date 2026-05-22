@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.46',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cartões de status e botão flutuante mais bonitos no celular',
+        description: 'Refinamos dois pontos visuais do celular em todas as telas: (1) Os cartões coloridos de status no topo das telas (Ordens de Serviço, Estoque, Orçamentos, etc.) agora têm o ícone centralizado em cima, a etiqueta no meio e o número embaixo, todos alinhados ao centro — visual mais limpo e mais "app de verdade". Ficaram um pouco mais altos para dar espaço, mas a leitura ficou mais clara. (2) O botão flutuante de "Novo X" no canto inferior direito ficou mais minimalista, com nome curto: agora aparece "Cliente", "Material", "OS", "Funcionário", "Orçamento", etc. (em vez de "Novo Cliente", "Cadastrar Material", "Nova OS"...) — o ícone de + à esquerda já deixa claro que é pra criar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.45',
     date: '21 de maio de 2026',
     type: 'patch',

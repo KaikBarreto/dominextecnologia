@@ -396,7 +396,7 @@ export default function Customers() {
       {isMobile && canCreateCustomer && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Cliente"
+          label="Cliente"
           onClick={openNewCustomer}
         />
       )}

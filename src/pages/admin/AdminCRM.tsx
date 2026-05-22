@@ -582,7 +582,7 @@ export default function AdminCRM() {
         {isMobile && (
           <FABButton
             icon={<Plus className="h-5 w-5" />}
-            label="Novo Lead"
+            label="Lead"
             onClick={() => { setEditingLead(null); setDialogOpen(true); }}
           />
         )}

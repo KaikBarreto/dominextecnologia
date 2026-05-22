@@ -641,7 +641,7 @@ function QuotesList() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Orçamento"
+          label="Orçamento"
           onClick={() => { setEditQuote(null); setFormOpen(true); }}
         />
       )}

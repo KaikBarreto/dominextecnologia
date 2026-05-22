@@ -769,7 +769,7 @@ function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => v
           focusedSeason ? (
             <FABButton
               icon={<Plus className="h-5 w-5" />}
-              label="Novo Episódio"
+              label="Episódio"
               onClick={() =>
                 setEpisodeDialog({ open: true, episode: null, seasonId: focusedSeason.id })
               }
@@ -777,7 +777,7 @@ function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => v
           ) : (
             <FABButton
               icon={<Plus className="h-5 w-5" />}
-              label="Nova Temporada"
+              label="Temporada"
               onClick={() => setSeasonDialog({ open: true, season: null })}
             />
           )
@@ -1178,7 +1178,7 @@ export default function AdminDomiflix() {
       {isMobile && activeTab === "titles" && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Título"
+          label="Título"
           onClick={() => setTitleDialog({ open: true, title: null })}
         />
       )}

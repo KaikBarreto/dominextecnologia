@@ -323,7 +323,7 @@ export default function AdminSalespeople() {
       {isMobile && canSeeAll && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Vendedor"
+          label="Vendedor"
           onClick={openNew}
         />
       )}

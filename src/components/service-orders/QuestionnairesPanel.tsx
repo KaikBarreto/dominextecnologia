@@ -256,7 +256,7 @@ export function QuestionnairesPanel() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Questionário"
+          label="Questionário"
           onClick={() => setCreateOpen(true)}
         />
       )}

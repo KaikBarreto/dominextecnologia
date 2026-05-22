@@ -481,7 +481,7 @@ export default function Inventory() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Cadastrar Material"
+          label="Material"
           onClick={openNewItem}
         />
       )}

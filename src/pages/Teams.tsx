@@ -334,7 +334,7 @@ export default function Teams() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Nova Equipe"
+          label="Equipe"
           onClick={openNewTeam}
         />
       )}

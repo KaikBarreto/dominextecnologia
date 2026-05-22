@@ -303,7 +303,7 @@ export function TransactionListPanel({
     return <span>{formatDate(t.transaction_date)}</span>;
   };
 
-  const newLabel = type === 'entrada' ? 'Nova Receita' : type === 'saida' ? 'Nova Despesa' : 'Nova Transação';
+  const newLabel = type === 'entrada' ? 'Receita' : type === 'saida' ? 'Despesa' : 'Transação';
 
   return (
     <div className="space-y-4">

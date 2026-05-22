@@ -29,7 +29,7 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
     return isMobile ? (
       <div className="flex gap-2 overflow-hidden px-3 -mx-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[88px] w-[140px] shrink-0 rounded-2xl" />
+          <Skeleton key={i} className="h-[120px] w-[112px] shrink-0 rounded-2xl" />
         ))}
       </div>
     ) : (
@@ -53,23 +53,21 @@ export function StatCarousel({ items, loading = false }: StatCarouselProps) {
               type="button"
               onClick={item.onClick}
               className={cn(
-                'snap-start shrink-0 flex flex-col justify-between h-[88px] min-w-[140px] p-3 rounded-2xl border bg-card text-left transition-all active:scale-95',
+                'snap-start shrink-0 flex flex-col items-center justify-center gap-1.5 h-[120px] min-w-[112px] p-3 rounded-2xl border bg-card text-center transition-all active:scale-95',
                 item.active
                   ? 'ring-2 ring-primary border-primary/60 shadow-md'
                   : 'border-border shadow-sm'
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <span
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
-                  style={{ backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
-                >
-                  {item.icon}
-                </span>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate text-right mt-1">
-                  {item.label}
-                </span>
-              </div>
+              <span
+                className="flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0"
+                style={{ backgroundColor: item.accentColor || 'hsl(var(--primary))' }}
+              >
+                {item.icon}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate max-w-full">
+                {item.label}
+              </span>
               <span className="text-2xl font-bold leading-none">{item.count}</span>
             </button>
           ))}

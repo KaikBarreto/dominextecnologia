@@ -49,13 +49,13 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
       onClick={onClick}
       aria-label={label}
       className={cn(
-        'mobile-fab fixed right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95 animate-in fade-in zoom-in-90',
+        'mobile-fab fixed right-4 z-40 flex h-12 items-center gap-1.5 rounded-full bg-primary pl-3.5 pr-4 text-primary-foreground shadow-md shadow-primary/25 transition-transform active:scale-95 animate-in fade-in zoom-in-90',
         className
       )}
       style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
     >
-      <span className="flex h-5 w-5 items-center justify-center">{icon}</span>
-      <span className="text-sm font-semibold">{label}</span>
+      <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
+      <span className="text-sm font-medium">{label}</span>
     </button>
   );
 }

@@ -659,7 +659,7 @@ export default function Employees() {
       {isMobile && activeTab === 'list' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Funcionário"
+          label="Funcionário"
           onClick={openNewEmployee}
         />
       )}

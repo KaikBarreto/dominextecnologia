@@ -161,7 +161,7 @@ export default function PMOC() {
   const fabAction = activeSection === 'contratos'
     ? () => { setEditingContract(null); setContractDialogOpen(true); }
     : () => { setEditingPlan(null); setPlanDialogOpen(true); };
-  const fabLabel = activeSection === 'contratos' ? 'Novo Contrato' : 'Novo Plano';
+  const fabLabel = activeSection === 'contratos' ? 'Contrato' : 'Plano';
 
   // ------------------------------------------------------------------------
   // Renderers de lista mobile

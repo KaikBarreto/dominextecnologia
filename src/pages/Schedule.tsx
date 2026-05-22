@@ -750,7 +750,7 @@ export default function Schedule() {
         {canCreateOS && (
           <FABButton
             icon={<Plus className="h-5 w-5" />}
-            label="Nova Tarefa/OS"
+            label="Tarefa/OS"
             onClick={handleNewOrder}
           />
         )}

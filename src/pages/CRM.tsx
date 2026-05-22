@@ -660,7 +660,7 @@ export default function CRM() {
 
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Novo Lead"
+          label="Lead"
           onClick={() => setDialogOpen(true)}
         />
 
