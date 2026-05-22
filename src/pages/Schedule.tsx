@@ -25,8 +25,12 @@ import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FABButton } from '@/components/mobile/FABButton';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -498,56 +502,149 @@ export default function Schedule() {
 
   // Mobile & Tablet layout
   if (isMobile) {
+    const activeFilterCount =
+      (technicianFilter !== 'all' ? 1 : 0) +
+      (customerFilter !== 'all' ? 1 : 0) +
+      (statusFilter !== 'all' ? 1 : 0);
+
+    const clearFilters = () => {
+      setTechnicianFilter('all');
+      setCustomerFilter('all');
+      setStatusFilter('all');
+    };
+
+    // Botão "OS Pausadas" no slot de actions do header.
+    const headerActions = (
+      <button
+        type="button"
+        onClick={() => setIsPausedDialogOpen(true)}
+        aria-label="Ver OS pausadas"
+        className={cn(
+          'relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors active:bg-muted/80',
+          pausedOrders.length > 0 && 'text-amber-600 hover:text-amber-700',
+        )}
+      >
+        <PauseCircle className="h-5 w-5" />
+        {pausedOrders.length > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">
+            {pausedOrders.length}
+          </span>
+        )}
+      </button>
+    );
+
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
+    const currentKey = format(currentDate, 'yyyy-MM-dd');
+    const isToday = todayKey === currentKey;
+
     return (
-      <div className="flex flex-col gap-4">
-        <PageHeader
+      <div className="flex flex-col gap-4 pb-24">
+        <MobilePageHeader
           title="Agenda"
           subtitle="Gerencie suas tarefas e compromissos"
           icon={CalendarIcon}
-          className="mb-0"
+          actions={headerActions}
         />
 
-        {/* Navigation: arrows + month centered */}
-        <div className="flex items-center justify-center gap-3">
-          <button onClick={handlePrev} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+        {/* Navegação de período: prev / current / next + "Hoje" */}
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={handlePrev}
+            aria-label="Anterior"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors active:bg-muted/80"
+          >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h2 className="text-base font-semibold capitalize">
-            {format(currentDate, viewMode === 'day' ? "dd 'de' MMMM yyyy" : 'MMM yyyy', { locale: ptBR })}
-          </h2>
-          <button onClick={handleNext} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+          <div className="flex flex-col items-center flex-1 min-w-0">
+            <h2 className="text-base font-semibold capitalize truncate">
+              {format(currentDate, viewMode === 'day' ? "dd 'de' MMMM yyyy" : 'MMM yyyy', { locale: ptBR })}
+            </h2>
+            {!isToday && (
+              <button
+                type="button"
+                onClick={handleToday}
+                className="text-[11px] text-primary font-medium leading-tight"
+              >
+                Voltar para hoje
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleNext}
+            aria-label="Próximo"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors active:bg-muted/80"
+          >
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
 
-        {/* View mode tabs */}
-        <div className="flex justify-center">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-            <TabsList>
-              <TabsTrigger value="day" className="px-5">Dia</TabsTrigger>
-              <TabsTrigger value="week" className="px-5">Semana</TabsTrigger>
-              <TabsTrigger value="month" className="px-5">Mês</TabsTrigger>
+        {/* Toggle de visualização (Dia/Semana/Mês) + botão de filtros */}
+        <div className="flex items-center gap-2">
+          <Tabs
+            value={viewMode}
+            onValueChange={(v) => setViewMode(v as ViewMode)}
+            className="flex-1"
+          >
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="day">Dia</TabsTrigger>
+              <TabsTrigger value="week">Semana</TabsTrigger>
+              <TabsTrigger value="month">Mês</TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
-
-        {/* OS Pausadas (mobile) */}
-        <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsPausedDialogOpen(true)}
-            className={pausedOrders.length > 0 ? 'border-amber-500/40 text-amber-600 hover:bg-amber-500 hover:text-white' : ''}
-            aria-label="Ver OS pausadas"
+          <FilterSheet
+            triggerLabel="Filtros"
+            activeCount={activeFilterCount}
+            onClear={clearFilters}
           >
-            <PauseCircle className="h-4 w-4 mr-2" />
-            OS Pausadas
-            {pausedOrders.length > 0 && (
-              <span className="ml-2 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-semibold">
-                {pausedOrders.length}
-              </span>
-            )}
-          </Button>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Técnico</label>
+                <Select value={technicianFilter} onValueChange={setTechnicianFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {allProfiles.map((t) => (
+                      <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Cliente</label>
+                <Select value={customerFilter} onValueChange={setCustomerFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {customers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="em_andamento">Em andamento</SelectItem>
+                    <SelectItem value="pausada">Pausada</SelectItem>
+                    <SelectItem value="concluida">Concluída</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </FilterSheet>
         </div>
 
         {/* Moving indicator */}
@@ -612,25 +709,16 @@ export default function Schedule() {
           </div>
         )}
 
-        {/* Day description + New button */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold capitalize">
-              {format(currentDate, "dd 'de' MMMM", { locale: ptBR })}
-            </h3>
-            <p className="text-xs text-muted-foreground capitalize">
-              {format(currentDate, 'EEEE', { locale: ptBR })}
-            </p>
-          </div>
-          {canCreateOS && (
-            <Button size="sm" onClick={handleNewOrder}>
-              <Plus className="h-4 w-4 mr-1" />
-              Nova Tarefa/OS
-            </Button>
-          )}
+        {/* Cabeçalho do dia + lista de eventos */}
+        <div>
+          <h3 className="text-lg font-semibold capitalize">
+            {format(currentDate, "dd 'de' MMMM", { locale: ptBR })}
+          </h3>
+          <p className="text-xs text-muted-foreground capitalize">
+            {format(currentDate, 'EEEE', { locale: ptBR })}
+          </p>
         </div>
 
-        {/* Day orders list */}
         <MobileAgendaView
           currentDate={currentDate}
           orders={filteredOrders}
@@ -656,6 +744,15 @@ export default function Schedule() {
               onResume={(summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
             />
           </div>
+        )}
+
+        {/* FAB Nova Tarefa/OS */}
+        {canCreateOS && (
+          <FABButton
+            icon={<Plus className="h-5 w-5" />}
+            label="Nova Tarefa/OS"
+            onClick={handleNewOrder}
+          />
         )}
 
         <EntryTypeSelectorDialog
