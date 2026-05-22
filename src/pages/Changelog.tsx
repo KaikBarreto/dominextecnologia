@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.47',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Legenda da Agenda no celular para de entulhar a tela',
+        description: 'A lista de cores e tipos de serviço que aparece no rodapé da Agenda estava ocupando metade da tela no celular quando havia muitos tipos cadastrados. Agora aparece um botão compacto "Legenda" com um número mostrando quantos tipos existem; toque pra abrir uma gaveta de baixo com a lista organizada em duas colunas. No computador, a legenda continua aparecendo inline como antes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.46',
     date: '21 de maio de 2026',
     type: 'patch',

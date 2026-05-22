@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
@@ -31,6 +31,8 @@ import type { ServiceOrder } from '@/types/database';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import { useFinancialScheduleEvents } from '@/hooks/useFinancialScheduleEvents';
 import { useOrderAssignees } from '@/hooks/useOrderAssignees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -696,17 +698,44 @@ export default function Schedule() {
           )}
         </div>
 
-        {/* Legend */}
+        {/* Legend — Sheet compacto no mobile, inline no desktop */}
         {serviceTypes.filter(t => t.is_active).length > 0 && (
-          <div className="flex flex-wrap gap-3 items-center justify-center">
-            <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
-            {serviceTypes.filter(t => t.is_active).map((st) => (
-              <div key={st.id} className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
-                <span className="text-xs text-muted-foreground">{st.name}</span>
-              </div>
-            ))}
-          </div>
+          isMobile ? (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 h-8 self-start">
+                  <Palette className="h-3.5 w-3.5" />
+                  <span className="text-xs">Legenda</span>
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
+                    {serviceTypes.filter(t => t.is_active).length}
+                  </Badge>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="max-h-[70vh] rounded-t-2xl p-0 flex flex-col">
+                <SheetHeader className="px-4 pt-4 pb-2 border-b">
+                  <SheetTitle>Legenda — Tipos de Serviço</SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto px-4 py-4 grid grid-cols-2 gap-x-3 gap-y-2.5">
+                  {serviceTypes.filter(t => t.is_active).map((st) => (
+                    <div key={st.id} className="flex items-center gap-2 min-w-0">
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
+                      <span className="text-sm truncate">{st.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <div className="flex flex-wrap gap-3 items-center justify-center">
+              <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
+              {serviceTypes.filter(t => t.is_active).map((st) => (
+                <div key={st.id} className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: st.color }} />
+                  <span className="text-xs text-muted-foreground">{st.name}</span>
+                </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* Cabeçalho do dia + lista de eventos */}
