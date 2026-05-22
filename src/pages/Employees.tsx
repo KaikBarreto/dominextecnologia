@@ -1,12 +1,17 @@
 import { useState, useMemo, useCallback } from 'react';
-import { fuzzyIncludes } from '@/lib/utils';
+import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users, BarChart3, Plus, Search, Clock, UsersRound } from 'lucide-react';
+import {
+  Users, BarChart3, Plus, Search, Clock, UsersRound,
+  FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Trash2,
+} from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
@@ -23,8 +28,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { generateReceiptHTML } from '@/utils/receiptGenerator';
 import { supabase } from '@/integrations/supabase/client';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { FABButton } from '@/components/mobile/FABButton';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 export default function Employees() {
   const [activeTab, setActiveTab] = useState('list');
@@ -37,7 +47,9 @@ export default function Employees() {
   const [paymentEmployee, setPaymentEmployee] = useState<Employee | null>(null);
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
+  const isMobile = useIsMobile();
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
   const { toast } = useToast();
   const { user, profile, isAdminOrGestor, hasPermission } = useAuth();
@@ -447,16 +459,30 @@ export default function Employees() {
     deleteEmployee.mutate(employee.id);
   }, [deleteEmployee, toast]);
 
+  const fmtCurrency = (v: number) =>
+    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const getInitials = (name: string) =>
+    name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+
+  const openNewEmployee = () => { setEditingEmployee(null); setFormOpen(true); };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            Funcionários <Badge variant="secondary">{employees.length}</Badge>
-          </h1>
-          <p className="text-muted-foreground">Gerencie funcionários, vales, pagamentos e extratos</p>
-        </div>
-      </div>
+    <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
+      <MobilePageHeader
+        title="Funcionários"
+        subtitle="Gerencie funcionários, vales, pagamentos e extratos"
+        icon={Users}
+        actions={
+          isMobile ? (
+            <Badge variant="secondary" className="text-[10px]">{employees.length}</Badge>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary">{employees.length}</Badge>
+            </div>
+          )
+        }
+      />
 
       <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'list' ? (
@@ -464,46 +490,160 @@ export default function Employees() {
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar por nome ou cargo..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+                <Input
+                  placeholder={isMobile ? 'Buscar funcionário...' : 'Buscar por nome ou cargo...'}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9"
+                />
               </div>
               <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="az">A-Z</SelectItem>
                   <SelectItem value="newest">Mais recente</SelectItem>
                   <SelectItem value="oldest">Mais antigo</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={() => { setEditingEmployee(null); setFormOpen(true); }} className="gap-1.5">
-                <Plus className="h-4 w-4" /> Novo Funcionário
-              </Button>
+              {!isMobile && (
+                <Button onClick={openNewEmployee} className="gap-1.5">
+                  <Plus className="h-4 w-4" /> Novo Funcionário
+                </Button>
+              )}
             </div>
 
-            {isLoading ? (
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />)}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                {search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
-              </div>
+            {isMobile ? (
+              // -------------------------------------------------------------
+              // Mobile: lista nativa via MobileListItem, ações no overflow ⋮.
+              // -------------------------------------------------------------
+              isLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-[72px] rounded-lg bg-muted animate-pulse" />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <EmptyState
+                  icon={<Users className="h-12 w-12" />}
+                  title={search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
+                  description={search ? 'Tente uma busca diferente' : 'Toque em "Novo Funcionário" para começar'}
+                />
+              ) : (
+                <div className="rounded-xl border bg-card overflow-hidden">
+                  {filtered.map((emp) => {
+                    const balance = balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary);
+                    const balancePositive = balance.currentBalance >= 0;
+
+                    const itemActions: ItemAction[] = [
+                      {
+                        key: 'extract',
+                        label: 'Visualizar',
+                        icon: <FileText className="h-4 w-4" />,
+                        onClick: () => setExtractEmployee(emp),
+                      },
+                      {
+                        key: 'vale',
+                        label: 'Vale',
+                        icon: <Banknote className="h-4 w-4" />,
+                        onClick: () => { setMovementType('vale'); setMovementEmployee(emp); },
+                      },
+                      {
+                        key: 'bonus',
+                        label: 'Bônus',
+                        icon: <Gift className="h-4 w-4" />,
+                        onClick: () => { setMovementType('bonus'); setMovementEmployee(emp); },
+                      },
+                      {
+                        key: 'falta',
+                        label: 'Falta',
+                        icon: <AlertCircle className="h-4 w-4" />,
+                        onClick: () => { setMovementType('falta'); setMovementEmployee(emp); },
+                      },
+                      {
+                        key: 'payment',
+                        label: 'Pagamento',
+                        icon: <CreditCard className="h-4 w-4" />,
+                        onClick: () => setPaymentEmployee(emp),
+                      },
+                      {
+                        key: 'edit',
+                        label: 'Editar',
+                        icon: <Pencil className="h-4 w-4" />,
+                        variant: 'edit' as const,
+                        onClick: () => { setEditingEmployee(emp); setFormOpen(true); },
+                      },
+                      {
+                        key: 'delete',
+                        label: 'Excluir',
+                        icon: <Trash2 className="h-4 w-4" />,
+                        variant: 'destructive' as const,
+                        onClick: () => setEmployeeToDelete(emp),
+                      },
+                    ];
+
+                    const subtitleParts = [
+                      emp.position,
+                      fmtCurrency(emp.salary || 0),
+                    ].filter(Boolean);
+
+                    return (
+                      <MobileListItem
+                        key={emp.id}
+                        onClick={() => setExtractEmployee(emp)}
+                        actions={itemActions}
+                        leading={
+                          <Avatar className="h-10 w-10">
+                            <SignedAvatarImage src={emp.photo_url} alt={emp.name} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                              {getInitials(emp.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        }
+                        title={emp.name}
+                        subtitle={subtitleParts.join(' • ')}
+                        trailing={
+                          <Badge
+                            variant={balancePositive ? 'default' : 'destructive'}
+                            className="text-[10px] px-2 py-0.5 whitespace-nowrap"
+                          >
+                            {fmtCurrency(balance.currentBalance)}
+                          </Badge>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )
             ) : (
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
-                {filtered.map(emp => (
-                  <EmployeeCard
-                    key={emp.id}
-                    employee={emp}
-                    balance={balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary)}
-                    onEdit={() => { setEditingEmployee(emp); setFormOpen(true); }}
-                    onDelete={() => deleteEmployee.mutate(emp.id)}
-                    onDeleteWithUser={emp.user_id ? () => handleDeleteWithUser(emp) : undefined}
-                    onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
-                    onPayment={() => setPaymentEmployee(emp)}
-                    onExtract={() => setExtractEmployee(emp)}
-                    
-                  />
-                ))}
-              </div>
+              // -------------------------------------------------------------
+              // Desktop: grid de cards preservado 100% igual.
+              // -------------------------------------------------------------
+              isLoading ? (
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
+                  {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />)}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  {search ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
+                </div>
+              ) : (
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
+                  {filtered.map(emp => (
+                    <EmployeeCard
+                      key={emp.id}
+                      employee={emp}
+                      balance={balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary)}
+                      onEdit={() => { setEditingEmployee(emp); setFormOpen(true); }}
+                      onDelete={() => deleteEmployee.mutate(emp.id)}
+                      onDeleteWithUser={emp.user_id ? () => handleDeleteWithUser(emp) : undefined}
+                      onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
+                      onPayment={() => setPaymentEmployee(emp)}
+                      onExtract={() => setExtractEmployee(emp)}
+
+                    />
+                  ))}
+                </div>
+              )
             )}
           </div>
         ) : activeTab === 'teams' ? (
@@ -514,6 +654,15 @@ export default function Employees() {
           <EmployeesDashboard employees={employees} balances={balanceMap} />
         )}
       </SettingsSidebarLayout>
+
+      {/* FAB mobile-only — só na tab de lista. Desktop usa botão inline na toolbar. */}
+      {isMobile && activeTab === 'list' && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Novo Funcionário"
+          onClick={openNewEmployee}
+        />
+      )}
 
       {/* Dialogs */}
       <EmployeeFormDialog
@@ -561,6 +710,46 @@ export default function Employees() {
           onDeleteMovement={id => deleteMovement.mutate(id)}
         />
       )}
+
+      {/* Confirmação de exclusão (mobile usa esta — centralizada na page) */}
+      <AlertDialog open={!!employeeToDelete} onOpenChange={o => { if (!o) setEmployeeToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir funcionário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {employeeToDelete?.user_id
+                ? 'Este funcionário está vinculado a um usuário do sistema. Deseja excluir o usuário também? Isso liberará o email para reutilização.'
+                : 'Todos os dados e movimentações serão perdidos.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            {employeeToDelete?.user_id && (
+              <AlertDialogAction
+                onClick={() => {
+                  if (employeeToDelete) {
+                    handleDeleteWithUser(employeeToDelete);
+                    setEmployeeToDelete(null);
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir ambos
+              </AlertDialogAction>
+            )}
+            <AlertDialogAction
+              onClick={() => {
+                if (employeeToDelete) {
+                  deleteEmployee.mutate(employeeToDelete.id);
+                  setEmployeeToDelete(null);
+                }
+              }}
+            >
+              {employeeToDelete?.user_id ? 'Só o funcionário' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!receiptConfirmData} onOpenChange={o => { if (!o) setReceiptConfirmData(null); }}>
         <AlertDialogContent>
