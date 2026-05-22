@@ -1,13 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Wallet, TrendingUp, TrendingDown, History, LayoutDashboard, BarChart3, FileText, Settings2 } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, History, LayoutDashboard, BarChart3, FileText, Settings2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { AdminFinancialMovementModal } from '@/components/admin/AdminFinancialMovementModal';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
@@ -16,13 +13,18 @@ import { FinancialCharts } from '@/components/admin/financial/FinancialCharts';
 import { FinancialMovementSection } from '@/components/admin/financial/FinancialMovementSection';
 import { FinancialDRESection } from '@/components/admin/financial/FinancialDRESection';
 import { FinancialSettingsSection } from '@/components/admin/financial/FinancialSettingsSection';
+import { FinancialTransactionList } from '@/components/admin/financial/FinancialTransactionList';
 import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { FABButton } from '@/components/mobile/FABButton';
 import { cn } from '@/lib/utils';
 
 export default function AdminFinancial() {
   const { hasFunctionAccess } = useAdminPermissions();
   const canSeeTotals = hasFunctionAccess('admin_financeiro_totais');
+  const isMobile = useIsMobile();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<'income' | 'expense'>('income');
@@ -70,6 +72,11 @@ export default function AdminFinancial() {
 
   const openModal = (type: 'income' | 'expense') => { setModalDefaultType(type); setIsModalOpen(true); };
 
+  // FAB só aparece em abas que fazem sentido criar lançamento.
+  const showFab = isMobile && ['income', 'expenses', 'history', 'overview'].includes(activeSection);
+  const fabType: 'income' | 'expense' = activeSection === 'expenses' ? 'expense' : 'income';
+  const fabLabel = fabType === 'income' ? 'Nova Receita' : 'Nova Despesa';
+
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
@@ -92,7 +99,9 @@ export default function AdminFinancial() {
                   <Button variant="ghost" size="sm" onClick={() => setActiveSection('history')} className="text-primary text-xs">Ver todas</Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-0"><TransactionsTable transactions={transactions.slice(0, 10)} categories={categories} /></CardContent>
+              <CardContent className="p-0">
+                <FinancialTransactionList transactions={transactions.slice(0, 10)} categories={categories} variant="mixed" />
+              </CardContent>
             </Card>
           </div>
         );
@@ -106,7 +115,9 @@ export default function AdminFinancial() {
             <CardHeader className="border-b bg-muted/30 py-3">
               <CardTitle className="text-base font-semibold">Histórico</CardTitle>
             </CardHeader>
-            <CardContent className="p-0"><TransactionsTable transactions={transactions} categories={categories} /></CardContent>
+            <CardContent className="p-0">
+              <FinancialTransactionList transactions={transactions} categories={categories} variant="mixed" />
+            </CardContent>
           </Card>
         );
       case 'charts':
@@ -120,66 +131,41 @@ export default function AdminFinancial() {
   };
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10"><Wallet className="h-5 w-5 text-primary" /></div>
-            <div>
-              <h1 className="text-xl lg:text-2xl font-bold">Financeiro</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">Controle financeiro do SaaS</p>
+    <div className={cn('container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6', isMobile && 'pb-24')}>
+      {/* Mobile: MobilePageHeader compacto. Desktop: bloco original com filtro de data ao lado. */}
+      {isMobile ? (
+        <>
+          <MobilePageHeader title="Financeiro" subtitle="Controle financeiro do SaaS" icon={Wallet} />
+          <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+        </>
+      ) : (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10"><Wallet className="h-5 w-5 text-primary" /></div>
+              <div>
+                <h1 className="text-xl lg:text-2xl font-bold">Financeiro</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">Controle financeiro do SaaS</p>
+              </div>
             </div>
           </div>
+          <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
         </div>
-        <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
-      </div>
+      )}
 
       <SettingsSidebarLayout tabs={tabs} activeTab={activeSection} onTabChange={setActiveSection}>
         {renderContent()}
       </SettingsSidebarLayout>
 
+      {showFab && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label={fabLabel}
+          onClick={() => openModal(fabType)}
+        />
+      )}
+
       <AdminFinancialMovementModal open={isModalOpen} onOpenChange={setIsModalOpen} defaultType={modalDefaultType} />
-    </div>
-  );
-}
-
-function TransactionsTable({ transactions, categories }: { transactions: any[]; categories: any[] }) {
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const labelFor = (n: string) => categories.find((c) => c.name === n)?.label ?? n;
-
-  return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Data</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Categoria</TableHead>
-            <TableHead>Descrição</TableHead>
-            <TableHead className="text-right">Valor</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transactions.map((t: any) => (
-            <TableRow key={t.id}>
-              <TableCell className="text-sm">{format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-              <TableCell>
-                <Badge className={t.type === 'income' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-500/30'}>
-                  {t.type === 'income' ? 'Receita' : 'Despesa'}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm">{labelFor(t.category) || '-'}</TableCell>
-              <TableCell className="text-sm max-w-[200px] truncate">{t.description || '-'}</TableCell>
-              <TableCell className={cn('text-right font-medium', t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
-                {t.type === 'income' ? '+' : '-'}{fmt(Number(t.amount))}
-              </TableCell>
-            </TableRow>
-          ))}
-          {transactions.length === 0 && (
-            <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma transação</TableCell></TableRow>
-          )}
-        </TableBody>
-      </Table>
     </div>
   );
 }
