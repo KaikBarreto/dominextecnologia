@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Star, Film, Tv, Layers,
-  Image as ImageIcon, Upload, Search, Eye,
+  Image as ImageIcon, Upload, Search, Eye, ChevronRight, PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,15 +196,17 @@ function TitleFormDialog({ open, onOpenChange, title }: TitleFormDialogProps) {
 }
 
 // ─────────────── Episode Form ───────────────
-function EpisodeFormDialog({ open, onOpenChange, titleId, seasons, episode }: {
+function EpisodeFormDialog({ open, onOpenChange, titleId, seasons, episode, defaultSeasonId }: {
   open: boolean; onOpenChange: (o: boolean) => void; titleId: string;
   seasons: DomiflixSeason[]; episode: DomiflixEpisode | null;
+  /** Pré-seleciona uma temporada ao criar (usado pelo FAB contextual no mobile). Ignorado na edição. */
+  defaultSeasonId?: string | null;
 }) {
   const create = useCreateEpisode();
   const update = useUpdateEpisode();
   const isEdit = !!episode;
   const [form, setForm] = useState(() => ({
-    season_id: episode?.season_id ?? null,
+    season_id: episode?.season_id ?? defaultSeasonId ?? null,
     title: episode?.title ?? "",
     description: episode?.description ?? "",
     episode_number: episode?.episode_number ?? null,
@@ -362,8 +365,9 @@ function SeasonFormDialog({ open, onOpenChange, titleId, season }: {
 }
 
 // ─────────────── Title detail (seasons + episodes) ───────────────
-// Níveis 2-3 (temporadas + episódios) preservam UX em cards/collapsibles.
-// Refatorar pra MobileListItem aninhado fica pra onda dedicada de Tree mobile.
+// Onda 4: refatoração mobile-first para níveis 2-3.
+// - Mobile: cada temporada é um MobileListItem expandível; episódios indentados também são MobileListItem.
+// - Desktop: visual preservado (Cards + ações inline).
 function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => void }) {
   const isMobile = useIsMobile();
   const { data: full, isLoading } = useDomiflixTitle(titleId);
@@ -371,8 +375,26 @@ function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => v
   const deleteEpisode = useDeleteEpisode();
 
   const [seasonDialog, setSeasonDialog] = useState<{ open: boolean; season: DomiflixSeason | null }>({ open: false, season: null });
-  const [episodeDialog, setEpisodeDialog] = useState<{ open: boolean; episode: DomiflixEpisode | null }>({ open: false, episode: null });
+  const [episodeDialog, setEpisodeDialog] = useState<{ open: boolean; episode: DomiflixEpisode | null; seasonId?: string | null }>({ open: false, episode: null });
   const [confirmDel, setConfirmDel] = useState<{ kind: "season" | "episode"; id: string } | null>(null);
+
+  // Quais temporadas estão expandidas no mobile.
+  const [expandedSeasons, setExpandedSeasons] = useState<Set<string>>(() => new Set());
+  // Última temporada com interação — usada pra contextualizar o FAB ("Novo Episódio" naquela temporada).
+  const [lastFocusedSeasonId, setLastFocusedSeasonId] = useState<string | null>(null);
+
+  const toggleSeason = (id: string) => {
+    setExpandedSeasons((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        setLastFocusedSeasonId(id);
+      }
+      return next;
+    });
+  };
 
   if (isLoading || !full) {
     return (
@@ -381,6 +403,24 @@ function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => v
       </div>
     );
   }
+
+  // Resolve qual temporada o FAB "Novo Episódio" usa por padrão no mobile.
+  const focusedSeason =
+    full.seasons.find((s) => s.id === lastFocusedSeasonId) ??
+    (expandedSeasons.size > 0
+      ? full.seasons.find((s) => expandedSeasons.has(s.id))
+      : undefined);
+
+  // Formata duração total da temporada em "Xh Ym" ou "Ym".
+  const formatTotalDuration = (eps: DomiflixEpisode[]) => {
+    const total = eps.reduce((sum, e) => sum + (e.duration_minutes ?? 0), 0);
+    if (total <= 0) return null;
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}min`;
+    if (h > 0) return `${h}h`;
+    return `${m}min`;
+  };
 
   return (
     <div className={cn(isMobile ? "px-3 pb-24" : "container mx-auto p-6 max-w-5xl")}>
@@ -415,137 +455,346 @@ function TitleDetailView({ titleId, onBack }: { titleId: string; onBack: () => v
           </div>
         )}
 
-        {/* Ações mobile (Temporada / Episódio) em row sticky de chips */}
-        {isMobile && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 h-9"
-              onClick={() => setSeasonDialog({ open: true, season: null })}
-            >
-              <Plus className="h-4 w-4 mr-1" /> Temporada
-            </Button>
-            <Button
-              size="sm"
-              className="flex-1 h-9"
-              onClick={() => setEpisodeDialog({ open: true, episode: null })}
-            >
-              <Plus className="h-4 w-4 mr-1" /> Episódio
-            </Button>
-          </div>
-        )}
-
         {full.seasons.length === 0 && full.episodes.length === 0 && (
           isMobile ? (
             <EmptyState
               icon={<Layers className="h-12 w-12" />}
               title="Sem conteúdo ainda"
-              description='Toque em "Temporada" ou "Episódio" para começar'
+              description='Toque em "Nova Temporada" para começar'
             />
           ) : (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhum conteúdo. Crie uma temporada ou episódio.</CardContent></Card>
           )
         )}
 
-        {full.seasons.map((s) => (
-          <Card key={s.id}>
-            <CardHeader className="flex-row items-center justify-between space-y-0 py-3 gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Layers className="h-4 w-4 text-primary shrink-0" />
-                <CardTitle className="text-base truncate">T{s.season_number} — {s.title}</CardTitle>
-                <Badge variant="outline" className="shrink-0">{s.episodes.length} ep</Badge>
+        {isMobile ? (
+          // ───────────────────────────────────────────────────────────────────
+          // Mobile: árvore aninhada via MobileListItem.
+          // ───────────────────────────────────────────────────────────────────
+          <>
+            {full.seasons.length > 0 && (
+              <div className="rounded-xl border bg-card overflow-hidden">
+                {full.seasons.map((s) => {
+                  const isExpanded = expandedSeasons.has(s.id);
+                  const totalDuration = formatTotalDuration(s.episodes);
+                  const seasonActions: ItemAction[] = [
+                    {
+                      key: "edit-season",
+                      label: "Editar temporada",
+                      icon: <Pencil className="h-4 w-4" />,
+                      variant: "edit" as const,
+                      onClick: () => setSeasonDialog({ open: true, season: s }),
+                    },
+                    {
+                      key: "delete-season",
+                      label: "Excluir temporada",
+                      icon: <Trash2 className="h-4 w-4" />,
+                      variant: "destructive" as const,
+                      onClick: () => setConfirmDel({ kind: "season", id: s.id }),
+                    },
+                  ];
+                  return (
+                    <div key={s.id}>
+                      <MobileListItem
+                        onClick={() => toggleSeason(s.id)}
+                        actions={seasonActions}
+                        leading={
+                          <div className="h-12 w-12 rounded-md bg-primary/10 text-primary flex flex-col items-center justify-center shrink-0">
+                            <span className="text-[10px] font-medium leading-none">TEMP</span>
+                            <span className="text-base font-bold leading-tight">{s.season_number}</span>
+                          </div>
+                        }
+                        title={<span className="truncate">{s.title}</span>}
+                        subtitle={
+                          <span className="flex items-center gap-2 flex-wrap">
+                            <span>{s.episodes.length} {s.episodes.length === 1 ? "episódio" : "episódios"}</span>
+                            {totalDuration && (
+                              <>
+                                <span aria-hidden>·</span>
+                                <span>{totalDuration}</span>
+                              </>
+                            )}
+                          </span>
+                        }
+                        trailing={
+                          <motion.span
+                            animate={{ rotate: isExpanded ? 90 : 0 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                            className="flex items-center justify-center text-muted-foreground"
+                            aria-label={isExpanded ? "Recolher temporada" : "Expandir temporada"}
+                          >
+                            <ChevronRight className="h-5 w-5" />
+                          </motion.span>
+                        }
+                      />
+                      {/* Episódios da temporada — animação suave. */}
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            key="episodes"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.22, ease: "easeOut" }}
+                            className="overflow-hidden bg-muted/30"
+                          >
+                            {s.episodes.length === 0 ? (
+                              <div className="pl-16 pr-4 py-4 text-xs text-muted-foreground border-b border-border/60">
+                                Nenhum episódio nesta temporada. Toque em "Novo Episódio" para criar.
+                              </div>
+                            ) : (
+                              s.episodes.map((ep) => {
+                                const epActions: ItemAction[] = [
+                                  {
+                                    key: "edit-ep",
+                                    label: "Editar episódio",
+                                    icon: <Pencil className="h-4 w-4" />,
+                                    variant: "edit" as const,
+                                    onClick: () => setEpisodeDialog({ open: true, episode: ep }),
+                                  },
+                                  {
+                                    key: "delete-ep",
+                                    label: "Excluir episódio",
+                                    icon: <Trash2 className="h-4 w-4" />,
+                                    variant: "destructive" as const,
+                                    onClick: () => setConfirmDel({ kind: "episode", id: ep.id }),
+                                  },
+                                ];
+                                return (
+                                  <div key={ep.id} className="pl-8">
+                                    <MobileListItem
+                                      actions={epActions}
+                                      leading={
+                                        ep.thumbnail_url ? (
+                                          <img
+                                            src={ep.thumbnail_url}
+                                            alt={ep.title}
+                                            className="h-10 w-14 rounded object-cover"
+                                          />
+                                        ) : (
+                                          <div className="h-10 w-14 rounded bg-muted text-muted-foreground flex items-center justify-center">
+                                            <PlayCircle className="h-5 w-5" />
+                                          </div>
+                                        )
+                                      }
+                                      title={
+                                        <span className="truncate">
+                                          {ep.episode_number != null && (
+                                            <span className="text-muted-foreground mr-1">EP{ep.episode_number}</span>
+                                          )}
+                                          {ep.title}
+                                        </span>
+                                      }
+                                      subtitle={
+                                        <span className="flex items-center gap-2 flex-wrap">
+                                          {ep.duration_minutes != null && (
+                                            <span>{ep.duration_minutes}min</span>
+                                          )}
+                                          {ep.duration_minutes != null && <span aria-hidden>·</span>}
+                                          <span className="uppercase tracking-wider text-[10px] opacity-80">
+                                            {ep.video_type === "youtube" ? "YouTube" : "Drive"}
+                                          </span>
+                                        </span>
+                                      }
+                                    />
+                                  </div>
+                                );
+                              })
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex gap-1 shrink-0">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-warning hover:text-warning"
-                  onClick={() => setSeasonDialog({ open: true, season: s })}
-                  aria-label="Editar temporada"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => setConfirmDel({ kind: "season", id: s.id })}
-                  aria-label="Excluir temporada"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-1">
-              {s.episodes.map((ep) => (
-                <div key={ep.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-muted text-sm">
-                  <span className="truncate min-w-0">EP{ep.episode_number ?? "?"} — {ep.title}</span>
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-warning hover:text-warning"
-                      onClick={() => setEpisodeDialog({ open: true, episode: ep })}
-                      aria-label="Editar episódio"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}
-                      aria-label="Excluir episódio"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {s.episodes.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum episódio nesta temporada</p>}
-            </CardContent>
-          </Card>
-        ))}
+            )}
 
-        {full.episodes.length > 0 && (
-          <Card>
-            <CardHeader className="py-3"><CardTitle className="text-base">Episódios sem temporada</CardTitle></CardHeader>
-            <CardContent className="pt-0 space-y-1">
-              {full.episodes.map((ep) => (
-                <div key={ep.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-muted text-sm">
-                  <span className="truncate min-w-0">{ep.title}</span>
+            {/* Episódios sem temporada (filmes/lives soltos) — também como lista nativa. */}
+            {full.episodes.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                  Episódios sem temporada
+                </h3>
+                <div className="rounded-xl border bg-card overflow-hidden">
+                  {full.episodes.map((ep) => {
+                    const epActions: ItemAction[] = [
+                      {
+                        key: "edit-ep",
+                        label: "Editar episódio",
+                        icon: <Pencil className="h-4 w-4" />,
+                        variant: "edit" as const,
+                        onClick: () => setEpisodeDialog({ open: true, episode: ep }),
+                      },
+                      {
+                        key: "delete-ep",
+                        label: "Excluir episódio",
+                        icon: <Trash2 className="h-4 w-4" />,
+                        variant: "destructive" as const,
+                        onClick: () => setConfirmDel({ kind: "episode", id: ep.id }),
+                      },
+                    ];
+                    return (
+                      <MobileListItem
+                        key={ep.id}
+                        actions={epActions}
+                        leading={
+                          ep.thumbnail_url ? (
+                            <img src={ep.thumbnail_url} alt={ep.title} className="h-10 w-14 rounded object-cover" />
+                          ) : (
+                            <div className="h-10 w-14 rounded bg-muted text-muted-foreground flex items-center justify-center">
+                              <PlayCircle className="h-5 w-5" />
+                            </div>
+                          )
+                        }
+                        title={<span className="truncate">{ep.title}</span>}
+                        subtitle={
+                          <span className="flex items-center gap-2 flex-wrap">
+                            {ep.duration_minutes != null && <span>{ep.duration_minutes}min</span>}
+                            {ep.duration_minutes != null && <span aria-hidden>·</span>}
+                            <span className="uppercase tracking-wider text-[10px] opacity-80">
+                              {ep.video_type === "youtube" ? "YouTube" : "Drive"}
+                            </span>
+                          </span>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          // ───────────────────────────────────────────────────────────────────
+          // Desktop: visual preservado (Cards com ações inline).
+          // ───────────────────────────────────────────────────────────────────
+          <>
+            {full.seasons.map((s) => (
+              <Card key={s.id}>
+                <CardHeader className="flex-row items-center justify-between space-y-0 py-3 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Layers className="h-4 w-4 text-primary shrink-0" />
+                    <CardTitle className="text-base truncate">T{s.season_number} — {s.title}</CardTitle>
+                    <Badge variant="outline" className="shrink-0">{s.episodes.length} ep</Badge>
+                  </div>
                   <div className="flex gap-1 shrink-0">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-warning hover:text-warning"
-                      onClick={() => setEpisodeDialog({ open: true, episode: ep })}
-                      aria-label="Editar episódio"
+                      className="text-warning hover:text-warning"
+                      onClick={() => setSeasonDialog({ open: true, season: s })}
+                      aria-label="Editar temporada"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}
-                      aria-label="Excluir episódio"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setConfirmDel({ kind: "season", id: s.id })}
+                      aria-label="Excluir temporada"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-1">
+                  {s.episodes.map((ep) => (
+                    <div key={ep.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-muted text-sm">
+                      <span className="truncate min-w-0">EP{ep.episode_number ?? "?"} — {ep.title}</span>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-warning hover:text-warning"
+                          onClick={() => setEpisodeDialog({ open: true, episode: ep })}
+                          aria-label="Editar episódio"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}
+                          aria-label="Excluir episódio"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {s.episodes.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum episódio nesta temporada</p>}
+                </CardContent>
+              </Card>
+            ))}
+
+            {full.episodes.length > 0 && (
+              <Card>
+                <CardHeader className="py-3"><CardTitle className="text-base">Episódios sem temporada</CardTitle></CardHeader>
+                <CardContent className="pt-0 space-y-1">
+                  {full.episodes.map((ep) => (
+                    <div key={ep.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-muted text-sm">
+                      <span className="truncate min-w-0">{ep.title}</span>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-warning hover:text-warning"
+                          onClick={() => setEpisodeDialog({ open: true, episode: ep })}
+                          aria-label="Editar episódio"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setConfirmDel({ kind: "episode", id: ep.id })}
+                          aria-label="Excluir episódio"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
+        {/* FAB contextual (mobile-only): se há temporada focada → "Novo Episódio" nela; senão → "Nova Temporada". */}
+        {isMobile && (
+          focusedSeason ? (
+            <FABButton
+              icon={<Plus className="h-5 w-5" />}
+              label="Novo Episódio"
+              onClick={() =>
+                setEpisodeDialog({ open: true, episode: null, seasonId: focusedSeason.id })
+              }
+            />
+          ) : (
+            <FABButton
+              icon={<Plus className="h-5 w-5" />}
+              label="Nova Temporada"
+              onClick={() => setSeasonDialog({ open: true, season: null })}
+            />
+          )
         )}
 
         {seasonDialog.open && (
           <SeasonFormDialog open={seasonDialog.open} onOpenChange={(o) => !o && setSeasonDialog({ open: false, season: null })} titleId={titleId} season={seasonDialog.season} />
         )}
         {episodeDialog.open && (
-          <EpisodeFormDialog open={episodeDialog.open} onOpenChange={(o) => !o && setEpisodeDialog({ open: false, episode: null })} titleId={titleId} seasons={full.seasons} episode={episodeDialog.episode} />
+          <EpisodeFormDialog
+            open={episodeDialog.open}
+            onOpenChange={(o) => !o && setEpisodeDialog({ open: false, episode: null })}
+            titleId={titleId}
+            seasons={full.seasons}
+            episode={episodeDialog.episode}
+            defaultSeasonId={episodeDialog.seasonId ?? null}
+          />
         )}
 
         <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
