@@ -16,6 +16,9 @@ import {
 import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
+import { FABButton } from '@/components/mobile/FABButton';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -194,15 +197,18 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold">Contas</h2>
-          <p className="text-sm text-muted-foreground">Programação financeira — contas a pagar e a receber</p>
+      {/* Header inline — desktop. Mobile usa o MobilePageHeader do parent + FAB. */}
+      {!isMobile && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-bold">Contas</h2>
+            <p className="text-sm text-muted-foreground">Programação financeira — contas a pagar e a receber</p>
+          </div>
+          <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Nova Conta
+          </Button>
         </div>
-        <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Nova Conta
-        </Button>
-      </div>
+      )}
 
       {/* Sub-tab toggle */}
       <div className="flex gap-2">
@@ -279,68 +285,93 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-medium">Nenhuma conta encontrada</h3>
-          <p className="text-muted-foreground text-sm">Nenhum registro para o filtro selecionado</p>
-        </div>
+        <EmptyState
+          icon={<DollarSign className="h-12 w-12" />}
+          title="Nenhuma conta encontrada"
+          description="Nenhum registro para o filtro selecionado"
+        />
       ) : isMobile ? (
         <div className="space-y-3">
-          {pagination.paginatedItems.map((t) => (
-            <Card key={t.id} className={cn(isOverdue(t) && 'border-destructive/40')}>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate flex items-center gap-1.5">
-                      {t.payroll_kind === 'salary' && <Users className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {pagination.paginatedItems.map((t) => {
+              const overdue = isOverdue(t);
+              const itemActions: ItemAction[] = [
+                ...(!t.is_paid ? [{
+                  key: 'mark-paid',
+                  label: subTab === 'receber' ? 'Marcar recebido' : 'Marcar pago',
+                  icon: <Check className="h-4 w-4" />,
+                  onClick: () => handleMarkAsPaidClick(t),
+                }] : []),
+                {
+                  key: 'edit',
+                  label: 'Editar',
+                  icon: <Pencil className="h-4 w-4" />,
+                  variant: 'edit' as const,
+                  onClick: () => handleEdit(t),
+                },
+                {
+                  key: 'delete',
+                  label: 'Excluir',
+                  icon: <Trash2 className="h-4 w-4" />,
+                  variant: 'destructive' as const,
+                  onClick: () => setDeletingId(t.id),
+                },
+              ];
+              const statusColor = t.is_paid
+                ? 'bg-success'
+                : overdue
+                  ? 'bg-destructive'
+                  : subTab === 'receber'
+                    ? 'bg-success/70'
+                    : 'bg-warning';
+              return (
+                <MobileListItem
+                  key={t.id}
+                  actions={itemActions}
+                  className={cn(overdue && !t.is_paid && 'bg-destructive/5')}
+                  leading={
+                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
+                      {t.payroll_kind === 'salary'
+                        ? <Users className="h-5 w-5" />
+                        : t.is_paid
+                          ? <Check className="h-5 w-5" />
+                          : overdue
+                            ? <AlertTriangle className="h-5 w-5" />
+                            : <Clock className="h-5 w-5" />}
+                    </div>
+                  }
+                  title={
+                    <div className="flex items-center gap-1.5">
                       <span className="truncate">{t.description}</span>
-                    </p>
-                    {t.employee && <p className="text-xs text-muted-foreground truncate">{t.employee.name}</p>}
-                    {!t.employee && t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {t.is_paid ? (
-                      <Badge className="bg-success text-white shrink-0 text-[10px]">Pago</Badge>
-                    ) : isOverdue(t) ? (
-                      <Badge className="bg-destructive text-white shrink-0 text-[10px]">Vencida</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">Pendente</Badge>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(t)}>
-                          <Pencil className="h-4 w-4 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeletingId(t.id)} className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
-                  </span>
-                  <span className={`font-semibold text-sm ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
-                    {formatCurrency(t.amount)}
-                  </span>
-                </div>
-                {!t.is_paid && (
-                  <div className="flex justify-end pt-1 border-t">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs text-success gap-1" onClick={() => handleMarkAsPaidClick(t)}>
-                      <Check className="h-3 w-3" /> Marcar pago
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                    </div>
+                  }
+                  subtitle={
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>
+                        {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
+                      </span>
+                      {t.employee && <span className="truncate">{t.employee.name}</span>}
+                      {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
+                    </div>
+                  }
+                  trailing={
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={cn('font-semibold text-sm whitespace-nowrap', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
+                        {formatCurrency(t.amount)}
+                      </span>
+                      {t.is_paid ? (
+                        <Badge className="bg-success text-white text-[10px] px-1.5 py-0">Pago</Badge>
+                      ) : overdue ? (
+                        <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">Vencida</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Pendente</Badge>
+                      )}
+                    </div>
+                  }
+                />
+              );
+            })}
+          </div>
           <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
         </div>
       ) : (
@@ -566,6 +597,15 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           </div>
         </div>
       </ResponsiveModal>
+
+      {/* FAB mobile — "Nova Conta". Desktop usa o botão inline do header. */}
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Nova Conta"
+          onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }}
+        />
+      )}
     </div>
   );
 }

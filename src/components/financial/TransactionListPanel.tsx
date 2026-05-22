@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { fuzzyIncludes } from '@/lib/utils';
+import { fuzzyIncludes, cn } from '@/lib/utils';
 import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Filter, X, Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTransactionAttachmentsCounts } from '@/hooks/useTransactionAttachments';
@@ -34,6 +34,9 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
+import { FABButton } from '@/components/mobile/FABButton';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 function formatCurrency(value: number) {
@@ -300,30 +303,53 @@ export function TransactionListPanel({
     return <span>{formatDate(t.transaction_date)}</span>;
   };
 
+  const newLabel = type === 'entrada' ? 'Nova Receita' : type === 'saida' ? 'Nova Despesa' : 'Nova Transação';
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold">{title}</h2>
-          <p className="text-sm text-muted-foreground">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</p>
+      {/* Header inline — desktop. Mobile usa MobilePageHeader do parent + FAB. */}
+      {!isMobile && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-bold">{title}</h2>
+            <p className="text-sm text-muted-foreground">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {someSelected && (
+              <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="mr-2 h-4 w-4" /> Excluir {selectedIds.size}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1">
+              <FileDown className="h-4 w-4" /> CSV
+            </Button>
+            {onNew && (
+              <Button onClick={onNew} className={buttonColor}>
+                <Plus className="mr-2 h-4 w-4" />
+                {newLabel}
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {someSelected && (
-            <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
-              <Trash2 className="mr-2 h-4 w-4" /> Excluir {selectedIds.size}
+      )}
+
+      {/* Mobile: contagem compacta + ação de excluir em massa (quando tem seleção). */}
+      {isMobile && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {filtered.length} registro{filtered.length !== 1 ? 's' : ''}
+          </p>
+          {someSelected ? (
+            <Button variant="destructive" size="sm" className="h-8" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir {selectedIds.size}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleExportCSV}>
+              <FileDown className="h-3.5 w-3.5" /> CSV
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1">
-            <FileDown className="h-4 w-4" /> CSV
-          </Button>
-          {onNew && (
-            <Button onClick={onNew} className={buttonColor}>
-              <Plus className="mr-2 h-4 w-4" />
-              {type === 'entrada' ? 'Nova Receita' : type === 'saida' ? 'Nova Despesa' : 'Nova Transação'}
-            </Button>
-          )}
         </div>
-      </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
@@ -464,11 +490,11 @@ export function TransactionListPanel({
       {isLoading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <DollarSign className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-medium">Nenhum registro</h3>
-          <p className="text-muted-foreground text-sm">Nenhuma movimentação encontrada</p>
-        </div>
+        <EmptyState
+          icon={<DollarSign className="h-12 w-12" />}
+          title="Nenhum registro"
+          description={search || activeFiltersCount > 0 ? 'Tente filtros diferentes' : 'Nenhuma movimentação encontrada'}
+        />
       ) : isMobile ? (
         <div className="space-y-3">
           {type !== 'all' && (
@@ -477,52 +503,79 @@ export function TransactionListPanel({
               <span className="text-xs text-muted-foreground">Selecionar todos</span>
             </div>
           )}
-          {pagination.paginatedItems.map((t) => (
-            <Card key={t.id} className={selectedIds.has(t.id) ? 'ring-2 ring-primary' : ''}>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 min-w-0 flex-1">
-                    {type !== 'all' && <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} className="mt-0.5" />}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm truncate">
-                        {t.description}
-                        {renderInstallmentBadge(t)}
-                      </p>
-                      {t.customer && <p className="text-xs text-muted-foreground truncate">{t.customer.name}</p>}
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {(t as any).account && (
-                          <Badge variant="outline" className="text-[10px] flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
-                            {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
-                          </Badge>
-                        )}
-                        {renderReceiptLink(t)}
-                      </div>
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {pagination.paginatedItems.map((t) => {
+              const isEntrada = t.transaction_type === 'entrada';
+              const itemActions: ItemAction[] = [
+                ...(!t.is_paid ? [{
+                  key: 'mark-paid',
+                  label: isEntrada ? 'Marcar recebido' : 'Marcar pago',
+                  icon: <Check className="h-4 w-4" />,
+                  onClick: () => isEntrada ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id }),
+                }] : []),
+                {
+                  key: 'edit',
+                  label: 'Editar',
+                  icon: <Pencil className="h-4 w-4" />,
+                  variant: 'edit' as const,
+                  onClick: () => onEdit(t),
+                },
+                {
+                  key: 'delete',
+                  label: 'Excluir',
+                  icon: <Trash2 className="h-4 w-4" />,
+                  variant: 'destructive' as const,
+                  onClick: () => requestDelete(t.id),
+                },
+              ];
+              return (
+                <MobileListItem
+                  key={t.id}
+                  actions={itemActions}
+                  className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}
+                  leading={
+                    <div
+                      className={cn(
+                        'flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0',
+                        isEntrada ? 'bg-success' : 'bg-destructive',
+                      )}
+                    >
+                      {isEntrada ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                     </div>
-                  </div>
-                  <Badge variant={t.is_paid ? 'default' : 'secondary'} className="shrink-0 text-[10px]">{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{renderTransactionDate(t)}</span>
-                    {showTypeColumn && (
-                      <Badge className={`text-[10px] ${t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}`}>
-                        {t.transaction_type === 'entrada' ? 'Receita' : 'Despesa'}
+                  }
+                  title={
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{t.description}</span>
+                      {renderInstallmentBadge(t)}
+                      {renderReceiptLink(t)}
+                    </div>
+                  }
+                  subtitle={
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{renderTransactionDate(t)}</span>
+                      {(t as any).account && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: (t as any).account.color }} />
+                          {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
+                        </span>
+                      )}
+                      {t.customer && <span className="truncate">{t.customer.name}</span>}
+                    </div>
+                  }
+                  trailing={
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={cn('font-semibold text-sm whitespace-nowrap', isEntrada ? 'text-success' : 'text-destructive')}>
+                        {isEntrada ? '+' : '-'} {formatCurrency(t.amount)}
+                      </span>
+                      <Badge variant={t.is_paid ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                        {t.is_paid ? 'Pago' : 'Pendente'}
                       </Badge>
-                    )}
-                  </div>
-                  <span className={`font-semibold text-sm ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
-                    {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 justify-end pt-1 border-t">
-                  {!t.is_paid && <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })}><Check className="h-3.5 w-3.5" /></Button>}
-                  <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => requestDelete(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    </div>
+                  }
+                />
+              );
+            })}
+          </div>
           <DataTablePagination
             page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems}
             from={pagination.from} to={pagination.to} pageSize={pagination.pageSize}
@@ -660,6 +713,15 @@ export function TransactionListPanel({
           setReceivingTxn(null);
         }}
       />
+
+      {/* FAB mobile (fora do header). Desktop usa o botão inline acima. */}
+      {isMobile && onNew && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label={newLabel}
+          onClick={onNew}
+        />
+      )}
     </div>
   );
 }

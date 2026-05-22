@@ -33,6 +33,9 @@ import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 function formatMonth(dateStr: string) {
   return format(parseISO(dateStr + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
@@ -341,6 +344,7 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
 
 export function FinanceBanks() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { accounts, balances, cardBillTotals, isLoading, createAccount, updateAccount, deleteAccount, transfer } = useFinancialAccounts();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialAccount | null>(null);
@@ -480,9 +484,84 @@ export function FinanceBanks() {
         </Card>
 
         {cashBankAccounts.length === 0 && !isLoading ? (
-          <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-            <Landmark className="h-10 w-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm font-medium">Nenhuma conta bancária cadastrada</p>
+          isMobile ? (
+            <EmptyState
+              icon={<Landmark className="h-10 w-10" />}
+              title="Nenhuma conta bancária cadastrada"
+              description="Toque em + para cadastrar"
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+              <Landmark className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-medium">Nenhuma conta bancária cadastrada</p>
+            </div>
+          )
+        ) : isMobile ? (
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {cashBankAccounts.map((a) => {
+              const Icon = getTypeIcon(a.type);
+              const balance = balances[a.id] ?? a.initial_balance;
+              const hasInst = !!(a.institution_name || a.bank_name);
+              const itemActions: ItemAction[] = [
+                {
+                  key: 'view',
+                  label: 'Ver movimentações',
+                  icon: <ArrowRight className="h-4 w-4" />,
+                  onClick: () => navigate(`/financeiro/movimentacoes?account=${a.id}`),
+                },
+                {
+                  key: 'edit',
+                  label: 'Editar',
+                  icon: <Pencil className="h-4 w-4" />,
+                  variant: 'edit' as const,
+                  onClick: () => openEdit(a),
+                },
+                {
+                  key: 'delete',
+                  label: 'Excluir',
+                  icon: <Trash2 className="h-4 w-4" />,
+                  variant: 'destructive' as const,
+                  onClick: () => setDeletingId(a.id),
+                },
+              ];
+              return (
+                <MobileListItem
+                  key={a.id}
+                  onClick={() => navigate(`/financeiro/movimentacoes?account=${a.id}`)}
+                  actions={itemActions}
+                  leading={
+                    hasInst ? (
+                      <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
+                        <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
+                      </div>
+                    ) : (
+                      <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
+                        <Icon className="h-4 w-4 text-white" />
+                      </div>
+                    )
+                  }
+                  title={a.name}
+                  subtitle={
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        {ACCOUNT_TYPES.find(t => t.value === a.type)?.label || a.type}
+                      </Badge>
+                      {(a.institution_name || a.bank_name) && (
+                        <span className="truncate">{a.institution_name || a.bank_name}</span>
+                      )}
+                    </div>
+                  }
+                  trailing={
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo</span>
+                      <span className={cn('font-semibold text-sm whitespace-nowrap', balance >= 0 ? 'text-success' : 'text-destructive')}>
+                        {formatBRL(balance)}
+                      </span>
+                    </div>
+                  }
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -569,10 +648,94 @@ export function FinanceBanks() {
         )}
 
         {cardAccounts.length === 0 && !isLoading ? (
-          <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-            <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm font-medium">Nenhum cartão cadastrado</p>
-            <p className="text-xs mt-1">Clique em "Novo Cartão" para cadastrar</p>
+          isMobile ? (
+            <EmptyState
+              icon={<CreditCard className="h-10 w-10" />}
+              title="Nenhum cartão cadastrado"
+              description='Toque em "Novo Cartão" no botão acima'
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+              <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-medium">Nenhum cartão cadastrado</p>
+              <p className="text-xs mt-1">Clique em "Novo Cartão" para cadastrar</p>
+            </div>
+          )
+        ) : isMobile ? (
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {cardAccounts.map((a) => {
+              const billTotal = cardBillTotals[a.id] ?? 0;
+              const availableLimit = a.credit_limit ? a.credit_limit - billTotal : null;
+              const hasInst = !!(a.institution_name || a.bank_name);
+              const itemActions: ItemAction[] = [
+                {
+                  key: 'bills',
+                  label: 'Ver faturas',
+                  icon: <Receipt className="h-4 w-4" />,
+                  onClick: () => setSelectedCard(a),
+                },
+                {
+                  key: 'recalc',
+                  label: 'Recalcular faturas',
+                  icon: <Calculator className="h-4 w-4" />,
+                  onClick: () => setRecalcCard(a),
+                },
+                {
+                  key: 'edit',
+                  label: 'Editar',
+                  icon: <Pencil className="h-4 w-4" />,
+                  variant: 'edit' as const,
+                  onClick: () => openEdit(a),
+                },
+                {
+                  key: 'delete',
+                  label: 'Excluir',
+                  icon: <Trash2 className="h-4 w-4" />,
+                  variant: 'destructive' as const,
+                  onClick: () => setDeletingId(a.id),
+                },
+              ];
+              return (
+                <MobileListItem
+                  key={a.id}
+                  onClick={() => setSelectedCard(a)}
+                  actions={itemActions}
+                  leading={
+                    hasInst ? (
+                      <div className="rounded-lg p-1 shrink-0 bg-white border" style={{ borderColor: a.color }}>
+                        <BankLogo code={a.institution_code} name={a.institution_name || a.bank_name} size={32} />
+                      </div>
+                    ) : (
+                      <div className="rounded-full p-2.5 shrink-0" style={{ backgroundColor: a.color }}>
+                        <CreditCard className="h-4 w-4 text-white" />
+                      </div>
+                    )
+                  }
+                  title={a.name}
+                  subtitle={
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-violet-600 border-violet-300">
+                        Cartão
+                      </Badge>
+                      {a.closing_day && <span>Fecha dia {a.closing_day}</span>}
+                      {availableLimit !== null && (
+                        <span className={cn(availableLimit >= 0 ? 'text-success' : 'text-destructive')}>
+                          Disp.: {formatBRL(availableLimit)}
+                        </span>
+                      )}
+                    </div>
+                  }
+                  trailing={
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Fatura</span>
+                      <span className={cn('font-semibold text-sm whitespace-nowrap', billTotal > 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                        {formatBRL(billTotal)}
+                      </span>
+                    </div>
+                  }
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

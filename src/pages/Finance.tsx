@@ -11,7 +11,9 @@ import { FinanceBanks } from '@/components/financial/FinanceBanks';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { isTransactionInDateRange } from '@/lib/finance-date';
 import { DollarSign } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const ROUTE_TAB_MAP: Record<string, string> = {
@@ -37,6 +39,7 @@ export default function Finance() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const activeTab = ROUTE_TAB_MAP[location.pathname] || 'visao-geral';
   // Deep-link de "Contas e Cartões" → "Movimentações" pré-filtrada por conta.
   const accountFilterParam = searchParams.get('account');
@@ -145,9 +148,13 @@ export default function Finance() {
 
   const meta = PAGE_META[activeTab] || PAGE_META['visao-geral'];
 
+  // No mobile, tabs que tem FAB (movimentações, contas) precisam de padding extra
+  // pra última linha não ficar coberta pelo botão.
+  const tabHasFab = activeTab === 'historico' || activeTab === 'contas' || activeTab === 'bancos';
+
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className={cn('space-y-4 sm:space-y-6', isMobile && tabHasFab && 'pb-24')}>
+      <MobilePageHeader
         title={meta.title}
         subtitle={meta.description}
         icon={DollarSign}
