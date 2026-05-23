@@ -11,7 +11,20 @@ import { supabase } from '@/integrations/supabase/client';
  * Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.1 / §5.3
  */
 
-export type PmocDocumentType = 'dossie_pmoc' | 'cronograma_anual';
+export type PmocDocumentType = 'dossie_pmoc' | 'cronograma_anual' | 'termo_rt';
+
+/**
+ * Status da assinatura embarcada no PDF (Onda E — v1.9.x).
+ *
+ * - `'signed'`  → o PDF foi gerado com a imagem real da assinatura do RT.
+ * - `'pending'` → o PDF foi gerado com linha em branco (assinar à mão depois).
+ * - `null`      → não se aplica (ex.: Cronograma) ou doc gerado antes da Onda E.
+ *
+ * É armazenado em `pmoc_documents.notes` com o formato `signature:signed`
+ * ou `signature:pending` (uma das chaves possíveis no campo livre `notes`).
+ * O parsing tolera ausência — assume `null` se não encontrar.
+ */
+export type PmocDocumentSignatureStatus = 'signed' | 'pending' | null;
 
 export interface PmocDocument {
   id: string;
@@ -24,6 +37,21 @@ export interface PmocDocument {
   generated_at: string;
   generated_by: string | null;
   notes: string | null;
+  /** Derivado de `notes` (`signature:signed` | `signature:pending`). */
+  signature_status: PmocDocumentSignatureStatus;
+}
+
+/**
+ * Parser defensivo do `notes` pra extrair o status da assinatura.
+ *
+ * Formato esperado (case-insensitive): `signature:signed` ou `signature:pending`.
+ * Pode aparecer em qualquer posição do campo (separado por espaço, vírgula, etc.).
+ */
+function parseSignatureStatus(notes: string | null): PmocDocumentSignatureStatus {
+  if (!notes) return null;
+  const match = notes.match(/signature\s*:\s*(signed|pending)/i);
+  if (!match) return null;
+  return match[1].toLowerCase() as 'signed' | 'pending';
 }
 
 export function usePmocDocuments(contractId: string | null | undefined) {
@@ -50,7 +78,11 @@ export function usePmocDocuments(contractId: string | null | undefined) {
         console.warn('[usePmocDocuments] erro:', error.message);
         return [];
       }
-      return (data ?? []) as PmocDocument[];
+      // Enriquece cada doc com `signature_status` derivado do `notes`.
+      return (data ?? []).map((d) => ({
+        ...d,
+        signature_status: parseSignatureStatus((d as { notes: string | null }).notes ?? null),
+      })) as PmocDocument[];
     },
   });
 
@@ -62,7 +94,7 @@ export function usePmocDocuments(contractId: string | null | undefined) {
       if (!existing || doc.version > existing.version) acc[doc.doc_type] = doc;
       return acc;
     },
-    { dossie_pmoc: undefined, cronograma_anual: undefined },
+    { dossie_pmoc: undefined, cronograma_anual: undefined, termo_rt: undefined },
   );
 
   return {

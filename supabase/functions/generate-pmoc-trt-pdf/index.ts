@@ -1,17 +1,18 @@
 // =============================================================================
-// generate-pmoc-cronograma-pdf — PDF anual (12 páginas, 1 mês/página).
+// generate-pmoc-trt-pdf — Gera SÓ o Termo de Responsabilidade Técnica (1 doc).
 // =============================================================================
-// AUTENTICADA. Mesmo padrão de auth do dossie. Roles admin/gestor/super_admin.
-// Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.3
-// Regra: docs/planos/2026-05-23-pmoc-onda-C-rls-rules.md §5.1
+// AUTENTICADA (Authorization obrigatório). Roles admin/gestor/super_admin.
+// Plano: Onda E (v1.9.x) — TRT como documento separado.
+// Espelha generate-pmoc-dossie-pdf mas:
+//   - Renderiza só 1 página (Termo RT), sem capa, sem certificado.
+//   - doc_type='termo_rt' ao gravar em pmoc_documents.
+//   - Hash inclui signature_image_url (RT atualiza assinatura → cache miss).
+//   - Retorno: { pdf_url, version, cached, signature_status }.
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
-import {
-  drawCronogramaMesPage,
-  CronogramaServiceOrder,
-} from "../_shared/pmoc-templates/cronograma-mes.ts";
+import { drawTermoRtPage } from "../_shared/pmoc-templates/termo-rt.ts";
 import {
   TemplateContext,
   dateToExtenso,
@@ -26,7 +27,7 @@ const corsHeaders = {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Rate limit 10 req/min por user
+// Rate limit in-memory: 10 req/min por user
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 10;
 const rateBucket = new Map<string, number[]>();
@@ -85,11 +86,13 @@ Deno.serve(async (req) => {
   const t0 = Date.now();
 
   try {
+    // ---- 1. Authorization obrigatório
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
     if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
       return jsonResponse({ error: "unauthorized" }, 401);
     }
 
+    // ---- 2. UUID válido no query
     const url = new URL(req.url);
     const contractId = url.searchParams.get("contract_id");
     if (!contractId || !UUID_REGEX.test(contractId)) {
@@ -99,6 +102,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // ---- Resolve user via JWT
     const supabaseAuthed = createClient(supabaseUrl, serviceRoleKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -108,12 +112,15 @@ Deno.serve(async (req) => {
     }
     const userId = userData.user.id;
 
+    // Rate limit
     if (!rateLimitOk(userId)) {
       return jsonResponse({ error: "rate_limited" }, 429, { "Retry-After": "60" });
     }
 
+    // ---- Service-role client (RLS bypass + queries explícitas com filtro defensivo)
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // ---- 3. Resolver tenant + role do user
     const [{ data: profileRow }, { data: rolesRows }] = await Promise.all([
       supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
@@ -123,6 +130,7 @@ Deno.serve(async (req) => {
     const isSuperAdmin = roles.has("super_admin");
     const isAdminOrGestor = roles.has("admin") || roles.has("gestor");
 
+    // ---- 4. Resolver contrato — 404 unificado pra cross-tenant
     const { data: contract } = await supabase
       .from("contracts")
       .select(
@@ -147,17 +155,27 @@ Deno.serve(async (req) => {
     if (!isSuperAdmin && contract.company_id !== userCompany) {
       return jsonResponse({ error: "not_found" }, 404);
     }
+
+    // ---- Checagem de role (depois do cross-tenant pra não vazar existência)
     if (!isAdminOrGestor && !isSuperAdmin) {
       return jsonResponse(
         { error: "forbidden_role", message: "Apenas administradores e gestores podem gerar documentos PMOC." },
         403,
       );
     }
+
+    // ---- 5. is_pmoc
     if (contract.is_pmoc !== true) {
       return jsonResponse({ error: "not_a_pmoc_contract" }, 400);
     }
 
-    const [{ data: customer }, { data: companySettings }, { data: rt }] = await Promise.all([
+    // ---- 6. Carregar dependências (tenant, customer, RT com assinatura, custom_docs)
+    const [
+      { data: customer },
+      { data: companySettings },
+      { data: rt },
+      { data: customDocs },
+    ] = await Promise.all([
       supabase
         .from("customers")
         .select("name, address, city, state")
@@ -175,8 +193,15 @@ Deno.serve(async (req) => {
             .eq("id", contract.responsible_technician_id)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
+      supabase
+        .from("pmoc_contract_documents_custom")
+        .select("termo_rt_content")
+        .eq("contract_id", contract.id)
+        .eq("company_id", contract.company_id) // filtro defensivo cross-tenant
+        .maybeSingle(),
     ]);
 
+    // Resolver tenant name (fallback companies.name)
     let tenantName = (companySettings?.name ?? "").trim();
     if (!tenantName) {
       const { data: companyRow } = await supabase
@@ -187,125 +212,44 @@ Deno.serve(async (req) => {
       tenantName = (companyRow?.name ?? "").trim() || "Empresa";
     }
 
-    const useWhiteLabel = companySettings?.white_label_enabled === true;
-    const logoUrl = useWhiteLabel
-      ? companySettings?.white_label_logo_url ?? companySettings?.logo_url ?? null
-      : companySettings?.logo_url ?? null;
-
-    let logoBytes: Uint8Array | null = null;
-    let logoMime: "image/png" | "image/jpeg" | null = null;
-    if (logoUrl) {
-      try {
-        const res = await fetch(logoUrl);
-        if (res.ok) {
-          const ct = res.headers.get("content-type") ?? "";
-          if (ct.includes("png")) {
-            logoBytes = new Uint8Array(await res.arrayBuffer());
-            logoMime = "image/png";
-          } else if (ct.includes("jpeg") || ct.includes("jpg")) {
-            logoBytes = new Uint8Array(await res.arrayBuffer());
-            logoMime = "image/jpeg";
-          }
-        }
-      } catch {
-        // ignora
-      }
+    const cnpj = (companySettings?.cnpj ?? "").trim();
+    if (!cnpj) {
+      return jsonResponse(
+        {
+          error: "cnpj_missing",
+          message: "Configure o CNPJ da empresa em Configurações antes de gerar o Termo RT.",
+        },
+        400,
+      );
+    }
+    if (!rt || !rt.full_name) {
+      return jsonResponse(
+        {
+          error: "rt_missing",
+          message: "Atribua um Responsável Técnico ao contrato antes de gerar o Termo RT.",
+        },
+        400,
+      );
     }
 
-    // ---- Janela 12 meses a partir do mês atual
-    const now = new Date();
-    const startMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const endMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 12, 1));
+    // Cidade (do company_settings, fallback do customer)
+    const cidade = (companySettings?.city ?? customer?.city ?? "").trim() || "_______________________";
 
-    const startIso = startMonth.toISOString().slice(0, 10);
-    const endIso = endMonth.toISOString().slice(0, 10);
-
-    const { data: orders } = await supabase
-      .from("service_orders")
-      .select("id, order_number, scheduled_date, status")
-      .eq("contract_id", contract.id)
-      .eq("company_id", contract.company_id) // filtro defensivo
-      .gte("scheduled_date", startIso)
-      .lt("scheduled_date", endIso);
-
-    const serviceOrders: CronogramaServiceOrder[] = (orders ?? []).map((o) => ({
-      id: o.id,
-      order_number: o.order_number ?? null,
-      scheduled_date: o.scheduled_date ?? null,
-      status: o.status,
-    }));
-
-    // ---- Hash baseado em OSs + datas + statuses + janela.
-    //    Onda E: bump pra cronograma_v2 (signature_image_url do RT entra no
-    //    hash, mesmo que o cronograma não desenhe assinatura — coerência: "se
-    //    o RT muda a assinatura, TODOS os PDFs do contrato regeneram", lei do
-    //    CEO).
-    const hashInput = JSON.stringify({
-      v: "cronograma_v2",
-      tenant: tenantName,
-      customer: customer?.name ?? "",
-      window: { start: startIso, end: endIso },
-      rt_signature: rt?.signature_image_url ?? null,
-      orders: serviceOrders
-        .map((o) => ({
-          n: o.order_number,
-          d: o.scheduled_date,
-          s: o.status,
-        }))
-        .sort((a, b) => (a.d ?? "").localeCompare(b.d ?? "")),
-    });
-    const contentHash = await sha256Hex(hashInput);
-
-    // ---- Cache hit?
-    const { data: existingDoc } = await supabase
-      .from("pmoc_documents")
-      .select("id, version, pdf_storage_path, generated_at")
-      .eq("contract_id", contract.id)
-      .eq("company_id", contract.company_id)
-      .eq("doc_type", "cronograma_anual")
-      .eq("content_hash", contentHash)
-      .order("version", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingDoc) {
-      const { data: signed } = await supabase.storage
-        .from("pmoc-documents")
-        .createSignedUrl(existingDoc.pdf_storage_path, 3600);
-      if (signed) {
-        console.log("[generate-pmoc-cronograma-pdf] cache hit", {
-          contract_id: maskUuid(contract.id),
-          version: existingDoc.version,
-          duration_ms: Date.now() - t0,
-        });
-        return jsonResponse(
-          {
-            pdf_url: signed.signedUrl,
-            version: existingDoc.version,
-            generated_at: existingDoc.generated_at,
-            cached: true,
-          },
-          200,
-        );
-      }
-    }
-
-    // ---- TemplateContext (cronograma usa só tenant + customer + contract pra cabeçalho)
-    const cidade = (companySettings?.city ?? customer?.city ?? "").trim() || "";
+    // ---- 7. Monta TemplateContext (sem logo — TRT não usa capa)
     const ctx: TemplateContext = {
       empresa: {
         razao_social: tenantName,
-        cnpj: companySettings?.cnpj ?? "",
+        cnpj,
         cidade,
-        logo_bytes: logoBytes,
-        logo_mime: logoMime,
+        logo_bytes: null,
+        logo_mime: null,
       },
       rt: {
-        nome: rt?.full_name ?? "",
-        modalidade: rt?.modality ?? "",
-        cft_crea: rt?.cft_crea ?? null,
-        signature_image_url: rt?.signature_image_url ?? null,
-        stamp_image_url: rt?.stamp_image_url ?? null,
+        nome: rt.full_name,
+        modalidade: rt.modality ?? "Técnico em Refrigeração",
+        cft_crea: rt.cft_crea ?? null,
+        signature_image_url: rt.signature_image_url ?? null,
+        stamp_image_url: rt.stamp_image_url ?? null,
       },
       customer: {
         name: customer?.name ?? "Unidade",
@@ -325,38 +269,105 @@ Deno.serve(async (req) => {
       generated_at_extenso: dateToExtenso(new Date()),
     };
 
-    // ---- Compor PDF: 12 páginas
-    const pdf = await PDFDocument.create();
-    pdf.setTitle(`PMOC — Cronograma Anual — ${ctx.customer.name}`);
-    pdf.setSubject("Cronograma de Manutenções — Lei 13.589/2018");
-    pdf.setProducer("Dominex");
+    // ---- 8. content_hash — INCLUI signature_image_url (Onda E:
+    //         RT atualiza assinatura → hash muda → cache miss → nova versão).
+    const hashInput = JSON.stringify({
+      v: "trt_v1",
+      tenant: { name: tenantName, cnpj, city: cidade },
+      rt: {
+        nome: ctx.rt.nome,
+        modalidade: ctx.rt.modalidade,
+        cft_crea: ctx.rt.cft_crea,
+        // URL faz parte do hash — se o RT troca a assinatura, regen é forçado.
+        signature_image_url: ctx.rt.signature_image_url ?? null,
+      },
+      customer: ctx.customer,
+      contract: ctx.contract,
+      termo: customDocs?.termo_rt_content ?? null,
+    });
+    const contentHash = await sha256Hex(hashInput);
 
-    for (let i = 0; i < 12; i++) {
-      const month = new Date(Date.UTC(startMonth.getUTCFullYear(), startMonth.getUTCMonth() + i, 1));
-      await drawCronogramaMesPage({
-        pdf,
-        ctx,
-        month,
-        serviceOrders,
-      });
+    // ---- 9. Cache hit?
+    const { data: existingDoc } = await supabase
+      .from("pmoc_documents")
+      .select("id, version, pdf_storage_path, generated_at, notes")
+      .eq("contract_id", contract.id)
+      .eq("company_id", contract.company_id)
+      .eq("doc_type", "termo_rt")
+      .eq("content_hash", contentHash)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDoc) {
+      const { data: signed, error: signedErr } = await supabase.storage
+        .from("pmoc-documents")
+        .createSignedUrl(existingDoc.pdf_storage_path, 3600); // TTL 1h
+
+      if (signedErr || !signed) {
+        console.warn("[generate-pmoc-trt-pdf] cache hit mas signed URL falhou — regenerando", {
+          contract_id: maskUuid(contract.id),
+          path: existingDoc.pdf_storage_path,
+        });
+      } else {
+        // Estimar signature_status do notes (gravado no INSERT)
+        const sigStatus =
+          existingDoc.notes && existingDoc.notes.startsWith("signature:")
+            ? existingDoc.notes.split(":")[1] === "pending"
+              ? "pending"
+              : "signed"
+            : ctx.rt.signature_image_url
+              ? "signed"
+              : "pending";
+
+        console.log("[generate-pmoc-trt-pdf] cache hit", {
+          contract_id: maskUuid(contract.id),
+          version: existingDoc.version,
+          duration_ms: Date.now() - t0,
+        });
+        return jsonResponse(
+          {
+            pdf_url: signed.signedUrl,
+            version: existingDoc.version,
+            generated_at: existingDoc.generated_at,
+            cached: true,
+            signature_status: sigStatus,
+          },
+          200,
+        );
+      }
     }
 
-    const pdfBytes = await pdf.save();
+    // ---- 10. Compor PDF (só o Termo RT)
+    const pdf = await PDFDocument.create();
+    pdf.setTitle(`PMOC — Termo de Responsabilidade Técnica — ${ctx.customer.name}`);
+    pdf.setSubject("Termo de Responsabilidade Técnica — Lei 13.589/2018");
+    pdf.setProducer("Dominex");
 
-    // ---- Próxima versão
+    const termoResult = await drawTermoRtPage(pdf, ctx, customDocs?.termo_rt_content ?? null);
+
+    const pdfBytes = await pdf.save();
+    const pdfSize = pdfBytes.length;
+
+    const signatureStatus: "signed" | "pending" = termoResult.signaturePending
+      ? "pending"
+      : "signed";
+
+    // ---- 11. Próxima versão
     const { data: maxRow } = await supabase
       .from("pmoc_documents")
       .select("version")
       .eq("contract_id", contract.id)
       .eq("company_id", contract.company_id)
-      .eq("doc_type", "cronograma_anual")
+      .eq("doc_type", "termo_rt")
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     const nextVersion = (maxRow?.version ?? 0) + 1;
-    const storagePath = `${contract.company_id}/${contract.id}/cronograma_anual-v${nextVersion}.pdf`;
+    const storagePath = `${contract.company_id}/${contract.id}/termo_rt-v${nextVersion}.pdf`;
 
+    // ---- 12. Upload pro storage
     const { error: uploadErr } = await supabase.storage
       .from("pmoc-documents")
       .upload(storagePath, pdfBytes, {
@@ -365,46 +376,53 @@ Deno.serve(async (req) => {
       });
 
     if (uploadErr) {
-      console.error("[generate-pmoc-cronograma-pdf] upload error", {
+      console.error("[generate-pmoc-trt-pdf] upload error", {
         contract_id: maskUuid(contract.id),
         message: uploadErr.message,
       });
       return jsonResponse({ error: "upload_failed" }, 500);
     }
 
+    // ---- 13. INSERT em pmoc_documents — grava signature_status no notes pra
+    //         que o cache hit subsequente saiba devolver sem precisar embedar.
     const { error: insertErr } = await supabase.from("pmoc_documents").insert({
       company_id: contract.company_id,
       contract_id: contract.id,
-      doc_type: "cronograma_anual",
+      doc_type: "termo_rt",
       version: nextVersion,
       content_hash: contentHash,
       pdf_storage_path: storagePath,
       generated_by: userId,
+      notes: `signature:${signatureStatus}`,
     });
 
     if (insertErr) {
+      // Tenta limpar PDF órfão
       await supabase.storage.from("pmoc-documents").remove([storagePath]);
-      console.error("[generate-pmoc-cronograma-pdf] insert error", {
+      console.error("[generate-pmoc-trt-pdf] insert error", {
         contract_id: maskUuid(contract.id),
         message: insertErr.message,
       });
       return jsonResponse({ error: "persist_failed" }, 500);
     }
 
-    const { data: signed } = await supabase.storage
+    // ---- Signed URL pra retorno
+    const { data: signed, error: signedErr } = await supabase.storage
       .from("pmoc-documents")
       .createSignedUrl(storagePath, 3600);
 
-    if (!signed) {
+    if (signedErr || !signed) {
       return jsonResponse({ error: "sign_failed" }, 500);
     }
 
-    console.log("[generate-pmoc-cronograma-pdf] generated", {
+    console.log("[generate-pmoc-trt-pdf] generated", {
       contract_id: maskUuid(contract.id),
       version: nextVersion,
       content_hash: contentHash.slice(0, 8) + "...",
-      orders_count: serviceOrders.length,
-      pdf_size_bytes: pdfBytes.length,
+      pdf_size_bytes: pdfSize,
+      tags_removed: termoResult.tagsRemoved,
+      attrs_removed: termoResult.attrsRemoved,
+      signature_status: signatureStatus,
       duration_ms: Date.now() - t0,
     });
 
@@ -414,11 +432,12 @@ Deno.serve(async (req) => {
         version: nextVersion,
         generated_at: new Date().toISOString(),
         cached: false,
+        signature_status: signatureStatus,
       },
       200,
     );
   } catch (err) {
-    console.error("[generate-pmoc-cronograma-pdf] unexpected error", {
+    console.error("[generate-pmoc-trt-pdf] unexpected error", {
       message: (err as Error)?.message ?? String(err),
     });
     return jsonResponse({ error: "render_failed" }, 500);

@@ -18,6 +18,10 @@ export interface TemplateContextRT {
   nome: string;
   modalidade: string;
   cft_crea: string | null;
+  /** Onda E: URL da assinatura visual do RT (storage signed/public). null = pendente. */
+  signature_image_url?: string | null;
+  /** Onda E: URL do carimbo (reservado, ainda não desenhado). */
+  stamp_image_url?: string | null;
 }
 
 export interface TemplateContextCustomer {

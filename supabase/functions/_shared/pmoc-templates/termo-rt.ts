@@ -5,16 +5,36 @@
 // (htmlContent=null), monta o template padrão com placeholders substituídos.
 //
 // Sempre passa pelo sanitizer ANTES de render (defesa em camada server-side).
+//
+// Onda E (v1.9.x): suporta marker <!-- SIGNATURE_BLOCK --> no HTML. Após o
+// renderer terminar o texto, desenha automaticamente o bloco de assinatura
+// do RT (com imagem da assinatura embebida quando responsible_technicians
+// .signature_image_url existe) no rodapé da última página.
 // =============================================================================
 
 import { PDFDocument, PDFPage } from "https://esm.sh/pdf-lib@1.17.1";
 import { TemplateContext } from "./context.ts";
 import { sanitizeHtml } from "./html-sanitizer.ts";
-import { renderHtmlToPdf, A4_W, A4_H, MARGIN_Y } from "./html-renderer.ts";
+import { renderHtmlToPdf, A4_W, A4_H, MARGIN_Y, MARGIN_X, CONTENT_W } from "./html-renderer.ts";
+import {
+  drawRtSignatureBlock,
+  SIGNATURE_BLOCK_HEIGHT,
+} from "./signature-embed.ts";
+
+// Marcador opcional no HTML pra posicionar o bloco de assinatura. Se ausente,
+// desenhamos no rodapé da última página automaticamente. Mantemos o sanitizer
+// ignorando esse comentário (sanitizer strippa tudo que não está na whitelist,
+// então o comentário some — mas nós não dependemos do comentário aparecer no
+// PDF, dependemos só de localizar visualmente o RT block ao final).
+export const SIGNATURE_BLOCK_MARKER = "<!-- SIGNATURE_BLOCK -->";
 
 /**
  * Monta o HTML padrão do Termo RT já com placeholders substituídos.
  * Texto exato fornecido pelo CEO (§3.2 do plano da Onda C).
+ *
+ * Onda E: o bloco final "RESPONSÁVEL TÉCNICO: ___________" é substituído pelo
+ * marker SIGNATURE_BLOCK_MARKER (que vira o bloco de assinatura desenhado pelo
+ * signature-embed.ts, com imagem se houver).
  */
 export function buildDefaultTermoRtHtml(ctx: TemplateContext): string {
   const cft = ctx.rt.cft_crea || "____________________";
@@ -34,9 +54,7 @@ export function buildDefaultTermoRtHtml(ctx: TemplateContext): string {
     <p>___________________________________________</p>
     <h3>${escapeHtml(empresaUpper)}:</h3>
     <p>___________________________________________</p>
-    <h3>RESPONSÁVEL TÉCNICO:</h3>
-    <p>___________________________________________</p>
-    <p>${escapeHtml(ctx.rt.nome)}<br>${escapeHtml(ctx.rt.modalidade)}<br>CFT: ${escapeHtml(cft)}</p>
+    ${SIGNATURE_BLOCK_MARKER}
   `;
 }
 
@@ -54,13 +72,16 @@ function escapeHtml(s: string | null | undefined): string {
  * Renderiza a página do Termo RT. Se `customHtml` é fornecido, sanitiza e usa.
  * Senão, monta o default a partir do `ctx`.
  *
- * Retorna { page, pagesUsed, tagsRemoved, attrsRemoved } pra logging.
+ * Retorna { page, pagesUsed, tagsRemoved, attrsRemoved, signaturePending }
+ * pra logging.
  */
 export interface RenderTermoRtResult {
   page: PDFPage;
   pagesUsed: number;
   tagsRemoved: number;
   attrsRemoved: number;
+  /** true se nenhuma signature_image_url estava disponível ao gerar (estado pendente). */
+  signaturePending: boolean;
 }
 
 export async function drawTermoRtPage(
@@ -73,6 +94,9 @@ export async function drawTermoRtPage(
     : buildDefaultTermoRtHtml(ctx);
 
   // SANITIZE OBRIGATÓRIO — defesa em camada server-side (Regra Plataforma §2.7)
+  // O sanitizer strippa o comentário <!-- SIGNATURE_BLOCK --> também, mas isso
+  // é OK: o marker só serve pro template default sinalizar onde IRIA o bloco;
+  // o desenho do bloco de assinatura é sempre feito no rodapé da última página.
   const { clean, tagsRemoved, attrsRemoved } = sanitizeHtml(raw);
 
   // Nova página sempre (termo começa em folha limpa)
@@ -83,10 +107,39 @@ export async function drawTermoRtPage(
     newPage: () => pdf.addPage([A4_W, A4_H]),
   });
 
+  // -- Onda E: desenhar bloco de assinatura do RT no rodapé da última página.
+  //    Se não houver espaço suficiente abaixo do cursor, criar nova página.
+  const SPACE_NEEDED = SIGNATURE_BLOCK_HEIGHT + 20; // 20pt de respiro topo
+  let sigPage = result.page;
+  let sigTopY = result.cursorY - 16; // respiro entre conteúdo e bloco
+
+  if (sigTopY - SPACE_NEEDED < MARGIN_Y) {
+    sigPage = pdf.addPage([A4_W, A4_H]);
+    sigTopY = A4_H - MARGIN_Y - 20;
+  }
+
+  const sigResult = await drawRtSignatureBlock(
+    pdf,
+    sigPage,
+    {
+      rt_name: ctx.rt.nome,
+      rt_modality: ctx.rt.modalidade,
+      rt_cft_crea: ctx.rt.cft_crea,
+      signature_image_url: ctx.rt.signature_image_url ?? null,
+      stamp_image_url: ctx.rt.stamp_image_url ?? null,
+    },
+    {
+      x: MARGIN_X,
+      y: sigTopY,
+      width: CONTENT_W,
+    },
+  );
+
   return {
-    page: result.page,
-    pagesUsed: 1 + result.pagesRendered, // initialPage + extras
+    page: sigPage,
+    pagesUsed: 1 + result.pagesRendered + (sigPage !== result.page ? 1 : 0),
     tagsRemoved,
     attrsRemoved,
+    signaturePending: sigResult.pending,
   };
 }

@@ -3,36 +3,52 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * Mutations de geração de PDFs PMOC (Onda C — v1.9.x).
+ * Mutations de geração de PDFs PMOC (Onda C/E — v1.9.x).
  *
  * - `useGenerateDossiePdf` → edge function `generate-pmoc-dossie-pdf`
  *   (capa + termo RT + certificado).
  * - `useGenerateCronogramaPdf` → edge function `generate-pmoc-cronograma-pdf`
  *   (12 meses, 1 página por mês).
+ * - `useGenerateTrtPdf` (Onda E) → edge function `generate-pmoc-trt-pdf`
+ *   (Termo de Responsabilidade Técnica em 1 página, gerável independente do Dossiê).
  *
- * Ambas:
+ * Todas:
  *  - Exigem `Authorization` do usuário logado (RLS no DB + checagem same-tenant).
- *  - Retornam `{ pdf_url: string; version: number; cached: boolean }` ao sucesso.
+ *  - Retornam `{ pdf_url, version, cached, signature_status? }` ao sucesso.
  *  - Disparam toast amigável em PT-BR no erro.
+ *
+ * `signature_status` (Onda E) é propagado pelo Dossiê e pelo TRT — indica se
+ * o PDF foi gerado com a assinatura real do RT (`signed`) ou com linha em
+ * branco pra assinar à mão (`pending`). O Cronograma retorna `null`/ausente.
  *
  * Quando o Database ainda não deployou a edge function (404), mostramos
  * mensagem clara enquanto aguarda.
  *
  * Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.2 / §4.3
+ * Onda E: TRT separado + embed signature universal.
  */
+
+export type PmocSignatureStatus = 'signed' | 'pending';
 
 export interface GeneratePmocPdfResult {
   pdf_url: string;
   version: number;
   cached: boolean;
+  /** Onda E — só presente em respostas de TRT/Dossiê. */
+  signature_status?: PmocSignatureStatus;
 }
 
 interface GenerateInput {
   contract_id: string;
 }
 
+type PmocEdgeFunctionName =
+  | 'generate-pmoc-dossie-pdf'
+  | 'generate-pmoc-cronograma-pdf'
+  | 'generate-pmoc-trt-pdf';
+
 async function callEdgeFunction(
-  functionName: 'generate-pmoc-dossie-pdf' | 'generate-pmoc-cronograma-pdf',
+  functionName: PmocEdgeFunctionName,
   contractId: string,
 ): Promise<GeneratePmocPdfResult> {
   const { data: session } = await supabase.auth.getSession();
@@ -123,6 +139,46 @@ export function useGenerateCronogramaPdf() {
       toast({
         variant: 'destructive',
         title: 'Erro ao gerar cronograma',
+        description: err.message,
+      });
+    },
+  });
+}
+
+/**
+ * Onda E — gera o TRT (Termo de Responsabilidade Técnica) standalone.
+ *
+ * 1 página A4. Pode ser regenerado independente do Dossiê. O backend embute
+ * a assinatura real do RT quando disponível; caso contrário, deixa linha em
+ * branco e devolve `signature_status: 'pending'` pra UI sinalizar.
+ */
+export function useGenerateTrtPdf() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ contract_id }: GenerateInput) =>
+      callEdgeFunction('generate-pmoc-trt-pdf', contract_id),
+    onSuccess: (result, { contract_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['pmoc-documents', contract_id] });
+
+      // Mensagem condicional baseada em cache + signature_status.
+      const baseTitle = result.cached ? 'TRT já estava atualizado' : 'TRT gerado!';
+      let description: string;
+      if (result.cached) {
+        description = 'Os dados não mudaram desde a última versão. Usando a versão atual.';
+      } else if (result.signature_status === 'pending') {
+        description = `Versão ${result.version} criada. A assinatura do RT ainda não foi cadastrada — o PDF saiu com linha em branco pra assinar à mão.`;
+      } else {
+        description = `Versão ${result.version} criada com sucesso.`;
+      }
+
+      toast({ title: baseTitle, description });
+    },
+    onError: (err: Error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao gerar TRT',
         description: err.message,
       });
     },

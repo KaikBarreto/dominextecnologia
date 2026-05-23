@@ -40,6 +40,38 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.11',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'TRT como documento separado no contrato PMOC',
+        description: 'O Termo de Responsabilidade Técnica (TRT) agora é um documento próprio na aba "Documentos" do contrato PMOC — você baixa ele individualmente (PDF de 1 página, mais leve que o Dossiê inteiro). Continua também presente como página 2 do Dossiê PMOC consolidado pra quem quer tudo num documento só. Versionado igual aos outros: cada geração fica salva como v1, v2, v3...',
+        category: 'recurso',
+      },
+      {
+        title: 'Assinatura digital do RT embedada automaticamente em todos os PDFs',
+        description: 'Quando o Responsável Técnico tem assinatura cadastrada (upload de imagem ou desenhada no canvas), agora ela aparece automaticamente impressa em TODOS os documentos PMOC gerados: TRT, Termo no Dossiê e Certificado. Sem precisar imprimir e assinar à mão. Você define a assinatura uma vez, e ela vai pra todos os documentos daquele contrato. Se atualizar a assinatura do RT, todos os PDFs do contrato regeneram automaticamente na próxima vez que forem solicitados (versão+1).',
+        category: 'recurso',
+      },
+      {
+        title: 'Botão "Adicionar assinatura agora" direto do contrato',
+        description: 'Se o TRT foi gerado mas o RT desse contrato não tinha assinatura cadastrada, o card mostra um aviso amarelo "Sem assinatura — pendente" com botão laranja "Adicionar assinatura agora". Toque → abre uma janela com 2 opções: enviar imagem (foto da assinatura no papel — recomendado juridicamente) ou desenhar agora (mouse/dedo). Salvou? O TRT e o Dossiê viram disponíveis pra regerar com a assinatura aplicada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Status visual de assinatura em cada documento',
+        description: 'Cada card de documento PMOC agora mostra um pequeno badge indicando o status da assinatura: verde "Assinado" (quando a assinatura está embedada no PDF), amarelo "Sem assinatura" (gerado mas pendente — RT pode assinar à mão depois de imprimir), cinza "Não gerado" (ainda não foi gerado). Vale pro TRT e pro Dossiê. O Cronograma não tem campo de assinatura (são 12 páginas de calendário), então não mostra badge.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Portal público mostra status de assinatura',
+        description: 'Quando o cliente final escaneia o QR Code e abre o portal PMOC público da unidade, agora ele vê 3 cards de documentos disponíveis (TRT, Dossiê, Cronograma). Se algum tem assinatura pendente, aparece um chip discreto "Assinatura pendente" — mas o download continua liberado (cliente final pode imprimir e levar pro RT assinar à mão se preferir). Transparência total pra fiscalização.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.10',
     date: '23 de maio de 2026',
     type: 'minor',

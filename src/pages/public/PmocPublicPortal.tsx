@@ -552,6 +552,11 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
     ? `Atualizado em ${formatLocal(doc.generated_at)}${doc.version ? ` — v${doc.version}` : ''}`
     : 'Disponível em breve';
 
+  // Onda E — só mostra badge "Assinatura pendente" quando faz sentido.
+  // `cronograma_anual` envia `null` → sem badge. `signed` → sem badge sutil
+  // (a assinatura embarcada é o estado feliz, não precisa chamar atenção).
+  const showPendingSignature = available && doc.signature_status === 'pending';
+
   return (
     <div
       className={cn(
@@ -571,6 +576,18 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
         <div className="min-w-0 flex-1">
           <p className="break-words text-sm font-medium">{doc.label}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
+          {showPendingSignature && (
+            <span
+              className={cn(
+                'mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5',
+                'bg-warning/15 text-[10px] font-semibold uppercase tracking-wide text-warning',
+              )}
+              title="Documento gerado com linha em branco pra assinar à mão"
+            >
+              <AlertCircle className="h-2.5 w-2.5" aria-hidden="true" />
+              Assinatura pendente
+            </span>
+          )}
         </div>
       </div>
 

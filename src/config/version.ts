@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.10";
+export const APP_VERSION = "1.9.11";
 
-export const VERSION_NOTES = "UI consistente em todo o sistema: 1 botão de Filtros em mais 10 telas (OSs, Estoque, Agenda, Mapa, CRM, Orçamentos, Equipamentos, Movimentações, Ponto), tabelas ordenáveis pelos títulos das colunas em mais 5 telas, e 30 gráficos refeitos com degradês suaves no lugar de cores chapadas.";
+export const VERSION_NOTES = "TRT (Termo de Responsabilidade Técnica) agora é documento separado no contrato PMOC, com assinatura digital do RT embedada automaticamente em todos os PDFs gerados (TRT, Dossiê) sempre que o RT tem assinatura cadastrada. Botão 'Adicionar assinatura agora' direto do contrato regera todos os documentos.";

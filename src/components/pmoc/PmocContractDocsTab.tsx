@@ -8,6 +8,8 @@ import {
   ChevronDown,
   Info,
   CalendarRange,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Collapsible,
   CollapsibleContent,
@@ -24,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 
 import { PmocDocEditorDialog } from './PmocDocEditorDialog';
+import { RtSignatureQuickDialog } from './RtSignatureQuickDialog';
 import {
   usePmocContractCustomDocs,
 } from '@/hooks/usePmocContractCustomDocs';
@@ -31,10 +35,12 @@ import {
   usePmocDocuments,
   type PmocDocument,
   type PmocDocumentType,
+  type PmocDocumentSignatureStatus,
 } from '@/hooks/usePmocDocuments';
 import {
   useGenerateDossiePdf,
   useGenerateCronogramaPdf,
+  useGenerateTrtPdf,
 } from '@/hooks/useGeneratePmocDocument';
 import {
   buildDefaultTermoRtHtml,
@@ -56,6 +62,38 @@ export interface PmocContractDocsTabProps {
    * tolerante a valores ausentes (cai em fallbacks `[empresa]`, `____`).
    */
   templateContext?: Partial<PmocTemplateContext>;
+  /**
+   * RT vinculado ao contrato. Quando informado e o TRT mais recente está com
+   * `signature_status: 'pending'`, o card do TRT exibe o CTA "Adicionar
+   * assinatura agora" abrindo um dialog que atualiza
+   * `responsible_technicians.signature_image_url`.
+   */
+  responsibleTechnicianId?: string | null;
+}
+
+/** Badge visual do status da assinatura embarcada num PDF PMOC (Onda E). */
+function SignatureStatusBadge({ status }: { status: PmocDocumentSignatureStatus }) {
+  if (status === 'signed') {
+    return (
+      <Badge variant="success" className="gap-1">
+        <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+        Assinado
+      </Badge>
+    );
+  }
+  if (status === 'pending') {
+    return (
+      <Badge variant="warning" className="gap-1">
+        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+        Sem assinatura
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-muted-foreground">
+      Não gerado
+    </Badge>
+  );
 }
 
 function formatGeneratedAt(iso?: string | null): string {
@@ -148,7 +186,11 @@ function SubDocCard({
   );
 }
 
-export function PmocContractDocsTab({ contractId, templateContext }: PmocContractDocsTabProps) {
+export function PmocContractDocsTab({
+  contractId,
+  templateContext,
+  responsibleTechnicianId,
+}: PmocContractDocsTabProps) {
   const {
     customDocs,
     saveTermoRT,
@@ -162,8 +204,10 @@ export function PmocContractDocsTab({ contractId, templateContext }: PmocContrac
 
   const generateDossie = useGenerateDossiePdf();
   const generateCronograma = useGenerateCronogramaPdf();
+  const generateTrt = useGenerateTrtPdf();
 
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
 
   // Templates default pré-preenchidos com contexto
   const defaultTermoRt = useMemo(
@@ -189,6 +233,16 @@ export function PmocContractDocsTab({ contractId, templateContext }: PmocContrac
 
   const latestDossie = latestByType.dossie_pmoc;
   const latestCronograma = latestByType.cronograma_anual;
+  const latestTrt = latestByType.termo_rt;
+
+  // Status visual do TRT: signed | pending | null (não gerado).
+  const trtStatus: PmocDocumentSignatureStatus = latestTrt
+    ? latestTrt.signature_status ?? 'pending'
+    : null;
+  // Mesma lógica pro Dossiê (também leva assinatura — Onda E).
+  const dossieStatus: PmocDocumentSignatureStatus = latestDossie
+    ? latestDossie.signature_status ?? 'pending'
+    : null;
 
   const handleGenerateDossie = async () => {
     await generateDossie.mutateAsync({ contract_id: contractId });
@@ -198,21 +252,106 @@ export function PmocContractDocsTab({ contractId, templateContext }: PmocContrac
     await generateCronograma.mutateAsync({ contract_id: contractId });
     refetch();
   };
+  const handleGenerateTrt = async () => {
+    await generateTrt.mutateAsync({ contract_id: contractId });
+    refetch();
+  };
 
   return (
     <div className="space-y-6">
+      {/* Card 0 — TRT (Onda E) — gerável independente do Dossiê */}
+      <Card className="w-full min-w-0 max-w-full overflow-hidden">
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 break-words">
+              <ShieldCheck className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 break-words">
+                Termo de Responsabilidade Técnica (TRT)
+              </span>
+              {latestTrt && (
+                <Badge variant="secondary" className="ml-2">
+                  v{latestTrt.version}
+                </Badge>
+              )}
+            </CardTitle>
+            <SignatureStatusBadge status={trtStatus} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Documento curto (1 página) com declaração de responsabilidade técnica do RT,
+            conforme Lei Federal 13.589/2018. Pode ser gerado independente do Dossiê completo.
+          </p>
+          {latestTrt && (
+            <p className="text-xs text-muted-foreground">
+              Última geração: {formatGeneratedAt(latestTrt.generated_at)}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3 min-w-0">
+          {trtStatus === 'pending' && (
+            <Alert className="border-warning/40 bg-warning/5">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <AlertTitle>Assinatura pendente</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>
+                  O RT atual desse contrato não tem assinatura cadastrada. O TRT foi gerado
+                  com linha em branco pra assinar à mão. Você pode adicionar a assinatura
+                  agora pro PDF ser regerado automaticamente em todos os documentos (TRT, Dossiê).
+                </p>
+                <Button
+                  size="sm"
+                  variant="edit-ghost"
+                  className="mt-1 min-h-[36px]"
+                  onClick={() => setSignatureDialogOpen(true)}
+                  disabled={!responsibleTechnicianId}
+                >
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                  Adicionar assinatura agora
+                </Button>
+                {!responsibleTechnicianId && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Vincule um Responsável Técnico ao contrato pra habilitar o cadastro de assinatura.
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            {latestTrt?.pdf_storage_path && (
+              <DownloadLatestButton doc={latestTrt} label="Baixar última versão" />
+            )}
+            <Button
+              size="sm"
+              onClick={handleGenerateTrt}
+              disabled={generateTrt.isPending}
+              className="min-h-[40px]"
+            >
+              {generateTrt.isPending ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-1 h-4 w-4" />
+              )}
+              {latestTrt ? 'Atualizar TRT' : 'Gerar TRT'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Card 1 — Dossiê PMOC */}
       <Card className="w-full min-w-0 max-w-full overflow-hidden">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 break-words">
-            <FileText className="h-5 w-5 shrink-0" />
-            <span className="min-w-0 break-words">Dossiê PMOC</span>
-            {latestDossie && (
-              <Badge variant="secondary" className="ml-2">
-                v{latestDossie.version}
-              </Badge>
-            )}
-          </CardTitle>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 break-words">
+              <FileText className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 break-words">Dossiê PMOC</span>
+              {latestDossie && (
+                <Badge variant="secondary" className="ml-2">
+                  v{latestDossie.version}
+                </Badge>
+              )}
+            </CardTitle>
+            <SignatureStatusBadge status={dossieStatus} />
+          </div>
           <p className="text-xs text-muted-foreground">
             Última geração: {formatGeneratedAt(latestDossie?.generated_at)}
           </p>
@@ -326,6 +465,13 @@ export function PmocContractDocsTab({ contractId, templateContext }: PmocContrac
         isSaving={isSaving}
         helperText="Esse texto será embutido na página 3 do PDF do Dossiê PMOC."
       />
+
+      {/* Onda E — atalho rápido pra cadastrar assinatura do RT do contrato. */}
+      <RtSignatureQuickDialog
+        open={signatureDialogOpen}
+        onOpenChange={setSignatureDialogOpen}
+        responsibleTechnicianId={responsibleTechnicianId ?? null}
+      />
     </div>
   );
 }
@@ -348,15 +494,21 @@ function DownloadLatestButton({
 }) {
   const generateDossie = useGenerateDossiePdf();
   const generateCronograma = useGenerateCronogramaPdf();
+  const generateTrt = useGenerateTrtPdf();
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
     setBusy(true);
     try {
-      const result =
-        doc.doc_type === 'dossie_pmoc'
-          ? await generateDossie.mutateAsync({ contract_id: doc.contract_id })
-          : await generateCronograma.mutateAsync({ contract_id: doc.contract_id });
+      let result;
+      if (doc.doc_type === 'dossie_pmoc') {
+        result = await generateDossie.mutateAsync({ contract_id: doc.contract_id });
+      } else if (doc.doc_type === 'cronograma_anual') {
+        result = await generateCronograma.mutateAsync({ contract_id: doc.contract_id });
+      } else {
+        // termo_rt (Onda E)
+        result = await generateTrt.mutateAsync({ contract_id: doc.contract_id });
+      }
       if (result.pdf_url) {
         window.open(result.pdf_url, '_blank', 'noopener,noreferrer');
       }
@@ -414,7 +566,7 @@ function VersionHistory({
       (acc[d.doc_type] ||= []).push(d);
       return acc;
     },
-    { dossie_pmoc: [], cronograma_anual: [] },
+    { dossie_pmoc: [], cronograma_anual: [], termo_rt: [] },
   );
 
   return (
@@ -437,6 +589,7 @@ function VersionHistory({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4 border-t pt-4">
+            <TypeBlock title="Termo de Responsabilidade Técnica" docs={byType.termo_rt} />
             <TypeBlock title="Dossiê PMOC" docs={byType.dossie_pmoc} />
             <TypeBlock title="Cronograma Anual" docs={byType.cronograma_anual} />
           </CardContent>

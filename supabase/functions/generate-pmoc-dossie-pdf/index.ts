@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       contract.responsible_technician_id
         ? supabase
             .from("responsible_technicians")
-            .select("full_name, cft_crea, modality")
+            .select("full_name, cft_crea, modality, signature_image_url, stamp_image_url")
             .eq("id", contract.responsible_technician_id)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
@@ -287,6 +287,9 @@ Deno.serve(async (req) => {
         nome: rt.full_name,
         modalidade: rt.modality ?? "Técnico em Refrigeração",
         cft_crea: rt.cft_crea ?? null,
+        // Onda E: assinatura visual do RT embedada automaticamente quando existir.
+        signature_image_url: rt.signature_image_url ?? null,
+        stamp_image_url: rt.stamp_image_url ?? null,
       },
       customer: {
         name: customer?.name ?? "Unidade",
@@ -307,10 +310,18 @@ Deno.serve(async (req) => {
     };
 
     // ---- 8. content_hash dos campos dinâmicos
+    //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
+    //    Quando o RT atualiza a assinatura, todos os PDFs daquele contrato
+    //    regeneram na próxima geração (cache miss garantido).
     const hashInput = JSON.stringify({
-      v: "dossie_v1",
+      v: "dossie_v2",
       tenant: { name: tenantName, cnpj, city: cidade, logo: !!logoBytes },
-      rt: ctx.rt,
+      rt: {
+        nome: ctx.rt.nome,
+        modalidade: ctx.rt.modalidade,
+        cft_crea: ctx.rt.cft_crea,
+        signature_image_url: ctx.rt.signature_image_url ?? null,
+      },
       customer: ctx.customer,
       contract: ctx.contract,
       termo: customDocs?.termo_rt_content ?? null,
@@ -321,7 +332,7 @@ Deno.serve(async (req) => {
     // ---- 9. Cache hit?
     const { data: existingDoc } = await supabase
       .from("pmoc_documents")
-      .select("id, version, pdf_storage_path, generated_at")
+      .select("id, version, pdf_storage_path, generated_at, notes")
       .eq("contract_id", contract.id)
       .eq("company_id", contract.company_id)
       .eq("doc_type", "dossie_pmoc")
@@ -342,6 +353,16 @@ Deno.serve(async (req) => {
           path: existingDoc.pdf_storage_path,
         });
       } else {
+        // Onda E: derivar signature_status do notes; fallback pra checar a URL.
+        const sigStatus =
+          existingDoc.notes && existingDoc.notes.startsWith("signature:")
+            ? existingDoc.notes.split(":")[1] === "pending"
+              ? "pending"
+              : "signed"
+            : ctx.rt.signature_image_url
+              ? "signed"
+              : "pending";
+
         console.log("[generate-pmoc-dossie-pdf] cache hit", {
           contract_id: maskUuid(contract.id),
           version: existingDoc.version,
@@ -353,6 +374,7 @@ Deno.serve(async (req) => {
             version: existingDoc.version,
             generated_at: existingDoc.generated_at,
             cached: true,
+            signature_status: sigStatus,
           },
           200,
         );
@@ -371,6 +393,10 @@ Deno.serve(async (req) => {
 
     const pdfBytes = await pdf.save();
     const pdfSize = pdfBytes.length;
+
+    // Onda E: signature_status agregado (pending se QUALQUER página ficou pendente)
+    const signatureStatus: "signed" | "pending" =
+      termoResult.signaturePending || certResult.signaturePending ? "pending" : "signed";
 
     // ---- 11. Próxima versão
     const { data: maxRow } = await supabase
@@ -403,6 +429,8 @@ Deno.serve(async (req) => {
     }
 
     // ---- 13. INSERT em pmoc_documents
+    //    Onda E: notes grava signature:status pra que cache hit subsequente
+    //    devolva o mesmo status sem re-embedar a imagem.
     const { error: insertErr } = await supabase.from("pmoc_documents").insert({
       company_id: contract.company_id,
       contract_id: contract.id,
@@ -411,6 +439,7 @@ Deno.serve(async (req) => {
       content_hash: contentHash,
       pdf_storage_path: storagePath,
       generated_by: userId,
+      notes: `signature:${signatureStatus}`,
     });
 
     if (insertErr) {
@@ -441,6 +470,7 @@ Deno.serve(async (req) => {
       attrs_removed_termo: termoResult.attrsRemoved,
       tags_removed_cert: certResult.tagsRemoved,
       attrs_removed_cert: certResult.attrsRemoved,
+      signature_status: signatureStatus,
       duration_ms: Date.now() - t0,
     });
 
@@ -450,6 +480,7 @@ Deno.serve(async (req) => {
         version: nextVersion,
         generated_at: new Date().toISOString(),
         cached: false,
+        signature_status: signatureStatus,
       },
       200,
     );

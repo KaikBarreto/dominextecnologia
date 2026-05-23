@@ -442,6 +442,10 @@ export default function ContractDetail() {
               <PmocContractDocsTab
                 contractId={id}
                 templateContext={pmocTemplateContext}
+                responsibleTechnicianId={
+                  (contract as unknown as { responsible_technician_id?: string | null })
+                    .responsible_technician_id ?? null
+                }
               />
             )}
           </TabsContent>

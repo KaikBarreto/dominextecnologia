@@ -449,19 +449,23 @@ Deno.serve(async (req) => {
     });
 
     // -------------------------------------------------------------------------
-    // 3.5) Documents reais (Onda C) — última versão por doc_type, signed URL
-    //      TTL 24h. Filtro defensivo por company_id (§6.4 RLS rules Onda C).
-    //      Versões antigas NUNCA aparecem no payload público.
+    // 3.5) Documents reais (Onda C + Onda E) — última versão por doc_type,
+    //      signed URL TTL 24h. Filtro defensivo por company_id (§6.4 RLS
+    //      rules Onda C). Versões antigas NUNCA aparecem no payload público.
+    //
+    //      Onda E: 'termo_rt' adicionado como terceiro doc_type e exposto com
+    //      signature_status ('signed' | 'pending') derivado de notes.
     // -------------------------------------------------------------------------
-    const DOC_TYPES = ["dossie_pmoc", "cronograma_anual"] as const;
+    const DOC_TYPES = ["dossie_pmoc", "cronograma_anual", "termo_rt"] as const;
     const DOC_LABELS: Record<typeof DOC_TYPES[number], string> = {
       dossie_pmoc: "Dossiê PMOC (Capa + Termo + Certificado)",
       cronograma_anual: "Cronograma 12 meses",
+      termo_rt: "Termo de Responsabilidade Técnica (TRT)",
     };
 
     const { data: docRows } = await supabase
       .from("pmoc_documents")
-      .select("doc_type, version, generated_at, pdf_storage_path")
+      .select("doc_type, version, generated_at, pdf_storage_path, notes")
       .eq("contract_id", contract.id)
       .eq("company_id", contract.company_id) // defesa em camada
       .in("doc_type", DOC_TYPES as unknown as string[])
@@ -470,7 +474,7 @@ Deno.serve(async (req) => {
     // Agrupa por doc_type pegando só a maior version
     const latestByType = new Map<
       string,
-      { version: number; generated_at: string; pdf_storage_path: string }
+      { version: number; generated_at: string; pdf_storage_path: string; notes: string | null }
     >();
     for (const row of docRows ?? []) {
       if (!latestByType.has(row.doc_type)) {
@@ -478,9 +482,25 @@ Deno.serve(async (req) => {
           version: row.version,
           generated_at: row.generated_at,
           pdf_storage_path: row.pdf_storage_path,
+          notes: row.notes ?? null,
         });
       }
     }
+
+    // Onda E: signature_status só é relevante pra docs que carregam o bloco
+    // de assinatura do RT (termo_rt e dossie_pmoc; cronograma_anual não tem).
+    const SIG_RELEVANT = new Set<string>(["termo_rt", "dossie_pmoc"]);
+    const deriveSigStatus = (
+      type: string,
+      notes: string | null,
+    ): "signed" | "pending" | null => {
+      if (!SIG_RELEVANT.has(type)) return null;
+      if (notes && notes.startsWith("signature:")) {
+        return notes.split(":")[1] === "pending" ? "pending" : "signed";
+      }
+      // Fallback histórico: docs gerados antes da Onda E não têm notes.
+      return null;
+    };
 
     // Gera signed URL TTL 24h pra cada doc disponível
     const documents = await Promise.all(
@@ -494,6 +514,9 @@ Deno.serve(async (req) => {
             version: null as number | null,
             generated_at: null as string | null,
             pdf_url: null as string | null,
+            signature_status: SIG_RELEVANT.has(type)
+              ? ("pending" as "signed" | "pending")
+              : null,
           };
         }
         const { data: signed } = await supabase.storage
@@ -506,6 +529,7 @@ Deno.serve(async (req) => {
           version: latest.version,
           generated_at: latest.generated_at,
           pdf_url: signed?.signedUrl ?? null,
+          signature_status: deriveSigStatus(type, latest.notes),
           // NOTA: pdf_storage_path INTENCIONALMENTE não exposto (§6.3.5 RLS).
         };
       }),
@@ -517,7 +541,7 @@ Deno.serve(async (req) => {
     // -------------------------------------------------------------------------
     const payload = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.1.0", // 1.1.0 — documents reais (Onda C)
+      payload_version: "1.2.0", // 1.2.0 — Onda E: termo_rt standalone + signature_status
       unit: {
         name: customer?.name ?? null,
         address: customer?.address ?? null,

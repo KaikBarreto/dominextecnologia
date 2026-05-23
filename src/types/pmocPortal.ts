@@ -37,8 +37,20 @@ export type PortalDocumentType =
  * usados em `documents_placeholder` foram fundidos em 2 documentos finais:
  *  - `dossie_pmoc` → capa + termo RT + certificado em 1 PDF de 3 páginas.
  *  - `cronograma_anual` → 12 páginas (1 mês/página).
+ *
+ * Onda E — TRT separado, gerável independente do Dossiê.
+ *  - `termo_rt` → PDF de 1 página com declaração de responsabilidade técnica.
  */
-export type PortalRealDocumentType = 'dossie_pmoc' | 'cronograma_anual';
+export type PortalRealDocumentType = 'dossie_pmoc' | 'cronograma_anual' | 'termo_rt';
+
+/**
+ * Onda E — status da assinatura embarcada no PDF.
+ *
+ * - `'signed'`  → assinatura do RT foi embutida no PDF.
+ * - `'pending'` → PDF saiu com linha em branco pra assinar à mão.
+ * - `null`      → não se aplica (ex.: Cronograma) ou doc anterior à Onda E.
+ */
+export type PortalDocumentSignatureStatus = 'signed' | 'pending' | null;
 
 export interface PortalUnit {
   name: string;
@@ -101,6 +113,9 @@ export interface PortalDocumentPlaceholder {
  *
  * - `available=true` → tem PDF gerado e `pdf_url` (signed URL TTL 24h).
  * - `available=false` → fallback defensivo "Disponível em breve" no UI.
+ *
+ * Onda E — `signature_status` indica se a assinatura está embarcada no PDF.
+ * Só faz sentido em `dossie_pmoc` e `termo_rt`. `cronograma_anual` envia `null`.
  */
 export interface PortalRealDocument {
   type: PortalRealDocumentType;
@@ -109,6 +124,7 @@ export interface PortalRealDocument {
   version?: number;
   generated_at?: string;
   pdf_url?: string;
+  signature_status?: PortalDocumentSignatureStatus;
 }
 
 export interface PortalPayload {
