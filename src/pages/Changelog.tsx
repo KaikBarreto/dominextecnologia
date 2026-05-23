@@ -64,6 +64,11 @@ const changelog: ChangelogEntry[] = [
         description: 'Em Contas a Pagar e Contas a Receber, agora aparece um 4º card verde (com ícone de check) somando o total já pago (na aba A Pagar) ou já recebido (na aba A Receber) no período selecionado. Útil pra ver rapidinho "quanto já saiu/entrou esse mês" mesmo quando você está olhando a aba de Pendentes. Funciona em mobile (no carrossel de cards) e em desktop (na grade de cards).',
         category: 'recurso',
       },
+      {
+        title: 'Editor de textos do PMOC agora respeita parágrafos e títulos',
+        description: 'Ao editar o Termo de Responsabilidade Técnica ou o Certificado de Conformidade no contrato PMOC, o texto ficava todo grudado — parágrafos colados, títulos sem espaço acima, seções sem respiro visual. Faltava ativar o módulo de tipografia do sistema. Corrigido: agora os blocos têm o espaçamento natural entre eles, e o texto fica legível tanto no editor quanto nos Termos de Uso e Política de Privacidade (que herdavam o mesmo problema).',
+        category: 'correcao',
+      },
     ],
   },
   {
