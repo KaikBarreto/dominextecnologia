@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -29,6 +30,7 @@ export default function AdminSalespersonDetail() {
   // Vendedor admin restrito (sem ver_todos) só pode ver o próprio registro.
   // Vê seus dados mas NÃO pode trocar o vendedor selecionado nem registrar vales (ações de admin).
   const isRestrictedSelfView = !canSeeAllSalespeople && isViewingOwnRecord;
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Guard: vendedor admin restrito tentando acessar outro vendedor pela URL é
   // redirecionado pro próprio registro. (Defesa em profundidade — a RLS de
@@ -117,13 +119,26 @@ export default function AdminSalespersonDetail() {
         totalSalesCount={allSales.length}
       />
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className={`grid w-full ${isMobile ? '' : 'max-w-[600px]'} grid-cols-4 ${isMobile ? 'h-auto' : ''}`}>
-          <TabsTrigger value="overview" className={isMobile ? 'text-xs py-2' : ''}>Visão Geral</TabsTrigger>
-          <TabsTrigger value="sales" className={isMobile ? 'text-xs py-2' : ''}>Vendas</TabsTrigger>
-          <TabsTrigger value="advances" className={isMobile ? 'text-xs py-2' : ''}>Vales</TabsTrigger>
-          <TabsTrigger value="payment" className={isMobile ? 'text-xs py-2' : ''}>Pagamento</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {isMobile ? (
+          <MobilePillTabs
+            tabs={[
+              { value: 'overview', label: 'Visão Geral' },
+              { value: 'sales', label: 'Vendas' },
+              { value: 'advances', label: 'Vales' },
+              { value: 'payment', label: 'Pagamento' },
+            ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        ) : (
+          <TabsList className="grid w-full max-w-[600px] grid-cols-4">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="sales">Vendas</TabsTrigger>
+            <TabsTrigger value="advances">Vales</TabsTrigger>
+            <TabsTrigger value="payment">Pagamento</TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="overview" className="space-y-4">
           <SalespersonDetailCharts salesperson={salesperson} allSales={allSales} currentMonthSales={filteredSales} />

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.3',
+    date: '23 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Detalhe de Empresa e Vendedor (painel Auctus) também ganham visual de aplicativo no celular',
+        description: 'Auditamos as telas de detalhe e duas estavam com visual desktop no celular: detalhe da Empresa (painel master Auctus) tinha título grande de 3rem que dominava a tela e abas em barra desktop, e detalhe do Vendedor tinha 4 abas em grid apertado. Agora as duas usam pílulas horizontais pra trocar de aba (mesmo padrão do resto do sistema), os botões de ação (Voltar/WhatsApp/Editar/Excluir) virou ícones compactos no mobile (com label só no computador), e o título reduziu pra "text-xl" no celular. Detalhe de Cliente, Equipamento, Contrato e Questionário já estavam OK.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.2',
     date: '23 de maio de 2026',
     type: 'patch',
