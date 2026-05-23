@@ -7,10 +7,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import { currencyMask, parseCurrency, calculateDailyValue } from '@/utils/employeeCalculations';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
+
+export interface MovementCashAccount {
+  id: string;
+  name: string;
+  type: string;
+}
 
 interface EmployeeMovementModalProps {
   open: boolean;
@@ -18,10 +28,16 @@ interface EmployeeMovementModalProps {
   type: 'vale' | 'bonus' | 'falta';
   employeeName: string;
   currentBalance: number;
-  onSubmit: (data: { amount: number; description?: string; subType?: string }) => void;
+  onSubmit: (data: { amount: number; description?: string; subType?: string; accountId?: string }) => void;
   isPending?: boolean;
   employeeId?: string;
   salary?: number;
+  /**
+   * Contas de saída disponíveis pro vale (caixa/conta corrente).
+   * Não deve conter cartão de crédito — vale sai sempre de caixa/dinheiro real.
+   * Obrigatório quando `type === 'vale'`. Ignorado nos demais tipos.
+   */
+  cashBankAccounts?: MovementCashAccount[];
 }
 
 const typeLabels: Record<string, string> = { vale: 'Vale', bonus: 'Bônus', falta: 'Falta' };
@@ -30,12 +46,14 @@ type MovementDraft = { amount: string; description: string };
 
 export function EmployeeMovementModal({
   open, onOpenChange, type, employeeName, currentBalance, onSubmit, isPending,
-  employeeId, salary = 0
+  employeeId, salary = 0, cashBankAccounts = [],
 }: EmployeeMovementModalProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [faltaMode, setFaltaMode] = useState<'salario' | 'banco'>('salario');
   const [applyDSR, setApplyDSR] = useState(false);
+  const [accountId, setAccountId] = useState('');
+  const { toast } = useToast();
 
   const draft = useFormDraft<MovementDraft>({ key: `employee-movement-${type}`, isOpen: open });
 
@@ -58,6 +76,14 @@ export function EmployeeMovementModal({
       setApplyDSR(false);
       setFaltaPreFilled(false);
     }
+
+    // Auto-seleciona primeira conta disponível pro vale (só relevante quando type === 'vale').
+    if (type === 'vale' && cashBankAccounts.length > 0) {
+      setAccountId((prev) => prev || cashBankAccounts[0].id);
+    } else {
+      setAccountId('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Pre-fill falta value when suggestion becomes available (async)
@@ -81,6 +107,16 @@ export function EmployeeMovementModal({
     const baseValue = parseCurrency(amount);
     if (baseValue <= 0) return;
 
+    // Vale exige conta de saída — gera despesa no financeiro.
+    if (type === 'vale' && !accountId) {
+      toast({
+        variant: 'destructive',
+        title: 'Selecione a conta de saída',
+        description: 'O vale precisa ser vinculado a uma conta ou caixa para gerar a despesa correta.',
+      });
+      return;
+    }
+
     let finalAmount = baseValue;
     let finalDescription = description || undefined;
 
@@ -103,6 +139,7 @@ export function EmployeeMovementModal({
       amount: finalAmount,
       description: finalDescription,
       subType: type === 'falta' ? faltaMode : undefined,
+      accountId: type === 'vale' ? accountId : undefined,
     });
     draft.clearDraft();
     setAmount('');
@@ -143,6 +180,32 @@ export function EmployeeMovementModal({
             {currentBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
         </div>
+
+        {/* Conta de saída — só para vale. Vale precisa sair de uma conta real
+            (caixa/conta corrente) pra aparecer no extrato + bater saldo. */}
+        {type === 'vale' && (
+          <div className="space-y-1.5">
+            <Label>De qual conta sai o vale? *</Label>
+            {cashBankAccounts.length === 0 ? (
+              <p className="text-xs text-destructive">
+                Nenhuma conta ou caixa ativo encontrado. Cadastre uma conta em Financeiro &rarr; Contas e Cartões.
+              </p>
+            ) : (
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Selecione a conta de saída" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cashBankAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.type === 'caixa' ? `${acc.name} (em dinheiro)` : acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
 
         {/* Falta mode selection */}
         {type === 'falta' && (

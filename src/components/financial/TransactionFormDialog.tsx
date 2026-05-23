@@ -444,13 +444,31 @@ export function TransactionFormDialog({
   }, [isCardAccount, watchedDate, watchedAccountId, open]);
 
   const handleSubmit = async (data: TransactionFormData) => {
-    // Transição "à vista → parcelada" em edição: Finance.tsx vai deletar a
-    // original e recriar como N parcelas (o backend só faz UPDATE plano).
-    // Confirma com o usuário antes de submeter pra evitar surpresa.
+    // Transição "à vista → parcelada" OU mudança de forma de pagamento em edição:
+    // Finance.tsx vai deletar a original (ou o grupo inteiro de parcelas) e
+    // recriar do zero, porque o backend só faz UPDATE plano e não consegue
+    // reescrever a estrutura (parcelas, cartão vs PIX, etc.). Confirma com o
+    // usuário antes pra evitar surpresa.
     const originalInstallmentTotal = (transaction as any)?.installment_total;
+    const originalPaymentMethod = (transaction as any)?.payment_method;
     const wasOnePayment = isEditing && (!originalInstallmentTotal || originalInstallmentTotal <= 1);
     const willBeMultiple = (data.installment_count ?? 1) > 1;
-    if (wasOnePayment && willBeMultiple) {
+    const paymentMethodChanged = isEditing && originalPaymentMethod !== data.payment_method;
+
+    if (paymentMethodChanged) {
+      const parcelasInfo = (data.installment_count ?? 1) > 1
+        ? `${data.installment_count} parcelas`
+        : 'à vista';
+      const grupoInfo = (originalInstallmentTotal ?? 1) > 1
+        ? `Todas as ${originalInstallmentTotal} parcelas originais serão removidas`
+        : 'A transação original será removida';
+      const ok = window.confirm(
+        `Você está alterando a forma de pagamento desta despesa. ` +
+        `${grupoInfo} e será recriada (${parcelasInfo}) com a nova forma de pagamento. ` +
+        `Os anexos serão preservados. Continuar?`
+      );
+      if (!ok) return;
+    } else if (wasOnePayment && willBeMultiple) {
       const ok = window.confirm(
         `Você está alterando esta despesa para ${data.installment_count} parcelas. ` +
         `A transação original será removida e ${data.installment_count} novas parcelas serão criadas no lugar. ` +
@@ -658,14 +676,40 @@ export function TransactionFormDialog({
             )} />
           )}
 
+          {/* Forma de pagamento — visível em new e edit. Trocar o método em edição
+              dispara em Finance.handleSubmit a recriação da despesa (delete da
+              original + create no novo método). Isso é o que permite mover uma
+              despesa de PIX → Cartão (ou vice-versa) com as parcelas corretas. */}
+          <FormField control={form.control} name="payment_method" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Forma de pagamento</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || ''}>
+                <FormControl><SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+
           {/* Credit card bill info */}
           {isCardAccount && transactionType === 'saida' && (() => {
             const originalInstallmentTotal = (transaction as any)?.installment_total;
-            const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1;
+            const originalPaymentMethod = (transaction as any)?.payment_method;
+            const currentPaymentMethod = form.watch('payment_method');
+            const paymentMethodChanged = isEditing && originalPaymentMethod !== currentPaymentMethod;
+            // Se trocou método, vai recriar como nova despesa → trata como "novo".
+            const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1 && !paymentMethodChanged;
             // Editando parcela individual de despesa já parcelada: mostrar só o
             // mês desta parcela (breakdown sairia errado, calculado a partir
             // desta data específica). Nos outros casos (novo OU à vista virando
-            // parcelada), refletir a escolha atual do form.
+            // parcelada OU método mudou), refletir a escolha atual do form.
             return (
               <CreditCardBillSection
                 form={form}
@@ -699,7 +743,13 @@ export function TransactionFormDialog({
 
             {(() => {
               const originalInstallmentTotal = (transaction as any)?.installment_total;
-              const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1;
+              const originalPaymentMethod = (transaction as any)?.payment_method;
+              const currentPaymentMethod = form.watch('payment_method');
+              const paymentMethodChanged = isEditing && originalPaymentMethod !== currentPaymentMethod;
+              // Se o usuário trocou o método de pagamento na edição, vamos
+              // recriar a despesa do zero (delete + create) — então libera o
+              // select de parcelas como se fosse criação nova.
+              const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1 && !paymentMethodChanged;
               // Edição de transação JÁ parcelada: badge read-only — alterar
               // quantidade ali exigiria reescrever TODAS as parcelas (fora de escopo).
               // Edição de transação à vista (ou nova): Select normal. Se o usuário

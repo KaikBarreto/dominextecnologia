@@ -148,32 +148,53 @@ export default function Finance() {
       const wasOnePayment =
         !editingTransaction.installment_total || editingTransaction.installment_total <= 1;
       const willBeMultiple = (data.installment_count ?? 1) > 1;
+      const originalPaymentMethod = editingTransaction.payment_method;
+      const paymentMethodChanged = originalPaymentMethod !== data.payment_method;
 
-      if (wasOnePayment && willBeMultiple) {
-        // Transição "à vista → parcelada": backend só faz UPDATE plano, então
-        // criamos as N parcelas primeiro (pra não perder dados se falhar),
-        // relinkamos os anexos, e só depois deletamos a original.
+      // Caminho "recriar": precisamos reescrever a despesa do zero quando
+      //  (a) à vista virou parcelada (estrutura muda) OU
+      //  (b) método de pagamento mudou (ex: PIX → Cartão, vira lançamento de fatura).
+      // Em ambos os casos o UPDATE plano do hook não dá conta.
+      const needsReplace = (wasOnePayment && willBeMultiple) || paymentMethodChanged;
+
+      if (needsReplace) {
+        // 1. Cria a(s) nova(s) transação(ões) primeiro pra não perder dados se falhar.
         const created = await createTransaction.mutateAsync(data);
+
+        // 2. Relink dos anexos: precisa rodar antes do delete, senão perdem o
+        //    storage_path referenciado pela transação original.
         try {
           await relinkAttachments(editingTransaction.id, created.ids);
         } catch (e) {
-          // Anexos não relinkados — não bloqueia o save, mas avisa. As novas
-          // parcelas já existem; o user pode reanexar manualmente.
           toast({
             variant: 'destructive',
             title: 'Anexos não foram preservados',
-            description: 'As parcelas foram criadas, mas os comprovantes da transação original não puderam ser vinculados. Reanexe manualmente.',
+            description: 'A nova despesa foi criada, mas os comprovantes da original não puderam ser vinculados. Reanexe manualmente.',
           });
         }
+
+        // 3. Delete da original. Se ela faz parte de um grupo de parcelas
+        //    (installment_group_id), tem que apagar TODAS as parcelas do grupo,
+        //    senão sobram irmãs órfãs que confundem extrato e cartão.
+        const installmentGroupId = editingTransaction.installment_group_id;
         try {
-          await deleteTransaction.mutateAsync(editingTransaction.id);
-        } catch (e) {
-          // Pior caso: usuário fica com a original + as N novas. Não tentamos
-          // rollback do create — viraria spaghetti. Avisamos e o user limpa.
+          if (installmentGroupId) {
+            // Apaga todas as parcelas do grupo de uma vez. Não usa
+            // deleteTransaction.mutateAsync (que processa uma por uma + cascata
+            // de quote/fatura) porque queremos a operação atômica e mais barata.
+            const { error: delErr } = await supabase
+              .from('financial_transactions')
+              .delete()
+              .eq('installment_group_id', installmentGroupId);
+            if (delErr) throw delErr;
+          } else {
+            await deleteTransaction.mutateAsync(editingTransaction.id);
+          }
+        } catch (e: any) {
           toast({
             variant: 'destructive',
             title: 'Transação original não foi removida',
-            description: 'As parcelas foram criadas com sucesso, mas a transação original ainda está na lista. Remova manualmente.',
+            description: 'A nova despesa foi criada, mas a original ainda está na lista. Remova manualmente.',
           });
         }
         result = created;

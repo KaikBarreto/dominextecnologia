@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.14',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Vale na tela de Funcionários agora pergunta de qual conta sai o dinheiro',
+        description: 'Ao registrar um vale para um colaborador, o sistema agora pede pra você escolher de qual conta ou caixa o dinheiro está saindo (cartão de crédito não aparece — vale sai de dinheiro real). Antes, o vale criava uma despesa "solta", sem vínculo com conta, e por isso sumia do extrato da conta. Agora aparece direitinho no extrato e no saldo. Se algo der errado (ex: nenhuma conta cadastrada), aparece uma mensagem clara em vermelho explicando o motivo, em vez de falhar em silêncio.',
+        category: 'correcao',
+      },
+      {
+        title: 'Bônus não cria mais entrada fantasma no financeiro',
+        description: 'Antes, ao registrar um bônus para um funcionário, o sistema criava uma "entrada" fantasma no financeiro que não fazia sentido — bônus não é receita da empresa, é um crédito interno do colaborador. Agora o bônus fica só no saldo do funcionário e entra na conta apenas na hora do pagamento do salário (somado ao subtotal, como sempre foi).',
+        category: 'correcao',
+      },
+      {
+        title: 'Editar uma transação financeira agora permite trocar a forma de pagamento',
+        description: 'Em Movimentações, ao editar uma transação, agora aparece um campo "Forma de pagamento" pra você poder trocar (ex: lançou como PIX e era cartão, ou vice-versa). Quando você troca, o sistema confirma com um aviso explicando que vai recriar a despesa, apaga TODAS as parcelas antigas do grupo (sem deixar parcela órfã), e cria as novas com a forma de pagamento certa — preservando os comprovantes anexados. Resolve o caso clássico de "lancei errado e não conseguia mais consertar".',
+        category: 'recurso',
+      },
+      {
+        title: 'Novo card "Total Pago" e "Total Recebido" em Contas a Pagar / a Receber',
+        description: 'Em Contas a Pagar e Contas a Receber, agora aparece um 4º card verde (com ícone de check) somando o total já pago (na aba A Pagar) ou já recebido (na aba A Receber) no período selecionado. Útil pra ver rapidinho "quanto já saiu/entrou esse mês" mesmo quando você está olhando a aba de Pendentes. Funciona em mobile (no carrossel de cards) e em desktop (na grade de cards).',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.9.13',
     date: '23 de maio de 2026',
     type: 'minor',

@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -167,7 +167,11 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
     const pendente = baseFiltered.filter((t) => !t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
     const vencido = baseFiltered.filter((t) => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today)).reduce((s, t) => s + Number(t.amount), 0);
     const prox7 = baseFiltered.filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), today) && isBefore(parseLocalDate(t.due_date), next7Days)).reduce((s, t) => s + Number(t.amount), 0);
-    return { pendente, vencido, prox7 };
+    // Total já pago/recebido no período — útil pra ver "quanto já saiu/entrou
+    // neste mês" mesmo estando na aba Pendentes. Sempre olha a sub-tab inteira,
+    // independente do filtro de status acima.
+    const pago = baseFiltered.filter((t) => t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
+    return { pendente, vencido, prox7, pago };
   }, [baseFiltered, today, next7Days]);
 
   // Pré-calcula campos derivados pra ordenação na table desktop. O hook
@@ -288,10 +292,21 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 <p className="text-sm font-bold truncate leading-tight">{formatCurrency(summary.prox7)}</p>
               </div>
             </div>
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+              <div className="rounded-full bg-success p-2 shrink-0">
+                <CheckCircle2 className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">
+                  {subTab === 'receber' ? 'Recebido' : 'Pago'}
+                </p>
+                <p className="text-sm font-bold text-success truncate leading-tight">{formatCurrency(summary.pago)}</p>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-warning p-2.5 shrink-0">
@@ -322,6 +337,19 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Próximos 7 dias</p>
                 <p className="text-lg font-bold truncate">{formatCurrency(summary.prox7)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="rounded-full bg-success p-2.5 shrink-0">
+                <CheckCircle2 className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  {subTab === 'receber' ? 'Total Recebido' : 'Total Pago'}
+                </p>
+                <p className="text-lg font-bold text-success truncate">{formatCurrency(summary.pago)}</p>
               </div>
             </CardContent>
           </Card>

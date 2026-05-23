@@ -23,6 +23,7 @@ import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +52,13 @@ export default function Employees() {
 
   const isMobile = useIsMobile();
   const { employees, isLoading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { accounts: allAccounts } = useFinancialAccounts();
+  // Contas válidas pra vale: caixa/banco ativos. Cartão NÃO pode bancar vale —
+  // vale sai de dinheiro real, não vira lançamento na fatura.
+  const cashBankAccounts = useMemo(
+    () => allAccounts.filter((a) => a.type !== 'cartao' && a.is_active),
+    [allAccounts]
+  );
   const { toast } = useToast();
   const { user, profile, isAdminOrGestor, hasPermission } = useAuth();
   const queryClient = useQueryClient();
@@ -245,31 +253,54 @@ export default function Employees() {
     payrollKind?: 'salary' | 'vale' | 'bonus' | 'rescission';
   }) => {
     const today = new Date().toISOString().split('T')[0];
-    const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
-    const company_id = await getCurrentUserCompanyId();
-    await supabase.from('financial_transactions').insert({
-      transaction_type: input.type,
-      amount: input.amount,
-      description: input.description,
-      category: 'Funcionários',
-      transaction_date: today,
-      paid_date: today,
-      is_paid: true,
-      notes: input.notes,
-      account_id: input.accountId || null,
-      created_by: user?.id,
-      company_id,
-      employee_id: input.employeeId ?? null,
-      payroll_kind: input.payrollKind ?? null,
-    } as any);
+    try {
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const company_id = await getCurrentUserCompanyId();
+      const { error } = await supabase.from('financial_transactions').insert({
+        transaction_type: input.type,
+        amount: input.amount,
+        description: input.description,
+        category: 'Funcionários',
+        transaction_date: today,
+        paid_date: today,
+        is_paid: true,
+        notes: input.notes,
+        account_id: input.accountId || null,
+        created_by: user?.id,
+        company_id,
+        employee_id: input.employeeId ?? null,
+        payroll_kind: input.payrollKind ?? null,
+      } as any);
 
-    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
-  }, [queryClient, user?.id]);
+      if (error) {
+        console.error('Erro ao registrar despesa de funcionário:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao registrar despesa',
+          description: error.message,
+        });
+        throw error;
+      }
 
-  const handleMovement = (data: { amount: number; description?: string; subType?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    } catch (err: any) {
+      // Toast já foi exibido no branch acima. Re-emite só se for erro inesperado.
+      if (!err?.message?.startsWith('Erro ao')) {
+        console.error('Falha inesperada ao registrar despesa:', err);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao registrar despesa',
+          description: err?.message ?? 'Erro desconhecido. Tente novamente.',
+        });
+      }
+      throw err;
+    }
+  }, [queryClient, user?.id, toast]);
+
+  const handleMovement = (data: { amount: number; description?: string; subType?: string; accountId?: string }) => {
     if (!movementEmployee) return;
 
     // If falta_banco, just record a non-financial movement
@@ -283,8 +314,10 @@ export default function Employees() {
       else newBalance += data.amount;
     }
 
+    const emp = movementEmployee; // capture pra evitar stale closure no onSuccess
+
     addMovement.mutate({
-      employee_id: movementEmployee.id,
+      employee_id: emp.id,
       type: effectiveType,
       amount: data.amount,
       balance_after: isBancoHoras ? bal.currentBalance : newBalance,
@@ -292,16 +325,25 @@ export default function Employees() {
       created_by: user?.id,
     }, {
       onSuccess: async () => {
-        // Faltas are internal salary deductions — no financial transaction
-        if (!isBancoHoras && movementType !== 'falta') {
-          await registerFinancialTransaction({
-            type: movementType === 'bonus' ? 'entrada' : 'saida',
-            amount: data.amount,
-            description: `${movementType === 'vale' ? 'Vale' : 'Bônus'} - ${movementEmployee.name}`,
-            notes: data.description,
-            employeeId: movementEmployee.id,
-            payrollKind: movementType === 'vale' ? 'vale' : 'bonus',
-          });
+        // Apenas VALE gera despesa imediata no financeiro (sai da conta indicada
+        // e aparece no extrato). BÔNUS e FALTA são saldos internos do funcionário
+        // — entram no caixa só quando a folha é paga (handlePayment cuida disso).
+        if (movementType === 'vale') {
+          try {
+            await registerFinancialTransaction({
+              type: 'saida',
+              amount: data.amount,
+              description: `Vale - ${emp.name}`,
+              notes: data.description,
+              accountId: data.accountId,
+              employeeId: emp.id,
+              payrollKind: 'vale',
+            });
+          } catch {
+            // Toast já mostrado em registerFinancialTransaction; mantém modal
+            // aberto pro usuário decidir (corrigir conta, tentar de novo).
+            return;
+          }
         }
         setMovementEmployee(null);
       },
@@ -684,6 +726,7 @@ export default function Employees() {
           isPending={addMovement.isPending}
           employeeId={movementEmployee.id}
           salary={movementEmployee.salary}
+          cashBankAccounts={cashBankAccounts}
         />
       )}
 
