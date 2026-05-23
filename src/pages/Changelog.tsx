@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.6',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Seta de voltar no topo do app celular',
+        description: 'Agora no celular aparece uma seta no canto superior esquerdo do app que te leva pra tela anterior, igual aplicativos nativos de iPhone e Android. A seta some quando você está na tela Início (não tem pra onde voltar).',
+        category: 'recurso',
+      },
+      {
+        title: 'Puxar a tela pra baixo recarrega o conteúdo (pull-to-refresh)',
+        description: 'Padrão clássico de aplicativos nativos: agora, em qualquer tela do app no celular, basta puxar a página pra baixo a partir do topo que o conteúdo recarrega automaticamente — útil pra ver dados atualizados (novas OS, novos pagamentos, novos leads, etc.) sem precisar voltar ao menu e abrir de novo. Aparece um indicador circular que cresce conforme você puxa; ao soltar passado o limite, ele gira indicando que tá carregando.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.9.5',
     date: '23 de maio de 2026',
     type: 'minor',

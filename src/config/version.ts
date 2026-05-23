@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.5";
+export const APP_VERSION = "1.9.6";
 
-export const VERSION_NOTES = "Portal PMOC público: cada contrato PMOC ganha URL única + QR Code imprimível em A4 pra colar no quadro físico da unidade.";
+export const VERSION_NOTES = "Seta de voltar no topo do app celular e pull-to-refresh: puxar a tela pra baixo agora recarrega o conteúdo.";
