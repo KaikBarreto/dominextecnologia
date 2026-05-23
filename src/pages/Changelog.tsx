@@ -40,6 +40,48 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.0',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Contratos PMOC chegaram (Lei Federal 13.589/2018)',
+        description: 'Agora você pode marcar qualquer contrato como PMOC ligando o toggle "É um contrato PMOC?" no formulário. Ao ativar, você escolhe o Responsável Técnico (engenheiro/técnico com CFT/CREA que supervisiona o PMOC) e o contrato passa a operar no modo PMOC: as ordens de serviço são geradas automaticamente pelo nosso sistema todo dia (conforme a periodicidade que você definiu) e saem com o selo "Conforme Lei Federal 13.589/2018". Não precisa mais ficar criando OS manualmente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cadastro de Responsáveis Técnicos da sua empresa',
+        description: 'Nova tela em Gestão → Responsáveis Técnicos. Cadastre uma vez cada engenheiro/técnico com nome, CFT/CREA, modalidade, número de registro ART/TRT, foto de assinatura e carimbo. Depois é só selecionar em cada contrato PMOC. Pode ativar e desativar conforme o profissional entra e sai da equipe — ninguém precisa preencher esses dados de novo a cada contrato.',
+        category: 'recurso',
+      },
+      {
+        title: 'Indicador de saúde em todos os contratos',
+        description: 'Cada contrato agora mostra um indicador de saúde calculado em tempo real, baseado nas ordens de serviço em atraso vinculadas a ele: 🟢 Em dia (nenhuma OS atrasada), 🟡 Manutenção pendente (1 OS atrasada), 🔴 Necessita atenção (2 ou mais OSs atrasadas). Vale pra contrato PMOC e comum. Bate o olho na lista e já sabe quais contratos pedem atenção sua.',
+        category: 'recurso',
+      },
+      {
+        title: 'Selo "Conforme Lei Federal 13.589/2018" nas OSs PMOC',
+        description: 'Toda ordem de serviço vinculada a um contrato PMOC agora exibe o selo de conformidade — no card da OS na lista e no detalhe completo. É um sinal visual rápido que essa OS faz parte de um plano de manutenção regulado por lei. Nas próximas versões esse selo vai sair também nos relatórios em PDF e no portal público do PMOC.',
+        category: 'recurso',
+      },
+      {
+        title: 'Filtros novos na tela de Contratos',
+        description: 'Adicionamos dois filtros: "Saúde" (todas, em dia, pendente, atenção) e "Tipo" (todos, PMOC, comum). Combine com o filtro de status que já existia. No celular, tudo entra no mesmo painel de filtros. O link da tela aceita parâmetros, ex: /contratos?tipo=pmoc abre direto filtrando só PMOC — útil pra compartilhar entre equipe.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A tela antiga de PMOC virou atalho',
+        description: 'A página antiga de PMOC (que vivia separada) agora redireciona automaticamente pra tela de Contratos com filtro PMOC ligado. Tudo num lugar só. Os links que você tinha salvos pra /pmoc continuam funcionando.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Geração de OS PMOC pelo sistema diariamente',
+        description: 'Um serviço automático nosso roda todo dia e verifica quais contratos PMOC têm OSs a gerar (com base na periodicidade e na data da próxima geração). Quando chega a hora, ele cria a OS sozinho, com o técnico responsável já vinculado e o selo de conformidade aplicado. Você acompanha tudo na tela de Ordens de Serviço como sempre.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.8.51',
     date: '21 de maio de 2026',
     type: 'patch',

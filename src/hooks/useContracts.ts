@@ -25,7 +25,14 @@ export interface Contract {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // PMOC (Onda A — Lei Federal 13.589/2018). Quando `is_pmoc=true`, RT é obrigatório
+  // e cada OS gerada herda o selo de conformidade.
+  is_pmoc: boolean;
+  responsible_technician_id: string | null;
+  pmoc_legal_compliance_text: string | null;
+  next_pmoc_generation_date: string | null;
   customers?: { id: string; name: string } | null;
+  responsible_technicians?: { id: string; full_name: string; cft_crea: string | null; modality: string | null } | null;
   contract_items?: ContractItem[];
   contract_occurrences?: ContractOccurrence[];
 }
@@ -93,6 +100,7 @@ export function useContracts() {
         .select(`
           *,
           customers (id, name),
+          responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
           contract_occurrences (id, contract_id, scheduled_date, service_order_id, status, occurrence_number, service_orders:service_orders(id, order_number, status, scheduled_date))
         `)
@@ -119,6 +127,12 @@ export function useContracts() {
       frequency_value: number;
       start_date: string;
       horizon_months: number;
+      // PMOC (Onda A). Quando true, `responsible_technician_id` é obrigatório (a UI valida antes
+      // de chamar). `next_pmoc_generation_date` é calculado se vier vazio na criação.
+      is_pmoc?: boolean;
+      responsible_technician_id?: string | null;
+      pmoc_legal_compliance_text?: string | null;
+      next_pmoc_generation_date?: string | null;
       items: { equipment_id?: string | null; item_name: string; item_description?: string | null; form_template_id?: string | null }[];
     }) => {
       const { data: profile } = await supabase
@@ -128,6 +142,26 @@ export function useContracts() {
         .single();
 
       if (!profile?.company_id) throw new Error('Empresa não encontrada');
+
+      // Quando PMOC e a próxima geração não foi informada, calculamos a partir da
+      // primeira ocorrência (start_date + frequência) — mesma lógica de generateOccurrences,
+      // pegando a segunda data da série (ou a primeira se só tiver uma).
+      let nextPmocGenerationDate = input.next_pmoc_generation_date ?? null;
+      if (input.is_pmoc && !nextPmocGenerationDate) {
+        const dates = generateOccurrences(
+          new Date(input.start_date + 'T12:00:00'),
+          input.frequency_type as 'days' | 'months',
+          input.frequency_value,
+          input.horizon_months
+        );
+        const target = dates[1] ?? dates[0];
+        if (target) {
+          const y = target.getFullYear();
+          const m = String(target.getMonth() + 1).padStart(2, '0');
+          const d = String(target.getDate()).padStart(2, '0');
+          nextPmocGenerationDate = `${y}-${m}-${d}`;
+        }
+      }
 
       const contractPayload = normalizeOptionalForeignKeys(
         {
@@ -145,9 +179,16 @@ export function useContracts() {
           start_date: input.start_date,
           horizon_months: input.horizon_months,
           billing_responsible_ids: input.billing_responsible_ids || [],
+          // PMOC
+          is_pmoc: input.is_pmoc ?? false,
+          responsible_technician_id: input.is_pmoc ? (input.responsible_technician_id ?? null) : null,
+          pmoc_legal_compliance_text: input.is_pmoc
+            ? (input.pmoc_legal_compliance_text ?? 'Conforme Lei Federal 13.589/2018')
+            : null,
+          next_pmoc_generation_date: input.is_pmoc ? nextPmocGenerationDate : null,
           created_by: user?.id || null,
         } as any,
-        ['technician_id', 'team_id', 'service_type_id', 'form_template_id']
+        ['technician_id', 'team_id', 'service_type_id', 'form_template_id', 'responsible_technician_id']
       );
 
       const { data: contract, error } = await supabase
@@ -177,8 +218,14 @@ export function useContracts() {
       let osErrorCount = 0;
       let expectedOsCount = 0;
 
+      // PMOC (Onda A v1.9.0): a primeira leva de OS sai pelo cron `generate-pmoc-orders`,
+      // NÃO no momento da criação do contrato. Isso evita duplicidade entre o que o cron
+      // gera e o que esse loop geraria. O contrato e seus items são criados normalmente;
+      // só pulamos o loop de OS recorrente.
+      const isPmocContract = input.is_pmoc === true;
+
       // Generate OSs and occurrences
-      if (input.status === 'active') {
+      if (input.status === 'active' && !isPmocContract) {
         const occurrenceDates = generateOccurrences(
           new Date(input.start_date + 'T12:00:00'),
           input.frequency_type as 'days' | 'months',
@@ -305,6 +352,54 @@ export function useContracts() {
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao atualizar status', description: getErrorMessage(e) }),
   });
 
+  /**
+   * Atualiza campos editáveis do contrato (não inclui ocorrências/itens — esses têm fluxos próprios).
+   * Inclui campos PMOC (Onda A). UI valida obrigatoriedade do RT quando `is_pmoc=true` antes de chamar.
+   */
+  const updateContract = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      name?: string;
+      customer_id?: string;
+      technician_id?: string | null;
+      team_id?: string | null;
+      service_type_id?: string | null;
+      form_template_id?: string | null;
+      status?: string;
+      notes?: string | null;
+      frequency_type?: string;
+      frequency_value?: number;
+      start_date?: string;
+      horizon_months?: number;
+      billing_responsible_ids?: string[];
+      // PMOC
+      is_pmoc?: boolean;
+      responsible_technician_id?: string | null;
+      pmoc_legal_compliance_text?: string | null;
+      next_pmoc_generation_date?: string | null;
+    }) => {
+      const { id, ...rest } = input;
+      // Se PMOC foi desligado nesta operação, limpamos os campos vinculados pra
+      // evitar lixo (RT/selo/data-de-geração não fazem sentido sem o flag).
+      const payload: any = { ...rest };
+      if (input.is_pmoc === false) {
+        payload.responsible_technician_id = null;
+        payload.next_pmoc_generation_date = null;
+      }
+      const { error } = await supabase
+        .from('contracts')
+        .update(payload)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      toast({ title: 'Contrato atualizado!' });
+    },
+    onError: (e: Error) =>
+      toast({ variant: 'destructive', title: 'Erro ao atualizar contrato', description: getErrorMessage(e) }),
+  });
+
   const executeDeleteContract = async (id: string) => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -411,6 +506,7 @@ export function useContracts() {
     contracts: visibleContracts,
     isLoading,
     createContract,
+    updateContract,
     updateContractStatus,
     deleteContract,
     stats: {

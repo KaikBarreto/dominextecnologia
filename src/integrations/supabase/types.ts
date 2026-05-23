@@ -735,6 +735,13 @@ export type Database = {
             foreignKeyName: "contract_items_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "contract_items_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
             referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
@@ -787,6 +794,13 @@ export type Database = {
             foreignKeyName: "contract_occurrences_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "contract_occurrences_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
             referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
@@ -812,8 +826,12 @@ export type Database = {
           frequency_value: number
           horizon_months: number
           id: string
+          is_pmoc: boolean
           name: string
+          next_pmoc_generation_date: string | null
           notes: string | null
+          pmoc_legal_compliance_text: string | null
+          responsible_technician_id: string | null
           service_type_id: string | null
           show_billing_in_schedule: boolean
           start_date: string
@@ -834,8 +852,12 @@ export type Database = {
           frequency_value?: number
           horizon_months?: number
           id?: string
+          is_pmoc?: boolean
           name: string
+          next_pmoc_generation_date?: string | null
           notes?: string | null
+          pmoc_legal_compliance_text?: string | null
+          responsible_technician_id?: string | null
           service_type_id?: string | null
           show_billing_in_schedule?: boolean
           start_date: string
@@ -856,8 +878,12 @@ export type Database = {
           frequency_value?: number
           horizon_months?: number
           id?: string
+          is_pmoc?: boolean
           name?: string
+          next_pmoc_generation_date?: string | null
           notes?: string | null
+          pmoc_legal_compliance_text?: string | null
+          responsible_technician_id?: string | null
           service_type_id?: string | null
           show_billing_in_schedule?: boolean
           start_date?: string
@@ -886,6 +912,13 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_responsible_technician_id_fkey"
+            columns: ["responsible_technician_id"]
+            isOneToOne: false
+            referencedRelation: "responsible_technicians"
             referencedColumns: ["id"]
           },
           {
@@ -2372,6 +2405,13 @@ export type Database = {
             foreignKeyName: "financial_transactions_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
             referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
@@ -3078,69 +3118,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pmoc_contracts: {
-        Row: {
-          company_id: string
-          contract_number: string | null
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          end_date: string
-          id: string
-          is_active: boolean | null
-          maintenance_frequency: string | null
-          monthly_value: number | null
-          notes: string | null
-          start_date: string
-          updated_at: string
-        }
-        Insert: {
-          company_id: string
-          contract_number?: string | null
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          end_date: string
-          id?: string
-          is_active?: boolean | null
-          maintenance_frequency?: string | null
-          monthly_value?: number | null
-          notes?: string | null
-          start_date: string
-          updated_at?: string
-        }
-        Update: {
-          company_id?: string
-          contract_number?: string | null
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          end_date?: string
-          id?: string
-          is_active?: boolean | null
-          maintenance_frequency?: string | null
-          monthly_value?: number | null
-          notes?: string | null
-          start_date?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pmoc_contracts_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pmoc_contracts_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       pmoc_generated_os: {
         Row: {
           generated_at: string
@@ -3276,13 +3253,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "pmoc_plans_contract_id_fkey"
-            columns: ["contract_id"]
-            isOneToOne: false
-            referencedRelation: "pmoc_contracts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "pmoc_plans_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -3337,13 +3307,6 @@ export type Database = {
           service_order_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "pmoc_schedules_contract_id_fkey"
-            columns: ["contract_id"]
-            isOneToOne: false
-            referencedRelation: "pmoc_contracts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "pmoc_schedules_equipment_id_fkey"
             columns: ["equipment_id"]
@@ -3711,6 +3674,68 @@ export type Database = {
             columns: ["proposal_template_id"]
             isOneToOne: false
             referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      responsible_technicians: {
+        Row: {
+          cft_crea: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          modality: string | null
+          notes: string | null
+          phone: string | null
+          registry_number: string | null
+          signature_image_url: string | null
+          stamp_image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          cft_crea?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          modality?: string | null
+          notes?: string | null
+          phone?: string | null
+          registry_number?: string | null
+          signature_image_url?: string | null
+          stamp_image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cft_crea?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          modality?: string | null
+          notes?: string | null
+          phone?: string | null
+          registry_number?: string | null
+          signature_image_url?: string | null
+          stamp_image_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responsible_technicians_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -4384,6 +4409,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
           },
           {
             foreignKeyName: "service_orders_contract_id_fkey"
@@ -5160,6 +5192,23 @@ export type Database = {
       }
     }
     Views: {
+      contract_health_status: {
+        Row: {
+          company_id: string | null
+          contract_id: string | null
+          health_status: string | null
+          overdue_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_resources_with_rate: {
         Row: {
           category: string | null

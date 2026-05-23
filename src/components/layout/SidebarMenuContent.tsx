@@ -32,6 +32,7 @@ import {
   Clapperboard,
   Video,
   Crown,
+  ShieldCheck,
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -94,6 +95,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
+      { title: 'Responsáveis Técnicos', icon: ShieldCheck, path: '/responsaveis-tecnicos', screenKey: 'screen:contracts' },
     ],
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },

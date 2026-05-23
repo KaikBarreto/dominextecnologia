@@ -60,9 +60,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
+import { getIsPmocFromOrder } from '@/hooks/useIsPmocOrder';
 
 const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string; hex: string }> = {
   agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500', hex: '#8b5cf6' },
@@ -104,7 +107,7 @@ export default function ServiceOrders() {
     }, 80);
     return () => clearTimeout(tryFocus);
   });
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<ServiceOrder | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -141,7 +144,7 @@ export default function ServiceOrders() {
         fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
         fuzzyIncludes((os as any).task_title, searchTerm) ||
         fuzzyIncludes((os as any).equipment?.name, searchTerm);
-      const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(os.status);
       return matchesSearch && matchesStatus;
     });
   }, [serviceOrders, searchTerm, statusFilter, range, viewMode]);
@@ -225,20 +228,23 @@ export default function ServiceOrders() {
       count,
       icon: <Icon className="h-4 w-4" />,
       accentColor: config.hex,
-      active: statusFilter === status,
-      onClick: () => setStatusFilter(statusFilter === status ? 'all' : status),
+      active: statusFilter.includes(status),
+      onClick: () =>
+        setStatusFilter((prev) =>
+          prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
+        ),
     };
   });
 
   // Contagem de filtros ativos (busca, status, preset diferente do default).
   const activeFilterCount =
     (searchTerm ? 1 : 0) +
-    (statusFilter !== 'all' ? 1 : 0) +
+    (statusFilter.length > 0 ? 1 : 0) +
     (preset !== 'this_month' ? 1 : 0);
 
   const clearFilters = () => {
     setSearchTerm('');
-    setStatusFilter('all');
+    setStatusFilter([]);
     setPreset('this_month');
   };
 
@@ -267,21 +273,13 @@ export default function ServiceOrders() {
           />
         </div>
       )}
-      <div className={isMobile ? '' : ''}>
-        {isMobile && <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className={isMobile ? 'w-full' : 'w-full sm:w-[180px]'}>
-            <SelectValue placeholder="Filtrar status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            {statusOptions.map((status) => (
-              <SelectItem key={status.key} value={status.key}>
-                {status.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className={isMobile ? '' : 'w-full sm:w-[260px]'}>
+        <FilterCheckboxGroup
+          label="Status"
+          options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
       {isMobile && (
         <div>
@@ -424,8 +422,8 @@ export default function ServiceOrders() {
                   ) : filteredOrders.length === 0 ? (
                     <EmptyState
                       icon={<ClipboardList className="h-12 w-12" />}
-                      title={searchTerm || statusFilter !== 'all' ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
-                      description={searchTerm || statusFilter !== 'all' ? 'Tente filtros diferentes' : 'Toque em "Nova OS" para começar'}
+                      title={searchTerm || statusFilter.length > 0 ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
+                      description={searchTerm || statusFilter.length > 0 ? 'Tente filtros diferentes' : 'Toque em "Nova OS" para começar'}
                     />
                   ) : (
                     <>
@@ -480,6 +478,9 @@ export default function ServiceOrders() {
                               }
                               subtitle={
                                 <div className="flex items-center gap-2 flex-wrap">
+                                  {getIsPmocFromOrder(os as any) && (
+                                    <PmocComplianceBadge variant="chip" />
+                                  )}
                                   {os.service_type && (
                                     <span className="inline-flex items-center gap-1">
                                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: os.service_type.color }} />
@@ -529,8 +530,8 @@ export default function ServiceOrders() {
                       ) : filteredOrders.length === 0 ? (
                         <EmptyState
                           icon={<ClipboardList className="h-12 w-12" />}
-                          title={searchTerm || statusFilter !== 'all' ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
-                          description={searchTerm || statusFilter !== 'all' ? 'Tente filtros diferentes' : 'Clique em "Nova OS" para começar'}
+                          title={searchTerm || statusFilter.length > 0 ? 'Nenhuma OS encontrada' : 'Nenhuma OS cadastrada'}
+                          description={searchTerm || statusFilter.length > 0 ? 'Tente filtros diferentes' : 'Clique em "Nova OS" para começar'}
                         />
                       ) : (
                         <>
@@ -552,9 +553,14 @@ export default function ServiceOrders() {
                                   return (
                                     <TableRow key={os.id}>
                                       <TableCell>
-                                        <span className="font-mono font-medium text-sm">
-                                          {getOsCode(os)}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-mono font-medium text-sm">
+                                            {getOsCode(os)}
+                                          </span>
+                                          {getIsPmocFromOrder(os as any) && (
+                                            <PmocComplianceBadge variant="chip" />
+                                          )}
+                                        </div>
                                       </TableCell>
                                       <TableCell>
                                         {(os as any).created_by_profile?.avatar_url ? (

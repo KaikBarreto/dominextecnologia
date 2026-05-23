@@ -70,6 +70,7 @@ import Finance from "./pages/Finance";
 import PMOC from "./pages/PMOC";
 import Contracts from "./pages/Contracts";
 import ContractDetail from "./pages/ContractDetail";
+import ResponsibleTechnicians from "./pages/ResponsibleTechnicians";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -298,9 +299,10 @@ const AppRoutes = () => (
       <Route path="/financeiro/categorias" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/configuracoes" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/dre" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
-      <Route path="/pmoc" element={<Navigate to="/contratos" replace />} />
+      <Route path="/pmoc" element={<PMOC />} />
       <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><Contracts /></PermissionRoute>} />
       <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ContractDetail /></PermissionRoute>} />
+      <Route path="/responsaveis-tecnicos" element={<PermissionRoute screenKey="screen:contracts"><ResponsibleTechnicians /></PermissionRoute>} />
       <Route path="/usuarios" element={<Navigate to="/configuracoes?tab=usuarios" replace />} />
       <Route path="/configuracoes" element={<PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>} />
       <Route path="/perfil" element={<Profile />} />

@@ -19,6 +19,8 @@ import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { useServiceRatings } from '@/hooks/useServiceRatings';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
+import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 
 interface OSPhoto {
   id: string;
@@ -76,6 +78,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const { toast } = useToast();
   const { createRatingToken } = useServiceRatings();
   const isCompact = useIsCompact();
+  const { isPmoc: isPmocOrder } = useIsPmocOrder(serviceOrderId);
 
   const openPreview = (urls: string[], index: number) => {
     setGalleryImages(urls);
@@ -167,6 +170,9 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     </div>
   ) : serviceOrder ? (
     <div className="space-y-4">
+      {isPmocOrder && (
+        <PmocComplianceBadge variant="ribbon" withTooltip />
+      )}
       <div className="flex items-center gap-4 text-sm">
         <Badge variant="secondary">{osTypeLabels[serviceOrder.os_type]}</Badge>
         {serviceOrder.scheduled_date && (

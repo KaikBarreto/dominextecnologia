@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ScrollText,
   Plus,
@@ -15,6 +15,7 @@ import {
   Trash2,
   Eye,
   Pencil,
+  Wind,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
@@ -37,7 +38,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
+import { useContractsHealth, type ContractHealthStatus } from '@/hooks/useContractHealth';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -49,6 +52,7 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'outline' | 'destructive' | 'secondary' }> = {
   active: { label: 'Ativo', variant: 'success' },
@@ -65,25 +69,103 @@ const STATUS_HEX: Record<string, string> = {
   expired: '#94a3b8',    // secondary slate-400
 };
 
+// Saúde do contrato (Onda A v1.9.0 — semáforo calculado pela view contract_health_status).
+// Cores semânticas FIXAS: success=verde, warning=laranja/amarelo, destructive=vermelho.
+// Tokens vivem no Badge; não usar Tailwind direto (regra `feedback_cores_acoes_padronizadas`).
+const HEALTH_CONFIG: Record<
+  ContractHealthStatus,
+  { label: string; shortLabel: string; variant: 'success' | 'warning' | 'destructive' }
+> = {
+  em_dia: { label: 'Em dia', shortLabel: 'Em dia', variant: 'success' },
+  manutencao_pendente: {
+    label: 'Manutenção pendente',
+    shortLabel: 'Pendente',
+    variant: 'warning',
+  },
+  necessita_atencao: {
+    label: 'Necessita atenção',
+    shortLabel: 'Atenção',
+    variant: 'destructive',
+  },
+};
+
 export default function Contracts() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { contracts, isLoading, stats, updateContractStatus, deleteContract } = useContracts();
+  const { healthByContractId } = useContractsHealth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  // Filtros novos da Onda A: saúde (semáforo) e tipo (PMOC / Comum / Todos).
+  const [healthFilter, setHealthFilter] = useState<'all' | ContractHealthStatus>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'pmoc' | 'common'>('all');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+
+  // Suporte a `?tipo=pmoc` na URL (rota antiga /pmoc redireciona pra cá).
+  // Pre-seleciona o filtro Tipo na primeira leitura e mantém sincronizado quando o
+  // usuário muda o filtro pelo UI (sem deixar query string fantasma).
+  useEffect(() => {
+    const tipo = searchParams.get('tipo');
+    if (tipo === 'pmoc' && typeFilter !== 'pmoc') {
+      setTypeFilter('pmoc');
+    } else if (tipo === 'comum' && typeFilter !== 'common') {
+      setTypeFilter('common');
+    }
+    // intencional: só lê na montagem/mudança externa de query string.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    // Mantém URL espelhando o filtro Tipo (UX: link compartilhável + back/forward).
+    const current = searchParams.get('tipo');
+    if (typeFilter === 'pmoc' && current !== 'pmoc') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.set('tipo', 'pmoc');
+        return next;
+      }, { replace: true });
+    } else if (typeFilter === 'common' && current !== 'comum') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.set('tipo', 'comum');
+        return next;
+      }, { replace: true });
+    } else if (typeFilter === 'all' && current) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.delete('tipo');
+        return next;
+      }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter]);
 
   const filtered = useMemo(
     () =>
       contracts.filter((c) => {
         const matchesSearch =
           fuzzyIncludes(c.name, search) || fuzzyIncludes(c.customers?.name, search);
-        const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        const matchesStatus = statusFilter.length === 0 || statusFilter.includes(c.status);
+
+        // Tipo: PMOC vs comum.
+        const isPmoc = (c as any).is_pmoc === true;
+        const matchesType =
+          typeFilter === 'all' ||
+          (typeFilter === 'pmoc' && isPmoc) ||
+          (typeFilter === 'common' && !isPmoc);
+
+        // Saúde: lookup via healthByContractId. Contratos sem entrada na view
+        // (ex: pré-migration) caem em `em_dia` por padrão — semáforo nunca quebra a tela.
+        const healthRow = healthByContractId[c.id];
+        const health: ContractHealthStatus = healthRow?.health_status ?? 'em_dia';
+        const matchesHealth = healthFilter === 'all' || health === healthFilter;
+
+        return matchesSearch && matchesStatus && matchesType && matchesHealth;
       }),
-    [contracts, search, statusFilter]
+    [contracts, search, statusFilter, typeFilter, healthFilter, healthByContractId]
   );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
@@ -106,8 +188,11 @@ export default function Contracts() {
       count: stats.active,
       icon: <CheckCircle className="h-4 w-4" />,
       accentColor: '#22c55e',
-      active: statusFilter === 'active',
-      onClick: () => setStatusFilter(statusFilter === 'active' ? 'all' : 'active'),
+      active: statusFilter.length === 1 && statusFilter[0] === 'active',
+      onClick: () =>
+        setStatusFilter(
+          statusFilter.length === 1 && statusFilter[0] === 'active' ? [] : ['active']
+        ),
     },
     {
       key: 'os_month',
@@ -132,27 +217,60 @@ export default function Contracts() {
     },
   ];
 
-  const activeFilterCount = (search ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+  const activeFilterCount =
+    (search ? 1 : 0) +
+    (statusFilter.length > 0 ? 1 : 0) +
+    (healthFilter !== 'all' ? 1 : 0) +
+    (typeFilter !== 'all' ? 1 : 0);
   const clearFilters = () => {
     setSearch('');
-    setStatusFilter('all');
+    setStatusFilter([]);
+    setHealthFilter('all');
+    setTypeFilter('all');
   };
 
-  // Conteúdo do FilterSheet (só status — busca fica fixa fora).
+  // Opções pro FilterCheckboxGroup de status, com acento por hex.
+  const statusOptions: FilterCheckboxOption[] = [
+    { value: 'active', label: 'Ativo', color: STATUS_HEX.active },
+    { value: 'paused', label: 'Pausado', color: STATUS_HEX.paused },
+    { value: 'cancelled', label: 'Cancelado', color: STATUS_HEX.cancelled },
+    { value: 'expired', label: 'Expirado', color: STATUS_HEX.expired },
+  ];
+
+  // Conteúdo do FilterSheet (status + saúde + tipo — busca fica fixa fora).
   const filterContent = (
     <div className="space-y-4">
+      <FilterCheckboxGroup
+        label="Status"
+        options={statusOptions}
+        selected={statusFilter}
+        onChange={setStatusFilter}
+        emptyLabel="Todos"
+      />
       <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Saúde</label>
+        <Select value={healthFilter} onValueChange={(v) => setHealthFilter(v as typeof healthFilter)}>
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="em_dia">Em dia</SelectItem>
+            <SelectItem value="manutencao_pendente">Manutenção pendente</SelectItem>
+            <SelectItem value="necessita_atencao">Necessita atenção</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tipo</label>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
           <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="active">Ativo</SelectItem>
-            <SelectItem value="paused">Pausado</SelectItem>
-            <SelectItem value="cancelled">Cancelado</SelectItem>
-            <SelectItem value="expired">Expirado</SelectItem>
+            <SelectItem value="pmoc">PMOC</SelectItem>
+            <SelectItem value="common">Comum (não-PMOC)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -275,8 +393,8 @@ export default function Contracts() {
           </div>
 
           {/* Desktop filters */}
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome ou cliente..."
@@ -285,16 +403,34 @@ export default function Contracts() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
+            <div className="w-[220px]">
+              <FilterCheckboxGroup
+                label="Status"
+                options={statusOptions}
+                selected={statusFilter}
+                onChange={setStatusFilter}
+                emptyLabel="Todos"
+              />
+            </div>
+            <Select value={healthFilter} onValueChange={(v) => setHealthFilter(v as typeof healthFilter)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Saúde" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Ativo</SelectItem>
-                <SelectItem value="paused">Pausado</SelectItem>
-                <SelectItem value="cancelled">Cancelado</SelectItem>
-                <SelectItem value="expired">Expirado</SelectItem>
+                <SelectItem value="all">Saúde: todas</SelectItem>
+                <SelectItem value="em_dia">Em dia</SelectItem>
+                <SelectItem value="manutencao_pendente">Manutenção pendente</SelectItem>
+                <SelectItem value="necessita_atencao">Necessita atenção</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tipo: todos</SelectItem>
+                <SelectItem value="pmoc">PMOC</SelectItem>
+                <SelectItem value="common">Comum (não-PMOC)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -312,9 +448,9 @@ export default function Contracts() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<ScrollText className="h-12 w-12" />}
-            title={search || statusFilter !== 'all' ? 'Nenhum contrato encontrado' : 'Nenhum contrato cadastrado'}
+            title={search || statusFilter.length > 0 ? 'Nenhum contrato encontrado' : 'Nenhum contrato cadastrado'}
             description={
-              search || statusFilter !== 'all'
+              search || statusFilter.length > 0
                 ? 'Tente outro termo ou filtro'
                 : 'Toque em "Novo Contrato" para gerar OSs automaticamente.'
             }
@@ -375,6 +511,16 @@ export default function Contracts() {
                   );
                 }
 
+                const isPmocContract = (contract as any).is_pmoc === true;
+                const healthRow = healthByContractId[contract.id];
+                const healthKey: ContractHealthStatus = healthRow?.health_status ?? 'em_dia';
+                const healthCfg = HEALTH_CONFIG[healthKey];
+                const overdueCount = healthRow?.overdue_count ?? 0;
+                const healthTooltip =
+                  overdueCount === 0
+                    ? 'Nenhuma OS em atraso'
+                    : `${overdueCount} OS${overdueCount === 1 ? '' : 's'} em atraso`;
+
                 return (
                   <MobileListItem
                     key={contract.id}
@@ -391,6 +537,16 @@ export default function Contracts() {
                     title={
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="truncate">{contract.name}</span>
+                        {isPmocContract && (
+                          <Badge
+                            variant="info"
+                            className="text-[9px] px-1.5 py-0 h-4 gap-0.5 shrink-0"
+                            title="Contrato PMOC — Lei 13.589/2018"
+                          >
+                            <Wind className="h-2.5 w-2.5" />
+                            PMOC
+                          </Badge>
+                        )}
                       </div>
                     }
                     subtitle={
@@ -400,9 +556,18 @@ export default function Contracts() {
                       </span>
                     }
                     trailing={
-                      <Badge variant={statusCfg.variant} className="text-[10px] px-2 py-0.5 whitespace-nowrap">
-                        {statusCfg.label}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant={statusCfg.variant} className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+                          {statusCfg.label}
+                        </Badge>
+                        <Badge
+                          variant={healthCfg.variant}
+                          className="text-[9px] px-1.5 py-0 h-4 whitespace-nowrap"
+                          title={healthTooltip}
+                        >
+                          {healthCfg.shortLabel}
+                        </Badge>
+                      </div>
                     }
                   />
                 );
@@ -449,6 +614,7 @@ export default function Contracts() {
             ) : (
               <>
                 <div className="overflow-x-auto">
+                  <TooltipProvider delayDuration={150}>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -461,11 +627,12 @@ export default function Contracts() {
                         <SortableTableHead sortKey="frequency_type" sortConfig={sortConfig} onSort={handleSort}>
                           Frequência
                         </SortableTableHead>
-                        <TableHead>Próxima OS</TableHead>
-                        <TableHead className="text-center">Itens</TableHead>
                         <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>
                           Status
                         </SortableTableHead>
+                        <TableHead>Saúde</TableHead>
+                        <TableHead>Próxima OS</TableHead>
+                        <TableHead className="text-center">Itens</TableHead>
                         <TableHead className="w-[140px]">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -474,6 +641,15 @@ export default function Contracts() {
                         const nextOcc = getNextOccurrence(contract);
                         const statusCfg = STATUS_CONFIG[contract.status] || STATUS_CONFIG.active;
                         const itemCount = contract.contract_items?.length || 0;
+                        const isPmocContract = (contract as any).is_pmoc === true;
+                        const healthRow = healthByContractId[contract.id];
+                        const healthKey: ContractHealthStatus = healthRow?.health_status ?? 'em_dia';
+                        const healthCfg = HEALTH_CONFIG[healthKey];
+                        const overdueCount = healthRow?.overdue_count ?? 0;
+                        const healthTooltip =
+                          overdueCount === 0
+                            ? 'Nenhuma OS em atraso'
+                            : `${overdueCount} OS${overdueCount === 1 ? '' : 's'} em atraso`;
 
                         return (
                           <TableRow
@@ -482,9 +658,19 @@ export default function Contracts() {
                             onClick={() => navigate(`/contratos/${contract.id}`)}
                           >
                             <TableCell className="font-medium">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <ScrollText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                {contract.name}
+                                <span className="truncate">{contract.name}</span>
+                                {isPmocContract && (
+                                  <Badge
+                                    variant="info"
+                                    className="text-[10px] px-1.5 py-0 h-5 gap-1 shrink-0"
+                                    title="Contrato PMOC — Lei 13.589/2018"
+                                  >
+                                    <Wind className="h-3 w-3" />
+                                    PMOC
+                                  </Badge>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>{contract.customers?.name || '-'}</TableCell>
@@ -492,6 +678,21 @@ export default function Contracts() {
                               <Badge variant="secondary">
                                 {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}
                               </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block">
+                                    <Badge variant={healthCfg.variant} className="whitespace-nowrap">
+                                      {healthCfg.label}
+                                    </Badge>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>{healthTooltip}</TooltipContent>
+                              </Tooltip>
                             </TableCell>
                             <TableCell>
                               {nextOcc ? (
@@ -504,9 +705,6 @@ export default function Contracts() {
                             </TableCell>
                             <TableCell className="text-center">
                               {itemCount} {itemCount === 1 ? 'item' : 'itens'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -546,6 +744,7 @@ export default function Contracts() {
                       })}
                     </TableBody>
                   </Table>
+                  </TooltipProvider>
                 </div>
                 <DataTablePagination
                   page={pagination.page}

@@ -225,6 +225,10 @@ export default function ContractDetail() {
         frequency_value: contract.frequency_value,
         start_date: newStartDate,
         horizon_months: contract.horizon_months,
+        // PMOC (Onda A): renovação preserva o flag e o RT do contrato original.
+        // Se for PMOC, OSs vão sair via cron diário (não no momento da renovação).
+        is_pmoc: (contract as any).is_pmoc === true,
+        responsible_technician_id: (contract as any).responsible_technician_id || null,
         items: (contract.contract_items || []).map(i => ({
           equipment_id: i.equipment_id || null,
           item_name: i.item_name,

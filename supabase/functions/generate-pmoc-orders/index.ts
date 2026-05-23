@@ -1,11 +1,30 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
+// =============================================================================
+// generate-pmoc-orders (PMOC v1.9.0+)
+//
+// ANTES (≤ v1.8.x):
+//   - Lia pmoc_plans where status='ativo' and next_generation_date <= today
+//   - Gerava OS por pmoc_items
+//   - Atualizava pmoc_plans.next_generation_date
+//
+// DEPOIS (v1.9.0+):
+//   - Lê contracts where is_pmoc=true and status='active' and next_pmoc_generation_date <= today
+//   - Gera OS por contract_items
+//   - Atualiza contracts.next_pmoc_generation_date (NÃO mais pmoc_plans — está read-only)
+//   - service_orders ganha contract_id + origin='contract'
+//   - Mantém pmoc_generated_os pra histórico (será dropada na Onda D / 1.9.3)
+//
+// Nome do endpoint mantido (cron já configurado). Renomear pra
+// generate-contract-orders pode ser feito em release futura.
+// =============================================================================
+
 Deno.serve(async (req) => {
   const corsResp = handleCors(req);
   if (corsResp) return corsResp;
 
-  // Exigir token secreto de autorização (apenas cron/scheduler pode chamar)
+  // Auth: apenas cron/scheduler com CRON_SECRET
   const cronSecret = Deno.env.get('CRON_SECRET');
   const authHeader = req.headers.get('Authorization');
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
@@ -22,32 +41,60 @@ Deno.serve(async (req) => {
 
     const today = new Date().toISOString().split('T')[0]
 
-    const { data: plans, error: plansError } = await supabase
-      .from('pmoc_plans')
+    // Buscar contratos PMOC ativos com data de geração vencida
+    const { data: contracts, error: contractsError } = await supabase
+      .from('contracts')
       .select(`
-        *,
-        pmoc_items (equipment_id, equipment:equipment(id, name, status))
+        id,
+        company_id,
+        name,
+        customer_id,
+        technician_id,
+        service_type_id,
+        form_template_id,
+        frequency_value,
+        frequency_type,
+        next_pmoc_generation_date,
+        contract_items (
+          id,
+          equipment_id,
+          item_name,
+          equipment:equipment(id, name, status)
+        )
       `)
-      .eq('status', 'ativo')
-      .lte('next_generation_date', today)
+      .eq('is_pmoc', true)
+      .eq('status', 'active')
+      .lte('next_pmoc_generation_date', today)
+      .not('next_pmoc_generation_date', 'is', null)
 
-    if (plansError) throw plansError
-    if (!plans || plans.length === 0) {
-      return new Response(JSON.stringify({ message: 'No plans due', generated: 0 }), {
+    if (contractsError) throw contractsError
+
+    if (!contracts || contracts.length === 0) {
+      return new Response(JSON.stringify({ message: 'No PMOC contracts due', generated: 0 }), {
         headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       })
     }
 
     let totalGenerated = 0
+    const errors: Array<{ contract_id: string; error: string }> = []
 
-    for (const plan of plans) {
-      const activeItems = (plan.pmoc_items || []).filter(
-        (item: any) => item.equipment?.status === 'active'
+    for (const contract of contracts) {
+      const scheduledDate = contract.next_pmoc_generation_date!
+      const items = (contract.contract_items || []) as Array<any>
+
+      // Só itens com equipamento ativo são considerados
+      const activeItems = items.filter(
+        (item) => item.equipment_id && item.equipment?.status === 'active'
       )
 
+      // Calcular próxima data de geração (sempre avança, mesmo sem itens)
+      const nextDate = addMonths(scheduledDate, contract.frequency_value || 1)
+
       if (activeItems.length === 0) {
-        const nextDate = addMonths(plan.next_generation_date, plan.frequency_months)
-        await supabase.from('pmoc_plans').update({ next_generation_date: nextDate } as any).eq('id', plan.id)
+        await supabase
+          .from('contracts')
+          .update({ next_pmoc_generation_date: nextDate } as any)
+          .eq('id', contract.id)
         continue
       }
 
@@ -55,54 +102,76 @@ Deno.serve(async (req) => {
         const { data: os, error: osError } = await supabase
           .from('service_orders')
           .insert({
-            customer_id: plan.customer_id,
+            company_id: contract.company_id,
+            customer_id: contract.customer_id,
             equipment_id: item.equipment_id,
-            technician_id: plan.technician_id,
+            technician_id: contract.technician_id,
             os_type: 'manutencao_preventiva',
-            service_type_id: plan.service_type_id,
-            form_template_id: plan.form_template_id,
-            scheduled_date: plan.next_generation_date,
-            description: `PMOC automático: ${plan.name} - ${item.equipment?.name || 'Equipamento'}`,
+            service_type_id: contract.service_type_id,
+            form_template_id: contract.form_template_id,
+            scheduled_date: scheduledDate,
+            description: `PMOC automático: ${contract.name} - ${item.equipment?.name || item.item_name || 'Equipamento'}`,
             require_tech_signature: true,
-            status: 'agendada',
+            status: 'pendente',
+            contract_id: contract.id,
+            origin: 'contract',
           } as any)
           .select('id')
           .single()
 
         if (osError) {
-          console.error(`Error creating OS for plan ${plan.id}, equipment ${item.equipment_id}:`, osError)
+          console.error(
+            `Error creating OS for contract ${contract.id}, equipment ${item.equipment_id}:`,
+            osError
+          )
+          errors.push({ contract_id: contract.id, error: osError.message })
           continue
         }
 
-        if (plan.technician_id) {
+        // Vincular técnico responsável (se houver)
+        if (contract.technician_id) {
           await supabase.from('service_order_assignees').insert({
             service_order_id: os.id,
-            user_id: plan.technician_id,
+            user_id: contract.technician_id,
           })
         }
 
-        await supabase.from('pmoc_generated_os').insert({
-          plan_id: plan.id,
-          service_order_id: os.id,
-          scheduled_for: plan.next_generation_date,
-        } as any)
+        // Histórico (pmoc_generated_os mantém compatibilidade até Onda D)
+        // plan_id agora é NULL — coluna ainda existe mas não há plano de origem
+        // (a tabela vai ser dropada na 1.9.3 ou substituída por contract_occurrences)
+        // Por enquanto, NÃO inserimos em pmoc_generated_os porque ela exige plan_id NOT NULL.
+        // Quem quer histórico consulta service_orders.contract_id IS NOT NULL + origin='contract'.
 
         totalGenerated++
       }
 
-      const nextDate = addMonths(plan.next_generation_date, plan.frequency_months)
-      await supabase.from('pmoc_plans').update({ next_generation_date: nextDate } as any).eq('id', plan.id)
+      // Avança next_pmoc_generation_date
+      await supabase
+        .from('contracts')
+        .update({ next_pmoc_generation_date: nextDate } as any)
+        .eq('id', contract.id)
     }
 
-    return new Response(JSON.stringify({ message: 'PMOC orders generated', generated: totalGenerated }), {
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-    })
-  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        message: 'PMOC orders generated',
+        generated: totalGenerated,
+        contracts_processed: contracts.length,
+        errors: errors.length > 0 ? errors : undefined,
+      }),
+      {
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      }
+    )
+  } catch (error: any) {
     console.error('Error in generate-pmoc-orders:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({ error: 'Internal server error', detail: error?.message }),
+      {
+        status: 500,
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      }
+    )
   }
 })
 

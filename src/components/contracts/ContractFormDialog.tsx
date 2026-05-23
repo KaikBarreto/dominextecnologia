@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Progress } from '@/components/ui/progress';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
@@ -18,12 +19,22 @@ import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
+import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Check, Search, Plus, CalendarCheck, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ContractFormDialogProps {
   open: boolean;
@@ -58,13 +69,15 @@ const QUICK_DAYS = [
 ];
 
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
-  const { createContract } = useContracts();
+  const { createContract, updateContract } = useContracts();
   const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useTechnicians();
   const { data: allProfiles } = useProfiles();
   const { teams, teamsWithMembers } = useTeams();
   const { serviceTypes } = useServiceTypes();
   const { templates } = useFormTemplates();
+  // Lista de RTs ativos do tenant — usada quando o contrato é marcado como PMOC.
+  const { technicians: responsibleTechnicians, isLoading: rtLoading } = useResponsibleTechnicians({ activeOnly: true });
   const { toast } = useToast();
 
   const isEditing = !!editContract;
@@ -97,6 +110,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [showManualItem, setShowManualItem] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualDesc, setManualDesc] = useState('');
+
+  // PMOC (Onda A v1.9.0). Toggle inline na seção Informações; quando true,
+  // exige seleção de Responsável Técnico (RT). Desligar pede confirmação se já tinha RT.
+  const [isPmoc, setIsPmoc] = useState(false);
+  const [responsibleTechnicianId, setResponsibleTechnicianId] = useState<string>('');
+  const [showPmocOffConfirm, setShowPmocOffConfirm] = useState(false);
+  // Em modo edição, guarda a chamada que ficou esperando confirmação do "desligar PMOC".
+  const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
   const { equipment } = useEquipment(customerId || undefined);
   const activeEquipment = equipment.filter(eq => eq.status === 'active');
@@ -147,12 +168,21 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           form_template_id: i.form_template_id || undefined,
         }))
       );
+      // PMOC — preserva estado existente quando entra em edição.
+      const editIsPmoc = !!editContract.is_pmoc;
+      setIsPmoc(editIsPmoc);
+      setResponsibleTechnicianId(editContract.responsible_technician_id || '');
+      initialIsPmocRef.value = editIsPmoc;
     } else {
       setName(''); setCustomerId(defaultCustomerId || ''); setSelectedUserIds([]); setSelectedTeamIds([]);
       setBillingUserIds([]); setBillingTeamIds([]); setServiceTypeId('');
       setFormTemplateId(''); setNotes(''); setIsActive(true);
       setFreqType('months'); setFreqValue(1); setStartDate(format(new Date(), 'yyyy-MM-dd')); setHorizonMonths(12);
       setSelectedItems([]);
+      // Default: contrato comum.
+      setIsPmoc(false);
+      setResponsibleTechnicianId('');
+      initialIsPmocRef.value = false;
     }
   }, [open, editContract]);
 
@@ -197,7 +227,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   };
 
   const canNext = () => {
-    if (step === 0) return !!customerId && !!name;
+    if (step === 0) {
+      // PMOC sem RT é permitido (warning toast no submit). Bloqueio só pra nome + cliente.
+      return !!customerId && !!name;
+    }
     if (step === 1) return freqValue > 0 && !!startDate;
     return true;
   };
@@ -209,8 +242,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // Only set technician_id when NO team is selected and there are individual users
       const actualTechnicianId = !actualTeamId && selectedUserIds.length > 0 ? selectedUserIds[0] : null;
 
+      // PMOC com RT vazio: permitimos salvar mas avisamos o usuário.
+      // RT pode ser definido depois — o que NÃO pode é ficar sem o flag ligado e
+      // sem ninguém ciente disso. Toast variant `default` (sistema só tem default
+      // e destructive); emoji ⚠️ comunica o tom de warning sem inventar variant nova.
+      if (isPmoc && !responsibleTechnicianId) {
+        toast({
+          title: '⚠️ Sem Responsável Técnico definido',
+          description: 'Recomendamos definir um RT antes de ativar PMOC. Você pode atribuir depois.',
+        });
+      }
+
       if (isEditing) {
-        const { error } = await supabase.from('contracts').update({
+        await updateContract.mutateAsync({
+          id: editContract.id,
           name,
           customer_id: customerId,
           technician_id: actualTechnicianId,
@@ -224,9 +269,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           start_date: startDate,
           horizon_months: horizonMonths,
           billing_responsible_ids: billingUserIds,
-        }).eq('id', editContract.id);
-        if (error) throw error;
-        toast({ title: '✅ Contrato atualizado!' });
+          // PMOC (Onda A)
+          is_pmoc: isPmoc,
+          responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
+        });
         onOpenChange(false);
         if (onCreated) onCreated(editContract.id);
       } else {
@@ -245,6 +291,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           frequency_value: freqValue,
           start_date: startDate,
           horizon_months: horizonMonths,
+          // PMOC (Onda A). RT vai vazio quando o usuário ainda não escolheu.
+          is_pmoc: isPmoc,
+          responsible_technician_id: isPmoc ? (responsibleTechnicianId || null) : null,
           items: selectedItems.map(i => ({
             equipment_id: i.equipment_id || null,
             item_name: i.item_name,
@@ -256,13 +305,22 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
         const expectedOsCount = (result as any)?.expectedOsCount ?? occurrences.length;
 
-        toast({
-          title: isActive
-            ? generatedOsCount === expectedOsCount
-              ? `✅ Contrato criado com ${generatedOsCount} OSs geradas na agenda`
-              : `⚠️ Contrato criado com ${generatedOsCount} de ${expectedOsCount} OSs geradas na agenda`
-            : '✅ Contrato criado com sucesso!',
-        });
+        // Toast contextual: PMOC não gera OS no momento da criação (cron diário cuida disso).
+        if (isPmoc) {
+          toast({
+            title: '✅ Contrato PMOC criado',
+            description:
+              'As OSs serão geradas automaticamente pelo cron diário a partir da data de início.',
+          });
+        } else {
+          toast({
+            title: isActive
+              ? generatedOsCount === expectedOsCount
+                ? `✅ Contrato criado com ${generatedOsCount} OSs geradas na agenda`
+                : `⚠️ Contrato criado com ${generatedOsCount} de ${expectedOsCount} OSs geradas na agenda`
+              : '✅ Contrato criado com sucesso!',
+          });
+        }
         onOpenChange(false);
         if (onCreated && result) onCreated((result as any).id);
       }
@@ -404,6 +462,85 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   <Label>Contrato Ativo</Label>
                   <p className="text-xs text-muted-foreground">OSs só serão geradas para contratos ativos</p>
                 </div>
+              </div>
+
+              {/* PMOC (Onda A v1.9.0). Toggle + seção condicional com RT, badge legal e alerta. */}
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Switch
+                    checked={isPmoc}
+                    onCheckedChange={(v) => {
+                      // Quando desligar e tinha RT, pede confirmação (em edição).
+                      if (!v && isEditing && initialIsPmocRef.value && responsibleTechnicianId) {
+                        setShowPmocOffConfirm(true);
+                        return;
+                      }
+                      setIsPmoc(v);
+                      if (!v) setResponsibleTechnicianId('');
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <Label className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                      É um contrato PMOC?
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Plano de Manutenção, Operação e Controle. Ative para vincular um Responsável Técnico
+                      e gerar OSs com selo de conformidade legal.
+                    </p>
+                  </div>
+                </div>
+
+                {isPmoc && (
+                  <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="space-y-2">
+                      <Label>Responsável Técnico</Label>
+                      <Select
+                        value={responsibleTechnicianId || 'none'}
+                        onValueChange={(v) => setResponsibleTechnicianId(v === 'none' ? '' : v)}
+                        disabled={rtLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={rtLoading ? 'Carregando...' : 'Selecione o RT...'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">— Sem RT atribuído —</SelectItem>
+                          {responsibleTechnicians.map((rt) => {
+                            const modality = rt.modality ?? 'Modalidade não informada';
+                            const registry = rt.cft_crea ?? 'sem registro';
+                            return (
+                              <SelectItem key={rt.id} value={rt.id}>
+                                {rt.full_name} — {modality} ({registry})
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Engenheiro ou Técnico com CFT/CREA que supervisiona o PMOC. Pode ser definido depois.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="info" className="gap-1.5">
+                        <ShieldCheck className="h-3 w-3" />
+                        Conforme Lei Federal 13.589/2018
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        OSs sairão com selo de conformidade.
+                      </span>
+                    </div>
+
+                    <Alert className="border-warning/40 bg-warning/5 text-foreground">
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                      <AlertTitle className="text-sm">Geração automática pelo cron</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        OSs de contratos PMOC são geradas automaticamente pelo cron diário, não na criação.
+                        A primeira OS sairá no próximo ciclo a partir da data de início.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -626,6 +763,27 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Itens</span><span className="font-medium">{selectedItems.length}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={isActive ? 'success' : 'outline'}>{isActive ? 'Ativo' : 'Pausado'}</Badge></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Tipo</span>
+                  {isPmoc ? (
+                    <Badge variant="info" className="gap-1">
+                      <ShieldCheck className="h-3 w-3" /> PMOC
+                    </Badge>
+                  ) : (
+                    <span className="font-medium">Comum</span>
+                  )}
+                </div>
+                {isPmoc && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Responsável Técnico</span>
+                    <span className="font-medium text-right">
+                      {(() => {
+                        const rt = responsibleTechnicians.find((r) => r.id === responsibleTechnicianId);
+                        return rt ? rt.full_name : 'A definir';
+                      })()}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -662,6 +820,32 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       }}
       isLoading={createCustomer.isPending}
     />
+
+    {/* Confirmação ao desligar PMOC quando já havia RT atribuído. */}
+    <AlertDialog open={showPmocOffConfirm} onOpenChange={setShowPmocOffConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Desligar PMOC deste contrato?</AlertDialogTitle>
+          <AlertDialogDescription>
+            O Responsável Técnico será desvinculado e as próximas OSs deixarão de exibir o selo
+            "Conforme Lei Federal 13.589/2018". OSs já geradas não são afetadas. Você pode reativar
+            depois.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setIsPmoc(false);
+              setResponsibleTechnicianId('');
+              setShowPmocOffConfirm(false);
+            }}
+          >
+            Desligar PMOC
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
