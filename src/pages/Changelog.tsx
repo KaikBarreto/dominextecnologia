@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.1',
+    date: '23 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca de tarefa/OS direto na Agenda no celular',
+        description: 'No celular, ao tocar no ícone de lupa no topo da Agenda, agora a busca abre direto na própria tela — em vez de te jogar pra tela de Ordens de Serviço. Aparece um campo onde você digita parte do título da tarefa, nome do cliente, tipo de serviço, número da OS ou nome do equipamento, e a agenda filtra os eventos visíveis na hora. Toque no X pra fechar e voltar pro título "Agenda".',
+        category: 'melhoria',
+      },
+      {
+        title: 'Trocas de aba no celular com visual mais de aplicativo',
+        description: 'Telas que têm várias abas internas (Ordens de Serviço, Equipamentos, Orçamentos, Funcionários, Usuários, Catálogo de Serviços, Financeiro, Contratos PMOC, Admin de Empresas, Admin Financeiro, Admin CRM, Admin Domiflix) usavam um menu suspenso pra trocar de aba no celular. Agora viraram pílulas horizontais que você rola de lado e toca pra trocar — visual mais nativo e direto, sem precisar abrir um menu suspenso.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ícones de ação do detalhe da OS agora respeitam o tema claro',
+        description: 'No tema claro, os ícones de ação no detalhe de uma Ordem de Serviço (Pausar, Finalizar, Editar, Excluir, Link, etc.) tinham fundo levemente colorido que ficava parecendo "lavado". Agora no tema claro o fundo é branco com borda fina colorida e ícone saturado da cor da ação, deixando o visual mais limpo. No tema escuro, o fundo colorido continua igual.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '23 de maio de 2026',
     type: 'minor',
