@@ -23,6 +23,9 @@ import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hoo
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { FABButton } from '@/components/mobile/FABButton';
+import { EmptyState } from '@/components/mobile/EmptyState';
 
 const getQTypeIcon = (type: string) => {
   const found = QUESTION_TYPES.find(t => t.value === type);
@@ -33,6 +36,7 @@ const getQTypeLabel = (type: string) => QUESTION_TYPES.find(t => t.value === typ
 export default function QuestionnaireDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     templates, isLoading,
     updateTemplate, deleteTemplate,
@@ -234,7 +238,7 @@ export default function QuestionnaireDetail() {
   const selectedAnswerTypes = qForm.answer_types || [];
 
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6", isMobile && "pb-24")}>
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Button variant="ghost" size="icon" onClick={() => navigate('/servicos?tab=questionnaires')} className="self-start">
@@ -333,22 +337,24 @@ export default function QuestionnaireDetail() {
         </CardContent>
       </Card>
 
-      {/* Questions header with button */}
+      {/* Questions header with button (botão inline só no desktop; mobile usa FAB) */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Perguntas</h2>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Pergunta
-        </Button>
+        {!isMobile && (
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Pergunta
+          </Button>
+        )}
       </div>
 
       {/* Questions list */}
       {sortedQuestions.length === 0 ? (
-        <div className="flex flex-col items-center py-12 text-center">
-          <ListChecks className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-medium">Nenhuma pergunta criada</h3>
-          <p className="text-muted-foreground">Clique em "Nova Pergunta" para começar</p>
-        </div>
+        <EmptyState
+          icon={<ListChecks className="h-12 w-12" />}
+          title="Nenhuma pergunta criada"
+          description={isMobile ? 'Toque em "Pergunta" no canto inferior pra começar' : 'Clique em "Nova Pergunta" para começar'}
+        />
       ) : (
         <div className="space-y-2">
           {sortedQuestions.map((question, index) => {
@@ -373,25 +379,25 @@ export default function QuestionnaireDetail() {
                 >
                   {/* Desktop: drag handle */}
                   <GripVertical className="h-4 w-4 text-muted-foreground mt-1 cursor-grab active:cursor-grabbing shrink-0 hidden lg:block" />
-                  {/* Mobile: up/down buttons */}
+                  {/* Mobile: up/down buttons com touch target maior */}
                   <div className="flex flex-col gap-0.5 lg:hidden shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-8 w-8"
                       disabled={index === 0}
                       onClick={() => moveQuestion(question.id, 'up')}
                     >
-                      <ChevronUp className="h-3.5 w-3.5" />
+                      <ChevronUp className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-8 w-8"
                       disabled={index === sortedQuestions.length - 1}
                       onClick={() => moveQuestion(question.id, 'down')}
                     >
-                      <ChevronDown className="h-3.5 w-3.5" />
+                      <ChevronDown className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
@@ -630,6 +636,14 @@ export default function QuestionnaireDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label="Pergunta"
+          onClick={openCreateModal}
+        />
+      )}
     </div>
   );
 }
