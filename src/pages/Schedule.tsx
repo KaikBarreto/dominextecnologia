@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, startOfMonth, endOfMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, Palette, Search as SearchIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { MonthlyCalendar } from '@/components/schedule/MonthlyCalendar';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
@@ -47,6 +48,7 @@ export default function Schedule() {
   const { data: allProfiles = [] } = useProfiles();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
   const { user, hasRole, hasPermission, isAdminOrGestor } = useAuth();
@@ -515,24 +517,34 @@ export default function Schedule() {
       setStatusFilter('all');
     };
 
-    // Botão "OS Pausadas" no slot de actions do header.
+    // Header actions: [Lupa → busca OS] + [PausadasOS]
     const headerActions = (
-      <button
-        type="button"
-        onClick={() => setIsPausedDialogOpen(true)}
-        aria-label="Ver OS pausadas"
-        className={cn(
-          'relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors active:bg-muted/80',
-          pausedOrders.length > 0 && 'text-amber-600 hover:text-amber-700',
-        )}
-      >
-        <PauseCircle className="h-5 w-5" />
-        {pausedOrders.length > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">
-            {pausedOrders.length}
-          </span>
-        )}
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => navigate('/ordens-servico', { state: { focusSearch: true } })}
+          aria-label="Buscar OS"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors active:bg-muted/80 hover:text-foreground"
+        >
+          <SearchIcon className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsPausedDialogOpen(true)}
+          aria-label="Ver OS pausadas"
+          className={cn(
+            'relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors active:bg-muted/80',
+            pausedOrders.length > 0 && 'text-amber-600 hover:text-amber-700',
+          )}
+        >
+          <PauseCircle className="h-5 w-5" />
+          {pausedOrders.length > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">
+              {pausedOrders.length}
+            </span>
+          )}
+        </button>
+      </div>
     );
 
     const todayKey = format(new Date(), 'yyyy-MM-dd');

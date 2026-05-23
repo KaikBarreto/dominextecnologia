@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -79,6 +80,18 @@ export default function ServiceOrders() {
   const { hasPermission, isAdminOrGestor } = useAuth();
   const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
+  const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const location = useLocation();
+
+  // Foco automático no input de busca mobile quando vier da Agenda (ícone lupa)
+  useEffect(() => {
+    const state = location.state as { focusSearch?: boolean } | null;
+    if (state?.focusSearch && mobileSearchInputRef.current) {
+      mobileSearchInputRef.current.focus();
+      // Limpa o state pra não re-disparar em refresh/voltar
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<ServiceOrder | null>(null);
@@ -314,6 +327,7 @@ export default function ServiceOrders() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
+                      ref={mobileSearchInputRef}
                       placeholder="Buscar OS..."
                       className="pl-10 h-10"
                       value={searchTerm}

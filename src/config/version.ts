@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.49";
+export const APP_VERSION = "1.8.50";
 
-export const VERSION_NOTES = "OS dialog redesenhado app-nativo + Agenda Dia/Semana com altura menor e scroll por horário.";
+export const VERSION_NOTES = "Login mobile com cara de app nativo (bottom sheet) + atalho de busca de OS no header da Agenda.";

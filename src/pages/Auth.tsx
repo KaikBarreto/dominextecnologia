@@ -17,6 +17,7 @@ import { SessionConfirmDialog } from '@/components/SessionConfirmDialog';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { trackUsage } from '@/lib/trackUsage';
 import { generateSessionToken, getDeviceInfo } from '@/lib/sessionUtils';
@@ -39,6 +40,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const isMobile = useIsMobile();
 
   // Session management state
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -330,6 +332,164 @@ export default function Auth() {
     );
   }
 
+  // ── Mobile: bottom-sheet pattern app-nativo ──
+  if (isMobile) {
+    return (
+      <div className="relative min-h-[100dvh] overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <DarkVeil hueShift={53} speed={0.5} />
+        </div>
+
+        <div className="relative z-10 flex flex-col min-h-[100dvh]">
+          {/* Logo flutuante sobre o veil */}
+          <div className="flex-1 flex flex-col items-center justify-end px-6 pb-10 pt-[max(env(safe-area-inset-top),2rem)]">
+            <img src={logoWhite} alt="Dominex" className="h-14 w-auto" onError={() => {}} />
+            <p className="text-white/80 text-xs mt-2 tracking-wider">Sistema de Gestão de Equipes Externas</p>
+          </div>
+
+          {/* Bottom sheet com o form */}
+          <div className="bg-background rounded-t-[28px] shadow-2xl shadow-black/40 px-6 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] animate-in slide-in-from-bottom-12 duration-500 ease-out">
+            <div className="mx-auto h-1 w-10 rounded-full bg-muted mb-5" />
+
+            {showForgotPassword ? (
+              <ForgotPasswordFlow
+                initialEmail={form.getValues('email')}
+                onBack={() => setShowForgotPassword(false)}
+              />
+            ) : (
+              <div className="space-y-5">
+                {authError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{authError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4" autoComplete="on">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs uppercase tracking-wider text-muted-foreground">Email</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                {...field}
+                                type="email"
+                                placeholder="seu@email.com"
+                                autoComplete="email"
+                                disabled={isLoading}
+                                className="pl-10 h-12"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs uppercase tracking-wider text-muted-foreground">Senha</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                {...field}
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                autoComplete="current-password"
+                                disabled={isLoading}
+                                className="pl-10 pr-10 h-12"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                disabled={isLoading}
+                              >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex items-center justify-between">
+                      <FormField
+                        control={form.control}
+                        name="rememberMe"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-xs text-muted-foreground cursor-pointer">
+                              Lembrar-me
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-xs text-primary hover:underline"
+                        disabled={isLoading}
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
+
+                    <Button type="submit" className="w-full h-12 text-base font-semibold uppercase tracking-wider" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Entrando...
+                        </>
+                      ) : (
+                        'Entrar'
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+
+                <div className="text-center text-xs text-muted-foreground pt-1">
+                  Ainda não tem conta?{' '}
+                  <Link to="/cadastro" className="text-primary font-semibold hover:underline">
+                    Cadastre-se
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <SessionConfirmDialog
+          open={sessionDialogOpen}
+          onOpenChange={setSessionDialogOpen}
+          existingSessions={existingSessionsInfo}
+          disconnectOthers={disconnectOthers}
+          onDisconnectOthersChange={setDisconnectOthers}
+          onConfirm={handleSessionContinue}
+          onCancel={handleSessionCancel}
+          isLoading={isLoading}
+        />
+      </div>
+    );
+  }
+
+  // ── Desktop: layout atual (Card dark com backdrop-blur) ──
   return (
     <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
       <div className="absolute inset-0 z-0">

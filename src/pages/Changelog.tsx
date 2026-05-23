@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.50',
+    date: '21 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Tela de login no celular com cara de aplicativo nativo',
+        description: 'A tela de login no celular foi redesenhada pro pattern de bottom sheet: o fundo continua com o efeito "veil" escuro animado da marca, o logo aparece flutuando na parte superior, e o formulário sobe como uma gaveta arredondada de baixo (com handle de toque e tema claro de app nativo). Inputs ganharam altura confortável pra toque (48px), o botão "Entrar" ficou grande e centralizado, e o link "Esqueci minha senha" ficou ao lado do "Lembrar-me". No computador, a tela de login continua exatamente como era (card escuro centralizado).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Atalho de busca de OS direto da Agenda',
+        description: 'Na tela de Agenda no celular, ao lado do ícone de OS Pausadas, agora aparece um ícone de lupa. Toque nele e o app abre a tela de Ordens de Serviço já com a caixa de busca aberta e o teclado pronto pra digitar — útil pra encontrar rápido uma OS específica sem precisar abrir o menu OS e tocar na busca depois.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.49',
     date: '21 de maio de 2026',
     type: 'patch',
