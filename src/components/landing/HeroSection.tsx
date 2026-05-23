@@ -118,7 +118,7 @@ export default function HeroSection() {
             <div className="relative rounded-2xl border border-white/10 bg-[hsl(0,0%,7%)] p-2 shadow-2xl w-full lg:w-auto">
               <div className="absolute -inset-px rounded-2xl bg-[radial-gradient(ellipse_at_top_right,hsl(160,100%,39%,0.18)_0%,transparent_60%)] pointer-events-none" />
               <video
-                src={HERO_VIDEO_URL}
+                src={`${HERO_VIDEO_URL}#t=10`}
                 controls
                 preload="metadata"
                 playsInline

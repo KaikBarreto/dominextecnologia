@@ -60,6 +60,7 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
+import { NotificationsBell } from '@/components/notifications/NotificationsBell';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -294,6 +295,7 @@ export const TopNavbar = memo(() => {
               envolvido pelo wrapper inline) — click expande revelando outras
               contas. Botão Sair FORA do dropdown ao lado, com Tooltip. */}
           <div className="flex items-center gap-1 shrink-0">
+            <NotificationsBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

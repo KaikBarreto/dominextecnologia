@@ -17,6 +17,7 @@ import { MobileSidebar } from './MobileSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
+import { NotificationsBell } from '@/components/notifications/NotificationsBell';
 import logoDark from '@/assets/logo-dark.png';
 import logoGreen from '@/assets/logo-horizontal-verde.png';
 
@@ -209,7 +210,7 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background px-4">
       {/* Lado esquerdo: back arrow no mobile, Menu hamburger no tablet+ */}
-      <div className="flex items-center gap-2 w-10">
+      <div className="flex items-center gap-2 min-w-10">
         {showBackButton && (
           <Button
             variant="ghost"
@@ -246,10 +247,11 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
         )}
       </div>
 
-      {/* Lado direito: simétrico ao esquerdo no mobile (w-10), expande no tablet+ pra acomodar ícones */}
-      <div className="flex items-center gap-1 w-10 lg:w-auto justify-end">
+      {/* Lado direito: sino sempre visível (mobile/tablet/desktop); atalhos extras só em tablet+ */}
+      <div className="flex items-center gap-1 justify-end">
         {user && (
           <>
+            <NotificationsBell />
             {/* Atalhos compactos só em tablet: no mobile (<lg) o bottom nav é o caminho. */}
             <Button
               variant="ghost"

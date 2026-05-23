@@ -64,7 +64,7 @@ export function MobileBottomNav() {
                     triggerHaptic();
                     navigate(item.path!);
                   }}
-                  className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 active:scale-90 transition-transform"
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 active:scale-90 transition-transform -translate-y-4"
                   aria-label="Ir para Agenda"
                 >
                   <item.icon className="h-7 w-7 text-primary-foreground" />
@@ -100,7 +100,7 @@ export function MobileBottomNav() {
                   </div>
                   <span
                     className={cn(
-                      'text-[10px] font-medium transition-all duration-300',
+                      'text-xs font-medium transition-all duration-300',
                       moreActive ? 'text-primary' : 'text-foreground'
                     )}
                   >
