@@ -294,17 +294,9 @@ export default function ResponsibleTechnicians() {
                       key={rt.id}
                       actions={actions}
                       leading={
-                        rt.signature_image_url ? (
-                          <img
-                            src={rt.signature_image_url}
-                            alt={rt.full_name}
-                            className="h-10 w-10 rounded-full object-cover border border-border bg-white"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
-                            {getInitials(rt.full_name)}
-                          </div>
-                        )
+                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                          {getInitials(rt.full_name)}
+                        </div>
                       }
                       title={rt.full_name}
                       subtitle={subtitleParts.length > 0 ? subtitleParts.join(' • ') : 'Sem registro informado'}
@@ -364,7 +356,6 @@ export default function ResponsibleTechnicians() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-[50px] text-xs uppercase tracking-wider">Assin.</TableHead>
                             <SortableTableHead sortKey="full_name" sortConfig={sortConfig} onSort={handleSort}>
                               Nome
                             </SortableTableHead>
@@ -387,19 +378,6 @@ export default function ResponsibleTechnicians() {
                         <TableBody>
                           {pagination.paginatedItems.map((rt) => (
                             <TableRow key={rt.id} className="cursor-pointer" onClick={() => openEdit(rt)}>
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                {rt.signature_image_url ? (
-                                  <img
-                                    src={rt.signature_image_url}
-                                    alt=""
-                                    className="h-8 w-8 rounded-full object-cover border border-border bg-white"
-                                  />
-                                ) : (
-                                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground">
-                                    {getInitials(rt.full_name)}
-                                  </div>
-                                )}
-                              </TableCell>
                               <TableCell>
                                 <div>
                                   <p className="font-medium">{rt.full_name}</p>
