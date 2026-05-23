@@ -308,22 +308,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
         const expectedOsCount = (result as any)?.expectedOsCount ?? occurrences.length;
 
-        // Toast contextual: PMOC não gera OS no momento da criação (cron diário cuida disso).
-        if (isPmoc) {
-          toast({
-            title: '✅ Contrato PMOC criado',
-            description:
-              'As OSs serão geradas automaticamente pelo cron diário a partir da data de início.',
-          });
-        } else {
-          toast({
-            title: isActive
-              ? generatedOsCount === expectedOsCount
-                ? `✅ Contrato criado com ${generatedOsCount} OSs geradas na agenda`
-                : `⚠️ Contrato criado com ${generatedOsCount} de ${expectedOsCount} OSs geradas na agenda`
-              : '✅ Contrato criado com sucesso!',
-          });
-        }
+        // PMOC e contrato comum agora seguem o mesmo fluxo: geração imediata
+        // das N OSs no momento da criação. Toast unificado.
+        toast({
+          title: isActive
+            ? generatedOsCount === expectedOsCount
+              ? `✅ Contrato${isPmoc ? ' PMOC' : ''} criado com ${generatedOsCount} OSs geradas na agenda`
+              : `⚠️ Contrato${isPmoc ? ' PMOC' : ''} criado com ${generatedOsCount} de ${expectedOsCount} OSs geradas na agenda`
+            : `✅ Contrato${isPmoc ? ' PMOC' : ''} criado com sucesso!`,
+        });
         onOpenChange(false);
         if (onCreated && result) onCreated((result as any).id);
       }
@@ -549,12 +542,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       </span>
                     </div>
 
-                    <Alert className="border-warning/40 bg-warning/5 text-foreground">
-                      <AlertTriangle className="h-4 w-4 text-warning" />
-                      <AlertTitle className="text-sm">Geração automática pelo cron</AlertTitle>
+                    <Alert variant="default" className="border-info/40 bg-info/5 text-foreground">
+                      <ShieldCheck className="h-4 w-4 text-info" />
+                      <AlertTitle className="text-sm">O que o PMOC desbloqueia</AlertTitle>
                       <AlertDescription className="text-xs">
-                        OSs de contratos PMOC são geradas automaticamente pelo cron diário, não na criação.
-                        A primeira OS sairá no próximo ciclo a partir da data de início.
+                        Contratos PMOC têm acesso ao Termo de Responsabilidade Técnica,
+                        Dossiê PMOC, Cronograma anual em PDF, portal público com QR Code
+                        e selo "Conforme Lei Federal 13.589/2018" nas OSs. O contrato gera
+                        as OSs imediatamente, igual a um contrato comum.
                       </AlertDescription>
                     </Alert>
                   </div>

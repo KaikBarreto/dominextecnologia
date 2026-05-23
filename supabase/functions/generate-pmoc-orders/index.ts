@@ -2,6 +2,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 // =============================================================================
+// DEPRECATED (v1.9.12): contratos PMOC agora geram OSs na criação igual
+// contrato comum (via useContracts.createContract). O scheduler que invocava
+// esta função foi desativado em 23/05/2026 (ver migration
+// 20260523230940_disable_pmoc_orders_cron.sql). Função mantida deployed por
+// compat caso seja necessário reativar pra "auto-renew" de horizon vencido
+// no futuro. Não chame manualmente.
+// =============================================================================
+//
 // generate-pmoc-orders (PMOC v1.9.0+)
 //
 // ANTES (≤ v1.8.x):

@@ -218,14 +218,13 @@ export function useContracts() {
       let osErrorCount = 0;
       let expectedOsCount = 0;
 
-      // PMOC (Onda A v1.9.0): a primeira leva de OS sai pelo cron `generate-pmoc-orders`,
-      // NÃO no momento da criação do contrato. Isso evita duplicidade entre o que o cron
-      // gera e o que esse loop geraria. O contrato e seus items são criados normalmente;
-      // só pulamos o loop de OS recorrente.
-      const isPmocContract = input.is_pmoc === true;
-
+      // Geração imediata de OSs para TODOS os contratos ativos (PMOC ou comum).
+      // O cron `generate-pmoc-orders` foi desabilitado: PMOC agora gera as N OSs
+      // no momento da criação, igual a um contrato comum. O campo
+      // `next_pmoc_generation_date` permanece como informação legada/futuro
+      // auto-renew, mas não dispara mais cron.
       // Generate OSs and occurrences
-      if (input.status === 'active' && !isPmocContract) {
+      if (input.status === 'active') {
         const occurrenceDates = generateOccurrences(
           new Date(input.start_date + 'T12:00:00'),
           input.frequency_type as 'days' | 'months',
@@ -400,7 +399,7 @@ export function useContracts() {
       toast({ variant: 'destructive', title: 'Erro ao atualizar contrato', description: getErrorMessage(e) }),
   });
 
-  const executeDeleteContract = async (id: string) => {
+  const executeDeleteContract = async (id: string): Promise<{ deletedOsCount: number; unlinkedOsCount: number }> => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -420,6 +419,9 @@ export function useContracts() {
       .filter(o => o.scheduled_date < todayStr)
       .map(o => o.service_order_id)
       .filter(Boolean) as string[];
+
+    const deletedOsCount = futureOsIds.length;
+    const unlinkedOsCount = pastOsIds.length;
 
     // Delete linked financial transactions
     await supabase.from('financial_transactions').delete().eq('contract_id', id);
@@ -450,17 +452,30 @@ export function useContracts() {
 
     const { error } = await supabase.from('contracts').delete().eq('id', id);
     if (error) throw error;
+
+    return { deletedOsCount, unlinkedOsCount };
   };
 
   const deleteContractMutation = useMutation({
     mutationFn: async (id: string) => {
-      await executeDeleteContract(id);
+      return await executeDeleteContract(id);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['financial'] });
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
-      toast({ title: 'Contrato excluído com sucesso!' });
+      const { deletedOsCount, unlinkedOsCount } = result || { deletedOsCount: 0, unlinkedOsCount: 0 };
+      const parts: string[] = [];
+      if (deletedOsCount > 0) {
+        parts.push(`${deletedOsCount} OS${deletedOsCount > 1 ? 's futuras apagadas' : ' futura apagada'}`);
+      }
+      if (unlinkedOsCount > 0) {
+        parts.push(`${unlinkedOsCount} OS${unlinkedOsCount > 1 ? 's passadas mantidas no histórico' : ' passada mantida no histórico'}`);
+      }
+      toast({
+        title: 'Contrato excluído com sucesso!',
+        description: parts.length > 0 ? parts.join(' · ') : 'Sem OSs vinculadas.',
+      });
     },
     onError: (e: Error) => {
       toast({ variant: 'destructive', title: 'Erro ao excluir contrato', description: getErrorMessage(e) });

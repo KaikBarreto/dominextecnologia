@@ -16,6 +16,7 @@ import {
   Eye,
   Pencil,
   Wind,
+  ShieldCheck,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
@@ -344,9 +345,18 @@ export default function Contracts() {
           subtitle="Gerencie contratos recorrentes e manutenções programadas"
           icon={ScrollText}
           actions={
-            <Button onClick={() => setDialogOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" /> Novo Contrato
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/responsaveis-tecnicos')}
+                className="gap-2"
+              >
+                <ShieldCheck className="h-4 w-4" /> Responsáveis Técnicos
+              </Button>
+              <Button onClick={() => setDialogOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" /> Novo Contrato
+              </Button>
+            </div>
           }
         />
       )}
@@ -822,6 +832,16 @@ export default function Contracts() {
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>Tem certeza? Todas as OSs, ocorrências e transações vinculadas serão excluídas.</p>
+                {(() => {
+                  const target = contracts.find(c => c.id === deleteTarget);
+                  const osCount = (target?.contract_occurrences || []).filter(o => o.service_order_id).length;
+                  if (osCount === 0) return null;
+                  return (
+                    <p className="text-sm font-medium text-warning">
+                      ⚠️ {osCount} OS{osCount > 1 ? 's vinculadas serão apagadas' : ' vinculada será apagada'} junto.
+                    </p>
+                  );
+                })()}
                 <p className="text-sm font-medium text-destructive">Esta ação não pode ser desfeita.</p>
                 <div className="flex items-center gap-2 pt-2">
                   <Checkbox

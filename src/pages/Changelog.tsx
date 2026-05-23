@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.12',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Contratos PMOC agora geram OSs imediatamente, igual contratos comuns',
+        description: 'Antes, contratos PMOC esperavam um processo automático diário pra criar as Ordens de Serviço aos poucos. Agora, ao criar um contrato PMOC (com horizonte de 12 meses e frequência mensal, por exemplo), o sistema gera as 12 OSs na hora — exatamente igual a um contrato comum. Você vê as próximas manutenções na agenda imediatamente após cadastrar o contrato. O alerta antigo que aparecia no toggle "É PMOC?" sobre "geração automática pelo cron" foi substituído por um alerta novo listando o que o PMOC desbloqueia (RT, Dossiê, Cronograma, portal público, QR Code, selo Lei 13.589).',
+        category: 'recurso',
+      },
+      {
+        title: 'Botão "Responsáveis Técnicos" no topo da tela de Contratos',
+        description: 'Adicionamos um botão "Responsáveis Técnicos" ao lado de "+ Novo Contrato" no topo da tela de Contratos (no desktop). Acesso direto à tela completa de gestão de RTs (com upload de assinatura, carimbo, edição completa). O cadastro rápido pelo botão "+" dentro do modal de contrato continua disponível pra criação ágil.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Contador de OSs antes de excluir contrato',
+        description: 'Ao excluir um contrato (PMOC ou comum), o pop-up de confirmação agora mostra um aviso: "X OSs vinculadas serão apagadas junto." Após confirmar, a mensagem de sucesso detalha: "Y OSs futuras apagadas · Z OSs passadas mantidas no histórico". Mais transparência sobre o impacto da exclusão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.11',
     date: '23 de maio de 2026',
     type: 'minor',
