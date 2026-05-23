@@ -89,6 +89,8 @@ Design Premium com Verde da Marca #00C597
 
 @layer base {
   :root {
+    color-scheme: light;
+
     /* Background - Tons claros */
     --background: 0 0% 98%;
     --foreground: 0 0% 10%;
@@ -151,6 +153,8 @@ Design Premium com Verde da Marca #00C597
   }
 
   .dark {
+    color-scheme: dark;
+
     --background: 0 0% 5%;
     --foreground: 0 0% 95%;
 
@@ -408,6 +412,19 @@ Design Premium com Verde da Marca #00C597
 html {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Dark mode: invert native date/time picker icon (Chromium fallback quando
+   color-scheme não basta — ícone fica preto em fundo escuro). Safari respeita
+   color-scheme: dark e não precisa, mas o filtro é idempotente. */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="week"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.7;
+  cursor: pointer;
 }
 
 /* Prevent iOS zoom on input focus — inputs must be >= 16px */

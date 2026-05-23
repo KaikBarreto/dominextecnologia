@@ -79,6 +79,11 @@ const changelog: ChangelogEntry[] = [
         description: 'Em alguns momentos — por exemplo ao tentar abrir uma nova movimentação no Financeiro com um rascunho salvo, ou ao confirmar exclusões — a janela de confirmação podia abrir totalmente vazia no desktop, travando a tela e exigindo recarregar a página. Corrigido: agora o conteúdo aparece normalmente em todas as confirmações do sistema.',
         category: 'correcao',
       },
+      {
+        title: 'Ícone do calendário visível no modo escuro',
+        description: 'O ícone do calendário ao lado dos campos de data (em "Novo Contrato", "Nova Movimentação", filtros de período, etc.) aparecia preto sobre fundo preto no tema escuro, ficando quase invisível. Agora todo o sistema avisa o navegador que está no tema escuro, e os controles nativos — ícone de calendário, seletor de data, barras de rolagem — usam automaticamente a paleta clara apropriada.',
+        category: 'correcao',
+      },
     ],
   },
   {
