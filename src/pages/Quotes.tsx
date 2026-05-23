@@ -16,9 +16,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -45,6 +42,7 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 
 const ALL_SIDEBAR_TABS = [
   { value: 'quotes', label: 'Orçamentos', icon: FileText },
@@ -79,7 +77,7 @@ function QuotesList() {
   const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
   const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editQuote, setEditQuote] = useState<Quote | null>(null);
   const [viewQuote, setViewQuote] = useState<Quote | null>(null);
@@ -89,7 +87,7 @@ function QuotesList() {
 
   const filtered = useMemo(() => {
     let list = quotes;
-    if (statusFilter !== 'all') list = list.filter((q) => q.status === statusFilter);
+    if (statusFilter.length > 0) list = list.filter((q) => statusFilter.includes(q.status));
     if (search) {
       list = list.filter(
         (q) =>
@@ -166,12 +164,23 @@ function QuotesList() {
   }, [kpis, hasPricing]);
 
   // Filtros ativos pro badge.
-  const activeFilterCount = (search ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+  const activeFilterCount = (search ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
 
   const clearFilters = () => {
     setSearch('');
-    setStatusFilter('all');
+    setStatusFilter([]);
   };
+
+  // Opções pro FilterCheckboxGroup de status — usa STATUS_HEX como acento.
+  const statusOptions: FilterCheckboxOption[] = useMemo(
+    () =>
+      Object.entries(STATUS_LABELS).map(([k, v]) => ({
+        value: k,
+        label: v,
+        color: STATUS_HEX[k],
+      })),
+    []
+  );
 
   // Conteúdo da Sheet de filtros (mobile) / inline (desktop).
   const filterContent = (
@@ -187,19 +196,14 @@ function QuotesList() {
           />
         </div>
       )}
-      <div>
-        {isMobile && <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className={isMobile ? 'w-full' : 'w-full sm:w-44'}>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className={isMobile ? '' : 'w-full sm:w-56'}>
+        <FilterCheckboxGroup
+          label="Status"
+          options={statusOptions}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          emptyLabel="Todos"
+        />
       </div>
       {isMobile && (
         <div className="pt-2 border-t">
@@ -392,8 +396,8 @@ function QuotesList() {
         isMobile ? (
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
-            title={search || statusFilter !== 'all' ? 'Nenhum orçamento encontrado' : 'Nenhum orçamento cadastrado'}
-            description={search || statusFilter !== 'all' ? 'Tente filtros diferentes' : 'Toque em "Novo Orçamento" para começar'}
+            title={search || statusFilter.length > 0 ? 'Nenhum orçamento encontrado' : 'Nenhum orçamento cadastrado'}
+            description={search || statusFilter.length > 0 ? 'Tente filtros diferentes' : 'Toque em "Novo Orçamento" para começar'}
           />
         ) : (
           <Card>

@@ -14,6 +14,7 @@ import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFi
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 
@@ -29,20 +30,31 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 export function TimeHistory() {
   const { employees } = useAdminTimeSheet();
   const isMobile = useIsMobile();
-  const [employeeId, setEmployeeId] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  // Filtros multi-select: vazio = "todos". Desktop Select mapeia single->array.
+  const [employeeIds, setEmployeeIds] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [detailSheet, setDetailSheet] = useState<{ employeeId: string; employeeName: string; date: string } | null>(null);
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
   const startDate = range.from ? format(range.from, 'yyyy-MM-dd') : undefined;
   const endDate = range.to ? format(range.to, 'yyyy-MM-dd') : undefined;
 
-  const { data: sheets = [] } = useTimeHistory({
-    employeeId: employeeId !== 'all' ? employeeId : undefined,
+  // Hook não suporta arrays: trazemos por período/employee único (quando 1 selecionado)
+  // e filtramos multi-select client-side. Em single-select desktop, server-side equivalente.
+  const { data: rawSheets = [] } = useTimeHistory({
+    employeeId: employeeIds.length === 1 ? employeeIds[0] : undefined,
     startDate,
     endDate,
-    status: statusFilter,
+    status: statusFilter.length === 1 ? statusFilter[0] : undefined,
   });
+
+  const sheets = useMemo(() => {
+    return rawSheets.filter(sh => {
+      if (employeeIds.length > 1 && (!sh.employee_id || !employeeIds.includes(sh.employee_id))) return false;
+      if (statusFilter.length > 1 && !statusFilter.includes(sh.status)) return false;
+      return true;
+    });
+  }, [rawSheets, employeeIds, statusFilter]);
 
   const getName = (empId: string | null) => employees.find(e => e.id === empId)?.name || '—';
 
@@ -58,25 +70,57 @@ export function TimeHistory() {
   };
 
   const activeFilterCount =
-    (employeeId !== 'all' ? 1 : 0) +
-    (statusFilter !== 'all' ? 1 : 0) +
+    (employeeIds.length > 0 ? 1 : 0) +
+    (statusFilter.length > 0 ? 1 : 0) +
     (preset !== 'this_month' ? 1 : 0);
 
   const clearFilters = () => {
-    setEmployeeId('all');
-    setStatusFilter('all');
+    setEmployeeIds([]);
+    setStatusFilter([]);
     setPreset('this_month');
   };
 
   // ----------------------------------------------------------------
-  // Filtros — versão desktop (inline) vs mobile (sheet)
+  // Filtros — versão desktop (inline Select single) vs mobile (FilterCheckboxGroup multi)
   // ----------------------------------------------------------------
-  const filtersBody = (
+  // Mapeamento desktop single<->multi: 'all' = [], '<id>' = [id]
+  const desktopEmployeeValue = employeeIds.length === 1 ? employeeIds[0] : 'all';
+  const desktopStatusValue = statusFilter.length === 1 ? statusFilter[0] : 'all';
+
+  const filtersBody = isMobile ? (
+    <>
+      <FilterCheckboxGroup
+        label="Funcionário"
+        selected={employeeIds}
+        onChange={setEmployeeIds}
+        emptyLabel="Todos"
+        options={employees.map(e => ({ value: e.id, label: e.name }))}
+      />
+      <div className="space-y-2">
+        <Label className="text-xs">Período</Label>
+        <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
+      </div>
+      <FilterCheckboxGroup
+        label="Status"
+        selected={statusFilter}
+        onChange={setStatusFilter}
+        emptyLabel="Todos"
+        options={[
+          { value: 'complete', label: 'Completo' },
+          { value: 'incomplete', label: 'Incompleto' },
+          { value: 'justified', label: 'Justificado' },
+        ]}
+      />
+    </>
+  ) : (
     <>
       <div className="space-y-2">
-        <Label className={cn('text-xs', !isMobile && 'sr-only')}>Funcionário</Label>
-        <Select value={employeeId} onValueChange={setEmployeeId}>
-          <SelectTrigger className={cn(!isMobile && 'sm:w-[200px]')}>
+        <Label className="text-xs sr-only">Funcionário</Label>
+        <Select
+          value={desktopEmployeeValue}
+          onValueChange={(v) => setEmployeeIds(v === 'all' ? [] : [v])}
+        >
+          <SelectTrigger className="sm:w-[200px]">
             <SelectValue placeholder="Funcionário" />
           </SelectTrigger>
           <SelectContent>
@@ -86,13 +130,16 @@ export function TimeHistory() {
         </Select>
       </div>
       <div className="space-y-2">
-        <Label className={cn('text-xs', !isMobile && 'sr-only')}>Período</Label>
+        <Label className="text-xs sr-only">Período</Label>
         <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
       </div>
       <div className="space-y-2">
-        <Label className={cn('text-xs', !isMobile && 'sr-only')}>Status</Label>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className={cn(!isMobile && 'sm:w-[160px]')}>
+        <Label className="text-xs sr-only">Status</Label>
+        <Select
+          value={desktopStatusValue}
+          onValueChange={(v) => setStatusFilter(v === 'all' ? [] : [v])}
+        >
+          <SelectTrigger className="sm:w-[160px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

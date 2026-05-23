@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -99,21 +100,21 @@ export default function AdminCRM() {
   // View mode mobile (kanban default, conforme briefing). Desktop sempre kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
-  // Filters
-  const [filterOrigin, setFilterOrigin] = useState<string>('all');
-  const [filterSegment, setFilterSegment] = useState<string>('all');
+  // Filters — Origem/Segmento multi-select (array vazio = inativo); Data range fica single.
+  const [filterOrigin, setFilterOrigin] = useState<string[]>([]);
+  const [filterSegment, setFilterSegment] = useState<string[]>([]);
   const [filterDatePreset, setFilterDatePreset] = useState<DatePreset>('all');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
 
   const activeFilterCount =
-    (filterOrigin !== 'all' ? 1 : 0) +
-    (filterSegment !== 'all' ? 1 : 0) +
+    (filterOrigin.length > 0 ? 1 : 0) +
+    (filterSegment.length > 0 ? 1 : 0) +
     (filterDatePreset !== 'all' ? 1 : 0);
 
   const clearFilters = () => {
-    setFilterOrigin('all');
-    setFilterSegment('all');
+    setFilterOrigin([]);
+    setFilterSegment([]);
     setFilterDatePreset('all');
     setFilterDateFrom('');
     setFilterDateTo('');
@@ -128,8 +129,8 @@ export default function AdminCRM() {
         l.company_name?.toLowerCase().includes(q) ||
         l.contact_name?.toLowerCase().includes(q)
       )) return false;
-      if (filterOrigin !== 'all' && l.source !== filterOrigin) return false;
-      if (filterSegment !== 'all' && l.segment !== filterSegment) return false;
+      if (filterOrigin.length > 0 && (!l.source || !filterOrigin.includes(l.source))) return false;
+      if (filterSegment.length > 0 && (!l.segment || !filterSegment.includes(l.segment))) return false;
       if (from || to) {
         const created = new Date(l.created_at);
         if (from && created < from) return false;
@@ -597,10 +598,10 @@ export default function AdminCRM() {
 // ============================================================================
 interface FiltersFormProps {
   origins: { id: string; name: string; color?: string | null; icon?: string | null }[];
-  filterOrigin: string;
-  setFilterOrigin: (v: string) => void;
-  filterSegment: string;
-  setFilterSegment: (v: string) => void;
+  filterOrigin: string[];
+  setFilterOrigin: (v: string[]) => void;
+  filterSegment: string[];
+  setFilterSegment: (v: string[]) => void;
   filterDatePreset: DatePreset;
   setFilterDatePreset: (v: DatePreset) => void;
   filterDateFrom: string;
@@ -648,43 +649,29 @@ function FiltersForm({
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Origem</Label>
-        <Select value={filterOrigin} onValueChange={setFilterOrigin}>
-          <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {origins.map(o => (
-              <SelectItem key={o.id} value={o.name}>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded" style={{ backgroundColor: o.color || '#6B7280' }} />
-                  <span>{o.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterCheckboxGroup
+        label="Origem"
+        options={origins.map<FilterCheckboxOption>(o => ({
+          value: o.name,
+          label: o.name,
+          color: o.color || undefined,
+        }))}
+        selected={filterOrigin}
+        onChange={setFilterOrigin}
+        emptyLabel="Todas"
+      />
 
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Segmento</Label>
-        <Select value={filterSegment} onValueChange={setFilterSegment}>
-          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {COMPANY_SEGMENTS.map(s => (
-              <SelectItem key={s.value} value={s.value}>
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded flex items-center justify-center" style={{ backgroundColor: s.color }}>
-                    <s.icon className="h-2.5 w-2.5 text-white" />
-                  </div>
-                  <span>{s.label}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterCheckboxGroup
+        label="Segmento"
+        options={COMPANY_SEGMENTS.map<FilterCheckboxOption>(s => ({
+          value: s.value,
+          label: s.label,
+          color: s.color,
+        }))}
+        selected={filterSegment}
+        onChange={setFilterSegment}
+        emptyLabel="Todos"
+      />
 
       <div className="space-y-2">
         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de Geração</Label>
@@ -722,10 +709,10 @@ function FiltersForm({
 // ============================================================================
 interface DesktopFilterPopoverProps {
   origins: { id: string; name: string; color?: string | null; icon?: string | null }[];
-  filterOrigin: string;
-  setFilterOrigin: (v: string) => void;
-  filterSegment: string;
-  setFilterSegment: (v: string) => void;
+  filterOrigin: string[];
+  setFilterOrigin: (v: string[]) => void;
+  filterSegment: string[];
+  setFilterSegment: (v: string[]) => void;
   filterDatePreset: DatePreset;
   setFilterDatePreset: (v: DatePreset) => void;
   filterDateFrom: string;

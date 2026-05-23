@@ -2,8 +2,8 @@ import { ChevronLeft, ChevronRight, Plus, Filter, Star, PauseCircle } from 'luci
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OsStatus } from '@/types/database';
@@ -21,19 +21,18 @@ interface ScheduleHeaderProps {
   onNewOrder?: () => void;
   onOpenPaused?: () => void;
   pausedCount?: number;
-  // Filters
-  technicianFilter: string;
-  onTechnicianFilterChange: (val: string) => void;
+  // Filters — multi-select (vazio = todos)
+  technicianFilter: string[];
+  onTechnicianFilterChange: (val: string[]) => void;
   technicians: { user_id: string; full_name: string }[];
-  customerFilter: string;
-  onCustomerFilterChange: (val: string) => void;
+  customerFilter: string[];
+  onCustomerFilterChange: (val: string[]) => void;
   customers: { id: string; name: string }[];
-  statusFilter: string;
-  onStatusFilterChange: (val: string) => void;
+  statusFilter: string[];
+  onStatusFilterChange: (val: string[]) => void;
 }
 
-const statusOptions: { value: OsStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'Todos' },
+const statusOptions: { value: OsStatus; label: string }[] = [
   { value: 'pendente', label: 'Pendente' },
   { value: 'em_andamento', label: 'Em Andamento' },
   { value: 'pausada', label: 'Pausada' },
@@ -60,7 +59,7 @@ export function ScheduleHeader({
   statusFilter,
   onStatusFilterChange,
 }: ScheduleHeaderProps) {
-  const hasActiveFilters = technicianFilter !== 'all' || customerFilter !== 'all' || statusFilter !== 'all';
+  const hasActiveFilters = technicianFilter.length > 0 || customerFilter.length > 0 || statusFilter.length > 0;
   const { serviceTypes } = useServiceTypes();
   const isMobile = useIsMobile();
   return (
@@ -99,42 +98,25 @@ export function ScheduleHeader({
                 {hasActiveFilters && <span className="ml-1 w-2 h-2 rounded-full bg-primary" />}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 space-y-3" align="end">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Técnico</label>
-                <Select value={technicianFilter} onValueChange={onTechnicianFilterChange}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {technicians.map((t) => (
-                      <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Cliente</label>
-                <Select value={customerFilter} onValueChange={onCustomerFilterChange}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Status</label>
-                <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <PopoverContent className="w-80 space-y-4" align="end">
+              <FilterCheckboxGroup
+                label="Técnico"
+                options={technicians.map((t) => ({ value: t.user_id, label: t.full_name }))}
+                selected={technicianFilter}
+                onChange={onTechnicianFilterChange}
+              />
+              <FilterCheckboxGroup
+                label="Cliente"
+                options={customers.map((c) => ({ value: c.id, label: c.name }))}
+                selected={customerFilter}
+                onChange={onCustomerFilterChange}
+              />
+              <FilterCheckboxGroup
+                label="Status"
+                options={statusOptions.map((s) => ({ value: s.value, label: s.label }))}
+                selected={statusFilter}
+                onChange={onStatusFilterChange}
+              />
             </PopoverContent>
           </Popover>
 

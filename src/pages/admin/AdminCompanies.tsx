@@ -23,8 +23,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,10 +97,11 @@ export default function AdminCompanies() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [originFilter, setOriginFilter] = useState('all');
-  const [expirationFilter, setExpirationFilter] = useState('all');
-  const [planFilter, setPlanFilter] = useState('all');
+  // Filtros multi-select: array vazio = filtro inativo (mostra todos).
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [originFilter, setOriginFilter] = useState<string[]>([]);
+  const [expirationFilter, setExpirationFilter] = useState<string[]>([]);
+  const [planFilter, setPlanFilter] = useState<string[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [companyToDelete, setCompanyToDelete] = useState<any>(null);
@@ -247,24 +248,32 @@ export default function AdminCompanies() {
   const filtered = useMemo(() => {
     return (companies as CompanyLite[]).filter((c) => {
       const matchSearch = !search || fuzzyIncludes(c.name, search) || fuzzyIncludes(c.email, search) || fuzzyIncludes(c.cnpj, search);
-      const matchStatus = statusFilter === 'all' || c.subscription_status === statusFilter;
-      const matchOrigin = originFilter === 'all' || c.origin === originFilter;
-      const matchPlan = planFilter === 'all' || c.subscription_plan === planFilter;
+      const matchStatus = statusFilter.length === 0 || statusFilter.includes(c.subscription_status);
+      const matchOrigin = originFilter.length === 0 || (c.origin != null && originFilter.includes(c.origin));
+      const matchPlan = planFilter.length === 0 || (c.subscription_plan != null && planFilter.includes(c.subscription_plan));
       let matchExp = true;
-      if (expirationFilter !== 'all' && c.subscription_expires_at) {
-        const exp = new Date(c.subscription_expires_at);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const diff = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        switch (expirationFilter) {
-          case 'today': matchExp = diff === 0; break;
-          case '7days': matchExp = diff >= 0 && diff <= 7; break;
-          case '15days': matchExp = diff >= 0 && diff <= 15; break;
-          case '30days': matchExp = diff >= 0 && diff <= 30; break;
-          case 'overdue': matchExp = diff < 0; break;
+      if (expirationFilter.length > 0) {
+        if (!c.subscription_expires_at) {
+          matchExp = false;
+        } else {
+          const exp = new Date(c.subscription_expires_at);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const diff = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          // Multi-select: empresa passa se atender QUALQUER janela selecionada (OR).
+          // Janelas são concêntricas por design (7d ⊂ 15d ⊂ 30d); selecionar
+          // múltiplas amplia o conjunto exibido — esperado pra "ver tudo crítico".
+          matchExp = expirationFilter.some((preset) => {
+            switch (preset) {
+              case 'today': return diff === 0;
+              case '7days': return diff >= 0 && diff <= 7;
+              case '15days': return diff >= 0 && diff <= 15;
+              case '30days': return diff >= 0 && diff <= 30;
+              case 'overdue': return diff < 0;
+              default: return false;
+            }
+          });
         }
-      } else if (expirationFilter !== 'all' && !c.subscription_expires_at) {
-        matchExp = false;
       }
       return matchSearch && matchStatus && matchOrigin && matchPlan && matchExp;
     });
@@ -281,22 +290,32 @@ export default function AdminCompanies() {
   };
 
   const clearFilters = () => {
-    setStatusFilter('all');
-    setOriginFilter('all');
-    setExpirationFilter('all');
-    setPlanFilter('all');
+    setStatusFilter([]);
+    setOriginFilter([]);
+    setExpirationFilter([]);
+    setPlanFilter([]);
   };
 
-  // Contagem de filtros ativos (badge do FilterSheet).
+  // Contagem de filtros ativos (badge do FilterSheet). Cada grupo conta como 1
+  // independentemente de quantas opções estão marcadas dentro.
   const activeFilterCount =
-    (statusFilter !== 'all' ? 1 : 0) +
-    (originFilter !== 'all' ? 1 : 0) +
-    (expirationFilter !== 'all' ? 1 : 0) +
-    (planFilter !== 'all' ? 1 : 0);
+    (statusFilter.length > 0 ? 1 : 0) +
+    (originFilter.length > 0 ? 1 : 0) +
+    (expirationFilter.length > 0 ? 1 : 0) +
+    (planFilter.length > 0 ? 1 : 0);
 
   // -----------------------------------------------------------------
   // Stat carousel items (mobile-first) — clicáveis para filtrar.
   // -----------------------------------------------------------------
+  // Stat chip toggla a presença daquela opção no filtro multi-select.
+  // `active` = chip "sozinho" no filtro (exatamente aquela opção marcada).
+  const toggleSoleStatus = (value: string) => {
+    setStatusFilter((prev) => (prev.length === 1 && prev[0] === value ? [] : [value]));
+  };
+  const toggleSoleExpiration = (value: string) => {
+    setExpirationFilter((prev) => (prev.length === 1 && prev[0] === value ? [] : [value]));
+  };
+
   const statItems = [
     {
       key: 'active',
@@ -304,8 +323,8 @@ export default function AdminCompanies() {
       count: stats.active,
       icon: <CheckCircle2 className="h-4 w-4" />,
       accentColor: 'hsl(var(--success))',
-      active: statusFilter === 'active',
-      onClick: () => setStatusFilter(statusFilter === 'active' ? 'all' : 'active'),
+      active: statusFilter.length === 1 && statusFilter[0] === 'active',
+      onClick: () => toggleSoleStatus('active'),
     },
     {
       key: 'testing',
@@ -313,8 +332,8 @@ export default function AdminCompanies() {
       count: stats.testing,
       icon: <Clock className="h-4 w-4" />,
       accentColor: 'hsl(var(--warning))',
-      active: statusFilter === 'testing',
-      onClick: () => setStatusFilter(statusFilter === 'testing' ? 'all' : 'testing'),
+      active: statusFilter.length === 1 && statusFilter[0] === 'testing',
+      onClick: () => toggleSoleStatus('testing'),
     },
     {
       key: 'inactive',
@@ -322,8 +341,8 @@ export default function AdminCompanies() {
       count: stats.inactive,
       icon: <XCircle className="h-4 w-4" />,
       accentColor: 'hsl(var(--destructive))',
-      active: statusFilter === 'inactive',
-      onClick: () => setStatusFilter(statusFilter === 'inactive' ? 'all' : 'inactive'),
+      active: statusFilter.length === 1 && statusFilter[0] === 'inactive',
+      onClick: () => toggleSoleStatus('inactive'),
     },
     {
       key: 'overdue',
@@ -331,66 +350,72 @@ export default function AdminCompanies() {
       count: stats.overdue,
       icon: <CalendarX className="h-4 w-4" />,
       accentColor: '#a855f7', // purple — distinto de bloqueadas e mais alarmista que warning
-      active: expirationFilter === 'overdue',
-      onClick: () => setExpirationFilter(expirationFilter === 'overdue' ? 'all' : 'overdue'),
+      active: expirationFilter.length === 1 && expirationFilter[0] === 'overdue',
+      onClick: () => toggleSoleExpiration('overdue'),
     },
   ];
 
   // -----------------------------------------------------------------
   // Conteúdo dos filtros — usado por FilterSheet (mobile) e Sheet (desktop).
   // -----------------------------------------------------------------
+  // Opções dos filtros multi-select. Cores seguem o STATUS_BADGE pra dar pista
+  // visual no checkbox (bolinha colorida à esquerda).
+  const statusOptions: FilterCheckboxOption[] = [
+    { value: 'active', label: 'Ativo', color: '#22c55e' },
+    { value: 'testing', label: 'Testando', color: '#f97316' },
+    { value: 'inactive', label: 'Desativado', color: '#ef4444' },
+  ];
+
+  const originOptions: FilterCheckboxOption[] = (origins ?? []).map((o: any) => ({
+    value: o.name,
+    label: o.name,
+    color: o.color || undefined,
+  }));
+
+  const expirationOptions: FilterCheckboxOption[] = [
+    { value: 'today', label: 'Vence Hoje' },
+    { value: '7days', label: 'Próximos 7 Dias' },
+    { value: '15days', label: 'Próximos 15 Dias' },
+    { value: '30days', label: 'Próximos 30 Dias' },
+    { value: 'overdue', label: 'Vencidas', color: '#a855f7' },
+  ];
+
+  const planOptions: FilterCheckboxOption[] = [
+    { value: 'starter', label: 'Start' },
+    { value: 'pro', label: 'Avançado' },
+    { value: 'enterprise', label: 'Master' },
+  ];
+
   const FilterContent = ({ withViewToggle = false }: { withViewToggle?: boolean }) => (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Status</Label>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="active">Ativo</SelectItem>
-            <SelectItem value="testing">Testando</SelectItem>
-            <SelectItem value="inactive">Desativado</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Origem</Label>
-        <Select value={originFilter} onValueChange={setOriginFilter}>
-          <SelectTrigger><SelectValue placeholder="Origem" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {origins?.map((o: any) => (
-              <SelectItem key={o.id} value={o.name}>{o.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Vencimento</Label>
-        <Select value={expirationFilter} onValueChange={setExpirationFilter}>
-          <SelectTrigger><SelectValue placeholder="Vencimento" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="today">Vence Hoje</SelectItem>
-            <SelectItem value="7days">Próximos 7 Dias</SelectItem>
-            <SelectItem value="15days">Próximos 15 Dias</SelectItem>
-            <SelectItem value="30days">Próximos 30 Dias</SelectItem>
-            <SelectItem value="overdue">Vencidas</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Plano</Label>
-        <Select value={planFilter} onValueChange={setPlanFilter}>
-          <SelectTrigger><SelectValue placeholder="Plano" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="starter">Start</SelectItem>
-            <SelectItem value="pro">Avançado</SelectItem>
-            <SelectItem value="enterprise">Master</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterCheckboxGroup
+        label="Status"
+        options={statusOptions}
+        selected={statusFilter}
+        onChange={setStatusFilter}
+        emptyLabel="Todos"
+      />
+      <FilterCheckboxGroup
+        label="Origem"
+        options={originOptions}
+        selected={originFilter}
+        onChange={setOriginFilter}
+        emptyLabel="Todas"
+      />
+      <FilterCheckboxGroup
+        label="Vencimento"
+        options={expirationOptions}
+        selected={expirationFilter}
+        onChange={setExpirationFilter}
+        emptyLabel="Todos"
+      />
+      <FilterCheckboxGroup
+        label="Plano"
+        options={planOptions}
+        selected={planFilter}
+        onChange={setPlanFilter}
+        emptyLabel="Todos"
+      />
 
       {withViewToggle && (
         <div className="space-y-2 pt-2 border-t">

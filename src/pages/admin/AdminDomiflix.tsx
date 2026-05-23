@@ -37,6 +37,7 @@ import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { FABButton } from "@/components/mobile/FABButton";
 import { MobileListItem, type ItemAction } from "@/components/mobile/MobileListItem";
 import { EmptyState } from "@/components/mobile/EmptyState";
+import { FilterCheckboxGroup } from "@/components/mobile/FilterCheckboxGroup";
 
 // ─────────────── Image upload helper ───────────────
 async function uploadImage(file: File, folder: string): Promise<string> {
@@ -833,14 +834,15 @@ export default function AdminDomiflix() {
 
   const [activeTab, setActiveTab] = useState<"titles" | "sections">("titles");
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "series" | "movie">("all");
+  // Onda 5: multi-select. `typeFilter.length === 0` = todos (inativo).
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [featuredOnly, setFeaturedOnly] = useState(false);
 
   // Filtragem em memória (catálogo costuma ser pequeno) — não bate DB.
   const filteredTitles = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     return titles.filter((t) => {
-      if (typeFilter !== "all" && t.type !== typeFilter) return false;
+      if (typeFilter.length > 0 && !typeFilter.includes(t.type)) return false;
       if (featuredOnly && !t.is_featured) return false;
       if (!q) return true;
       const haystack = [t.title, t.description ?? "", ...(t.tags ?? [])].join(" ").toLowerCase();
@@ -861,8 +863,8 @@ export default function AdminDomiflix() {
         count: total,
         icon: <Layers className="h-4 w-4" />,
         accentColor: "#0ea5e9",
-        active: typeFilter === "all" && !featuredOnly,
-        onClick: () => { setTypeFilter("all"); setFeaturedOnly(false); },
+        active: typeFilter.length === 0 && !featuredOnly,
+        onClick: () => { setTypeFilter([]); setFeaturedOnly(false); },
       },
       {
         key: "series",
@@ -870,8 +872,11 @@ export default function AdminDomiflix() {
         count: series,
         icon: <Tv className="h-4 w-4" />,
         accentColor: "#8b5cf6",
-        active: typeFilter === "series",
-        onClick: () => setTypeFilter(typeFilter === "series" ? "all" : "series"),
+        active: typeFilter.length === 1 && typeFilter[0] === "series",
+        onClick: () =>
+          setTypeFilter((prev) =>
+            prev.length === 1 && prev[0] === "series" ? [] : ["series"],
+          ),
       },
       {
         key: "movie",
@@ -879,8 +884,11 @@ export default function AdminDomiflix() {
         count: movies,
         icon: <Film className="h-4 w-4" />,
         accentColor: "#22c55e",
-        active: typeFilter === "movie",
-        onClick: () => setTypeFilter(typeFilter === "movie" ? "all" : "movie"),
+        active: typeFilter.length === 1 && typeFilter[0] === "movie",
+        onClick: () =>
+          setTypeFilter((prev) =>
+            prev.length === 1 && prev[0] === "movie" ? [] : ["movie"],
+          ),
       },
       {
         key: "featured",
@@ -896,29 +904,28 @@ export default function AdminDomiflix() {
 
   const activeFilterCount =
     (searchTerm ? 1 : 0) +
-    (typeFilter !== "all" ? 1 : 0) +
+    (typeFilter.length > 0 ? 1 : 0) +
     (featuredOnly ? 1 : 0);
 
   const clearFilters = () => {
     setSearchTerm("");
-    setTypeFilter("all");
+    setTypeFilter([]);
     setFeaturedOnly(false);
   };
 
   // Conteúdo do FilterSheet (mobile) — busca já fica visível fora, então aqui só tipo + destaque.
   const filterContent = (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tipo</label>
-        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as "all" | "series" | "movie")}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os tipos</SelectItem>
-            <SelectItem value="series">Séries / Módulos</SelectItem>
-            <SelectItem value="movie">Filmes / Lives</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterCheckboxGroup
+        label="Tipo"
+        options={[
+          { value: "series", label: "Séries / Módulos" },
+          { value: "movie", label: "Filmes / Lives" },
+        ]}
+        selected={typeFilter}
+        onChange={setTypeFilter}
+        emptyLabel="Todos os tipos"
+      />
       <div className="flex items-center justify-between pt-1">
         <div>
           <label className="text-sm font-medium">Somente destaques</label>
@@ -996,7 +1003,11 @@ export default function AdminDomiflix() {
                 />
               </div>
               <div className="flex gap-2 flex-wrap items-center">
-                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as "all" | "series" | "movie")}>
+                {/* Desktop preservado: Select single mapeado pra/de string[]. */}
+                <Select
+                  value={typeFilter.length === 1 ? typeFilter[0] : "all"}
+                  onValueChange={(v) => setTypeFilter(v === "all" ? [] : [v])}
+                >
                   <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os tipos</SelectItem>

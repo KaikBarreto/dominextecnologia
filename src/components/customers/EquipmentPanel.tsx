@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,9 +10,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -38,14 +34,16 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 
 export function EquipmentPanel() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { isAdminOrGestor, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [customerFilter, setCustomerFilter] = useState<string>('all');
+  // Multi-select. Vazio = todas/todos (filtro inativo).
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [customerFilter, setCustomerFilter] = useState<string[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<(Equipment & { customer?: any }) | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -67,8 +65,10 @@ export function EquipmentPanel() {
       fuzzyIncludes(eq.brand, searchTerm) ||
       fuzzyIncludes(eq.model, searchTerm) ||
       fuzzyIncludes(eq.customer?.name, searchTerm);
-    const matchesCategory = categoryFilter === 'all' || eq.category_id === categoryFilter;
-    const matchesCustomer = customerFilter === 'all' || eq.customer_id === customerFilter;
+    const matchesCategory =
+      categoryFilter.length === 0 || (eq.category_id && categoryFilter.includes(eq.category_id));
+    const matchesCustomer =
+      customerFilter.length === 0 || (eq.customer_id && customerFilter.includes(eq.customer_id));
     return matchesSearch && matchesCategory && matchesCustomer;
   });
 
@@ -129,62 +129,55 @@ export function EquipmentPanel() {
     setDeleteDialogOpen(true);
   };
   const clearFilters = () => {
-    setCategoryFilter('all');
-    setCustomerFilter('all');
+    setCategoryFilter([]);
+    setCustomerFilter([]);
   };
 
   const activeFilterCount =
-    (categoryFilter !== 'all' ? 1 : 0) + (customerFilter !== 'all' ? 1 : 0);
+    (categoryFilter.length > 0 ? 1 : 0) + (customerFilter.length > 0 ? 1 : 0);
 
   // Stats por categoria — só renderiza no mobile e se houver categorias.
   const statItems: StatCarouselItem[] = categories.map((cat) => {
     const count = equipment.filter((eq) => eq.category_id === cat.id).length;
+    const isActive = categoryFilter.includes(cat.id);
     return {
       key: cat.id,
       label: cat.name,
       count,
       icon: <Package className="h-4 w-4" />,
       accentColor: cat.color,
-      active: categoryFilter === cat.id,
-      onClick: () => setCategoryFilter(categoryFilter === cat.id ? 'all' : cat.id),
+      active: isActive,
+      onClick: () =>
+        setCategoryFilter(
+          isActive
+            ? categoryFilter.filter((id) => id !== cat.id)
+            : [...categoryFilter, cat.id],
+        ),
     };
   });
 
-  // Conteúdo dos filtros — usado inline no desktop e dentro do FilterSheet no mobile.
+  // Conteúdo dos filtros — multi-select com checkboxes.
+  // Vazio = filtro inativo (todas categorias / todos clientes).
   const filterContent = (
-    <div className={cn(isMobile ? 'space-y-4' : 'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3')}>
-      <div className={isMobile ? '' : ''}>
-        {isMobile && <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Categoria</label>}
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className={isMobile ? 'w-full' : 'sm:w-[180px]'}>
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas categorias</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                  {cat.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className={isMobile ? '' : 'sm:w-[200px]'}>
-        {isMobile && <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Cliente</label>}
-        <SearchableSelect
-          options={[
-            { value: 'all', label: 'Todos clientes' },
-            ...customersWithEquipment.map(c => ({ value: c.id, label: c.name })),
-          ]}
-          value={customerFilter}
-          onValueChange={setCustomerFilter}
-          placeholder="Cliente"
-          searchPlaceholder="Buscar cliente..."
-        />
-      </div>
+    <div className="space-y-4">
+      <FilterCheckboxGroup
+        label="Categoria"
+        options={categories.map((cat) => ({
+          value: cat.id,
+          label: cat.name,
+          color: cat.color,
+        }))}
+        selected={categoryFilter}
+        onChange={setCategoryFilter}
+        emptyLabel="Todas categorias"
+      />
+      <FilterCheckboxGroup
+        label="Cliente"
+        options={customersWithEquipment.map((c) => ({ value: c.id, label: c.name }))}
+        selected={customerFilter}
+        onChange={setCustomerFilter}
+        emptyLabel="Todos clientes"
+      />
     </div>
   );
 
@@ -268,8 +261,8 @@ export function EquipmentPanel() {
         ) : filteredEquipment.length === 0 ? (
           <EmptyState
             icon={<Package className="h-12 w-12" />}
-            title={searchTerm || categoryFilter !== 'all' || customerFilter !== 'all' ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
-            description={searchTerm || categoryFilter !== 'all' || customerFilter !== 'all' ? 'Tente filtros diferentes' : 'Toque em "Novo Equipamento" para começar'}
+            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
+            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Tente filtros diferentes' : 'Toque em "Novo Equipamento" para começar'}
           />
         ) : (
           <>
@@ -392,10 +385,10 @@ export function EquipmentPanel() {
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Package className="mb-4 h-12 w-12 text-muted-foreground" />
                   <h3 className="text-lg font-medium">
-                    {searchTerm || categoryFilter !== 'all' || customerFilter !== 'all' ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
+                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Nenhum equipamento encontrado' : 'Nenhum equipamento cadastrado'}
                   </h3>
                   <p className="text-muted-foreground">
-                    {searchTerm || categoryFilter !== 'all' || customerFilter !== 'all' ? 'Tente filtros diferentes' : 'Clique em "Novo Equipamento" para começar'}
+                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? 'Tente filtros diferentes' : 'Clique em "Novo Equipamento" para começar'}
                   </p>
                 </div>
               ) : (

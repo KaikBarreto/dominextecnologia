@@ -25,9 +25,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
@@ -37,6 +34,7 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -47,7 +45,7 @@ export default function Inventory() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
@@ -57,7 +55,7 @@ export default function Inventory() {
       fuzzyIncludes(item.sku, searchQuery) ||
       fuzzyIncludes(item.category, searchQuery);
     const matchesCategory =
-      categoryFilter === 'all' || (item.category || '') === categoryFilter;
+      categoryFilter.length === 0 || categoryFilter.includes(item.category || '');
     return matchesSearch && matchesCategory;
   });
 
@@ -150,30 +148,21 @@ export default function Inventory() {
 
   // Conteúdo do FilterSheet (mobile) — só mostra se há categorias cadastradas.
   const activeFilterCount =
-    (searchQuery ? 1 : 0) + (categoryFilter !== 'all' ? 1 : 0);
+    (searchQuery ? 1 : 0) + (categoryFilter.length > 0 ? 1 : 0);
 
   const clearFilters = () => {
     setSearchQuery('');
-    setCategoryFilter('all');
+    setCategoryFilter([]);
   };
 
   const categoryFilterContent = (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-muted-foreground block">Categoria</label>
-      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Todas as categorias" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todas as categorias</SelectItem>
-          {categories.map((cat) => (
-            <SelectItem key={cat} value={cat}>
-              {cat}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <FilterCheckboxGroup
+      label="Categoria"
+      options={categories.map((cat) => ({ value: cat, label: cat }))}
+      selected={categoryFilter}
+      onChange={setCategoryFilter}
+      emptyLabel="Todas as categorias"
+    />
   );
 
   return (
@@ -232,20 +221,8 @@ export default function Inventory() {
             />
           </div>
           {categories.length > 0 && (
-            <div className="w-full sm:w-[220px]">
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas as categorias" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="w-full sm:w-[260px]">
+              {categoryFilterContent}
             </div>
           )}
         </div>
@@ -267,12 +244,12 @@ export default function Inventory() {
             <EmptyState
               icon={<Package className="h-12 w-12" />}
               title={
-                searchQuery || categoryFilter !== 'all'
+                searchQuery || categoryFilter.length > 0
                   ? 'Nenhum item encontrado'
                   : 'Estoque vazio'
               }
               description={
-                searchQuery || categoryFilter !== 'all'
+                searchQuery || categoryFilter.length > 0
                   ? 'Tente uma busca ou filtro diferente'
                   : 'Toque em "Cadastrar Material" para adicionar peças ao estoque'
               }
@@ -382,12 +359,12 @@ export default function Inventory() {
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Package className="mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="text-lg font-medium">
-                  {searchQuery || categoryFilter !== 'all'
+                  {searchQuery || categoryFilter.length > 0
                     ? 'Nenhum item encontrado'
                     : 'Estoque vazio'}
                 </h3>
                 <p className="text-muted-foreground">
-                  {searchQuery || categoryFilter !== 'all'
+                  {searchQuery || categoryFilter.length > 0
                     ? 'Tente buscar por outro termo'
                     : 'Clique em "Cadastrar Material" para adicionar peças ao estoque'}
                 </p>

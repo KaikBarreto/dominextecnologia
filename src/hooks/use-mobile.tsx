@@ -4,7 +4,12 @@ const MOBILE_BREAKPOINT = 1024;
 const COMPACT_BREAKPOINT = 1024;
 
 function useMediaBreakpoint(breakpoint: number) {
-  const [matches, setMatches] = React.useState<boolean | undefined>(undefined);
+  // Initial state é síncrono baseado em window — evita o ciclo
+  // undefined → false → true que remontava Dialog/Drawer em árvores
+  // diferentes (causa do "modal preto" no mobile). SSR-safe via typeof check.
+  const [matches, setMatches] = React.useState<boolean>(() =>
+    typeof window !== "undefined" && window.innerWidth < breakpoint
+  );
 
   React.useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
@@ -14,7 +19,7 @@ function useMediaBreakpoint(breakpoint: number) {
     return () => mql.removeEventListener("change", onChange);
   }, [breakpoint]);
 
-  return !!matches;
+  return matches;
 }
 
 export function useIsMobile() {

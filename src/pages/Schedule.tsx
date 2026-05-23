@@ -26,11 +26,11 @@ import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FABButton } from '@/components/mobile/FABButton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -73,10 +73,10 @@ export default function Schedule() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Filters
-  const [technicianFilter, setTechnicianFilter] = useState('all');
-  const [customerFilter, setCustomerFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  // Filters — multi-select (vazio = todos)
+  const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);
+  const [customerFilter, setCustomerFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   // Get team IDs the current user belongs to
   const myTeamIds = useMemo(() => {
@@ -126,13 +126,15 @@ export default function Schedule() {
         if (!isAssignedToMe && !isAssignedToMyTeam) return false;
       }
 
-      if (technicianFilter !== 'all') {
+      if (technicianFilter.length > 0) {
         const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
-        const matchesTech = assigneeIds?.includes(technicianFilter) || order.technician_id === technicianFilter;
+        const matchesTech =
+          (assigneeIds?.some((id) => technicianFilter.includes(id)) ?? false) ||
+          (order.technician_id ? technicianFilter.includes(order.technician_id) : false);
         if (!matchesTech) return false;
       }
-      if (customerFilter !== 'all' && order.customer_id !== customerFilter) return false;
-      if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+      if (customerFilter.length > 0 && (!order.customer_id || !customerFilter.includes(order.customer_id))) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(order.status)) return false;
       return true;
     }).map(order => {
       const { assignees, team } = getAssignees(order);
@@ -507,14 +509,14 @@ export default function Schedule() {
   // Mobile & Tablet layout
   if (isMobile) {
     const activeFilterCount =
-      (technicianFilter !== 'all' ? 1 : 0) +
-      (customerFilter !== 'all' ? 1 : 0) +
-      (statusFilter !== 'all' ? 1 : 0);
+      (technicianFilter.length > 0 ? 1 : 0) +
+      (customerFilter.length > 0 ? 1 : 0) +
+      (statusFilter.length > 0 ? 1 : 0);
 
     const clearFilters = () => {
-      setTechnicianFilter('all');
-      setCustomerFilter('all');
-      setStatusFilter('all');
+      setTechnicianFilter([]);
+      setCustomerFilter([]);
+      setStatusFilter([]);
     };
 
     // Header actions: [Lupa → busca OS] + [PausadasOS]
@@ -613,50 +615,30 @@ export default function Schedule() {
             onClear={clearFilters}
           >
             <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Técnico</label>
-                <Select value={technicianFilter} onValueChange={setTechnicianFilter}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {allProfiles.map((t) => (
-                      <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Cliente</label>
-                <Select value={customerFilter} onValueChange={setCustomerFilter}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="em_andamento">Em andamento</SelectItem>
-                    <SelectItem value="pausada">Pausada</SelectItem>
-                    <SelectItem value="concluida">Concluída</SelectItem>
-                    <SelectItem value="cancelada">Cancelada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <FilterCheckboxGroup
+                label="Técnico"
+                options={allProfiles.map((t) => ({ value: t.user_id, label: t.full_name }))}
+                selected={technicianFilter}
+                onChange={setTechnicianFilter}
+              />
+              <FilterCheckboxGroup
+                label="Cliente"
+                options={customers.map((c) => ({ value: c.id, label: c.name }))}
+                selected={customerFilter}
+                onChange={setCustomerFilter}
+              />
+              <FilterCheckboxGroup
+                label="Status"
+                options={[
+                  { value: 'pendente', label: 'Pendente' },
+                  { value: 'em_andamento', label: 'Em andamento' },
+                  { value: 'pausada', label: 'Pausada' },
+                  { value: 'concluida', label: 'Concluída' },
+                  { value: 'cancelada', label: 'Cancelada' },
+                ]}
+                selected={statusFilter}
+                onChange={setStatusFilter}
+              />
             </div>
           </FilterSheet>
         </div>

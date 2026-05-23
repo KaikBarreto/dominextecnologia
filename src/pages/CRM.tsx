@@ -24,7 +24,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import {
@@ -49,11 +48,12 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 
 interface Filters {
   search: string;
-  source: string;
-  assignedTo: string;
+  source: string[];
+  assignedTo: string[];
   minValue: string;
   maxValue: string;
 }
@@ -77,8 +77,8 @@ export default function CRM() {
 
   const [filters, setFilters] = useState<Filters>({
     search: '',
-    source: '',
-    assignedTo: '',
+    source: [],
+    assignedTo: [],
     minValue: '',
     maxValue: '',
   });
@@ -95,8 +95,8 @@ export default function CRM() {
         const matchesCustomer = fuzzyIncludes(lead.customers?.name, filters.search);
         if (!matchesTitle && !matchesCustomer) return false;
       }
-      if (filters.source && lead.source !== filters.source) return false;
-      if (filters.assignedTo && lead.assigned_to !== filters.assignedTo) return false;
+      if (filters.source.length > 0 && !filters.source.includes(lead.source ?? '')) return false;
+      if (filters.assignedTo.length > 0 && !filters.assignedTo.includes(lead.assigned_to ?? '')) return false;
       if (filters.minValue && (lead.value || 0) < parseFloat(filters.minValue)) return false;
       if (filters.maxValue && (lead.value || 0) > parseFloat(filters.maxValue)) return false;
       return true;
@@ -128,11 +128,26 @@ export default function CRM() {
     totalValue: filteredLeads.reduce((sum, lead) => sum + (lead.value || 0), 0),
   }), [filteredLeads]);
 
-  const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
+  const activeFiltersCount =
+    (filters.search ? 1 : 0) +
+    (filters.source.length > 0 ? 1 : 0) +
+    (filters.assignedTo.length > 0 ? 1 : 0) +
+    (filters.minValue ? 1 : 0) +
+    (filters.maxValue ? 1 : 0);
 
   const clearFilters = () => {
-    setFilters({ search: '', source: '', assignedTo: '', minValue: '', maxValue: '' });
+    setFilters({ search: '', source: [], assignedTo: [], minValue: '', maxValue: '' });
   };
+
+  // Opções pros FilterCheckboxGroup.
+  const sourceOptions: FilterCheckboxOption[] = LEAD_SOURCES.map((src) => ({
+    value: src,
+    label: src,
+  }));
+  const assignedToOptions: FilterCheckboxOption[] = users.map((user) => ({
+    value: user.user_id,
+    label: user.full_name,
+  }));
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -253,39 +268,21 @@ export default function CRM() {
   // Conteúdo do FilterSheet (mobile) — origem, vendedor, faixa de valor, view toggle.
   const filterSheetContent = (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Origem</label>
-        <Select
-          value={filters.source || 'all'}
-          onValueChange={(value) => setFilters(prev => ({ ...prev, source: value === 'all' ? '' : value }))}
-        >
-          <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {LEAD_SOURCES.map(src => (
-              <SelectItem key={src} value={src}>{src}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterCheckboxGroup
+        label="Origem"
+        options={sourceOptions}
+        selected={filters.source}
+        onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
+        emptyLabel="Todas"
+      />
 
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Vendedor</label>
-        <Select
-          value={filters.assignedTo || 'all'}
-          onValueChange={(value) => setFilters(prev => ({ ...prev, assignedTo: value === 'all' ? '' : value }))}
-        >
-          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {users.map(user => (
-              <SelectItem key={user.user_id} value={user.user_id}>
-                {user.full_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterCheckboxGroup
+        label="Vendedor"
+        options={assignedToOptions}
+        selected={filters.assignedTo}
+        onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
+        emptyLabel="Todos"
+      />
 
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -812,39 +809,21 @@ export default function CRM() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Origem</Label>
-                <Select
-                  value={filters.source || 'all'}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, source: value === 'all' ? '' : value }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {LEAD_SOURCES.map(src => (
-                      <SelectItem key={src} value={src}>{src}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FilterCheckboxGroup
+                label="Origem"
+                options={sourceOptions}
+                selected={filters.source}
+                onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
+                emptyLabel="Todas"
+              />
 
-              <div className="space-y-2">
-                <Label>Vendedor</Label>
-                <Select
-                  value={filters.assignedTo || 'all'}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, assignedTo: value === 'all' ? '' : value }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {users.map(user => (
-                      <SelectItem key={user.user_id} value={user.user_id}>
-                        {user.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FilterCheckboxGroup
+                label="Vendedor"
+                options={assignedToOptions}
+                selected={filters.assignedTo}
+                onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
+                emptyLabel="Todos"
+              />
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
@@ -878,16 +857,19 @@ export default function CRM() {
       {/* Active Filters Display */}
       {activeFiltersCount > 0 && (
         <div className="flex flex-wrap gap-2">
-          {filters.source && (
+          {filters.source.length > 0 && (
             <Badge className="gap-1 bg-foreground text-background">
-              Origem: {filters.source}
-              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, source: '' }))} />
+              Origem: {filters.source.length === 1 ? filters.source[0] : `${filters.source.length} selecionadas`}
+              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, source: [] }))} />
             </Badge>
           )}
-          {filters.assignedTo && (
+          {filters.assignedTo.length > 0 && (
             <Badge className="gap-1 bg-foreground text-background">
-              Vendedor: {users.find(u => u.user_id === filters.assignedTo)?.full_name || 'N/A'}
-              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, assignedTo: '' }))} />
+              Vendedor:{' '}
+              {filters.assignedTo.length === 1
+                ? users.find((u) => u.user_id === filters.assignedTo[0])?.full_name || 'N/A'
+                : `${filters.assignedTo.length} selecionados`}
+              <X className="h-3 w-3 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, assignedTo: [] }))} />
             </Badge>
           )}
           {filters.minValue && (

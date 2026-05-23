@@ -70,37 +70,38 @@ export function RelatedTransactionsDialog({
             <AlertTriangle className="h-5 w-5 text-warning" />
             Movimentação vinculada
           </AlertDialogTitle>
-          <AlertDialogDescription asChild>
-            <div className="space-y-3">
-              <p>
-                Esta movimentação faz parte de um conjunto de lançamentos relacionados
-                {linkedQuote ? ` ao Orçamento #${linkedQuote.quote_number}` : ''}.
-                Encontramos <strong>{related.length}</strong> outro(s) lançamento(s) vinculado(s):
-              </p>
-              <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-2 space-y-1.5">
-                {related.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between text-xs gap-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <Receipt className="h-3 w-3 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{r.description}</span>
-                      {r.category && <Badge variant="outline" className="text-[9px] shrink-0">{r.category}</Badge>}
-                    </div>
-                    <span className={`font-medium shrink-0 ${r.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
-                      {r.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(r.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {linkedQuote && mode === 'delete' && (
-                <p className="text-xs text-warning bg-warning/10 rounded p-2 flex gap-2">
-                  <FileText className="h-4 w-4 shrink-0" />
-                  Ao {verb} todos os lançamentos, o Orçamento #{linkedQuote.quote_number} ficará desvinculado e poderá ser aprovado novamente.
-                </p>
-              )}
-              <p className="text-sm font-medium pt-1">O que você quer {verb}?</p>
-            </div>
+          <AlertDialogDescription>
+            Esta movimentação faz parte de um conjunto de lançamentos relacionados
+            {linkedQuote ? ` ao Orçamento #${linkedQuote.quote_number}` : ''}.
+            Encontramos {related.length} outro(s) lançamento(s) vinculado(s).
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {/* Conteúdo rico fora do Description: Radix/vaul Description vira <p>, e
+            <p> não pode conter <div>. Mover pra fora elimina o warning de a11y
+            e evita o "modal preto" no remount Dialog→Drawer. */}
+        <div className="space-y-3">
+          <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-2 space-y-1.5">
+            {related.map((r) => (
+              <div key={r.id} className="flex items-center justify-between text-xs gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Receipt className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{r.description}</span>
+                  {r.category && <Badge variant="outline" className="text-[9px] shrink-0">{r.category}</Badge>}
+                </div>
+                <span className={`font-medium shrink-0 ${r.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
+                  {r.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(r.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+          {linkedQuote && mode === 'delete' && (
+            <p className="text-xs text-warning bg-warning/10 rounded p-2 flex gap-2">
+              <FileText className="h-4 w-4 shrink-0" />
+              Ao {verb} todos os lançamentos, o Orçamento #{linkedQuote.quote_number} ficará desvinculado e poderá ser aprovado novamente.
+            </p>
+          )}
+          <p className="text-sm font-medium pt-1">O que você quer {verb}?</p>
+        </div>
         <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
           <Button
             variant="destructive"

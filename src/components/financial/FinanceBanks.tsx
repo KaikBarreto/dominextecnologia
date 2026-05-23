@@ -37,7 +37,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 
 function formatMonth(dateStr: string) {
   return format(parseISO(dateStr + 'T12:00:00'), 'MMMM yyyy', { locale: ptBR });
@@ -89,16 +89,16 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [payAmount, setPayAmount] = useState(0);
   const [payNotes, setPayNotes] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'partial' | 'paid'>('all');
-  const [draftStatusFilter, setDraftStatusFilter] = useState<typeof statusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [draftStatusFilter, setDraftStatusFilter] = useState<string[]>([]);
 
   const cashBankAccounts = accounts.filter(a => a.type !== 'cartao' && a.is_active);
 
-  const filteredBills = statusFilter === 'all'
+  const filteredBills = statusFilter.length === 0
     ? bills
-    : bills.filter(b => b.status === statusFilter);
+    : bills.filter(b => statusFilter.includes(b.status));
 
-  const activeFilterCount = statusFilter === 'all' ? 0 : 1;
+  const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
 
   const openPayModal = (bill: CreditCardBillWithTransactions) => {
     const remaining = (bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
@@ -178,27 +178,18 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
   const showFilter = distinctStatuses.size > 1;
 
   const filterContent = (
-    <div className="space-y-3">
-      <p className="text-sm font-medium">Status da fatura</p>
-      <RadioGroup
-        value={draftStatusFilter}
-        onValueChange={(v) => setDraftStatusFilter(v as typeof statusFilter)}
-        className="space-y-1"
-      >
-        {[
-          { value: 'all', label: 'Todas' },
-          { value: 'open', label: 'Aberta' },
-          { value: 'closed', label: 'Fechada' },
-          { value: 'partial', label: 'Parcial' },
-          { value: 'paid', label: 'Paga' },
-        ].map(opt => (
-          <label key={opt.value} className="flex items-center gap-2 py-2 cursor-pointer">
-            <RadioGroupItem value={opt.value} id={`bill-filter-${opt.value}`} />
-            <span className="text-sm">{opt.label}</span>
-          </label>
-        ))}
-      </RadioGroup>
-    </div>
+    <FilterCheckboxGroup
+      label="Status da fatura"
+      selected={draftStatusFilter}
+      onChange={setDraftStatusFilter}
+      emptyLabel="Todas"
+      options={[
+        { value: 'open', label: 'Aberta' },
+        { value: 'closed', label: 'Fechada' },
+        { value: 'partial', label: 'Parcial' },
+        { value: 'paid', label: 'Paga' },
+      ]}
+    />
   );
 
   // Renderiza linha de fatura — usado em mobile (MobileListItem) e detalhe.
@@ -271,8 +262,8 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
             triggerLabel="Filtros"
             activeCount={activeFilterCount}
             onClear={() => {
-              setDraftStatusFilter('all');
-              setStatusFilter('all');
+              setDraftStatusFilter([]);
+              setStatusFilter([]);
             }}
             onApply={() => setStatusFilter(draftStatusFilter)}
           >

@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
@@ -194,7 +194,9 @@ function AttachmentsSection({ isEditing, transactionId, pendingFiles, setPending
   );
   const uploadMutation = useUploadTransactionAttachment();
   const removeMutation = useRemoveTransactionAttachment();
-  const showInstallmentInfo = !isEditing && installmentCount > 1;
+  // Mostra info de vinculação a múltiplas parcelas tanto na criação quanto na
+  // edição "à vista → parcelada" (caso em que o save recria como N parcelas).
+  const showInstallmentInfo = installmentCount > 1;
 
   const handlePick = () => fileInputRef.current?.click();
 
@@ -395,7 +397,7 @@ export function TransactionFormDialog({
     is_paid: transaction?.is_paid ?? true,
     notes: (transaction as any)?.notes ?? '',
     payment_method: (transaction as any)?.payment_method ?? lastPaymentMethod,
-    installment_count: 1,
+    installment_count: (transaction as any)?.installment_total ?? 1,
     account_id: (transaction as any)?.account_id ?? lastAccountId,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [transaction, defaultType]);
@@ -442,6 +444,21 @@ export function TransactionFormDialog({
   }, [isCardAccount, watchedDate, watchedAccountId, open]);
 
   const handleSubmit = async (data: TransactionFormData) => {
+    // Transição "à vista → parcelada" em edição: Finance.tsx vai deletar a
+    // original e recriar como N parcelas (o backend só faz UPDATE plano).
+    // Confirma com o usuário antes de submeter pra evitar surpresa.
+    const originalInstallmentTotal = (transaction as any)?.installment_total;
+    const wasOnePayment = isEditing && (!originalInstallmentTotal || originalInstallmentTotal <= 1);
+    const willBeMultiple = (data.installment_count ?? 1) > 1;
+    if (wasOnePayment && willBeMultiple) {
+      const ok = window.confirm(
+        `Você está alterando esta despesa para ${data.installment_count} parcelas. ` +
+        `A transação original será removida e ${data.installment_count} novas parcelas serão criadas no lugar. ` +
+        `Os anexos serão preservados em todas as parcelas. Continuar?`
+      );
+      if (!ok) return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
@@ -460,11 +477,13 @@ export function TransactionFormDialog({
       // Contrato esperado de `result`: { ids: string[]; primary?: object }
       // - À vista: ids = [id]
       // - Parcelado: ids = [id_1, id_2, ..., id_N] (em ordem de installment_number)
-      // - Edit: ids = [transaction.id] (montado pelo Finance.tsx)
+      // - Edit normal: ids = [transaction.id]
+      // - Edit à vista → parcelada: ids = [id_1, ..., id_N] das NOVAS parcelas
+      //   (a original já foi deletada por Finance.tsx). Sempre prioriza result.ids.
       if (pendingFiles.length > 0) {
-        const txnIds: string[] = isEditing
-          ? (transaction?.id ? [transaction.id] : [])
-          : (Array.isArray(result?.ids) ? result.ids : []);
+        const txnIds: string[] = Array.isArray(result?.ids) && result.ids.length > 0
+          ? result.ids
+          : (isEditing && transaction?.id ? [transaction.id] : []);
 
         if (txnIds.length === 0) {
           toast({
@@ -640,16 +659,24 @@ export function TransactionFormDialog({
           )}
 
           {/* Credit card bill info */}
-          {isCardAccount && transactionType === 'saida' && (
-            <CreditCardBillSection
-              form={form}
-              cardName={selectedAccount?.name ?? ''}
-              account={selectedAccount}
-              installmentCount={form.watch('installment_count') ?? 1}
-              totalAmount={form.watch('amount') ?? 0}
-              transactionDate={form.watch('transaction_date') ?? ''}
-            />
-          )}
+          {isCardAccount && transactionType === 'saida' && (() => {
+            const originalInstallmentTotal = (transaction as any)?.installment_total;
+            const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1;
+            // Editando parcela individual de despesa já parcelada: mostrar só o
+            // mês desta parcela (breakdown sairia errado, calculado a partir
+            // desta data específica). Nos outros casos (novo OU à vista virando
+            // parcelada), refletir a escolha atual do form.
+            return (
+              <CreditCardBillSection
+                form={form}
+                cardName={selectedAccount?.name ?? ''}
+                account={selectedAccount}
+                installmentCount={wasAlreadyMultiple ? 1 : (form.watch('installment_count') ?? 1)}
+                totalAmount={form.watch('amount') ?? 0}
+                transactionDate={form.watch('transaction_date') ?? ''}
+              />
+            );
+          })()}
 
           {/* Description */}
           <FormField control={form.control} name="description" render={({ field }) => (
@@ -670,27 +697,50 @@ export function TransactionFormDialog({
               </FormItem>
             )} />
 
-            {!isEditing && (
-              <FormField control={form.control} name="installment_count" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Parcelas</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value || 1)}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="1">À vista</SelectItem>
-                      {[2,3,4,5,6,7,8,9,10,11,12].map((n) => (
-                        <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
+            {(() => {
+              const originalInstallmentTotal = (transaction as any)?.installment_total;
+              const wasAlreadyMultiple = isEditing && originalInstallmentTotal > 1;
+              // Edição de transação JÁ parcelada: badge read-only — alterar
+              // quantidade ali exigiria reescrever TODAS as parcelas (fora de escopo).
+              // Edição de transação à vista (ou nova): Select normal. Se o usuário
+              // escolher N>1, Finance.tsx recria como parcelas (delete + create).
+              if (wasAlreadyMultiple) {
+                return (
+                  <FormItem>
+                    <FormLabel>Parcelas</FormLabel>
+                    <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
+                      <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>
+                        Parcela {(transaction as any)?.installment_number ?? '?'}/{originalInstallmentTotal}
+                      </span>
+                    </div>
+                  </FormItem>
+                );
+              }
+              return (
+                <FormField control={form.control} name="installment_count" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Parcelas</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value || 1)}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="1">À vista</SelectItem>
+                        {[2,3,4,5,6,7,8,9,10,11,12].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              );
+            })()}
           </div>
 
-          {/* Installment info — shown for non-card transactions only (card gets breakdown above) */}
-          {!isEditing && (form.watch('installment_count') || 1) > 1 && !isCardAccount && (
+          {/* Installment info — shown for non-card transactions only (card gets breakdown above).
+              Vale também na edição "à vista → parcelada" (transação JÁ parcelada nunca chega aqui
+              porque o campo vira badge read-only). */}
+          {!((transaction as any)?.installment_total > 1) && (form.watch('installment_count') || 1) > 1 && !isCardAccount && (
             <p className="text-xs text-muted-foreground bg-muted p-2 rounded-md">
               Serão geradas {form.watch('installment_count')} parcelas de{' '}
               <strong>

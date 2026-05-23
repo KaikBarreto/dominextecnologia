@@ -3,7 +3,6 @@ import { MapPin, Navigation, Clock, ExternalLink, User, LogIn, LogOut } from 'lu
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -15,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { TrackingEventListItem } from '@/components/tracking/TrackingEventListItem';
 
@@ -44,7 +44,8 @@ function getInitials(name?: string) {
 export default function TechnicianTracking() {
   const isMobile = useIsMobile();
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  // Multi-select: vazio = nenhum técnico selecionado (não roda query).
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,7 +57,10 @@ export default function TechnicianTracking() {
   }, []);
 
   useEffect(() => {
-    if (!selectedUserId || !selectedDate) return;
+    if (selectedUserIds.length === 0 || !selectedDate) {
+      setLocations([]);
+      return;
+    }
     setLoading(true);
 
     const startOfDay = `${selectedDate}T00:00:00.000Z`;
@@ -65,7 +69,7 @@ export default function TechnicianTracking() {
     supabase
       .from('technician_locations' as any)
       .select('*')
-      .eq('user_id', selectedUserId)
+      .in('user_id', selectedUserIds)
       .gte('created_at', startOfDay)
       .lte('created_at', endOfDay)
       .order('created_at', { ascending: false })
@@ -73,7 +77,7 @@ export default function TechnicianTracking() {
         setLocations((data as LocationRecord[]) || []);
         setLoading(false);
       });
-  }, [selectedUserId, selectedDate]);
+  }, [selectedUserIds, selectedDate]);
 
   const sortedAsc = useMemo(
     () => [...locations].sort(
@@ -119,7 +123,10 @@ export default function TechnicianTracking() {
     tracking: 'secondary',
   };
 
-  const selectedTechnician = profiles.find((p) => p.user_id === selectedUserId);
+  // Quando um único técnico está selecionado, mostramos avatar/nome no item.
+  // Com múltiplos, fallback genérico (lista mista de eventos).
+  const selectedTechnician =
+    selectedUserIds.length === 1 ? profiles.find((p) => p.user_id === selectedUserIds[0]) : null;
   const selectedTechnicianName = selectedTechnician?.full_name;
   const selectedTechnicianInitials = getInitials(selectedTechnicianName);
 
@@ -155,37 +162,32 @@ export default function TechnicianTracking() {
 
   // Contagem de filtros ativos no mobile (técnico + data diferente de hoje).
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const activeFilterCount = (selectedUserId ? 1 : 0) + (selectedDate !== todayStr ? 1 : 0);
+  const activeFilterCount = (selectedUserIds.length > 0 ? 1 : 0) + (selectedDate !== todayStr ? 1 : 0);
 
   const clearFilters = () => {
-    setSelectedUserId('');
+    setSelectedUserIds([]);
     setSelectedDate(todayStr);
   };
 
   // Conteúdo dos filtros — reusado inline no desktop e dentro da FilterSheet no mobile.
   const filterContent = (
-    <div className={cn(isMobile ? 'space-y-4' : 'flex flex-col sm:flex-row gap-3')}>
-      <div className={isMobile ? '' : 'sm:w-[280px]'}>
-        {isMobile && (
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Técnico</label>
-        )}
-        <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-          <SelectTrigger className={isMobile ? 'w-full' : 'w-full'}>
-            <SelectValue placeholder="Selecione um técnico" />
-          </SelectTrigger>
-          <SelectContent>
-            {profiles.map((p) => (
-              <SelectItem key={p.user_id} value={p.user_id}>
-                {p.full_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className={cn(isMobile ? 'space-y-4' : 'flex flex-col sm:flex-row gap-3 items-start')}>
+      <div className={isMobile ? '' : 'sm:w-[320px]'}>
+        <FilterCheckboxGroup
+          label="Técnico"
+          options={profiles.map((p) => ({ value: p.user_id, label: p.full_name }))}
+          selected={selectedUserIds}
+          onChange={setSelectedUserIds}
+          emptyLabel="Selecione ao menos um"
+        />
       </div>
 
       <div className={isMobile ? '' : 'sm:w-[200px]'}>
         {isMobile && (
           <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Data</label>
+        )}
+        {!isMobile && (
+          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 block">Data</label>
         )}
         <Input
           type="date"
@@ -259,7 +261,9 @@ export default function TechnicianTracking() {
               {filterContent}
             </FilterSheet>
             <div className="flex-1 min-w-0 flex items-center gap-2 text-xs text-muted-foreground truncate">
-              {selectedTechnician ? (
+              {selectedUserIds.length === 0 ? (
+                <span className="truncate">Selecione um técnico</span>
+              ) : selectedTechnician ? (
                 <>
                   <User className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{selectedTechnician.full_name}</span>
@@ -267,7 +271,12 @@ export default function TechnicianTracking() {
                   <span className="shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
                 </>
               ) : (
-                <span className="truncate">Selecione um técnico</span>
+                <>
+                  <User className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{selectedUserIds.length} técnicos</span>
+                  <span className="opacity-50">•</span>
+                  <span className="shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+                </>
               )}
             </div>
           </div>
@@ -336,9 +345,9 @@ export default function TechnicianTracking() {
         isMobile ? (
           <EmptyState
             icon={<MapPin className="h-12 w-12" />}
-            title={selectedUserId ? 'Nenhum registro encontrado' : 'Selecione um técnico'}
+            title={selectedUserIds.length > 0 ? 'Nenhum registro encontrado' : 'Selecione um técnico'}
             description={
-              selectedUserId
+              selectedUserIds.length > 0
                 ? 'Nenhum deslocamento foi registrado nesta data.'
                 : 'Escolha um técnico e uma data para ver o histórico de deslocamentos.'
             }
@@ -348,7 +357,7 @@ export default function TechnicianTracking() {
             <CardContent className="p-8 text-center text-muted-foreground">
               <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p>
-                {selectedUserId
+                {selectedUserIds.length > 0
                   ? 'Nenhum registro encontrado para esta data.'
                   : 'Selecione um técnico para ver o histórico.'}
               </p>

@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinancial } from '@/hooks/useFinancial';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { FinanceOverview } from '@/components/financial/FinanceOverview';
 import { TransactionListPanel } from '@/components/financial/TransactionListPanel';
@@ -54,6 +56,7 @@ export default function Finance() {
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
+  const { toast } = useToast();
 
   const {
     transactions, isLoading,
@@ -110,13 +113,76 @@ export default function Finance() {
     if (route) navigate(route);
   };
 
+  // Duplica linhas de `financial_transaction_attachments` da transação original
+  // pra cada nova parcela, apontando pro MESMO `storage_path` (arquivo físico
+  // único, várias rows referenciando). Não copia o arquivo no Storage —
+  // alinhado ao padrão usado em `useUploadTransactionAttachmentShared`.
+  const relinkAttachments = async (oldTransactionId: string, newIds: string[]) => {
+    if (newIds.length === 0) return;
+    const { data: existing, error: selErr } = await supabase
+      .from('financial_transaction_attachments')
+      .select('storage_path, file_name, mime_type, size_bytes, uploaded_by')
+      .eq('transaction_id', oldTransactionId);
+    if (selErr) throw selErr;
+    if (!existing || existing.length === 0) return;
+
+    const rows = newIds.flatMap((newId) =>
+      existing.map((att) => ({
+        transaction_id: newId,
+        storage_path: att.storage_path,
+        file_name: att.file_name,
+        mime_type: att.mime_type,
+        size_bytes: att.size_bytes,
+        uploaded_by: att.uploaded_by,
+      }))
+    );
+    const { error: insErr } = await supabase
+      .from('financial_transaction_attachments')
+      .insert(rows);
+    if (insErr) throw insErr;
+  };
+
   const handleSubmit = async (data: any) => {
     let result: any = null;
     if (editingTransaction) {
-      // Edit: continua devolvendo a transação atualizada (objeto único).
-      // Embrulha pra manter o contrato { ids, primary } que o form espera.
-      const updated = await updateTransaction.mutateAsync({ ...data, id: editingTransaction.id });
-      result = { ids: [editingTransaction.id], primary: updated };
+      const wasOnePayment =
+        !editingTransaction.installment_total || editingTransaction.installment_total <= 1;
+      const willBeMultiple = (data.installment_count ?? 1) > 1;
+
+      if (wasOnePayment && willBeMultiple) {
+        // Transição "à vista → parcelada": backend só faz UPDATE plano, então
+        // criamos as N parcelas primeiro (pra não perder dados se falhar),
+        // relinkamos os anexos, e só depois deletamos a original.
+        const created = await createTransaction.mutateAsync(data);
+        try {
+          await relinkAttachments(editingTransaction.id, created.ids);
+        } catch (e) {
+          // Anexos não relinkados — não bloqueia o save, mas avisa. As novas
+          // parcelas já existem; o user pode reanexar manualmente.
+          toast({
+            variant: 'destructive',
+            title: 'Anexos não foram preservados',
+            description: 'As parcelas foram criadas, mas os comprovantes da transação original não puderam ser vinculados. Reanexe manualmente.',
+          });
+        }
+        try {
+          await deleteTransaction.mutateAsync(editingTransaction.id);
+        } catch (e) {
+          // Pior caso: usuário fica com a original + as N novas. Não tentamos
+          // rollback do create — viraria spaghetti. Avisamos e o user limpa.
+          toast({
+            variant: 'destructive',
+            title: 'Transação original não foi removida',
+            description: 'As parcelas foram criadas com sucesso, mas a transação original ainda está na lista. Remova manualmente.',
+          });
+        }
+        result = created;
+      } else {
+        // Caminho normal: update simples. Embrulha pra manter o contrato
+        // { ids, primary } que o form espera.
+        const updated = await updateTransaction.mutateAsync({ ...data, id: editingTransaction.id });
+        result = { ids: [editingTransaction.id], primary: updated };
+      }
     } else {
       // Create: já retorna { ids: string[]; primary } — funciona pra à vista E parcelado.
       result = await createTransaction.mutateAsync(data);
