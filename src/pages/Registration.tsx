@@ -187,20 +187,21 @@ export default function Registration() {
   const displayStep = originFromUrl && step >= 3 ? step - 1 : step;
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="relative min-h-[100dvh] flex flex-col sm:items-center sm:justify-center sm:p-4 overflow-hidden">
       <div className="fixed inset-0 z-0">
         <DarkVeil hueShift={53} speed={0.5} />
       </div>
 
-      <div className="relative z-10 w-full max-w-2xl">
-        {/* Logo outside card */}
-        <div className="mb-8 flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-2xl flex flex-col flex-1 sm:flex-initial">
+        {/* Logo — desktop fica no topo, mobile fica flutuando sobre o veil */}
+        <div className="flex flex-col items-center px-6 pt-[max(env(safe-area-inset-top),2rem)] pb-6 sm:p-0 sm:mb-8">
           <img src={logoWhite} alt="Dominex" className="h-14 w-auto mb-2" />
-          <p className="text-white/80 text-sm">Sistema de Gestão de Equipes Externas</p>
+          <p className="text-white/80 text-xs sm:text-sm tracking-wider sm:tracking-normal">Sistema de Gestão de Equipes Externas</p>
         </div>
 
-        <Card className="border-0 sm:border sm:border-white/15 bg-black/60 sm:bg-black/40 backdrop-blur-xl shadow-2xl rounded-none sm:rounded-xl">
-          <CardContent className="p-6 xl:p-8">
+        <Card className="border-0 sm:border sm:border-white/15 bg-black/70 sm:bg-black/40 backdrop-blur-xl shadow-2xl rounded-t-[28px] sm:rounded-xl flex-1 sm:flex-initial animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:fade-in duration-500 ease-out">
+          <div className="mx-auto h-1 w-10 rounded-full bg-white/30 mt-3 mb-1 sm:hidden" />
+          <CardContent className="p-6 xl:p-8 pb-[max(env(safe-area-inset-bottom),3rem)] sm:pb-6">
             <div className="space-y-6">
 
               {/* Header */}

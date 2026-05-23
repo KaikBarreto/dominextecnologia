@@ -348,8 +348,14 @@ export default function Auth() {
           </div>
 
           {/* Bottom sheet com o form */}
-          <div className="bg-background rounded-t-[28px] shadow-2xl shadow-black/40 px-6 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] animate-in slide-in-from-bottom-12 duration-500 ease-out">
+          <div className="bg-background rounded-t-[28px] shadow-2xl shadow-black/40 px-6 pt-6 pb-[max(env(safe-area-inset-bottom),3rem)] animate-in slide-in-from-bottom-12 duration-500 ease-out">
             <div className="mx-auto h-1 w-10 rounded-full bg-muted mb-5" />
+
+            {!showForgotPassword && (
+              <div className="text-center mb-5">
+                <h1 className="text-xl font-semibold uppercase tracking-widest">Login</h1>
+              </div>
+            )}
 
             {showForgotPassword ? (
               <ForgotPasswordFlow
@@ -444,7 +450,7 @@ export default function Auth() {
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs text-primary hover:underline uppercase tracking-wider font-medium"
                         disabled={isLoading}
                       >
                         Esqueci minha senha
@@ -464,7 +470,7 @@ export default function Auth() {
                   </form>
                 </Form>
 
-                <div className="text-center text-xs text-muted-foreground pt-1">
+                <div className="text-center text-[11px] text-muted-foreground pt-2 border-t uppercase tracking-wider">
                   Ainda não tem conta?{' '}
                   <Link to="/cadastro" className="text-primary font-semibold hover:underline">
                     Cadastre-se
@@ -472,6 +478,11 @@ export default function Auth() {
                 </div>
               </div>
             )}
+
+            {/* Rodapé com versão, link Auctus, copyright e botão atualizar */}
+            <div className="mt-6 pt-4 border-t">
+              <SystemFooter />
+            </div>
           </div>
         </div>
 

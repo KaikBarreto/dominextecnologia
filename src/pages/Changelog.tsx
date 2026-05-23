@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.4',
+    date: '23 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Login no celular ganha título "LOGIN", rodapé com versão, e textos em CAPS',
+        description: 'Pequenos ajustes no novo login mobile: agora aparece o título "LOGIN" em cima do formulário (igual a versão do computador), os links "ESQUECI MINHA SENHA" e "AINDA NÃO TEM CONTA? CADASTRE-SE" estão em caixa alta com espaçamento de letras, e o rodapé com versão do sistema, link "Desenvolvido por Auctus", copyright e botão de atualizar voltou pro fim da gaveta de login. A gaveta também ganhou uma margem inferior um pouco maior pra ficar mais confortável visualmente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tela de Cadastro com mesmo visual de aplicativo no celular',
+        description: 'A tela de cadastro de empresa nova no celular agora segue o mesmo padrão da tela de login: o formulário aparece em uma "gaveta" que desliza de baixo com cantos arredondados, alça de toque no topo, e o logo do Dominex flutua sobre o fundo escuro animado. As 4 etapas do cadastro (Telefone, Email, Dados, Senha) continuam funcionando exatamente como antes, só ganharam visual mais nativo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Fluxo de "Esqueci minha senha" no celular agora aparece legível',
+        description: 'Quando você toca em "Esqueci minha senha" no celular, o fluxo de recuperação de senha (informar email → receber código → criar nova senha) aparece dentro da mesma gaveta do login. Antes os textos ficavam quase invisíveis porque estavam herdando estilo de tela escura mas o fundo da gaveta é claro. Agora todos os textos, inputs e botões usam estilo claro consistente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.3',
     date: '23 de maio de 2026',
     type: 'patch',
