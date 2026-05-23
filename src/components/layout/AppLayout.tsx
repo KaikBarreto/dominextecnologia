@@ -9,7 +9,6 @@ import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePullToRefresh } from '@/components/mobile/MobilePullToRefresh';
-import { useQueryClient } from '@tanstack/react-query';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Sidebar } from './Sidebar';
 import { TopNavbar } from './TopNavbar';
@@ -158,10 +157,11 @@ function TopbarShell() {
 // SHELL: mobile/tablet (header simples + MobileBottomNav + pull-to-refresh)
 // ============================================================
 function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
-  const queryClient = useQueryClient();
   const handleRefresh = async () => {
-    // Aguarda refetch real das queries ativas (não só invalida silenciosamente).
-    await queryClient.refetchQueries({ type: 'active' });
+    // Efeito literal de F5: reload completo. Aceito perder estado de UI
+    // temporário (filtros, modais) em troca de garantir refresh de tudo
+    // (caches de imagem, contexts, service worker). CEO 2026-05-23.
+    window.location.reload();
   };
 
   return (
