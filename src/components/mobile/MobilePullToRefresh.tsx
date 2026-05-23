@@ -99,6 +99,7 @@ export function MobilePullToRefresh({
   return (
     <div
       ref={containerRef}
+      data-scroll-container
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

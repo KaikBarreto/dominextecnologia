@@ -89,10 +89,21 @@ export function AppLayout() {
 }
 
 // ============================================================
-// Wrapper de transição entre rotas — fade-in suave a cada mudança
+// Wrapper de transição entre rotas — fade-in suave + scroll-to-top
 // ============================================================
 function RouteTransition({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+
+  // Scroll-to-top em qualquer container scrollável quando muda de rota
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+    document.querySelectorAll('main, [data-scroll-container]').forEach((el) => {
+      (el as HTMLElement).scrollTop = 0;
+    });
+  }, [location.pathname]);
+
   return (
     <div key={location.pathname} className="animate-in fade-in duration-200 min-w-0 max-w-full">
       {children}
