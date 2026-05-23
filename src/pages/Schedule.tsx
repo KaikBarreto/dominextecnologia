@@ -494,7 +494,7 @@ export default function Schedule() {
   if (isLoading) {
     return (
       <div className="space-y-6 p-1">
-        <PageHeader
+        <MobilePageHeader
           title="Agenda"
           subtitle="Visualize e gerencie os agendamentos de ordens de serviço"
           icon={CalendarIcon}

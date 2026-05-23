@@ -87,6 +87,18 @@ export function AppLayout() {
 }
 
 // ============================================================
+// Wrapper de transição entre rotas — fade-in suave a cada mudança
+// ============================================================
+function RouteTransition({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  return (
+    <div key={location.pathname} className="animate-in fade-in duration-200 min-w-0 max-w-full">
+      {children}
+    </div>
+  );
+}
+
+// ============================================================
 // SHELL: desktop sidebar (modo padrão)
 // ============================================================
 function SidebarShell() {
@@ -96,9 +108,9 @@ function SidebarShell() {
         <Sidebar />
         <SidebarInset className="flex flex-col min-w-0 max-w-full overflow-hidden">
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-            <div className="min-w-0 max-w-full">
+            <RouteTransition>
               <Outlet />
-            </div>
+            </RouteTransition>
           </main>
           <footer className="border-t px-4 h-[52px] flex-shrink-0 flex items-center justify-center">
             <SystemFooter />
@@ -117,9 +129,9 @@ function TopbarShell() {
     <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
       <TopNavbar />
       <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-        <div className="min-w-0 max-w-full">
+        <RouteTransition>
           <Outlet />
-        </div>
+        </RouteTransition>
       </main>
       <footer className="border-t px-4 h-[52px] flex items-center justify-center">
         <SystemFooter />
@@ -136,9 +148,9 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
     <div className="flex h-[100dvh] w-full max-w-full flex-col">
       <MobileTabletHeader isAdminUser={isAdminUser} />
       <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-w-0 max-w-full pb-28">
-        <div className="min-w-0 max-w-full">
+        <RouteTransition>
           <Outlet />
-        </div>
+        </RouteTransition>
         <div className="mt-6 pb-2">
           <SystemFooter />
         </div>

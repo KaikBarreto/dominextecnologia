@@ -82,16 +82,28 @@ export default function ServiceOrders() {
   const [searchTerm, setSearchTerm] = useState('');
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
   const location = useLocation();
+  const [pendingFocusSearch, setPendingFocusSearch] = useState(false);
 
-  // Foco automático no input de busca mobile quando vier da Agenda (ícone lupa)
+  // Captura intent ao chegar via /ordens-servico { state: { focusSearch: true } }
   useEffect(() => {
     const state = location.state as { focusSearch?: boolean } | null;
-    if (state?.focusSearch && mobileSearchInputRef.current) {
-      mobileSearchInputRef.current.focus();
-      // Limpa o state pra não re-disparar em refresh/voltar
+    if (state?.focusSearch) {
+      setPendingFocusSearch(true);
       window.history.replaceState({}, '');
     }
   }, [location.state]);
+
+  // Aplica o foco assim que o input mobile estiver montado (após isLoading=false)
+  useEffect(() => {
+    if (!pendingFocusSearch) return;
+    const tryFocus = setTimeout(() => {
+      if (mobileSearchInputRef.current) {
+        mobileSearchInputRef.current.focus();
+        setPendingFocusSearch(false);
+      }
+    }, 80);
+    return () => clearTimeout(tryFocus);
+  });
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editingOS, setEditingOS] = useState<ServiceOrder | null>(null);
@@ -125,7 +137,10 @@ export default function ServiceOrders() {
       const matchesSearch =
         fuzzyIncludes(os.customer?.name, searchTerm) ||
         fuzzyIncludes(osCode, searchTerm) ||
-        fuzzyIncludes(orderNum, searchTerm);
+        fuzzyIncludes(orderNum, searchTerm) ||
+        fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
+        fuzzyIncludes((os as any).task_title, searchTerm) ||
+        fuzzyIncludes((os as any).equipment?.name, searchTerm);
       const matchesStatus = statusFilter === 'all' || os.status === statusFilter;
       return matchesSearch && matchesStatus;
     });

@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.51',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fim do "flash" do cabeçalho grande ao recarregar a Agenda',
+        description: 'Ao dar refresh na Agenda no celular, o cabeçalho grande de computador aparecia por um instante antes do cabeçalho compacto de aplicativo tomar conta. Isso acontecia porque a tela de carregamento usava o cabeçalho antigo. Agora ela usa o mesmo cabeçalho compacto direto, sem piscada.',
+        category: 'correcao',
+      },
+      {
+        title: 'Foco automático da busca ao vir da Agenda funciona de verdade',
+        description: 'O atalho da lupa na Agenda agora foca corretamente na caixa de busca da tela de Ordens de Serviço quando a tela acaba de carregar — antes o foco tentava acontecer antes do campo existir e falhava silenciosamente. Pequeno delay de 80ms espera o campo aparecer e foca.',
+        category: 'correcao',
+      },
+      {
+        title: 'Busca de OS encontra também tarefas e equipamentos',
+        description: 'A busca de Ordens de Serviço agora cobre, além de cliente e número da OS, o tipo de serviço (ex: "Geladeira", "Higienização"), o título da tarefa e o nome do equipamento. Útil pra encontrar rápido todas as OS de um tipo específico, todas as tarefas com determinado título, ou todas as visitas a um equipamento específico.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Transição suave entre telas no app',
+        description: 'Ao navegar entre telas do sistema, agora a tela nova entra com um leve efeito de fade (200ms), em vez de "trocar instantaneamente". Detalhe sutil que ajuda na sensação de aplicativo nativo. Vale pra todas as telas do sistema.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.50',
     date: '21 de maio de 2026',
     type: 'minor',
