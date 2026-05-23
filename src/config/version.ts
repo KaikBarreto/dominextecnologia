@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.48";
+export const APP_VERSION = "1.8.49";
 
-export const VERSION_NOTES = "Dialog de visualizar OS ganhou ações de Preencher/Pausar/Finalizar/Editar/Excluir igual ao painel da Agenda.";
+export const VERSION_NOTES = "OS dialog redesenhado app-nativo + Agenda Dia/Semana com altura menor e scroll por horário.";

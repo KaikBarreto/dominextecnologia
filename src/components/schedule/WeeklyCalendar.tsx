@@ -22,7 +22,7 @@ interface WeeklyCalendarProps {
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
-const SLOT_HEIGHT = 80; // px per hour
+const SLOT_HEIGHT = 56; // px per hour
 const CASCADE_OFFSET = 28; // px offset for each overlapping card
 
 type PositionedOrder = {

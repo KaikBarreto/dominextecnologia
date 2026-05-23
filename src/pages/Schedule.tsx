@@ -657,8 +657,13 @@ export default function Schedule() {
           </div>
         )}
 
-        {/* Calendar */}
-        <div className="rounded-xl border bg-card overflow-hidden">
+        {/* Calendar — Dia/Semana ganham altura limitada com scroll interno no mobile */}
+        <div
+          className={cn(
+            'rounded-xl border bg-card overflow-hidden',
+            isMobile && (viewMode === 'day' || viewMode === 'week') && 'h-[60vh] max-h-[60vh] flex flex-col'
+          )}
+        >
           {viewMode === 'month' && (
             <MonthlyCalendar
               currentDate={currentDate}

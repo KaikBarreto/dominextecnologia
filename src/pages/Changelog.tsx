@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.49',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda Dia e Semana com altura menor e rolagem por horário no celular',
+        description: 'A visão de Dia e a visão de Semana da Agenda estavam ocupando a tela inteira no celular (com 14 horários em cards altos), forçando o usuário a rolar muito. Agora a agenda fica numa altura fixa (60% da tela), com rolagem vertical interna pra navegar pelos horários — fica mais compacta e dá pra ver o resumo do dia mais rápido. Os horários ficaram um pouco mais baixos (de 80 pra 56 pixels) também, pra caber mais conteúdo na tela sem perder legibilidade. Na visão de Mês e no computador, tudo segue como antes.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botões do detalhe da OS no celular ficaram com cara de app',
+        description: 'Refinamos o detalhe da OS (que abre ao tocar numa Ordem de Serviço na lista): em vez de 6 botões grandes empilhados verticalmente, agora as ações secundárias (Pausar, Retomar, Finalizar, Reabrir, Editar, Excluir, Link, Avaliação) aparecem como ícones coloridos compactos em uma grade de 4 colunas. O botão principal "Preencher OS" continua grande no rodapé. Resultado: o detalhe respira mais e tem visual de aplicativo nativo (iOS Mail / iFood / banco) em vez de formulário web empilhado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.48',
     date: '21 de maio de 2026',
     type: 'patch',
