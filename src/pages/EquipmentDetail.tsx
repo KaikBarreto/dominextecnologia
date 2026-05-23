@@ -21,6 +21,7 @@ import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -206,16 +207,11 @@ export default function EquipmentDetail() {
       </div>
 
       {isMobile ? (
-        <Select value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {tabs.map((tab) => (
-              <SelectItem key={tab.key} value={tab.key}>{tab.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MobilePillTabs
+          tabs={tabs.map((t) => ({ value: t.key, label: t.label }))}
+          activeTab={activeTab}
+          onTabChange={(v) => setActiveTab(v as TabKey)}
+        />
       ) : (
         <div className="flex gap-1 border-b">
           {tabs.map((tab) => (

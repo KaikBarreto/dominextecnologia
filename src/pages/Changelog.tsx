@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.2',
+    date: '23 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abas em pílulas também nas telas de detalhe de Cliente, Equipamento e listagem de Equipamentos',
+        description: 'O novo visual de pílulas horizontais pra trocar de aba que entrou em 1.9.1 agora também aparece nas telas que ainda estavam com o menu suspenso: detalhe do Cliente (abas Geral, Equipamentos, Histórico de OS, Tarefas, Chamados, Contratos, Financeiro), detalhe do Equipamento (Geral, Anexos, Tarefas) e listagem de Equipamentos (Equipamentos, Categorias). Tudo padronizado agora — o sistema inteiro usa o mesmo padrão de troca de aba no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.1',
     date: '23 de maio de 2026',
     type: 'patch',

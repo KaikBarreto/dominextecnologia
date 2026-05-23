@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.1";
+export const APP_VERSION = "1.9.2";
 
-export const VERSION_NOTES = "Busca inline na Agenda, abas em segmented control mobile, e ícones de ação da OS com fundo branco no tema claro.";
+export const VERSION_NOTES = "Abas em pills (segmented control) também nas telas de detalhe de Cliente, Equipamento e listagem de Equipamentos.";

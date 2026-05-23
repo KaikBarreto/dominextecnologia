@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -35,16 +36,14 @@ export default function EquipmentPage() {
 
       {isMobile ? (
         <>
-          <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {tabItems.map((item) => (
-                <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MobilePillTabs
+            tabs={tabItems.map((t) => {
+              const Icon = t.icon;
+              return { value: t.key, label: t.label, icon: <Icon className="h-4 w-4 shrink-0" /> };
+            })}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
           <div className="min-w-0">
             {activeTab === 'equipamentos' && <EquipmentPanel />}
             {activeTab === 'categorias' && <CategoriesPanel />}

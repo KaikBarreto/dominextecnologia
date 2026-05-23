@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { MobilePillTabs } from "@/components/mobile/MobilePillTabs";
 
 export interface SettingsTab {
   value: string;
@@ -36,36 +37,14 @@ export function SettingsSidebarLayout({
   }, []);
 
   if (isMobile) {
-    // Mobile: segmented control horizontal rolável (estilo app nativo).
-    // Grupos são ignorados visualmente — todas as tabs viram pills numa linha.
+    // Mobile: segmented control via MobilePillTabs (grupos achatados).
     return (
       <div className="space-y-4">
-        <div className="relative -mx-3">
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-gradient-to-l from-background to-transparent" />
-          <div className="flex gap-1.5 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {tabs.map((tab) => {
-              const IconComponent = tab.icon;
-              const isActive = activeTab === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  type="button"
-                  onClick={() => onTabChange(tab.value)}
-                  className={cn(
-                    'snap-start shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-medium transition-all active:scale-95',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted active:bg-muted',
-                  )}
-                >
-                  <IconComponent className="h-4 w-4 shrink-0" />
-                  <span className="whitespace-nowrap">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <MobilePillTabs
+          tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" /> }))}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+        />
         <div>{children}</div>
       </div>
     );
