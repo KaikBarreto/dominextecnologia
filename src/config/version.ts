@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.8.47";
+export const APP_VERSION = "1.8.48";
 
-export const VERSION_NOTES = "Legenda da Agenda no celular vira botão que abre gaveta — para de entulhar a tela.";
+export const VERSION_NOTES = "Dialog de visualizar OS ganhou ações de Preencher/Pausar/Finalizar/Editar/Excluir igual ao painel da Agenda.";

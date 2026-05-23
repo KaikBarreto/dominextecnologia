@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.8.48',
+    date: '21 de maio de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ao tocar em uma OS, dá pra agir direto sem fechar o detalhe',
+        description: 'Antes, ao tocar em uma Ordem de Serviço para ver os detalhes no celular, só aparecia o botão de copiar link de avaliação (e só pra OS concluída). Agora o detalhe traz o mesmo conjunto de botões que aparece no painel da Agenda: Preencher OS (ou Relatório de Serviço se já concluída), Finalizar OS, Reabrir OS, Pausar/Retomar OS, Editar, Excluir, e Copiar link de acompanhamento. Cada botão aparece só nos status onde faz sentido (ex: Pausar só se a OS está em andamento). Permissões respeitadas: quem não pode editar/excluir não vê os botões.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.8.47',
     date: '21 de maio de 2026',
     type: 'patch',

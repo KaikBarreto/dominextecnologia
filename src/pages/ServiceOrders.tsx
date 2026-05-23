@@ -774,6 +774,18 @@ export default function ServiceOrders() {
               open={viewDialogOpen}
               onOpenChange={setViewDialogOpen}
               serviceOrderId={viewingOsId}
+              onEdit={canEditOS && viewingOsId ? () => {
+                const os = serviceOrders.find((o) => o.id === viewingOsId);
+                if (os) handleEdit(os);
+              } : undefined}
+              onDelete={canDeleteOS && viewingOsId ? () => {
+                const os = serviceOrders.find((o) => o.id === viewingOsId);
+                if (os) handleDeleteClick(os);
+              } : undefined}
+              onStatusChange={viewingOsId ? async (newStatus) => {
+                const os = serviceOrders.find((o) => o.id === viewingOsId);
+                if (os) await handleStatusChange(os, newStatus);
+              } : undefined}
             />
 
             <OsStatusManagerDialog

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2 } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +47,9 @@ interface ServiceOrderViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serviceOrderId: string | null;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onStatusChange?: (newStatus: OsStatus) => Promise<void> | void;
 }
 
 const statusColors: Record<OsStatus, string> = {
@@ -58,7 +62,9 @@ const statusColors: Record<OsStatus, string> = {
   cancelada: 'bg-destructive/10 text-destructive border-destructive',
 };
 
-export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: ServiceOrderViewDialogProps) {
+export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onEdit, onDelete, onStatusChange }: ServiceOrderViewDialogProps) {
+  const navigate = useNavigate();
+  const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder & { customer: any; equipment: any; form_template: any } | null>(null);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
@@ -346,16 +352,113 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId }: S
         </Card>
       )}
 
-      {serviceOrder.status === 'concluida' && (
-        <div className="pt-2">
+      {/* Ações da OS — espelha cluster de ações do ScheduleDetailPanel */}
+      <div className="pt-2 space-y-2">
+        {serviceOrder.status !== 'cancelada' && (
+          <Button
+            className="w-full"
+            onClick={() => { onOpenChange(false); navigate(`/os-tecnico/${serviceOrder.id}`); }}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            {serviceOrder.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
+          </Button>
+        )}
+
+        {onStatusChange && serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (
+          <Button
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={async () => { await onStatusChange('concluida'); onOpenChange(false); }}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Finalizar OS
+          </Button>
+        )}
+
+        {onStatusChange && serviceOrder.status === 'concluida' && (
+          <Button
+            variant="outline"
+            className="w-full border-warning/30 text-warning hover:bg-warning hover:text-warning-foreground"
+            onClick={async () => { await onStatusChange('em_andamento'); onOpenChange(false); }}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reabrir OS
+          </Button>
+        )}
+
+        {onStatusChange && (serviceOrder.status === 'em_andamento' || serviceOrder.status === 'a_caminho') && (
+          <Button
+            variant="outline"
+            className="w-full border-warning/30 text-warning hover:bg-warning hover:text-warning-foreground"
+            onClick={async () => { await onStatusChange('pausada'); onOpenChange(false); }}
+          >
+            <Pause className="h-4 w-4 mr-2" />
+            Pausar OS
+          </Button>
+        )}
+
+        {onStatusChange && serviceOrder.status === 'pausada' && (
+          <Button
+            variant="outline"
+            className="w-full border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+            onClick={async () => { await onStatusChange('em_andamento'); onOpenChange(false); }}
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Retomar OS
+          </Button>
+        )}
+
+        {(onEdit || onDelete) && (
+          <div className="grid grid-cols-2 gap-2">
+            {onEdit && (
+              <Button
+                variant="edit-ghost"
+                className="border border-warning/30"
+                onClick={() => { onOpenChange(false); onEdit(); }}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="outline"
+                className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => { onOpenChange(false); onDelete(); }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
+            )}
+          </div>
+        )}
+
+        {serviceOrder.customer_id && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={async () => {
+              const url = `${window.location.origin}/acompanhamento/${serviceOrder.id}`;
+              await navigator.clipboard.writeText(url);
+              setLinkCopied(true);
+              toast({ title: 'Link copiado!' });
+              setTimeout(() => setLinkCopied(false), 2000);
+            }}
+          >
+            {linkCopied ? <Check className="h-3.5 w-3.5 mr-1.5 shrink-0" /> : <Link2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />}
+            <span className="truncate">{linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento'}</span>
+          </Button>
+        )}
+
+        {serviceOrder.status === 'concluida' && (
           <Button variant="outline" className="w-full" onClick={async () => {
             const result = await createRatingToken.mutateAsync(serviceOrder.id);
             if (result?.token) { const url = `${window.location.origin}/avaliacao/${result.token}`; await navigator.clipboard.writeText(url); toast({ title: 'Link de avaliação copiado!' }); }
           }} disabled={createRatingToken.isPending}>
             <Star className="h-4 w-4 mr-2" />Copiar Link de Avaliação
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   ) : (
     <div className="p-6 text-center text-muted-foreground">OS não encontrada</div>
