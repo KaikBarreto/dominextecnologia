@@ -437,12 +437,13 @@ export default function Registration() {
                 </div>
               )}
             </div>
+
+            {/* Rodapé com versão / Auctus / copyright dentro do sheet pra herdar safe-area padding */}
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <SystemFooter variant="dark" />
+            </div>
           </CardContent>
         </Card>
-
-        <div className="mt-8">
-          <SystemFooter variant="dark" />
-        </div>
       </div>
     </div>
   );
