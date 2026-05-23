@@ -150,6 +150,21 @@ function buildMockPayload(token: string): PortalPayload {
       { type: 'cronograma', label: 'Cronograma de Manutenções', available: false },
       { type: 'certificado', label: 'Certificado de Conformidade', available: false },
     ],
+    // Onda C — mock dos documentos reais (até a edge function deployar).
+    // Em mock dev, marcamos como `available: false` pra mostrar o card real
+    // com fallback "Disponível em breve" + permitir testes visuais.
+    documents_real: [
+      {
+        type: 'dossie_pmoc',
+        label: 'Dossiê PMOC (Capa + Termo + Certificado)',
+        available: false,
+      },
+      {
+        type: 'cronograma_anual',
+        label: 'Cronograma 12 meses',
+        available: false,
+      },
+    ],
   };
 }
 

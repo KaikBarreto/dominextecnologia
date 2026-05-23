@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -3122,6 +3121,122 @@ export type Database = {
         }
         Relationships: []
       }
+      pmoc_contract_documents_custom: {
+        Row: {
+          certificado_content: string | null
+          certificado_updated_at: string | null
+          company_id: string
+          contract_id: string
+          created_at: string
+          termo_rt_content: string | null
+          termo_rt_updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          certificado_content?: string | null
+          certificado_updated_at?: string | null
+          company_id: string
+          contract_id: string
+          created_at?: string
+          termo_rt_content?: string | null
+          termo_rt_updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          certificado_content?: string | null
+          certificado_updated_at?: string | null
+          company_id?: string
+          contract_id?: string
+          created_at?: string
+          termo_rt_content?: string | null
+          termo_rt_updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmoc_contract_documents_custom_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_contract_documents_custom_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: true
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "pmoc_contract_documents_custom_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: true
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pmoc_documents: {
+        Row: {
+          company_id: string
+          content_hash: string
+          contract_id: string
+          doc_type: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          notes: string | null
+          pdf_storage_path: string
+          version: number
+        }
+        Insert: {
+          company_id: string
+          content_hash: string
+          contract_id: string
+          doc_type: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          notes?: string | null
+          pdf_storage_path: string
+          version: number
+        }
+        Update: {
+          company_id?: string
+          content_hash?: string
+          contract_id?: string
+          doc_type?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          notes?: string | null
+          pdf_storage_path?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmoc_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "pmoc_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pmoc_generated_os: {
         Row: {
           generated_at: string
@@ -5135,6 +5250,45 @@ export type Database = {
           },
         ]
       }
+      user_notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string
+          expires_at: string | null
+          icon: string | null
+          id: string
+          message: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string
+          expires_at?: string | null
+          icon?: string | null
+          id?: string
+          message?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string
+          expires_at?: string | null
+          icon?: string | null
+          id?: string
+          message?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_permissions: {
         Row: {
           created_at: string
@@ -5604,5 +5758,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.101.0 (currently installed v2.90.0)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

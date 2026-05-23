@@ -30,6 +30,16 @@ export type PortalDocumentType =
   | 'cronograma'
   | 'certificado';
 
+/**
+ * Onda C — tipos dos documentos REAIS (Dossiê PMOC e Cronograma Anual).
+ *
+ * Os tipos antigos (`pmoc_formal`, `termo_rt`, `cronograma`, `certificado`)
+ * usados em `documents_placeholder` foram fundidos em 2 documentos finais:
+ *  - `dossie_pmoc` → capa + termo RT + certificado em 1 PDF de 3 páginas.
+ *  - `cronograma_anual` → 12 páginas (1 mês/página).
+ */
+export type PortalRealDocumentType = 'dossie_pmoc' | 'cronograma_anual';
+
 export interface PortalUnit {
   name: string;
   address: string | null;
@@ -86,11 +96,32 @@ export interface PortalDocumentPlaceholder {
   available: boolean;
 }
 
+/**
+ * Onda C — entrada de documento real no payload do portal público.
+ *
+ * - `available=true` → tem PDF gerado e `pdf_url` (signed URL TTL 24h).
+ * - `available=false` → fallback defensivo "Disponível em breve" no UI.
+ */
+export interface PortalRealDocument {
+  type: PortalRealDocumentType;
+  label: string;
+  available: boolean;
+  version?: number;
+  generated_at?: string;
+  pdf_url?: string;
+}
+
 export interface PortalPayload {
   unit: PortalUnit;
   contract: PortalContract;
   responsible_technician: PortalResponsibleTechnician | null;
   tenant: PortalTenant;
   history: PortalHistoryEntry[];
-  documents_placeholder: PortalDocumentPlaceholder[];
+  /**
+   * @deprecated Onda C — usar `documents_real`. Mantido temporariamente pra
+   * compatibilidade com edge function antiga até deploy da nova.
+   */
+  documents_placeholder?: PortalDocumentPlaceholder[];
+  /** Onda C — documentos reais (dossiê + cronograma) com signed URLs. */
+  documents_real?: PortalRealDocument[];
 }

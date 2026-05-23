@@ -449,12 +449,75 @@ Deno.serve(async (req) => {
     });
 
     // -------------------------------------------------------------------------
+    // 3.5) Documents reais (Onda C) — última versão por doc_type, signed URL
+    //      TTL 24h. Filtro defensivo por company_id (§6.4 RLS rules Onda C).
+    //      Versões antigas NUNCA aparecem no payload público.
+    // -------------------------------------------------------------------------
+    const DOC_TYPES = ["dossie_pmoc", "cronograma_anual"] as const;
+    const DOC_LABELS: Record<typeof DOC_TYPES[number], string> = {
+      dossie_pmoc: "Dossiê PMOC (Capa + Termo + Certificado)",
+      cronograma_anual: "Cronograma 12 meses",
+    };
+
+    const { data: docRows } = await supabase
+      .from("pmoc_documents")
+      .select("doc_type, version, generated_at, pdf_storage_path")
+      .eq("contract_id", contract.id)
+      .eq("company_id", contract.company_id) // defesa em camada
+      .in("doc_type", DOC_TYPES as unknown as string[])
+      .order("version", { ascending: false });
+
+    // Agrupa por doc_type pegando só a maior version
+    const latestByType = new Map<
+      string,
+      { version: number; generated_at: string; pdf_storage_path: string }
+    >();
+    for (const row of docRows ?? []) {
+      if (!latestByType.has(row.doc_type)) {
+        latestByType.set(row.doc_type, {
+          version: row.version,
+          generated_at: row.generated_at,
+          pdf_storage_path: row.pdf_storage_path,
+        });
+      }
+    }
+
+    // Gera signed URL TTL 24h pra cada doc disponível
+    const documents = await Promise.all(
+      DOC_TYPES.map(async (type) => {
+        const latest = latestByType.get(type);
+        if (!latest) {
+          return {
+            type,
+            label: DOC_LABELS[type],
+            available: false,
+            version: null as number | null,
+            generated_at: null as string | null,
+            pdf_url: null as string | null,
+          };
+        }
+        const { data: signed } = await supabase.storage
+          .from("pmoc-documents")
+          .createSignedUrl(latest.pdf_storage_path, 86400); // TTL 24h
+        return {
+          type,
+          label: DOC_LABELS[type],
+          available: !!signed?.signedUrl,
+          version: latest.version,
+          generated_at: latest.generated_at,
+          pdf_url: signed?.signedUrl ?? null,
+          // NOTA: pdf_storage_path INTENCIONALMENTE não exposto (§6.3.5 RLS).
+        };
+      }),
+    );
+
+    // -------------------------------------------------------------------------
     // 4) Payload final — TODO campo retornado tem que estar autorizado em §3.2
     //    do portal-rls-rules. Nenhum UUID interno, nenhum campo bruto.
     // -------------------------------------------------------------------------
     const payload = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.0.0",
+      payload_version: "1.1.0", // 1.1.0 — documents reais (Onda C)
       unit: {
         name: customer?.name ?? null,
         address: customer?.address ?? null,
@@ -495,12 +558,7 @@ Deno.serve(async (req) => {
         // NOTA: telefone/email do tenant intencionalmente NÃO expostos (decisão CEO).
       },
       history,
-      documents: [
-        { type: "pmoc_formal", label: "PMOC Formal", available: false, url: null },
-        { type: "termo_rt", label: "Termo do Responsável Técnico", available: false, url: null },
-        { type: "cronograma", label: "Cronograma de Manutenção", available: false, url: null },
-        { type: "certificado", label: "Certificado de Conformidade", available: false, url: null },
-      ],
+      documents,
     };
 
     return jsonResponse(payload, 200);

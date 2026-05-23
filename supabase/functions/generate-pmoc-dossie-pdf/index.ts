@@ -1,0 +1,462 @@
+// =============================================================================
+// generate-pmoc-dossie-pdf — Gera dossiê PMOC (capa + Termo RT + Certificado).
+// =============================================================================
+// AUTENTICADA (Authorization obrigatório). Roles admin/gestor/super_admin.
+// Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.2
+// Regra: docs/planos/2026-05-23-pmoc-onda-C-rls-rules.md §5.1
+//
+// Fluxo:
+//   1. CORS + Authorization obrigatório.
+//   2. Resolver auth.uid().
+//   3. Resolver company_id do user + role admin/gestor/super_admin.
+//   4. Resolver contrato pedido (404 unificado pra cross-tenant).
+//   5. is_pmoc=true (senão 400).
+//   6. CNPJ tenant + RT atribuído (senão 400 com mensagem clara).
+//   7. Carregar custom_docs.
+//   8. Calcular content_hash.
+//   9. Cache hit? → retorna signed URL do PDF antigo (TTL 1h).
+//  10. Compor PDF: capa + termo + certificado.
+//  11. Upload pra bucket pmoc-documents.
+//  12. INSERT em pmoc_documents (version = max + 1).
+//  13. Retorna { pdf_url, version, cached: false }.
+// =============================================================================
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
+import { drawCapaPage } from "../_shared/pmoc-templates/capa.ts";
+import { drawTermoRtPage } from "../_shared/pmoc-templates/termo-rt.ts";
+import { drawCertificadoPage } from "../_shared/pmoc-templates/certificado.ts";
+import {
+  TemplateContext,
+  dateToExtenso,
+  frequencyLabelFrom,
+} from "../_shared/pmoc-templates/context.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Rate limit in-memory: 10 req/min por user (§5.4 RLS rules)
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 10;
+const rateBucket = new Map<string, number[]>();
+
+function rateLimitOk(userId: string): boolean {
+  const now = Date.now();
+  const arr = rateBucket.get(userId) ?? [];
+  const fresh = arr.filter((t) => now - t < RATE_WINDOW_MS);
+  if (fresh.length >= RATE_MAX) {
+    rateBucket.set(userId, fresh);
+    return false;
+  }
+  fresh.push(now);
+  rateBucket.set(userId, fresh);
+  if (rateBucket.size > 5000) {
+    const oldest = Array.from(rateBucket.entries())
+      .sort(([, a], [, b]) => (a[a.length - 1] ?? 0) - (b[b.length - 1] ?? 0))
+      .slice(0, 1000);
+    for (const [k] of oldest) rateBucket.delete(k);
+  }
+  return true;
+}
+
+function maskUuid(s: string | null | undefined): string {
+  if (!s) return "<none>";
+  return s.slice(0, 8) + "...";
+}
+
+function jsonResponse(body: unknown, status: number, extraHeaders: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "private, no-store",
+      ...extraHeaders,
+    },
+  });
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  const arr = Array.from(new Uint8Array(buf));
+  return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  if (req.method !== "GET") {
+    return jsonResponse({ error: "method_not_allowed" }, 405);
+  }
+
+  const t0 = Date.now();
+
+  try {
+    // ---- 1. Authorization obrigatório
+    const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
+    if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
+      return jsonResponse({ error: "unauthorized" }, 401);
+    }
+
+    // ---- 2. UUID válido no query
+    const url = new URL(req.url);
+    const contractId = url.searchParams.get("contract_id");
+    if (!contractId || !UUID_REGEX.test(contractId)) {
+      return jsonResponse({ error: "invalid_contract_id" }, 400);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // ---- Resolve user via JWT
+    const supabaseAuthed = createClient(supabaseUrl, serviceRoleKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await supabaseAuthed.auth.getUser();
+    if (userErr || !userData?.user?.id) {
+      return jsonResponse({ error: "unauthorized" }, 401);
+    }
+    const userId = userData.user.id;
+
+    // Rate limit
+    if (!rateLimitOk(userId)) {
+      return jsonResponse({ error: "rate_limited" }, 429, { "Retry-After": "60" });
+    }
+
+    // ---- Service-role client (RLS bypass + queries explícitas com filtro defensivo)
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // ---- 3. Resolver tenant + role do user
+    const [{ data: profileRow }, { data: rolesRows }] = await Promise.all([
+      supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+    ]);
+    const userCompany = profileRow?.company_id ?? null;
+    const roles = new Set((rolesRows ?? []).map((r) => r.role));
+    const isSuperAdmin = roles.has("super_admin");
+    const isAdminOrGestor = roles.has("admin") || roles.has("gestor");
+
+    // ---- 4. Resolver contrato — 404 unificado pra cross-tenant
+    const { data: contract } = await supabase
+      .from("contracts")
+      .select(
+        [
+          "id",
+          "company_id",
+          "name",
+          "customer_id",
+          "responsible_technician_id",
+          "is_pmoc",
+          "start_date",
+          "frequency_type",
+          "frequency_value",
+        ].join(","),
+      )
+      .eq("id", contractId)
+      .maybeSingle();
+
+    if (!contract) {
+      return jsonResponse({ error: "not_found" }, 404);
+    }
+    if (!isSuperAdmin && contract.company_id !== userCompany) {
+      return jsonResponse({ error: "not_found" }, 404);
+    }
+
+    // ---- Checagem de role (depois do cross-tenant pra não vazar existência)
+    if (!isAdminOrGestor && !isSuperAdmin) {
+      return jsonResponse(
+        { error: "forbidden_role", message: "Apenas administradores e gestores podem gerar documentos PMOC." },
+        403,
+      );
+    }
+
+    // ---- 5. is_pmoc
+    if (contract.is_pmoc !== true) {
+      return jsonResponse({ error: "not_a_pmoc_contract" }, 400);
+    }
+
+    // ---- 6. Carregar dependências (tenant, customer, RT, custom_docs)
+    const [
+      { data: customer },
+      { data: companySettings },
+      { data: rt },
+      { data: customDocs },
+    ] = await Promise.all([
+      supabase
+        .from("customers")
+        .select("name, address, city, state")
+        .eq("id", contract.customer_id)
+        .maybeSingle(),
+      supabase
+        .from("company_settings")
+        .select("name, cnpj, logo_url, white_label_enabled, white_label_logo_url, city")
+        .eq("company_id", contract.company_id)
+        .maybeSingle(),
+      contract.responsible_technician_id
+        ? supabase
+            .from("responsible_technicians")
+            .select("full_name, cft_crea, modality")
+            .eq("id", contract.responsible_technician_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null } as { data: null }),
+      supabase
+        .from("pmoc_contract_documents_custom")
+        .select("termo_rt_content, certificado_content")
+        .eq("contract_id", contract.id)
+        .eq("company_id", contract.company_id) // filtro defensivo cross-tenant
+        .maybeSingle(),
+    ]);
+
+    // Resolver tenant name (fallback companies.name)
+    let tenantName = (companySettings?.name ?? "").trim();
+    if (!tenantName) {
+      const { data: companyRow } = await supabase
+        .from("companies")
+        .select("name")
+        .eq("id", contract.company_id)
+        .maybeSingle();
+      tenantName = (companyRow?.name ?? "").trim() || "Empresa";
+    }
+
+    const cnpj = (companySettings?.cnpj ?? "").trim();
+    if (!cnpj) {
+      return jsonResponse(
+        {
+          error: "cnpj_missing",
+          message: "Configure o CNPJ da empresa em Configurações antes de gerar o dossiê PMOC.",
+        },
+        400,
+      );
+    }
+    if (!rt || !rt.full_name) {
+      return jsonResponse(
+        {
+          error: "rt_missing",
+          message: "Atribua um Responsável Técnico ao contrato antes de gerar o dossiê PMOC.",
+        },
+        400,
+      );
+    }
+
+    // Logo bytes (best-effort)
+    const useWhiteLabel = companySettings?.white_label_enabled === true;
+    const logoUrl = useWhiteLabel
+      ? companySettings?.white_label_logo_url ?? companySettings?.logo_url ?? null
+      : companySettings?.logo_url ?? null;
+
+    let logoBytes: Uint8Array | null = null;
+    let logoMime: "image/png" | "image/jpeg" | null = null;
+    if (logoUrl) {
+      try {
+        const res = await fetch(logoUrl);
+        if (res.ok) {
+          const ct = res.headers.get("content-type") ?? "";
+          if (ct.includes("png")) {
+            logoBytes = new Uint8Array(await res.arrayBuffer());
+            logoMime = "image/png";
+          } else if (ct.includes("jpeg") || ct.includes("jpg")) {
+            logoBytes = new Uint8Array(await res.arrayBuffer());
+            logoMime = "image/jpeg";
+          }
+        }
+      } catch {
+        // sem logo é ok — fallback é texto
+      }
+    }
+
+    // Cidade (do company_settings, fallback do customer)
+    const cidade = (companySettings?.city ?? customer?.city ?? "").trim() || "_______________________";
+
+    // ---- 7. Monta TemplateContext
+    const ctx: TemplateContext = {
+      empresa: {
+        razao_social: tenantName,
+        cnpj,
+        cidade,
+        logo_bytes: logoBytes,
+        logo_mime: logoMime,
+      },
+      rt: {
+        nome: rt.full_name,
+        modalidade: rt.modality ?? "Técnico em Refrigeração",
+        cft_crea: rt.cft_crea ?? null,
+      },
+      customer: {
+        name: customer?.name ?? "Unidade",
+        address: customer?.address ?? "",
+        city: customer?.city ?? null,
+        state: customer?.state ?? null,
+      },
+      contract: {
+        name: contract.name ?? null,
+        frequency_label: frequencyLabelFrom(
+          (contract.frequency_value ?? null) as number | null,
+          (contract.frequency_type ?? null) as string | null,
+        ),
+        start_date_extenso: dateToExtenso(contract.start_date ?? null),
+      },
+      cidade,
+      generated_at_extenso: dateToExtenso(new Date()),
+    };
+
+    // ---- 8. content_hash dos campos dinâmicos
+    const hashInput = JSON.stringify({
+      v: "dossie_v1",
+      tenant: { name: tenantName, cnpj, city: cidade, logo: !!logoBytes },
+      rt: ctx.rt,
+      customer: ctx.customer,
+      contract: ctx.contract,
+      termo: customDocs?.termo_rt_content ?? null,
+      cert: customDocs?.certificado_content ?? null,
+    });
+    const contentHash = await sha256Hex(hashInput);
+
+    // ---- 9. Cache hit?
+    const { data: existingDoc } = await supabase
+      .from("pmoc_documents")
+      .select("id, version, pdf_storage_path, generated_at")
+      .eq("contract_id", contract.id)
+      .eq("company_id", contract.company_id)
+      .eq("doc_type", "dossie_pmoc")
+      .eq("content_hash", contentHash)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDoc) {
+      const { data: signed, error: signedErr } = await supabase.storage
+        .from("pmoc-documents")
+        .createSignedUrl(existingDoc.pdf_storage_path, 3600); // TTL 1h
+
+      if (signedErr || !signed) {
+        // PDF não existe no storage (mismatch). Forçar regen.
+        console.warn("[generate-pmoc-dossie-pdf] cache hit mas signed URL falhou — regenerando", {
+          contract_id: maskUuid(contract.id),
+          path: existingDoc.pdf_storage_path,
+        });
+      } else {
+        console.log("[generate-pmoc-dossie-pdf] cache hit", {
+          contract_id: maskUuid(contract.id),
+          version: existingDoc.version,
+          duration_ms: Date.now() - t0,
+        });
+        return jsonResponse(
+          {
+            pdf_url: signed.signedUrl,
+            version: existingDoc.version,
+            generated_at: existingDoc.generated_at,
+            cached: true,
+          },
+          200,
+        );
+      }
+    }
+
+    // ---- 10. Compor PDF
+    const pdf = await PDFDocument.create();
+    pdf.setTitle(`PMOC — Dossiê — ${ctx.customer.name}`);
+    pdf.setSubject("Plano de Manutenção, Operação e Controle — Lei 13.589/2018");
+    pdf.setProducer("Dominex");
+
+    await drawCapaPage(pdf, ctx);
+    const termoResult = await drawTermoRtPage(pdf, ctx, customDocs?.termo_rt_content ?? null);
+    const certResult = await drawCertificadoPage(pdf, ctx, customDocs?.certificado_content ?? null);
+
+    const pdfBytes = await pdf.save();
+    const pdfSize = pdfBytes.length;
+
+    // ---- 11. Próxima versão
+    const { data: maxRow } = await supabase
+      .from("pmoc_documents")
+      .select("version")
+      .eq("contract_id", contract.id)
+      .eq("company_id", contract.company_id)
+      .eq("doc_type", "dossie_pmoc")
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextVersion = (maxRow?.version ?? 0) + 1;
+    const storagePath = `${contract.company_id}/${contract.id}/dossie_pmoc-v${nextVersion}.pdf`;
+
+    // ---- 12. Upload pro storage
+    const { error: uploadErr } = await supabase.storage
+      .from("pmoc-documents")
+      .upload(storagePath, pdfBytes, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+
+    if (uploadErr) {
+      console.error("[generate-pmoc-dossie-pdf] upload error", {
+        contract_id: maskUuid(contract.id),
+        message: uploadErr.message,
+      });
+      return jsonResponse({ error: "upload_failed" }, 500);
+    }
+
+    // ---- 13. INSERT em pmoc_documents
+    const { error: insertErr } = await supabase.from("pmoc_documents").insert({
+      company_id: contract.company_id,
+      contract_id: contract.id,
+      doc_type: "dossie_pmoc",
+      version: nextVersion,
+      content_hash: contentHash,
+      pdf_storage_path: storagePath,
+      generated_by: userId,
+    });
+
+    if (insertErr) {
+      // Tenta limpar PDF órfão
+      await supabase.storage.from("pmoc-documents").remove([storagePath]);
+      console.error("[generate-pmoc-dossie-pdf] insert error", {
+        contract_id: maskUuid(contract.id),
+        message: insertErr.message,
+      });
+      return jsonResponse({ error: "persist_failed" }, 500);
+    }
+
+    // ---- Signed URL pra retorno
+    const { data: signed, error: signedErr } = await supabase.storage
+      .from("pmoc-documents")
+      .createSignedUrl(storagePath, 3600);
+
+    if (signedErr || !signed) {
+      return jsonResponse({ error: "sign_failed" }, 500);
+    }
+
+    console.log("[generate-pmoc-dossie-pdf] generated", {
+      contract_id: maskUuid(contract.id),
+      version: nextVersion,
+      content_hash: contentHash.slice(0, 8) + "...",
+      pdf_size_bytes: pdfSize,
+      tags_removed_termo: termoResult.tagsRemoved,
+      attrs_removed_termo: termoResult.attrsRemoved,
+      tags_removed_cert: certResult.tagsRemoved,
+      attrs_removed_cert: certResult.attrsRemoved,
+      duration_ms: Date.now() - t0,
+    });
+
+    return jsonResponse(
+      {
+        pdf_url: signed.signedUrl,
+        version: nextVersion,
+        generated_at: new Date().toISOString(),
+        cached: false,
+      },
+      200,
+    );
+  } catch (err) {
+    console.error("[generate-pmoc-dossie-pdf] unexpected error", {
+      message: (err as Error)?.message ?? String(err),
+    });
+    return jsonResponse({ error: "render_failed" }, 500);
+  }
+});

@@ -22,6 +22,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
+import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useContractDetail } from '@/hooks/useContractDetail';
 import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
 import { useFinancial } from '@/hooks/useFinancial';
@@ -69,6 +73,10 @@ export default function ContractDetail() {
   const navigate = useNavigate();
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
+  const { settings: companySettings } = useCompanySettings();
+
+  // Aba ativa quando contrato é PMOC (Onda C). Default = visão geral.
+  const [pmocTab, setPmocTab] = useState<'overview' | 'documentos' | 'cronograma'>('overview');
 
   const { createContract, deleteContract } = useContracts();
   const { toast } = useToast();
@@ -369,6 +377,31 @@ export default function ContractDetail() {
   const totalReceivable = (linkedTransactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
   const totalPaid = (linkedTransactions || []).filter(t => t.is_paid).reduce((sum, t) => sum + Number(t.amount), 0);
 
+  // Onda C — contexto pra pré-preencher templates rich dos docs PMOC.
+  // Os campos abaixo vivem em colunas adicionadas pela Onda A/B (RT) — usamos
+  // narrowing defensivo via Record genérico até types.ts ser regenerado.
+  type RtRelation = { full_name?: string; modality?: string; cft_crea?: string };
+  type CustomerExtra = { address?: string; city?: string; state?: string };
+  const contractRt = (contract as unknown as { responsible_technician?: RtRelation }).responsible_technician;
+  const customerExtra = (contract.customers ?? {}) as unknown as CustomerExtra & { name?: string };
+  const pmocTemplateContext = isPmoc
+    ? {
+        empresa_razao_social: companySettings?.name ?? '',
+        empresa_cnpj: companySettings?.document ?? '',
+        rt_nome: contractRt?.full_name ?? '',
+        rt_modalidade: contractRt?.modality ?? '',
+        rt_cft_crea: contractRt?.cft_crea ?? '',
+        cidade: companySettings?.city ?? '',
+        customer_name: customerExtra.name ?? '',
+        customer_address: [customerExtra.address, customerExtra.city, customerExtra.state]
+          .filter(Boolean)
+          .join(', '),
+        contract_frequency_label: getFrequencyLabel(contract.frequency_type, contract.frequency_value),
+        contract_start_date_extenso: format(parseLocalDate(contract.start_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+        generated_at_extenso: format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+      }
+    : undefined;
+
   return (
     <div className="space-y-6 overflow-hidden max-w-full w-full">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -392,7 +425,50 @@ export default function ContractDetail() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3 min-w-0 w-full">
+      {isPmoc && (
+        <Tabs
+          value={pmocTab}
+          onValueChange={(v) => setPmocTab(v as 'overview' | 'documentos' | 'cronograma')}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-3 sm:max-w-md">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="documentos">Documentos</TabsTrigger>
+            <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="documentos" className="mt-4">
+            {id && (
+              <PmocContractDocsTab
+                contractId={id}
+                templateContext={pmocTemplateContext}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="cronograma" className="mt-4">
+            {id && (
+              <PmocContractCronogramaTab
+                contractId={id}
+                onJumpToDocsTab={() => setPmocTab('documentos')}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="overview" className="mt-4">
+            {/* O conteúdo principal abaixo é renderizado sempre (também quando não-PMOC). */}
+            {/* Esta TabsContent vazia serve só de "shell" — o `div.grid` real continua fora pra
+                manter compatibilidade com contratos não-PMOC. */}
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* Conteúdo "Visão Geral" — sempre renderizado pra não-PMOC; em PMOC só aparece quando
+          a aba ativa é 'overview' (controlado abaixo via className conditional). */}
+      <div className={cn(
+        'grid gap-6 lg:grid-cols-3 min-w-0 w-full',
+        isPmoc && pmocTab !== 'overview' && 'hidden'
+      )}>
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6 min-w-0 w-full">
           {/* Info card */}

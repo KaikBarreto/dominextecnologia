@@ -17,6 +17,10 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
+import {
+  PmocCronogramaCalendar,
+  type PmocCronogramaCalendarOrder,
+} from '@/components/pmoc/PmocCronogramaCalendar';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { cn } from '@/lib/utils';
 import {
@@ -28,7 +32,10 @@ import type {
   PortalOsStatus,
   PortalPayload,
   PortalHistoryEntry,
+  PortalRealDocument,
 } from '@/types/pmocPortal';
+import type { OsStatus, OsType } from '@/types/database';
+import { Download } from 'lucide-react';
 
 /**
  * Portal PMOC Público (Onda B — v1.9.1).
@@ -203,7 +210,23 @@ export default function PmocPublicPortal() {
 // ----- Conteúdo ---------------------------------------------------------------
 
 function PortalContent({ payload, token }: { payload: PortalPayload; token: string }) {
-  const { unit, contract, responsible_technician, tenant, history, documents_placeholder } = payload;
+  const {
+    unit,
+    contract,
+    responsible_technician,
+    tenant,
+    history,
+    documents_placeholder,
+    documents_real,
+  } = payload;
+
+  // Onda C — converte entradas do histórico em pseudo-ServiceOrders pro
+  // calendar reaproveitado de /agenda renderizar OSs no portal público.
+  // É readOnly — nenhum mutator é exposto, garantindo nenhuma escrita.
+  const calendarOrders = useMemo<PmocCronogramaCalendarOrder[]>(
+    () => historyToCalendarOrders(history, unit.customer_name),
+    [history, unit.customer_name],
+  );
 
   const primaryColor = tenant.primary_color || '#5555FF';
   const heroStyle = useMemo(
@@ -317,25 +340,32 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
           </div>
         </Section>
 
-        {/* Seção 4 — Histórico */}
+        {/* Seção 4 — Cronograma (Onda C — calendar readOnly) */}
+        <Section title="Cronograma de manutenções" icon={CalendarClock}>
+          <PmocCronogramaCalendar
+            serviceOrders={calendarOrders}
+            view="month"
+            readOnly
+            showControls
+          />
+          {calendarOrders.length === 0 && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Ainda não há manutenções registradas para esta unidade.
+            </p>
+          )}
+        </Section>
+
+        {/* Seção 5 — Histórico */}
         <Section title="Histórico de manutenções" icon={Wrench}>
           <HistoryList items={history} />
         </Section>
 
-        {/* Seção 5 — Documentos */}
+        {/* Seção 6 — Documentos (Onda C — substitui placeholders por PDFs reais) */}
         <Section title="Documentos" icon={FileText}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {documents_placeholder.map(doc => (
-              <DocumentPlaceholderCard
-                key={doc.type}
-                label={doc.label}
-                available={doc.available}
-              />
-            ))}
-          </div>
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            Os documentos serão disponibilizados em breve.
-          </p>
+          <PortalDocumentsBlock
+            real={documents_real}
+            fallback={documents_placeholder}
+          />
         </Section>
 
       </main>
@@ -466,6 +496,129 @@ function DocumentPlaceholderCard({ label, available }: { label: string; availabl
       </div>
     </div>
   );
+}
+
+/**
+ * Onda C — Bloco de documentos do portal público.
+ *
+ * Prefere `documents_real` (PDFs reais com signed URL TTL 24h). Quando
+ * indisponível, usa `documents_placeholder` da Onda B como fallback.
+ */
+function PortalDocumentsBlock({
+  real,
+  fallback,
+}: {
+  real?: PortalRealDocument[];
+  fallback?: { type: string; label: string; available: boolean }[];
+}) {
+  if (real && real.length > 0) {
+    return (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {real.map(doc => (
+          <RealDocumentCard key={doc.type} doc={doc} />
+        ))}
+      </div>
+    );
+  }
+  // Fallback Onda B
+  if (fallback && fallback.length > 0) {
+    return (
+      <>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {fallback.map(doc => (
+            <DocumentPlaceholderCard
+              key={doc.type}
+              label={doc.label}
+              available={doc.available}
+            />
+          ))}
+        </div>
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          Os documentos serão disponibilizados em breve.
+        </p>
+      </>
+    );
+  }
+  return (
+    <p className="text-center text-xs text-muted-foreground">
+      Os documentos serão disponibilizados em breve.
+    </p>
+  );
+}
+
+function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
+  const available = doc.available && !!doc.pdf_url;
+  const sub = available && doc.generated_at
+    ? `Atualizado em ${formatLocal(doc.generated_at)}${doc.version ? ` — v${doc.version}` : ''}`
+    : 'Disponível em breve';
+
+  return (
+    <div
+      className={cn(
+        'flex min-h-[96px] flex-col gap-2 rounded-lg border p-4 transition-colors',
+        available ? 'border-border bg-card' : 'border-dashed border-border bg-muted/30',
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+            available ? 'bg-info/10 text-info' : 'bg-muted text-muted-foreground',
+          )}
+        >
+          <FileText className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-medium">{doc.label}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
+        </div>
+      </div>
+
+      {available && doc.pdf_url && (
+        <a
+          href={doc.pdf_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            'mt-1 inline-flex min-h-[40px] items-center justify-center gap-2 rounded-md',
+            'bg-primary px-3 text-sm font-semibold text-primary-foreground',
+            'transition-colors hover:bg-primary/90',
+          )}
+        >
+          <Download className="h-4 w-4" aria-hidden="true" />
+          Baixar PDF
+        </a>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Converte entradas do histórico do portal em pseudo-ServiceOrders pro
+ * componente de calendar reaproveitar a renderização.
+ *
+ * - Só campos que o calendar consome (id, order_number, status, date, customer).
+ * - Status do portal mapeia 1:1 pro tipo `OsStatus` (já compartilham strings).
+ */
+function historyToCalendarOrders(
+  history: PortalHistoryEntry[],
+  customerName: string,
+): PmocCronogramaCalendarOrder[] {
+  return history.map(h => ({
+    id: `portal-${h.os_number}`,
+    order_number: h.os_number,
+    customer_id: 'portal-customer',
+    os_type: 'manutencao_preventiva' as OsType,
+    status: (h.status as OsStatus) ?? 'agendada',
+    scheduled_date: h.scheduled_date,
+    scheduled_time: undefined,
+    description: h.description ?? undefined,
+    created_at: h.scheduled_date,
+    updated_at: h.completed_date ?? h.scheduled_date,
+    contract_id: undefined,
+    customer: { id: 'portal-customer', name: customerName },
+    equipment: null,
+  })) as unknown as PmocCronogramaCalendarOrder[];
 }
 
 function HistoryList({ items }: { items: PortalHistoryEntry[] }) {

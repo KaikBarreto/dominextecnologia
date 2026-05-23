@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.7',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Dossiê PMOC em PDF — Capa + Termo + Certificado, com 1 toque',
+        description: 'Cada contrato PMOC agora gera o Dossiê em PDF (3 páginas): uma capa preta profissional com sua marca, o Termo de Responsabilidade Técnica preenchido com seus dados (empresa, CNPJ, RT, CFT, cidade) puxados do banco, e o Certificado de Conformidade com a Lei Federal 13.589/2018. Pronto pra entregar ao cliente final ou ao fiscal sanitário. Cada geração fica salva com versão (v1, v2, v3...) — você sempre pode baixar versões antigas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Edição livre dos textos antes de gerar o PDF',
+        description: 'Você não fica preso ao texto padrão. Na aba "Documentos" do contrato PMOC, toque em "Editar" no Termo de Responsabilidade Técnica ou no Certificado — abre um editor estilo Word/Notion (negrito, itálico, listas, títulos, links). Os dados da sua empresa já vêm preenchidos automaticamente, mas você pode corrigir cláusulas, adicionar observações, reescrever frases ou personalizar como quiser. Cada contrato tem seu texto independente. Mudou de ideia? Botão "Restaurar texto padrão" volta tudo ao original.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma Anual em PDF — 12 meses de uma vez',
+        description: 'Toque em "Gerar PDF Anual" e baixe um PDF de 12 páginas (1 mês por página) com todas as manutenções daquele contrato marcadas no calendário, com cores por status (verde = concluída, vermelho = atrasada, azul = agendada). Pronto pra entregar pra fiscalização anual ou planejamento interno. Também versionado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aba "Cronograma" no contrato PMOC com calendário interativo',
+        description: 'Dentro de qualquer contrato PMOC, abra a aba "Cronograma" e veja o calendário visual (mês/semana/dia) com todas as OSs daquele contrato — igual à tela de Agenda que você já conhece, mas filtrado pelo contrato. Toque numa OS pra ver detalhes. No celular o calendário se adapta com altura confortável e scroll vertical interno.',
+        category: 'recurso',
+      },
+      {
+        title: 'Portal PMOC público mostra PDFs reais e cronograma do cliente',
+        description: 'Os 4 cards "Disponível em breve" no portal público (URL única do contrato) viraram 2 cards reais com botão "Baixar PDF": Dossiê PMOC e Cronograma Anual. Cada link de download é seguro e expira em 24h — quem tem o QR Code físico baixa direto. O portal também ganhou uma seção "Cronograma de manutenções" mostrando o calendário do contrato em modo somente-leitura, pro cliente final acompanhar quando vão ser as próximas visitas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Segurança reforçada nos termos editados',
+        description: 'O editor de texto bloqueia automaticamente qualquer tentativa de injetar código malicioso (HTML perigoso, scripts, iframes). A sanitização acontece em 2 camadas: no navegador antes de salvar, e novamente no servidor antes de gerar o PDF. Mesmo se algo escapar pela UI, o servidor descarta. Também limitamos o tamanho do texto em 50KB por documento (proteção contra abuso).',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.9.6',
     date: '23 de maio de 2026',
     type: 'minor',
