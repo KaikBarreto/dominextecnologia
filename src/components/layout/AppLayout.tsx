@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, UserCircle, LogOut, ArrowLeft } from 'lucide-react';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,12 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import logoDark from '@/assets/logo-dark.png';
 import logoGreen from '@/assets/logo-horizontal-verde.png';
 
@@ -120,6 +126,7 @@ function SidebarShell() {
       <div className="flex h-[100dvh] w-full max-w-full">
         <Sidebar />
         <SidebarInset className="flex flex-col min-w-0 max-w-full overflow-hidden">
+          <DesktopSidebarHeader />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
             <RouteTransition>
               <Outlet />
@@ -131,6 +138,70 @@ function SidebarShell() {
         </SidebarInset>
       </div>
     </SidebarProvider>
+  );
+}
+
+/**
+ * Header fixo do desktop sidebar shell.
+ *
+ * Antes desta Onda UI-3 o desktop sidebar ia direto pro `<main>`, sem um
+ * header próprio — o sino de notificações só aparecia no `TopbarShell` e nos
+ * shells mobile/tablet. CEO pediu (2026-05-23) que o sino seja visível em
+ * **todo** desktop, espelhando o pattern do EcoSistema.
+ *
+ * Layout (altura ~64px):
+ * - Esquerda: `SidebarTrigger` (colapsa/expande sidebar).
+ * - Direita: `NotificationsBell` + Perfil + Sair (com tooltips). O dropdown
+ *   completo de conta continua dentro do Sidebar; aqui só os atalhos rápidos.
+ */
+function DesktopSidebarHeader() {
+  const navigate = useNavigate();
+  const { user, isAdminUser, signOut } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-background px-4 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <SidebarTrigger className="h-9 w-9" />
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          <NotificationsBell />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/perfil')}
+                aria-label={isAdminUser ? 'Configurações do Admin' : 'Meu Perfil'}
+              >
+                <UserCircle className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{isAdminUser ? 'Configurações' : 'Meu Perfil'}</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-destructive hover:bg-destructive hover:text-white"
+                onClick={signOut}
+                aria-label="Sair"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Sair</TooltipContent>
+          </Tooltip>
+        </div>
+      </header>
+    </TooltipProvider>
   );
 }
 

@@ -13,6 +13,8 @@ import { ScheduleHeader, type ViewMode } from '@/components/schedule/ScheduleHea
 import { PausedOrdersDialog } from '@/components/schedule/PausedOrdersDialog';
 import { usePausedOrders } from '@/hooks/usePausedOrders';
 import { ScheduleDetailPanel } from '@/components/schedule/ScheduleDetailPanel';
+import { ScheduleLegend } from '@/components/schedule/ScheduleLegend';
+import { OsSearchDialog } from '@/components/schedule/OsSearchDialog';
 import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
 import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
@@ -83,6 +85,9 @@ export default function Schedule() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Busca modal paginada (desktop) — ResponsiveModal com 10/página
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Foca o input quando a busca abre
   useEffect(() => {
@@ -245,6 +250,24 @@ export default function Schedule() {
   const handleClearSummary = useCallback(() => {
     setSummaryOrder(null);
   }, []);
+
+  // Resultado da busca: navega o calendário para a data da OS e abre detalhe
+  const handleSearchResultSelect = useCallback(
+    (order: ServiceOrder & { customer: any; equipment: any }) => {
+      if (order.scheduled_date) {
+        try {
+          const parsed = new Date(order.scheduled_date + 'T12:00:00');
+          if (!isNaN(parsed.getTime())) {
+            setCurrentDate(parsed);
+          }
+        } catch {
+          // ignore — mantém data atual se parsing falhar
+        }
+      }
+      handleOrderSelect(order);
+    },
+    [handleOrderSelect],
+  );
 
   const handleEditFromSummary = () => {
     if (summaryOrder) {
@@ -881,6 +904,7 @@ export default function Schedule() {
         onToday={handleToday}
         onNewOrder={canCreateOS ? handleNewOrder : undefined}
         onOpenPaused={() => setIsPausedDialogOpen(true)}
+        onOpenSearch={() => setIsSearchModalOpen(true)}
         pausedCount={pausedOrders.length}
         technicianFilter={technicianFilter}
         onTechnicianFilterChange={setTechnicianFilter}
@@ -893,38 +917,42 @@ export default function Schedule() {
       />
 
       <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 mt-4">
-        <div className="flex-1 min-w-0 min-h-0">
-          {viewMode === 'month' && (
-            <MonthlyCalendar
-              currentDate={currentDate}
-              serviceOrders={filteredOrders}
-              onDateSelect={handleDateSelect}
-              onDateDoubleClick={handleDateDoubleClick}
-              onOrderSelect={handleOrderSelect}
-              onDrop={handleDrop}
-              holidayMap={holidayMap}
-            />
-          )}
-          {viewMode === 'week' && (
-            <WeeklyCalendar
-              currentDate={currentDate}
-              orders={filteredOrders}
-              onOrderSelect={handleOrderSelect}
-              onSlotClick={handleSlotClick}
-              onDrop={handleDrop}
-              holidayMap={holidayMap}
-            />
-          )}
-          {viewMode === 'day' && (
-            <DailyCalendar
-              currentDate={currentDate}
-              orders={filteredOrders}
-              onOrderSelect={handleOrderSelect}
-              onSlotClick={handleSlotClick}
-              onDrop={handleDrop}
-              holidayMap={holidayMap}
-            />
-          )}
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0">
+            {viewMode === 'month' && (
+              <MonthlyCalendar
+                currentDate={currentDate}
+                serviceOrders={filteredOrders}
+                onDateSelect={handleDateSelect}
+                onDateDoubleClick={handleDateDoubleClick}
+                onOrderSelect={handleOrderSelect}
+                onDrop={handleDrop}
+                holidayMap={holidayMap}
+              />
+            )}
+            {viewMode === 'week' && (
+              <WeeklyCalendar
+                currentDate={currentDate}
+                orders={filteredOrders}
+                onOrderSelect={handleOrderSelect}
+                onSlotClick={handleSlotClick}
+                onDrop={handleDrop}
+                holidayMap={holidayMap}
+              />
+            )}
+            {viewMode === 'day' && (
+              <DailyCalendar
+                currentDate={currentDate}
+                orders={filteredOrders}
+                onOrderSelect={handleOrderSelect}
+                onSlotClick={handleSlotClick}
+                onDrop={handleDrop}
+                holidayMap={holidayMap}
+              />
+            )}
+          </div>
+          {/* Legenda abaixo do calendário no desktop (Onda UI-4) */}
+          <ScheduleLegend />
         </div>
 
         <div className="w-full lg:w-80 lg:shrink-0 min-h-[200px]">
@@ -974,6 +1002,12 @@ export default function Schedule() {
         onOpenChange={setIsPausedDialogOpen}
         onViewDetails={handleViewPausedDetails}
         onResume={handleResumePaused}
+      />
+      <OsSearchDialog
+        open={isSearchModalOpen}
+        onOpenChange={setIsSearchModalOpen}
+        orders={filteredOrders as any}
+        onSelect={(order) => handleSearchResultSelect(order as any)}
       />
     </div>
   );

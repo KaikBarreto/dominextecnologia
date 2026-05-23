@@ -32,7 +32,6 @@ import {
   Clapperboard,
   Video,
   Crown,
-  ShieldCheck,
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -95,7 +94,9 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
-      { title: 'Responsáveis Técnicos', icon: ShieldCheck, path: '/responsaveis-tecnicos', screenKey: 'screen:contracts' },
+      // 'Responsáveis Técnicos' removido do menu (Onda UI-1). A tela e a rota
+      // `/responsaveis-tecnicos` continuam acessíveis por URL direta até o
+      // quick-create vir pelo modal de contrato (parallel work — Cliente PMOC).
     ],
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },

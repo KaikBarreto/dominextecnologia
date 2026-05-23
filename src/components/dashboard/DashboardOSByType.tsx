@@ -12,6 +12,13 @@ const CHART_COLORS = [
   'hsl(var(--success))',
 ];
 
+/**
+ * IDs únicos de gradient — cada slice tem o seu, com a cor base do `CHART_COLORS`
+ * indo de saturado (100%) a translúcido (55%) num degradê diagonal.
+ * Regra sistema-wide CEO 2026-05-23: gráficos com degradê em vez de cor sólida.
+ */
+const GRADIENT_IDS = CHART_COLORS.map((_, i) => `gradOsByType${i}`);
+
 interface TypeData {
   name: string;
   value: number;
@@ -44,6 +51,14 @@ export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoa
               <div className="relative w-[180px] h-[180px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
+                    <defs>
+                      {CHART_COLORS.map((color, i) => (
+                        <linearGradient key={GRADIENT_IDS[i]} id={GRADIENT_IDS[i]} x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor={color} stopOpacity={1} />
+                          <stop offset="100%" stopColor={color} stopOpacity={0.55} />
+                        </linearGradient>
+                      ))}
+                    </defs>
                     <Pie
                       data={data}
                       cx="50%"
@@ -56,7 +71,7 @@ export function DashboardOSByType({ data, isLoading }: { data: TypeData[]; isLoa
                       animationDuration={1000}
                     >
                       {data.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={`url(#${GRADIENT_IDS[index % GRADIENT_IDS.length]})`} />
                       ))}
                     </Pie>
                     <Tooltip contentStyle={tooltipStyle} />

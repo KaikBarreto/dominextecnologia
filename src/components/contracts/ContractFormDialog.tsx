@@ -20,6 +20,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
+import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -116,6 +117,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [isPmoc, setIsPmoc] = useState(false);
   const [responsibleTechnicianId, setResponsibleTechnicianId] = useState<string>('');
   const [showPmocOffConfirm, setShowPmocOffConfirm] = useState(false);
+  // Quick-create RT (Onda UI-1.2): botão "+" abre dialog nested.
+  const [showQuickCreateRT, setShowQuickCreateRT] = useState(false);
   // Em modo edição, guarda a chamada que ficou esperando confirmação do "desligar PMOC".
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
@@ -495,27 +498,42 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
                     <div className="space-y-2">
                       <Label>Responsável Técnico</Label>
-                      <Select
-                        value={responsibleTechnicianId || 'none'}
-                        onValueChange={(v) => setResponsibleTechnicianId(v === 'none' ? '' : v)}
-                        disabled={rtLoading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={rtLoading ? 'Carregando...' : 'Selecione o RT...'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">— Sem RT atribuído —</SelectItem>
-                          {responsibleTechnicians.map((rt) => {
-                            const modality = rt.modality ?? 'Modalidade não informada';
-                            const registry = rt.cft_crea ?? 'sem registro';
-                            return (
-                              <SelectItem key={rt.id} value={rt.id}>
-                                {rt.full_name} — {modality} ({registry})
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Select
+                            value={responsibleTechnicianId || 'none'}
+                            onValueChange={(v) => setResponsibleTechnicianId(v === 'none' ? '' : v)}
+                            disabled={rtLoading}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={rtLoading ? 'Carregando...' : 'Selecione o RT...'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— Sem RT atribuído —</SelectItem>
+                              {responsibleTechnicians.map((rt) => {
+                                const modality = rt.modality ?? 'Modalidade não informada';
+                                const registry = rt.cft_crea ?? 'sem registro';
+                                return (
+                                  <SelectItem key={rt.id} value={rt.id}>
+                                    {rt.full_name} — {modality} ({registry})
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0 h-10 w-10"
+                          onClick={() => setShowQuickCreateRT(true)}
+                          aria-label="Cadastrar novo Responsável Técnico"
+                          title="Cadastrar novo Responsável Técnico"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         Engenheiro ou Técnico com CFT/CREA que supervisiona o PMOC. Pode ser definido depois.
                       </p>
@@ -819,6 +837,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         setShowQuickCustomer(false);
       }}
       isLoading={createCustomer.isPending}
+    />
+
+    {/* Quick-create RT (Onda UI-1.2). Cadastro rápido sem sair do modal de contrato.
+        O `onCreated` seleciona o novo RT — a invalidate da query no hook cuida
+        de fazer ele aparecer no select da lista de RTs ativos. */}
+    <PmocQuickCreateRTDialog
+      open={showQuickCreateRT}
+      onOpenChange={setShowQuickCreateRT}
+      onCreated={(rt) => {
+        setResponsibleTechnicianId(rt.id);
+        setShowQuickCreateRT(false);
+      }}
     />
 
     {/* Confirmação ao desligar PMOC quando já havia RT atribuído. */}

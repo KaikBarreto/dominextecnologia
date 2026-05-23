@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Map as MapIcon, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MapPin, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import 'leaflet/dist/leaflet.css';
@@ -72,8 +73,11 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
     requestAnimationFrame(() => map.invalidateSize());
   }, [technicians]);
 
+  // CEO 2026-05-23: o mapa SEMPRE monta — sem técnico ele continua visível,
+  // apenas centrado no DEFAULT_CENTER (Rio/SP) com zoom de país. A mensagem
+  // "Nenhum técnico em campo agora" vira overlay flutuante sobre o mapa.
   useEffect(() => {
-    if (isLoading || technicians.length === 0 || leafletMapRef.current || !mapElementRef.current) return;
+    if (isLoading || leafletMapRef.current || !mapElementRef.current) return;
 
     let cancelled = false;
 
@@ -88,10 +92,15 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
+      const initialCenter: [number, number] = technicians.length > 0
+        ? [technicians[0].lat, technicians[0].lng]
+        : DEFAULT_CENTER;
+      const initialZoom = technicians.length > 0 ? ACTIVE_ZOOM : DEFAULT_ZOOM;
+
       const map = L.map(mapElementRef.current, {
         scrollWheelZoom: false,
         zoomControl: false,
-      }).setView([technicians[0].lat, technicians[0].lng], ACTIVE_ZOOM);
+      }).setView(initialCenter, initialZoom);
 
       tileLayerRef.current = L.tileLayer(getTileUrl(), {
         attribution: '&copy; <a href="https://carto.com">CARTO</a>',
@@ -112,19 +121,6 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
     if (isLoading || !leafletMapRef.current) return;
     syncMapData().catch(() => {});
   }, [isLoading, syncMapData]);
-
-  useEffect(() => {
-    if (isLoading || technicians.length > 0) return;
-
-    markerRefs.current.forEach((marker) => marker.remove());
-    markerRefs.current = [];
-    tileLayerRef.current = null;
-
-    if (leafletMapRef.current) {
-      leafletMapRef.current.remove();
-      leafletMapRef.current = null;
-    }
-  }, [isLoading, technicians.length]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -170,34 +166,47 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
         <CardContent className="space-y-3">
           {isLoading ? (
             <Skeleton className="h-[240px] w-full rounded-lg" />
-          ) : technicians.length > 0 ? (
-            <>
-              <div ref={mapElementRef} className="h-[240px] w-full overflow-hidden rounded-lg" />
-              <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-                {technicians.map((tech, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1 min-w-[60px]">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={tech.avatarUrl} />
-                      <AvatarFallback className="text-[10px] bg-muted">{tech.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-[10px] text-muted-foreground text-center truncate w-full">{tech.name.split(' ')[0]}</span>
-                  </div>
-                ))}
-              </div>
-            </>
           ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="p-3 rounded-full bg-muted mb-3">
-                <MapIcon className="h-6 w-6 text-muted-foreground" />
+            <>
+              {/* Mapa SEMPRE visível — mesmo sem técnico em campo. Quando vazio,
+                  mostra overlay flutuante centralizado em vez de esconder o mapa.
+                  CEO 2026-05-23. */}
+              <div className="relative h-[240px] w-full overflow-hidden rounded-lg">
+                <div ref={mapElementRef} className="absolute inset-0" />
+                {technicians.length === 0 && (
+                  <>
+                    {/* leve overlay pra dar contraste ao card flutuante */}
+                    <div className="absolute inset-0 bg-background/30 backdrop-blur-[1px] pointer-events-none" />
+                    <div className="absolute inset-0 flex items-center justify-center px-4 pointer-events-none">
+                      <div className="bg-background/95 border border-border rounded-xl shadow-lg px-4 py-3 flex flex-col items-center gap-2 pointer-events-auto max-w-[260px] text-center">
+                        <p className="text-sm font-medium text-foreground">Nenhum técnico em campo agora</p>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs gap-1"
+                          onClick={() => navigate('/mapa-ao-vivo')}
+                        >
+                          Abrir Mapa ao Vivo <ArrowRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground">Nenhum técnico em campo agora</p>
-              <button
-                onClick={() => navigate('/mapa-ao-vivo')}
-                className="text-xs text-primary font-medium mt-2 hover:underline flex items-center gap-1"
-              >
-                Abrir Mapa ao Vivo <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
+              {technicians.length > 0 && (
+                <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+                  {technicians.map((tech, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1 min-w-[60px]">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={tech.avatarUrl} />
+                        <AvatarFallback className="text-[10px] bg-muted">{tech.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-[10px] text-muted-foreground text-center truncate w-full">{tech.name.split(' ')[0]}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

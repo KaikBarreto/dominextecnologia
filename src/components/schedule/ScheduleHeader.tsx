@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Filter, Star, PauseCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Filter, PauseCircle, Search as SearchIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +7,6 @@ import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OsStatus } from '@/types/database';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
 
 export type ViewMode = 'month' | 'week' | 'day';
 
@@ -20,6 +19,7 @@ interface ScheduleHeaderProps {
   onToday: () => void;
   onNewOrder?: () => void;
   onOpenPaused?: () => void;
+  onOpenSearch?: () => void;
   pausedCount?: number;
   // Filters — multi-select (vazio = todos)
   technicianFilter: string[];
@@ -49,6 +49,7 @@ export function ScheduleHeader({
   onToday,
   onNewOrder,
   onOpenPaused,
+  onOpenSearch,
   pausedCount = 0,
   technicianFilter,
   onTechnicianFilterChange,
@@ -60,7 +61,6 @@ export function ScheduleHeader({
   onStatusFilterChange,
 }: ScheduleHeaderProps) {
   const hasActiveFilters = technicianFilter.length > 0 || customerFilter.length > 0 || statusFilter.length > 0;
-  const { serviceTypes } = useServiceTypes();
   const isMobile = useIsMobile();
   return (
     <div className="space-y-3">
@@ -89,6 +89,19 @@ export function ScheduleHeader({
               <TabsTrigger value="day" className="text-xs px-3">Dia</TabsTrigger>
             </TabsList>
           </Tabs>
+
+          {onOpenSearch && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onOpenSearch}
+              className="h-9 w-9"
+              aria-label="Buscar OS ou tarefa"
+              title="Buscar OS ou tarefa"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </Button>
+          )}
 
           <Popover>
             <PopoverTrigger asChild>
@@ -147,25 +160,6 @@ export function ScheduleHeader({
         </div>
       </div>
 
-      {/* Legend */}
-      {serviceTypes.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-muted-foreground font-medium">Legenda:</span>
-          {serviceTypes.filter(t => t.is_active).map((st) => (
-            <span
-              key={st.id}
-              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium text-white"
-              style={{ backgroundColor: st.color }}
-            >
-              {st.name}
-            </span>
-          ))}
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-secondary-foreground">
-            <Star className="h-2.5 w-2.5" />
-            Feriado
-          </span>
-        </div>
-      )}
     </div>
   );
 }

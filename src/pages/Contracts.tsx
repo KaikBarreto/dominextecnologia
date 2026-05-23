@@ -53,6 +53,7 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
+import { ContractsFilterButton } from '@/components/contracts/ContractsFilterButton';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'outline' | 'destructive' | 'secondary' }> = {
   active: { label: 'Ativo', variant: 'success' },
@@ -168,7 +169,36 @@ export default function Contracts() {
     [contracts, search, statusFilter, typeFilter, healthFilter, healthByContractId]
   );
 
-  const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
+  // Enriquece cada contrato com campos derivados pra que `useTableSort` consiga
+  // ordenar por Saúde, Próxima OS e Itens (esses dados moram em fontes externas:
+  // healthByContractId e contract_occurrences). Sort lê via getNestedValue —
+  // mantemos as chaves planas pra um lookup direto e barato.
+  const sortableItems = useMemo(
+    () =>
+      filtered.map((c) => {
+        const next = (c.contract_occurrences || [])
+          .filter((o) => o.status === 'scheduled')
+          .sort(
+            (a, b) =>
+              new Date(a.scheduled_date).getTime() -
+              new Date(b.scheduled_date).getTime(),
+          )[0];
+        const healthRow = healthByContractId[c.id];
+        const healthKey: ContractHealthStatus = healthRow?.health_status ?? 'em_dia';
+        // Ordem semântica: em_dia (0) < manutencao_pendente (1) < necessita_atencao (2)
+        const healthRank =
+          healthKey === 'em_dia' ? 0 : healthKey === 'manutencao_pendente' ? 1 : 2;
+        return {
+          ...c,
+          _next_occurrence_date: next?.scheduled_date ?? null,
+          _health_rank: healthRank,
+          _items_count: c.contract_items?.length ?? 0,
+        };
+      }),
+    [filtered, healthByContractId],
+  );
+
+  const { sortedItems, sortConfig, handleSort } = useTableSort(sortableItems);
   const pagination = useDataPagination(sortedItems);
 
   const getNextOccurrence = (c: typeof contracts[0]) => {
@@ -217,13 +247,24 @@ export default function Contracts() {
     },
   ];
 
-  const activeFilterCount =
-    (search ? 1 : 0) +
+  // Filtros estruturados = Status + Saúde + Tipo. Usado pelo badge do botão
+  // "Filtros" do desktop (busca tem campo próprio fora do sheet).
+  const structuredFilterCount =
     (statusFilter.length > 0 ? 1 : 0) +
     (healthFilter !== 'all' ? 1 : 0) +
     (typeFilter !== 'all' ? 1 : 0);
+  // Total (inclui busca) usado pelo FilterSheet mobile, que abriga só os
+  // estruturados mas mostra o agregado pra dar feedback global de "tem coisa
+  // filtrada agora". Mantém comportamento herdado do mobile.
+  const activeFilterCount = (search ? 1 : 0) + structuredFilterCount;
   const clearFilters = () => {
     setSearch('');
+    setStatusFilter([]);
+    setHealthFilter('all');
+    setTypeFilter('all');
+  };
+  // Limpa só os filtros estruturados (preserva a busca em andamento).
+  const clearStructuredFilters = () => {
     setStatusFilter([]);
     setHealthFilter('all');
     setTypeFilter('all');
@@ -315,7 +356,7 @@ export default function Contracts() {
         <>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Buscar contrato ou cliente..."
                 className="pl-10 h-10"
@@ -392,47 +433,30 @@ export default function Contracts() {
             </Card>
           </div>
 
-          {/* Desktop filters */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          {/* Desktop toolbar: busca + único botão "Filtros" (Sheet à direita).
+              Substitui os 3 selects soltos da versão antiga — desentulha a tela
+              e dá paridade com o mobile (FilterSheet). */}
+          <div className="flex items-center gap-2">
             <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Buscar por nome ou cliente..."
-                className="pl-10"
+                className="pl-10 h-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="w-[220px]">
-              <FilterCheckboxGroup
-                label="Status"
-                options={statusOptions}
-                selected={statusFilter}
-                onChange={setStatusFilter}
-                emptyLabel="Todos"
-              />
-            </div>
-            <Select value={healthFilter} onValueChange={(v) => setHealthFilter(v as typeof healthFilter)}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Saúde" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Saúde: todas</SelectItem>
-                <SelectItem value="em_dia">Em dia</SelectItem>
-                <SelectItem value="manutencao_pendente">Manutenção pendente</SelectItem>
-                <SelectItem value="necessita_atencao">Necessita atenção</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tipo: todos</SelectItem>
-                <SelectItem value="pmoc">PMOC</SelectItem>
-                <SelectItem value="common">Comum (não-PMOC)</SelectItem>
-              </SelectContent>
-            </Select>
+            <ContractsFilterButton
+              statusOptions={statusOptions}
+              statusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
+              healthFilter={healthFilter}
+              onHealthChange={setHealthFilter}
+              typeFilter={typeFilter}
+              onTypeChange={setTypeFilter}
+              activeCount={structuredFilterCount}
+              onClear={clearStructuredFilters}
+            />
           </div>
         </>
       )}
@@ -630,9 +654,15 @@ export default function Contracts() {
                         <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>
                           Status
                         </SortableTableHead>
-                        <TableHead>Saúde</TableHead>
-                        <TableHead>Próxima OS</TableHead>
-                        <TableHead className="text-center">Itens</TableHead>
+                        <SortableTableHead sortKey="_health_rank" sortConfig={sortConfig} onSort={handleSort}>
+                          Saúde
+                        </SortableTableHead>
+                        <SortableTableHead sortKey="_next_occurrence_date" sortConfig={sortConfig} onSort={handleSort}>
+                          Próxima OS
+                        </SortableTableHead>
+                        <SortableTableHead sortKey="_items_count" sortConfig={sortConfig} onSort={handleSort} className="text-center">
+                          Itens
+                        </SortableTableHead>
                         <TableHead className="w-[140px]">Ações</TableHead>
                       </TableRow>
                     </TableHeader>

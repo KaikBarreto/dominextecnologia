@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Upload, X, ImageIcon } from 'lucide-react';
+import { Loader2, Upload, X, ImageIcon, Camera, Pen } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { phoneMask } from '@/utils/masks';
@@ -14,6 +15,7 @@ import {
   uploadResponsibleTechnicianMedia,
   type ResponsibleTechnician,
 } from '@/hooks/useResponsibleTechnicians';
+import { PmocSignatureCanvas, dataUrlToFile } from '@/components/pmoc/PmocSignatureCanvas';
 import { cn } from '@/lib/utils';
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2 MB
@@ -78,6 +80,8 @@ export function ResponsibleTechnicianFormDialog({
   const [removeSignature, setRemoveSignature] = useState(false);
   const [removeStamp, setRemoveStamp] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Aba ativa da assinatura. Default 'upload' porque foto/scan tem peso jurídico maior.
+  const [signatureMode, setSignatureMode] = useState<'upload' | 'draw'>('upload');
 
   // Hydrate quando abre / muda de edição.
   useEffect(() => {
@@ -104,6 +108,7 @@ export function ResponsibleTechnicianFormDialog({
     setStampFile(null);
     setRemoveSignature(false);
     setRemoveStamp(false);
+    setSignatureMode('upload');
   }, [open, technician]);
 
   const titleText = useMemo(
@@ -155,6 +160,22 @@ export function ResponsibleTechnicianFormDialog({
     setSignatureFile(null);
     setSignaturePreview(null);
     setRemoveSignature(true);
+  };
+
+  /**
+   * Recebe data URL do `PmocSignatureCanvas` (quando o usuário clica "Salvar imagem").
+   * Converte pra `File` PNG pra reaproveitar o pipeline de upload existente.
+   * Se vier string vazia (limpou o canvas), trata como remoção.
+   */
+  const handleSignatureFromCanvas = (dataUrl: string) => {
+    if (!dataUrl) {
+      clearSignature();
+      return;
+    }
+    const file = dataUrlToFile(dataUrl, `signature-${Date.now()}.png`);
+    setSignatureFile(file);
+    setSignaturePreview(dataUrl);
+    setRemoveSignature(false);
   };
 
   const clearStamp = () => {
@@ -346,16 +367,47 @@ export function ResponsibleTechnicianFormDialog({
           </div>
         </div>
 
-        {/* Uploads */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Assinatura — híbrida (upload OU canvas). Default upload, recomendado. */}
+        <div className="space-y-1.5">
+          <Label>Assinatura digitalizada</Label>
+          <Tabs value={signatureMode} onValueChange={(v) => setSignatureMode(v as 'upload' | 'draw')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="upload" className="gap-1.5">
+                <Camera className="h-3.5 w-3.5" />
+                Enviar imagem
+              </TabsTrigger>
+              <TabsTrigger value="draw" className="gap-1.5">
+                <Pen className="h-3.5 w-3.5" />
+                Desenhar
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="space-y-2">
+              <ImageUploadField
+                label=""
+                preview={signaturePreview}
+                onChange={handleSignatureChange}
+                onClear={clearSignature}
+              />
+              <p className="text-xs text-muted-foreground">
+                Fotografe a assinatura no papel e envie. Mais aceito juridicamente.
+              </p>
+            </TabsContent>
+
+            <TabsContent value="draw">
+              <PmocSignatureCanvas
+                value={signaturePreview}
+                onChange={handleSignatureFromCanvas}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Carimbo — upload apenas. Desenhar carimbo não faz sentido. */}
+        <div className="space-y-1.5">
+          <Label>Carimbo do responsável</Label>
           <ImageUploadField
-            label="Assinatura digitalizada"
-            preview={signaturePreview}
-            onChange={handleSignatureChange}
-            onClear={clearSignature}
-          />
-          <ImageUploadField
-            label="Carimbo do responsável"
+            label=""
             preview={stampPreview}
             onChange={handleStampChange}
             onClear={clearStamp}
@@ -404,10 +456,12 @@ interface ImageUploadFieldProps {
 }
 
 function ImageUploadField({ label, preview, onChange, onClear }: ImageUploadFieldProps) {
-  const inputId = `upload-${label.toLowerCase().replace(/\s+/g, '-')}`;
+  // `label` pode ser string vazia (quando o componente pai já renderizou o label).
+  const safeKey = label.trim() ? label.toLowerCase().replace(/\s+/g, '-') : `field-${Math.random().toString(36).slice(2, 8)}`;
+  const inputId = `upload-${safeKey}`;
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      {label && <Label>{label}</Label>}
       <div
         className={cn(
           'relative flex h-32 w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-border bg-muted/30',

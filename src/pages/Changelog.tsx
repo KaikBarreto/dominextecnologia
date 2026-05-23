@@ -40,6 +40,75 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.9',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Cabeçalho do app no computador com sino de notificações',
+        description: 'No computador agora aparece uma barra fixa no topo (mesmo que em apps de gestão modernos) com o sino de notificações no canto direito — você vê quantas novidades têm sem precisar abrir nenhum menu. Atalhos pra perfil e sair também ficaram no topo, sempre acessíveis. No celular tudo continua igual.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Dashboard repaginado com cards coloridos e gráficos com degradê',
+        description: 'Os cards principais (OS Abertas, Taxa de Conclusão, Faturamento) agora têm fundo colorido saturado com ícone branco — bate o olho e você lê os números mais rápido. Os gráficos de barras e pizza ganharam degradês suaves (em vez de cores chapadas) — visual mais moderno, sem perder legibilidade. E o mapa de "Equipe em Campo" agora aparece sempre, com aviso flutuante quando ninguém está em campo no momento.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tela de Contratos: filtros num botão único, lupa no lugar certo, colunas ordenáveis',
+        description: 'A tela de Contratos ganhou 3 ajustes: (1) a lupa de busca agora vive dentro da barra de busca (antes ficava solta na tela), (2) os 3 filtros de Status/Saúde/Tipo foram consolidados num único botão "Filtros" que abre uma gaveta lateral (igual no celular), com badge mostrando quantos filtros ativos, (3) todos os títulos da tabela (Contrato, Cliente, Frequência, Status, Saúde, Próxima OS, Itens) agora são clicáveis pra ordenar — uma vez sobe, outra desce.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastro rápido de Responsável Técnico direto no contrato',
+        description: 'Ao criar um contrato PMOC, se você ainda não cadastrou o Responsável Técnico, agora aparece um botão "+" ao lado do select. Toque e abre um cadastro enxuto com só os campos essenciais (nome, CFT/CREA, modalidade, registro). Cadastra, e o novo RT já fica selecionado no contrato — sem precisar sair da tela. Removemos "Responsáveis Técnicos" do menu lateral porque o cadastro rápido aqui resolve 90% dos casos. A tela completa de gestão (com upload de assinatura, carimbo, etc) continua acessível pela URL direta.',
+        category: 'recurso',
+      },
+      {
+        title: 'Assinatura do Responsável Técnico: agora dá pra desenhar à mão',
+        description: 'Ao cadastrar/editar um Responsável Técnico, a assinatura tem 2 modos: (1) Upload de imagem — fotografe a assinatura no papel e envie (recomendado pra fins jurídicos), (2) Desenhar agora — desenhe com o dedo no celular ou mouse no computador. Pra carimbo, mantemos só o upload (carimbo desenhado não faz sentido).',
+        category: 'recurso',
+      },
+      {
+        title: 'Busca de OS na Agenda do computador com modal paginado',
+        description: 'Na Agenda do computador agora tem uma lupa no topo (faltava antes — só tinha no celular). Toque na lupa: abre um modal com campo de busca focado, e os resultados aparecem em cards paginados (10 por vez) mostrando número da OS, cliente, data e status colorido. A busca cobre número da OS, cliente, descrição, técnico atribuído, título de tarefa e tipo de serviço. Toque num resultado: o modal fecha, o calendário pula pro mês/dia correto, e o detalhe da OS aparece no painel lateral. Útil quando você sabe que a OS existe mas não lembra exatamente quando foi.',
+        category: 'recurso',
+      },
+      {
+        title: 'Legendas da Agenda no computador agora ficam abaixo do calendário',
+        description: 'Pequeno ajuste: as legendas de cores por tipo de serviço (chips coloridos + Feriado) agora aparecem abaixo do calendário no computador, em vez de espremidas acima. Mais respiração visual e ordem natural de leitura. No celular continua igual (sheet de baixo).',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.9.8',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Checklist sanitário PMOC nas Ordens de Serviço',
+        description: 'OSs vinculadas a contratos PMOC agora capturam dados técnicos exigidos pela Lei 13.589/2018: temperatura de insuflamento e retorno, tensão, corrente, pressão de gás refrigerante e vazão. Quando o técnico digita um valor fora da faixa esperada do equipamento, o app mostra um aviso amarelo discreto pedindo conferência — sem bloquear o salvamento. Os 3 templates padrão (Split, Central de Água Gelada, Fancoil) já vêm prontos pra cada empresa, e você pode duplicar e personalizar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Classificação de conformidade ao finalizar OS PMOC',
+        description: 'Antes de fechar uma OS PMOC, o técnico classifica se o serviço ficou "Conforme" (tudo dentro do esperado), "Parcial" (alguma medida fora da faixa mas operacional) ou "Não-conforme" (problema técnico a registrar). Nos casos parcial ou não-conforme, o app pede uma nota explicativa obrigatória. O status fica visível no card de detalhes da OS e no histórico do portal público.',
+        category: 'recurso',
+      },
+      {
+        title: 'Limpeza definitiva do PMOC antigo',
+        description: 'Removemos definitivamente as tabelas internas do sistema PMOC antigo (que estavam em modo somente-leitura desde a versão 1.9.0, quando migramos tudo pra Contratos). Nenhum dado se perdeu — tudo já vivia no formato novo. Liberamos espaço e simplificamos o banco.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção de vazamento entre empresas em templates de formulários',
+        description: 'Auditoria de segurança identificou e corrigiu uma falha onde um administrador de uma empresa poderia, em tese, editar templates de formulários de outra empresa se conhecesse o ID. A regra de acesso (Row Level Security) agora obriga conferência da empresa antes de qualquer alteração em templates ou perguntas. Vetor de vazamento entre tenants fechado.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.9.7',
     date: '23 de maio de 2026',
     type: 'minor',

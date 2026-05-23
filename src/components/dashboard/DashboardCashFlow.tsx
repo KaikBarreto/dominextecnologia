@@ -47,6 +47,18 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
             <>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={data.monthlyData} barGap={4}>
+                  {/* Degradê vertical nas barras — regra sistema-wide CEO 2026-05-23.
+                      Topo saturado (90%), base translúcida (40%) pra dar leveza. */}
+                  <defs>
+                    <linearGradient id="gradCashEntradas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                    </linearGradient>
+                    <linearGradient id="gradCashSaidas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatYAxis} width={60} />
@@ -55,8 +67,8 @@ export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isL
                     wrapperStyle={{ fontSize: '12px' }}
                     formatter={(value: string) => <span style={{ color: 'hsl(var(--foreground))' }}>{value}</span>}
                   />
-                  <Bar dataKey="entradas" name="Entradas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="saidas" name="Saídas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="entradas" name="Entradas" fill="url(#gradCashEntradas)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="saidas" name="Saídas" fill="url(#gradCashSaidas)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-sm justify-center lg:justify-start">
