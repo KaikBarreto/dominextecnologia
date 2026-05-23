@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { osTypeLabels } from '@/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, differenceInDays, format, startOfISOWeek,
@@ -41,6 +43,7 @@ function formatCurrency(value: number) {
 export default function Dashboard() {
   const { profile } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
+  const isMobile = useIsMobile();
 
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
@@ -288,19 +291,29 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <PageHeader
+      <MobilePageHeader
         title={`Olá, ${firstName}! 👋`}
         subtitle={getGreeting()}
         icon={LayoutDashboard}
         actions={
-          <DateRangeFilter
-            value={range}
-            preset={preset}
-            onPresetChange={setPreset}
-            onRangeChange={setRange}
-          />
+          !isMobile && (
+            <DateRangeFilter
+              value={range}
+              preset={preset}
+              onPresetChange={setPreset}
+              onRangeChange={setRange}
+            />
+          )
         }
       />
+      {isMobile && (
+        <DateRangeFilter
+          value={range}
+          preset={preset}
+          onPresetChange={setPreset}
+          onRangeChange={setRange}
+        />
+      )}
 
       {/* KPIs - always full width, first */}
       <DashboardKPIs data={kpiData} isLoading={isLoading} />
