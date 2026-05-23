@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle2, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, MapPin, Clock, ArrowRight, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileListItem } from '@/components/mobile/MobileListItem';
 
 export interface CriticalOS {
   id: string;
@@ -17,6 +19,7 @@ export interface CriticalOS {
 
 export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[]; isLoading: boolean }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
@@ -36,49 +39,85 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
           {isLoading ? (
             <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
           ) : items.length > 0 ? (
-            <div className="space-y-2">
-              {items.slice(0, 5).map((os) => (
-                <div
-                  key={os.id}
-                  onClick={() => navigate('/os')}
-                  className="rounded-lg border border-border p-3 space-y-1.5 cursor-pointer hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-sm font-semibold text-foreground">
-                      #{String(os.orderNumber).padStart(6, '0')}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{os.osType}</span>
-                  </div>
-                  <p className="text-sm text-foreground truncate">{os.customerName}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    {os.location && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />{os.location}
+            isMobile ? (
+              <div className="rounded-xl border bg-card overflow-hidden -mx-2">
+                {items.slice(0, 5).map((os) => (
+                  <MobileListItem
+                    key={os.id}
+                    onClick={() => navigate('/ordens-servico')}
+                    leading={
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                        <ClipboardList className="h-5 w-5" />
+                      </div>
+                    }
+                    title={
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] text-muted-foreground">#{String(os.orderNumber).padStart(6, '0')}</span>
+                        <span className="truncate">{os.customerName}</span>
+                      </div>
+                    }
+                    subtitle={
+                      <div className="flex items-center gap-2 text-destructive">
+                        <Clock className="h-3 w-3 shrink-0" />
+                        <span>Atrasada {os.daysOverdue}d {!os.hasTechnician && '· sem técnico'}</span>
+                      </div>
+                    }
+                  />
+                ))}
+                {items.length > 5 && (
+                  <button
+                    onClick={() => navigate('/ordens-servico')}
+                    className="w-full text-center text-xs text-primary font-medium py-2.5 border-t hover:bg-muted/40 flex items-center justify-center gap-1"
+                  >
+                    Ver todas as OS críticas <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {items.slice(0, 5).map((os) => (
+                  <div
+                    key={os.id}
+                    onClick={() => navigate('/ordens-servico')}
+                    className="rounded-lg border border-border p-3 space-y-1.5 cursor-pointer hover:border-primary/30 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm font-semibold text-foreground">
+                        #{String(os.orderNumber).padStart(6, '0')}
                       </span>
+                      <span className="text-xs text-muted-foreground">{os.osType}</span>
+                    </div>
+                    <p className="text-sm text-foreground truncate">{os.customerName}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {os.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />{os.location}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-destructive">
+                        <Clock className="h-3 w-3" />Atrasada {os.daysOverdue} {os.daysOverdue === 1 ? 'dia' : 'dias'}
+                      </span>
+                    </div>
+                    {!os.hasTechnician && (
+                      <button
+                        className="text-xs text-primary font-medium flex items-center gap-1 mt-1 hover:underline"
+                        onClick={(e) => { e.stopPropagation(); navigate('/ordens-servico'); }}
+                      >
+                        Atribuir técnico <ArrowRight className="h-3 w-3" />
+                      </button>
                     )}
-                    <span className="flex items-center gap-1 text-destructive">
-                      <Clock className="h-3 w-3" />Atrasada {os.daysOverdue} {os.daysOverdue === 1 ? 'dia' : 'dias'}
-                    </span>
                   </div>
-                  {!os.hasTechnician && (
-                    <button
-                      className="text-xs text-primary font-medium flex items-center gap-1 mt-1 hover:underline"
-                      onClick={(e) => { e.stopPropagation(); navigate('/os'); }}
-                    >
-                      Atribuir técnico <ArrowRight className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {items.length > 5 && (
-                <button
-                  onClick={() => navigate('/os')}
-                  className="w-full text-center text-xs text-primary font-medium py-2 hover:underline flex items-center justify-center gap-1"
-                >
-                  Ver todas as OS <ArrowRight className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+                ))}
+                {items.length > 5 && (
+                  <button
+                    onClick={() => navigate('/ordens-servico')}
+                    className="w-full text-center text-xs text-primary font-medium py-2 hover:underline flex items-center justify-center gap-1"
+                  >
+                    Ver todas as OS <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            )
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <div className="p-3 rounded-full bg-success/10 mb-3">
