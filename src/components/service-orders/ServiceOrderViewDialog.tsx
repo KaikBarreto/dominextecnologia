@@ -352,113 +352,115 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         </Card>
       )}
 
-      {/* Ações da OS — espelha cluster de ações do ScheduleDetailPanel */}
-      <div className="pt-2 space-y-2">
-        {serviceOrder.status !== 'cancelada' && (
-          <Button
-            className="w-full"
-            onClick={() => { onOpenChange(false); navigate(`/os-tecnico/${serviceOrder.id}`); }}
-          >
-            <ClipboardList className="h-4 w-4 mr-2" />
-            {serviceOrder.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
-          </Button>
-        )}
+      {/* Ações da OS — pattern app nativo: grid de ícones compactos + CTA primário */}
+      {(() => {
+        type ActionTone = 'success' | 'warning' | 'edit' | 'destructive' | 'primary' | 'default';
+        const actions: Array<{
+          key: string;
+          icon: typeof Pause;
+          label: string;
+          tone?: ActionTone;
+          onClick: () => void | Promise<void>;
+        }> = [];
 
-        {onStatusChange && serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada' && (
-          <Button
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-            onClick={async () => { await onStatusChange('concluida'); onOpenChange(false); }}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Finalizar OS
-          </Button>
-        )}
-
-        {onStatusChange && serviceOrder.status === 'concluida' && (
-          <Button
-            variant="outline"
-            className="w-full border-warning/30 text-warning hover:bg-warning hover:text-warning-foreground"
-            onClick={async () => { await onStatusChange('em_andamento'); onOpenChange(false); }}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reabrir OS
-          </Button>
-        )}
-
-        {onStatusChange && (serviceOrder.status === 'em_andamento' || serviceOrder.status === 'a_caminho') && (
-          <Button
-            variant="outline"
-            className="w-full border-warning/30 text-warning hover:bg-warning hover:text-warning-foreground"
-            onClick={async () => { await onStatusChange('pausada'); onOpenChange(false); }}
-          >
-            <Pause className="h-4 w-4 mr-2" />
-            Pausar OS
-          </Button>
-        )}
-
-        {onStatusChange && serviceOrder.status === 'pausada' && (
-          <Button
-            variant="outline"
-            className="w-full border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
-            onClick={async () => { await onStatusChange('em_andamento'); onOpenChange(false); }}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Retomar OS
-          </Button>
-        )}
-
-        {(onEdit || onDelete) && (
-          <div className="grid grid-cols-2 gap-2">
-            {onEdit && (
-              <Button
-                variant="edit-ghost"
-                className="border border-warning/30"
-                onClick={() => { onOpenChange(false); onEdit(); }}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                Editar
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                variant="outline"
-                className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => { onOpenChange(false); onDelete(); }}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
-              </Button>
-            )}
-          </div>
-        )}
-
-        {serviceOrder.customer_id && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={async () => {
+        if (onStatusChange && serviceOrder.status === 'pausada') {
+          actions.push({ key: 'resume', icon: Play, label: 'Retomar', tone: 'primary', onClick: async () => { await onStatusChange('em_andamento'); onOpenChange(false); } });
+        }
+        if (onStatusChange && (serviceOrder.status === 'em_andamento' || serviceOrder.status === 'a_caminho')) {
+          actions.push({ key: 'pause', icon: Pause, label: 'Pausar', tone: 'warning', onClick: async () => { await onStatusChange('pausada'); onOpenChange(false); } });
+        }
+        if (onStatusChange && serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada') {
+          actions.push({ key: 'finalize', icon: CheckCircle, label: 'Finalizar', tone: 'success', onClick: async () => { await onStatusChange('concluida'); onOpenChange(false); } });
+        }
+        if (onStatusChange && serviceOrder.status === 'concluida') {
+          actions.push({ key: 'reopen', icon: RotateCcw, label: 'Reabrir', tone: 'warning', onClick: async () => { await onStatusChange('em_andamento'); onOpenChange(false); } });
+        }
+        if (onEdit) {
+          actions.push({ key: 'edit', icon: Pencil, label: 'Editar', tone: 'edit', onClick: () => { onOpenChange(false); onEdit(); } });
+        }
+        if (onDelete) {
+          actions.push({ key: 'delete', icon: Trash2, label: 'Excluir', tone: 'destructive', onClick: () => { onOpenChange(false); onDelete(); } });
+        }
+        if (serviceOrder.customer_id) {
+          actions.push({
+            key: 'tracking-link',
+            icon: linkCopied ? Check : Link2,
+            label: linkCopied ? 'Copiado!' : 'Link OS',
+            onClick: async () => {
               const url = `${window.location.origin}/acompanhamento/${serviceOrder.id}`;
               await navigator.clipboard.writeText(url);
               setLinkCopied(true);
               toast({ title: 'Link copiado!' });
               setTimeout(() => setLinkCopied(false), 2000);
-            }}
-          >
-            {linkCopied ? <Check className="h-3.5 w-3.5 mr-1.5 shrink-0" /> : <Link2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />}
-            <span className="truncate">{linkCopied ? 'Link copiado!' : 'Copiar link de acompanhamento'}</span>
-          </Button>
-        )}
+            }
+          });
+        }
+        if (serviceOrder.status === 'concluida') {
+          actions.push({
+            key: 'rating-link',
+            icon: Star,
+            label: 'Avaliação',
+            onClick: async () => {
+              const result = await createRatingToken.mutateAsync(serviceOrder.id);
+              if (result?.token) {
+                const url = `${window.location.origin}/avaliacao/${result.token}`;
+                await navigator.clipboard.writeText(url);
+                toast({ title: 'Link de avaliação copiado!' });
+              }
+            }
+          });
+        }
 
-        {serviceOrder.status === 'concluida' && (
-          <Button variant="outline" className="w-full" onClick={async () => {
-            const result = await createRatingToken.mutateAsync(serviceOrder.id);
-            if (result?.token) { const url = `${window.location.origin}/avaliacao/${result.token}`; await navigator.clipboard.writeText(url); toast({ title: 'Link de avaliação copiado!' }); }
-          }} disabled={createRatingToken.isPending}>
-            <Star className="h-4 w-4 mr-2" />Copiar Link de Avaliação
-          </Button>
-        )}
-      </div>
+        const toneClasses: Record<ActionTone, string> = {
+          success: 'bg-success/10 text-success',
+          warning: 'bg-warning/10 text-warning',
+          edit: 'bg-warning/10 text-warning',
+          destructive: 'bg-destructive/10 text-destructive',
+          primary: 'bg-primary/10 text-primary',
+          default: 'bg-muted text-foreground',
+        };
+
+        const hasPrimaryCta = serviceOrder.status !== 'cancelada';
+
+        if (actions.length === 0 && !hasPrimaryCta) return null;
+
+        return (
+          <div className="pt-3 mt-2 border-t space-y-3">
+            {actions.length > 0 && (
+              <div className="grid grid-cols-4 gap-1.5">
+                {actions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.key}
+                      type="button"
+                      onClick={action.onClick}
+                      className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-muted/60 active:bg-muted active:scale-95 transition"
+                    >
+                      <span className={`flex h-11 w-11 items-center justify-center rounded-full ${toneClasses[action.tone || 'default']}`}>
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-none text-center truncate max-w-full">
+                        {action.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {hasPrimaryCta && (
+              <Button
+                className="w-full h-12 text-base"
+                onClick={() => { onOpenChange(false); navigate(`/os-tecnico/${serviceOrder.id}`); }}
+              >
+                <ClipboardList className="h-5 w-5 mr-2" />
+                {serviceOrder.status === 'concluida' ? 'Relatório de Serviço' : 'Preencher OS'}
+              </Button>
+            )}
+          </div>
+        );
+      })()}
     </div>
   ) : (
     <div className="p-6 text-center text-muted-foreground">OS não encontrada</div>
