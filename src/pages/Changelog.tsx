@@ -74,6 +74,11 @@ const changelog: ChangelogEntry[] = [
         description: 'Na aba "Documentos" do contrato PMOC, se faltar algum campo obrigatório dos textos (CNPJ da empresa, nome ou modalidade do RT), aparece um banner amarelo no topo listando exatamente o que falta, com links clicáveis pra ir resolver. Evita que você abra o editor, escreva tudo, e só descubra na hora de gerar o PDF que tem dado faltando.',
         category: 'melhoria',
       },
+      {
+        title: 'Caixas de confirmação não abrem mais vazias no computador',
+        description: 'Em alguns momentos — por exemplo ao tentar abrir uma nova movimentação no Financeiro com um rascunho salvo, ou ao confirmar exclusões — a janela de confirmação podia abrir totalmente vazia no desktop, travando a tela e exigindo recarregar a página. Corrigido: agora o conteúdo aparece normalmente em todas as confirmações do sistema.',
+        category: 'correcao',
+      },
     ],
   },
   {

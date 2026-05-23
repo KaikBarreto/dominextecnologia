@@ -156,7 +156,9 @@ const AlertDialogContent = React.forwardRef<
           className,
         )}
         {...props}
-      />
+      >
+        {children}
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 });
