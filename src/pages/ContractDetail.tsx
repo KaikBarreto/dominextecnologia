@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useContractPublicToken, useRegeneratePmocToken } from '@/hooks/usePmocPortal';
+import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,6 +97,92 @@ export default function ContractDetail() {
   const [showBulkEditPrompt, setShowBulkEditPrompt] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<any>(null);
   const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
+
+  // Portal PMOC (Onda B v1.9.1) — só aparece quando is_pmoc=true.
+  const { hasRole } = useAuth();
+  const isPmoc = (contract as any)?.is_pmoc === true;
+  const canRegenerateToken =
+    hasRole('admin' as any) || hasRole('gestor' as any) || hasRole('super_admin' as any);
+  const { data: publicToken } = useContractPublicToken(isPmoc ? id : null);
+  const regenerateToken = useRegeneratePmocToken();
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
+  const [downloadingQr, setDownloadingQr] = useState(false);
+  const portalUrl = publicToken ? buildPmocPortalUrl(publicToken) : null;
+
+  const handleCopyPortalLink = async () => {
+    if (!portalUrl) return;
+    try {
+      await navigator.clipboard.writeText(portalUrl);
+      toast({ title: 'Link copiado', description: 'Cole onde quiser compartilhar.' });
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível copiar',
+        description: 'Copie manualmente da barra acima.',
+      });
+    }
+  };
+
+  const handleOpenPortal = () => {
+    if (!portalUrl) return;
+    window.open(portalUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handlePrintQrCode = async () => {
+    if (!id) return;
+    setDownloadingQr(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const accessToken = session.session?.access_token;
+      if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.');
+
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+      if (!supabaseUrl) throw new Error('Ambiente não configurado.');
+
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/generate-pmoc-qr-pdf?contract_id=${encodeURIComponent(id)}`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+      if (!res.ok) {
+        // Edge function pode ainda não existir (Onda B em fase de Database).
+        // Mensagem amigável ao gestor enquanto isso.
+        if (res.status === 404) {
+          throw new Error('Geração de QR Code em breve. Aguarde a próxima atualização.');
+        }
+        throw new Error('Não foi possível gerar o PDF.');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pmoc-qr-${contract?.name ?? 'contrato'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao gerar QR Code',
+        description: err.message,
+      });
+    } finally {
+      setDownloadingQr(false);
+    }
+  };
+
+  const handleRegenerateToken = async () => {
+    if (!id) return;
+    try {
+      await regenerateToken.mutateAsync(id);
+      setShowRegenerateDialog(false);
+    } catch {
+      // Toast já exibido pelo hook.
+    }
+  };
 
   const sortedOccurrences = useMemo(() => 
     (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
@@ -631,6 +720,82 @@ export default function ContractDetail() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Portal PMOC Público (Onda B v1.9.1) — só pra contratos PMOC. */}
+          {isPmoc && (
+            <Card className="w-full min-w-0 max-w-full overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base break-words">
+                  <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                  Portal Público
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 min-w-0">
+                <p className="text-xs text-muted-foreground break-words">
+                  Página pública desta unidade para o cliente final. Aparece no QR Code colado no quadro físico.
+                </p>
+
+                {portalUrl ? (
+                  <div className="rounded-md border bg-muted/40 p-2 text-xs font-mono break-all min-w-0">
+                    {portalUrl}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Link público em geração. Ative o módulo PMOC ou aguarde o próximo deploy.
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyPortalLink}
+                    disabled={!portalUrl}
+                    className="min-h-[40px]"
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                    Copiar link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenPortal}
+                    disabled={!portalUrl}
+                    className="min-h-[40px]"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    Abrir portal
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrintQrCode}
+                    disabled={!portalUrl || downloadingQr}
+                    className="col-span-2 min-h-[40px]"
+                  >
+                    {downloadingQr ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Printer className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Imprimir QR Code
+                  </Button>
+                  {canRegenerateToken && (
+                    <Button
+                      variant="destructive-ghost"
+                      size="sm"
+                      onClick={() => setShowRegenerateDialog(true)}
+                      disabled={!publicToken || regenerateToken.isPending}
+                      className="col-span-2 min-h-[40px]"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      Regenerar token
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -779,6 +944,42 @@ export default function ContractDetail() {
             <Button disabled={editRecSaving} onClick={() => handleSaveEditRec(true)}>
               {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Todas pendentes
             </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Regenerate PMOC token (destrutivo: invalida QR Code físico antigo) */}
+      <AlertDialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerar token do Portal Público?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Isso invalida QR Codes <strong>já impressos</strong> deste contrato.
+                  Clientes que escanearem o QR antigo verão página de erro.
+                </p>
+                <p className="text-sm">
+                  Você precisará imprimir e colar um QR Code novo no quadro físico da unidade.
+                </p>
+                <p className="text-sm font-medium text-destructive">Tem certeza?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={regenerateToken.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRegenerateToken}
+              disabled={regenerateToken.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {regenerateToken.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Regenerar token
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

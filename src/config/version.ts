@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.4";
+export const APP_VERSION = "1.9.5";
 
-export const VERSION_NOTES = "Login mobile com título LOGIN, rodapé com versão e copyright, Cadastro e Esqueci-Senha com mesmo visual de app nativo.";
+export const VERSION_NOTES = "Portal PMOC público: cada contrato PMOC ganha URL única + QR Code imprimível em A4 pra colar no quadro físico da unidade.";

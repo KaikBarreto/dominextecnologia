@@ -92,6 +92,9 @@ import Quotes from "./pages/Quotes";
 import QuotePublic from "./pages/QuotePublic";
 import ProposalPublic from "./pages/ProposalPublic";
 import CustomerPortal from "./pages/CustomerPortal";
+// Portal PMOC público (Onda B — v1.9.1). Lazy: rota pública sem auth,
+// só carrega quando o cliente final escaneia o QR Code.
+const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPortal"));
 
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminCompanyDetail from "./pages/admin/AdminCompanyDetail";
@@ -267,6 +270,8 @@ const AppRoutes = () => (
     <Route path="/proposta/:token" element={<ProposalPublic />} />
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />
+    {/* Portal PMOC público (Onda B v1.9.1) — fora do auth wall, indexável pelo Google */}
+    <Route path="/pmoc/unidade/:token" element={<PmocPublicPortal />} />
 
     {/* Checkout - full screen, no layout */}
     <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />

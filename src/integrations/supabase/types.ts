@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -831,6 +832,7 @@ export type Database = {
           next_pmoc_generation_date: string | null
           notes: string | null
           pmoc_legal_compliance_text: string | null
+          public_pmoc_token: string | null
           responsible_technician_id: string | null
           service_type_id: string | null
           show_billing_in_schedule: boolean
@@ -857,6 +859,7 @@ export type Database = {
           next_pmoc_generation_date?: string | null
           notes?: string | null
           pmoc_legal_compliance_text?: string | null
+          public_pmoc_token?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
           show_billing_in_schedule?: boolean
@@ -883,6 +886,7 @@ export type Database = {
           next_pmoc_generation_date?: string | null
           notes?: string | null
           pmoc_legal_compliance_text?: string | null
+          public_pmoc_token?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
           show_billing_in_schedule?: boolean
@@ -5283,6 +5287,7 @@ export type Database = {
         Args: { p_employee_id: string; p_lookahead_days?: number }
         Returns: number
       }
+      generate_pmoc_token: { Args: never; Returns: string }
       get_portal_by_token: {
         Args: { _token: string }
         Returns: {
@@ -5399,6 +5404,10 @@ export type Database = {
           p_vale_discount?: number
         }
         Returns: Json
+      }
+      regenerate_pmoc_token: {
+        Args: { p_contract_id: string }
+        Returns: string
       }
     }
     Enums: {
@@ -5595,3 +5604,5 @@ export const Constants = {
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.101.0 (currently installed v2.90.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

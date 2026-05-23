@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus, MapPin, Repeat } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, Plus, Check, Eye, UserPlus, MapPin, Repeat, AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -113,6 +114,10 @@ export function ServiceOrderFormDialog({
   const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Onda B v1.9.1 — warning na descrição quando a OS pertence a contrato PMOC.
+  // Os primeiros 200 caracteres aparecem no portal público da unidade.
+  const { isPmoc: isPmocOrder } = useIsPmocOrder(isEditing ? serviceOrder?.id : null);
 
   // Recurrence state (create mode only)
   const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
@@ -930,7 +935,19 @@ export function ServiceOrderFormDialog({
                 )}
 
                 <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Descrição do Serviço</FormLabel><FormControl><Textarea placeholder="Descreva o serviço a ser realizado" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>Descrição do Serviço</FormLabel>
+                    {isPmocOrder && (
+                      <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground sm:text-sm">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
+                        <p className="leading-relaxed">
+                          Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade — escreva pensando em quem está do outro lado (cliente, fiscal sanitário).
+                        </p>
+                      </div>
+                    )}
+                    <FormControl><Textarea placeholder="Descreva o serviço a ser realizado" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Observações adicionais" {...field} /></FormControl><FormMessage /></FormItem>

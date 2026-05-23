@@ -40,6 +40,38 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.5',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Portal PMOC público — cada contrato PMOC tem um link só dele',
+        description: 'Toda contrato PMOC agora gera automaticamente uma URL pública única (algo como /pmoc/unidade/abc123...). Compartilhe esse link com seu cliente ou exiba na parede da loja: qualquer pessoa que abrir vê o painel completo da unidade — nome da unidade, status atual (Em dia / Manutenção pendente / Necessita atenção), Responsável Técnico com CFT/CREA, próxima manutenção agendada e histórico completo de manutenções realizadas com fotos. Tudo sem precisar de login. O portal funciona perfeito no celular pra quem escanear pelo QR Code físico.',
+        category: 'recurso',
+      },
+      {
+        title: 'QR Code imprimível em A4 pra colar no quadro físico da unidade',
+        description: 'Dentro do contrato PMOC, na aba "Portal Público", você gera um PDF profissional pronto pra impressão: logo da sua empresa no topo, nome da unidade, QR Code grande no centro (7,8cm), URL legível embaixo (pra quem prefere digitar), e selo "Conforme Lei Federal 13.589/2018" no rodapé. O cliente cola na parede e qualquer fiscal sanitário/anvisa que passar escaneia direto e vê tudo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acesso público é por token — pode regenerar se vazar',
+        description: 'A URL do portal tem um token único de 128 bits (impossível de adivinhar). Mas se algum dia você quiser invalidar — exemplo: o cliente cancelou contrato, ou o QR Code físico ficou perdido por aí — basta tocar em "Regenerar token" no contrato (só admin e gestor podem). O QR antigo deixa de funcionar instantaneamente e você imprime um novo. Toda confirmação destrutiva tem aviso claro pra evitar acidente.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Selo "Conforme Lei 13.589/2018" no portal e nas OSs PMOC',
+        description: 'O portal público da unidade exibe o selo de conformidade legal no topo (faixa horizontal) e no rodapé. As Ordens de Serviço vinculadas a contratos PMOC já mostravam o selo desde a versão anterior — agora ele também aparece em todos os documentos públicos. Marketing orgânico: o fiscal lê o selo, e quem vê o portal sabe que o sistema garante a conformidade.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aviso ao editar descrição de OS PMOC',
+        description: 'Quando você edita uma Ordem de Serviço que pertence a um contrato PMOC, agora aparece um aviso amarelo discreto acima do campo "Descrição": "Os primeiros 200 caracteres podem aparecer no portal público — escreva pensando em quem está do outro lado (cliente, fiscal)". O aviso não bloqueia salvar nada — é só um lembrete pra evitar que linguagem interna ("cliente chato", gírias) acabe no portal público.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.4',
     date: '23 de maio de 2026',
     type: 'patch',
