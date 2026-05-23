@@ -26,6 +26,32 @@ const corsHeaders = {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// =============================================================================
+// Erro padronizado (Onda G): code + message PT-BR + field + action.
+// =============================================================================
+type ErrorAction = { label: string; href: string };
+interface StandardError {
+  error: string; // mantém retrocompat (legacy)
+  code: string;
+  message: string;
+  field?: string;
+  action?: ErrorAction;
+}
+
+function errorBody(
+  code: string,
+  message: string,
+  opts: { field?: string; action?: ErrorAction } = {},
+): StandardError {
+  return {
+    error: code,
+    code,
+    message,
+    ...(opts.field ? { field: opts.field } : {}),
+    ...(opts.action ? { action: opts.action } : {}),
+  };
+}
+
 // Rate limit 10 req/min por user
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 10;
@@ -79,7 +105,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   if (req.method !== "GET") {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return jsonResponse(
+      errorBody("method_not_allowed", "Método HTTP não suportado."),
+      405,
+    );
   }
 
   const t0 = Date.now();
@@ -87,13 +116,26 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
     if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
-      return jsonResponse({ error: "unauthorized" }, 401);
+      return jsonResponse(
+        errorBody(
+          "unauthorized",
+          "Sessão expirada. Faça login novamente para gerar o documento.",
+        ),
+        401,
+      );
     }
 
     const url = new URL(req.url);
     const contractId = url.searchParams.get("contract_id");
     if (!contractId || !UUID_REGEX.test(contractId)) {
-      return jsonResponse({ error: "invalid_contract_id" }, 400);
+      return jsonResponse(
+        errorBody(
+          "invalid_contract_id",
+          "Identificador do contrato inválido. Atualize a página e tente novamente.",
+          { field: "contract.id" },
+        ),
+        400,
+      );
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -104,12 +146,25 @@ Deno.serve(async (req) => {
     });
     const { data: userData, error: userErr } = await supabaseAuthed.auth.getUser();
     if (userErr || !userData?.user?.id) {
-      return jsonResponse({ error: "unauthorized" }, 401);
+      return jsonResponse(
+        errorBody(
+          "unauthorized",
+          "Sessão expirada. Faça login novamente para gerar o documento.",
+        ),
+        401,
+      );
     }
     const userId = userData.user.id;
 
     if (!rateLimitOk(userId)) {
-      return jsonResponse({ error: "rate_limited" }, 429, { "Retry-After": "60" });
+      return jsonResponse(
+        errorBody(
+          "rate_limited",
+          "Muitas tentativas em pouco tempo. Aguarde 1 minuto antes de gerar novamente.",
+        ),
+        429,
+        { "Retry-After": "60" },
+      );
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -142,19 +197,45 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!contract) {
-      return jsonResponse({ error: "not_found" }, 404);
+      return jsonResponse(
+        errorBody(
+          "not_found",
+          "Contrato não encontrado. Pode ter sido excluído ou você não tem acesso a ele.",
+        ),
+        404,
+      );
     }
     if (!isSuperAdmin && contract.company_id !== userCompany) {
-      return jsonResponse({ error: "not_found" }, 404);
+      // 404 unificado: não vaza existência cross-tenant.
+      return jsonResponse(
+        errorBody(
+          "not_found",
+          "Contrato não encontrado. Pode ter sido excluído ou você não tem acesso a ele.",
+        ),
+        404,
+      );
     }
     if (!isAdminOrGestor && !isSuperAdmin) {
       return jsonResponse(
-        { error: "forbidden_role", message: "Apenas administradores e gestores podem gerar documentos PMOC." },
+        errorBody(
+          "forbidden_role",
+          "Apenas administradores e gestores podem gerar documentos PMOC. Peça acesso ao administrador da empresa.",
+        ),
         403,
       );
     }
     if (contract.is_pmoc !== true) {
-      return jsonResponse({ error: "not_a_pmoc_contract" }, 400);
+      return jsonResponse(
+        errorBody(
+          "contract_not_pmoc",
+          "Este contrato não está marcado como PMOC. Edite o contrato e ative a opção 'Contrato PMOC' para gerar o cronograma.",
+          {
+            field: "contract.is_pmoc",
+            action: { label: "Editar contrato", href: `/contratos/${contractId}/editar` },
+          },
+        ),
+        400,
+      );
     }
 
     const [{ data: customer }, { data: companySettings }, { data: rt }] = await Promise.all([
@@ -185,6 +266,48 @@ Deno.serve(async (req) => {
         .eq("id", contract.company_id)
         .maybeSingle();
       tenantName = (companyRow?.name ?? "").trim() || "Empresa";
+    }
+
+    // ---- Validações bloqueantes (Onda G).
+    //      Cronograma exige: CNPJ + customer (RT é opcional aqui — o cronograma
+    //      não renderiza assinatura/CFT, só calendário).
+    const cnpj = (companySettings?.cnpj ?? "").trim();
+    if (!cnpj) {
+      return jsonResponse(
+        errorBody(
+          "cnpj_missing",
+          "CNPJ da empresa não cadastrado em Configurações > Empresa. O cronograma PMOC exige CNPJ pela Lei 13.589/2018.",
+          {
+            field: "company_settings.cnpj",
+            action: { label: "Ir para Configurações", href: "/configuracoes/empresa" },
+          },
+        ),
+        400,
+      );
+    }
+    if (!customer) {
+      return jsonResponse(
+        errorBody(
+          "customer_missing",
+          "O contrato não tem cliente vinculado. Edite o contrato e selecione um cliente.",
+          {
+            field: "contract.customer_id",
+            action: { label: "Editar contrato", href: `/contratos/${contractId}/editar` },
+          },
+        ),
+        400,
+      );
+    }
+
+    // ---- Warnings soft (não bloqueiam — viram header X-Pmoc-Warnings).
+    //      Cronograma só usa endereço no cabeçalho informativo, então ausência
+    //      vira "—" no PDF, mas o usuário é avisado.
+    const warnings: string[] = [];
+    if (!customer.address || !customer.address.trim()) {
+      warnings.push("customer_address_missing");
+    }
+    if (rt && (!rt.cft_crea || !rt.cft_crea.trim())) {
+      warnings.push("rt_cft_missing");
     }
 
     const useWhiteLabel = companySettings?.white_label_enabled === true;
@@ -276,6 +399,7 @@ Deno.serve(async (req) => {
         console.log("[generate-pmoc-cronograma-pdf] cache hit", {
           contract_id: maskUuid(contract.id),
           version: existingDoc.version,
+          warnings: warnings.length,
           duration_ms: Date.now() - t0,
         });
         return jsonResponse(
@@ -284,8 +408,10 @@ Deno.serve(async (req) => {
             version: existingDoc.version,
             generated_at: existingDoc.generated_at,
             cached: true,
+            warnings,
           },
           200,
+          warnings.length > 0 ? { "X-Pmoc-Warnings": warnings.join(",") } : {},
         );
       }
     }
@@ -295,7 +421,7 @@ Deno.serve(async (req) => {
     const ctx: TemplateContext = {
       empresa: {
         razao_social: tenantName,
-        cnpj: companySettings?.cnpj ?? "",
+        cnpj,
         cidade,
         logo_bytes: logoBytes,
         logo_mime: logoMime,
@@ -369,7 +495,13 @@ Deno.serve(async (req) => {
         contract_id: maskUuid(contract.id),
         message: uploadErr.message,
       });
-      return jsonResponse({ error: "upload_failed" }, 500);
+      return jsonResponse(
+        errorBody(
+          "pdf_generation_failed",
+          "Falha ao salvar o PDF. Tente novamente em alguns segundos. Se o problema continuar, contate o suporte.",
+        ),
+        500,
+      );
     }
 
     const { error: insertErr } = await supabase.from("pmoc_documents").insert({
@@ -388,7 +520,13 @@ Deno.serve(async (req) => {
         contract_id: maskUuid(contract.id),
         message: insertErr.message,
       });
-      return jsonResponse({ error: "persist_failed" }, 500);
+      return jsonResponse(
+        errorBody(
+          "pdf_generation_failed",
+          "Falha ao registrar o PDF gerado. Tente novamente em alguns segundos.",
+        ),
+        500,
+      );
     }
 
     const { data: signed } = await supabase.storage
@@ -396,7 +534,13 @@ Deno.serve(async (req) => {
       .createSignedUrl(storagePath, 3600);
 
     if (!signed) {
-      return jsonResponse({ error: "sign_failed" }, 500);
+      return jsonResponse(
+        errorBody(
+          "pdf_generation_failed",
+          "PDF gerado, mas houve falha ao gerar o link de download. Tente novamente.",
+        ),
+        500,
+      );
     }
 
     console.log("[generate-pmoc-cronograma-pdf] generated", {
@@ -405,6 +549,7 @@ Deno.serve(async (req) => {
       content_hash: contentHash.slice(0, 8) + "...",
       orders_count: serviceOrders.length,
       pdf_size_bytes: pdfBytes.length,
+      warnings: warnings.length,
       duration_ms: Date.now() - t0,
     });
 
@@ -414,13 +559,21 @@ Deno.serve(async (req) => {
         version: nextVersion,
         generated_at: new Date().toISOString(),
         cached: false,
+        warnings,
       },
       200,
+      warnings.length > 0 ? { "X-Pmoc-Warnings": warnings.join(",") } : {},
     );
   } catch (err) {
     console.error("[generate-pmoc-cronograma-pdf] unexpected error", {
       message: (err as Error)?.message ?? String(err),
     });
-    return jsonResponse({ error: "render_failed" }, 500);
+    return jsonResponse(
+      errorBody(
+        "pdf_generation_failed",
+        "Falha inesperada ao gerar o documento. Tente novamente em alguns segundos. Se persistir, contate o suporte.",
+      ),
+      500,
+    );
   }
 });

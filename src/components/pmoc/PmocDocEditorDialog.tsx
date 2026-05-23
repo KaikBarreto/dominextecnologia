@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Loader2, RotateCcw, Save } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog,
@@ -61,6 +62,7 @@ export function PmocDocEditorDialog({
   isSaving = false,
   helperText,
 }: PmocDocEditorDialogProps) {
+  const isMobile = useIsMobile();
   const seed = initialHtml && initialHtml.trim() !== '' ? initialHtml : defaultHtml;
   const [html, setHtml] = useState<string>(seed);
   const [isDirty, setIsDirty] = useState(false);
@@ -173,8 +175,12 @@ export function PmocDocEditorDialog({
         onOpenChange={handleAttemptClose}
         title={title}
         footer={footer}
+        // Onda G: desktop ganha até 1024px de largura pra edição confortável
+        // de textos longos. No mobile, ResponsiveModal vira drawer full-height
+        // (não regride — `sm:` aplica só ≥640px).
+        className="sm:!max-w-5xl"
       >
-        <div className="space-y-3 pt-1">
+        <div className="space-y-3 px-1 pt-1 sm:px-2">
           {helperText && (
             <p className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info">
               {helperText}
@@ -183,7 +189,11 @@ export function PmocDocEditorDialog({
           <PmocRichTextEditor
             value={html}
             onChange={handleChange}
-            minHeight={280}
+            // Mobile: 280px (cabe na altura do drawer com o teclado).
+            // Desktop: 520px — área de edição respira mais pra textos longos.
+            // O componente já tem max-h interno de 60vh + overflow-y, então
+            // não estoura tela.
+            minHeight={isMobile ? 280 : 520}
             placeholder="Edite o texto do documento PMOC…"
           />
           <p className="text-[11px] text-muted-foreground">

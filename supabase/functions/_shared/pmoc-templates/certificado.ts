@@ -18,10 +18,17 @@ import {
 const BLACK = rgb(0, 0, 0);
 
 export function buildDefaultCertificadoHtml(ctx: TemplateContext): string {
-  const cftPart = ctx.rt.cft_crea ? ` - CFT ${escapeHtml(ctx.rt.cft_crea)}` : "";
+  // Onda G: CFT vazio vira linha pontilhada (campo preenchido à mão).
+  //         Endereço vazio vira "—" (separador semântico).
+  const cftDisplay = ctx.rt.cft_crea && ctx.rt.cft_crea.trim()
+    ? escapeHtml(ctx.rt.cft_crea)
+    : "____________________";
+  const addressDisplay = ctx.customer.address && ctx.customer.address.trim()
+    ? escapeHtml(ctx.customer.address)
+    : "—";
   return `
     <h1>CERTIFICADO DE CONFORMIDADE</h1>
-    <p>Certificamos que a unidade <strong>${escapeHtml(ctx.customer.name)}</strong>, localizada em ${escapeHtml(ctx.customer.address)}, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong>${escapeHtml(ctx.rt.nome)}</strong> (${escapeHtml(ctx.rt.modalidade)}${cftPart}).</p>
+    <p>Certificamos que a unidade <strong>${escapeHtml(ctx.customer.name)}</strong>, localizada em ${addressDisplay}, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong>${escapeHtml(ctx.rt.nome)}</strong> (${escapeHtml(ctx.rt.modalidade)} - CFT ${cftDisplay}).</p>
     <p>Periodicidade das manutenções: ${escapeHtml(ctx.contract.frequency_label)}.</p>
     <p>Vigência: a partir de ${escapeHtml(ctx.contract.start_date_extenso)}.</p>
     <p>Documento gerado em ${escapeHtml(ctx.generated_at_extenso)}.</p>

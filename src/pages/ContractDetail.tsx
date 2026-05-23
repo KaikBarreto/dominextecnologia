@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ComponentType, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -66,6 +66,42 @@ const FREQUENCY_OPTIONS = [
   { value: 'semestral', label: 'Semestral', months: 6 },
   { value: 'anual', label: 'Anual', months: 12 },
 ];
+
+/**
+ * Item de navegação da sidebar lateral da página de contrato PMOC (Onda G).
+ *
+ * Visual:
+ *  - Inativo: ghost link com cor muted-foreground.
+ *  - Ativo: borda esquerda primary, fundo primary/5, texto primary,
+ *    semibold — destaque inspirado em sidebars de editor (Notion/Vercel).
+ */
+function SidebarNavItem({
+  active,
+  icon: Icon,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  icon: ComponentType<{ className?: string }>;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center gap-2 rounded-md border-l-2 px-3 py-2 text-left text-sm transition-colors',
+        active
+          ? 'border-primary bg-primary/5 font-semibold text-primary'
+          : 'border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="min-w-0 truncate">{children}</span>
+    </button>
+  );
+}
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
@@ -425,51 +461,84 @@ export default function ContractDetail() {
         </div>
       </div>
 
-      {isPmoc && (
+      {/*
+        Navegação PMOC (Onda G):
+        - Mobile: tabs horizontais no topo (mantém o pattern de uso atual).
+        - Desktop: sidebar lateral vertical à esquerda do conteúdo principal.
+
+        O conteúdo principal de Documentos/Cronograma e o grid "Visão Geral"
+        são renderizados condicionalmente conforme `pmocTab`. No mobile,
+        TabsList controla; no desktop, os botões da sidebar setam `pmocTab`
+        diretamente.
+      */}
+      {isPmoc && isMobile && (
         <Tabs
           value={pmocTab}
           onValueChange={(v) => setPmocTab(v as 'overview' | 'documentos' | 'cronograma')}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-3 sm:max-w-md">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="documentos" className="mt-4">
-            {id && (
-              <PmocContractDocsTab
-                contractId={id}
-                templateContext={pmocTemplateContext}
-                responsibleTechnicianId={
-                  (contract as unknown as { responsible_technician_id?: string | null })
-                    .responsible_technician_id ?? null
-                }
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="cronograma" className="mt-4">
-            {id && (
-              <PmocContractCronogramaTab
-                contractId={id}
-                onJumpToDocsTab={() => setPmocTab('documentos')}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="overview" className="mt-4">
-            {/* O conteúdo principal abaixo é renderizado sempre (também quando não-PMOC). */}
-            {/* Esta TabsContent vazia serve só de "shell" — o `div.grid` real continua fora pra
-                manter compatibilidade com contratos não-PMOC. */}
-          </TabsContent>
         </Tabs>
       )}
 
-      {/* Conteúdo "Visão Geral" — sempre renderizado pra não-PMOC; em PMOC só aparece quando
-          a aba ativa é 'overview' (controlado abaixo via className conditional). */}
-      <div className={cn(
+      {/*
+        Layout do conteúdo principal:
+        - Desktop + PMOC: sidebar lateral à esquerda + main à direita.
+        - Mobile (PMOC ou não) ou Desktop não-PMOC: empilhado normal,
+          conteúdo Documentos/Cronograma aparece quando a tab está ativa.
+      */}
+      <div className={cn(isPmoc && !isMobile && 'flex gap-6 min-h-[calc(100vh-220px)]')}>
+        {isPmoc && !isMobile && (
+          <aside className="w-56 shrink-0 space-y-1 border-r pr-4">
+            <SidebarNavItem
+              active={pmocTab === 'overview'}
+              icon={Info}
+              onClick={() => setPmocTab('overview')}
+            >
+              Visão Geral
+            </SidebarNavItem>
+            <SidebarNavItem
+              active={pmocTab === 'documentos'}
+              icon={FileText}
+              onClick={() => setPmocTab('documentos')}
+            >
+              Documentos
+            </SidebarNavItem>
+            <SidebarNavItem
+              active={pmocTab === 'cronograma'}
+              icon={Calendar}
+              onClick={() => setPmocTab('cronograma')}
+            >
+              Cronograma
+            </SidebarNavItem>
+          </aside>
+        )}
+
+        <div className={cn(isPmoc && !isMobile && 'flex-1 min-w-0')}>
+          {/* Conteúdo da aba Documentos (PMOC) */}
+          {isPmoc && pmocTab === 'documentos' && id && (
+            <PmocContractDocsTab
+              contractId={id}
+              templateContext={pmocTemplateContext}
+              responsibleTechnicianId={
+                (contract as unknown as { responsible_technician_id?: string | null })
+                  .responsible_technician_id ?? null
+              }
+            />
+          )}
+
+          {/* Conteúdo da aba Cronograma (PMOC) */}
+          {isPmoc && pmocTab === 'cronograma' && id && (
+            <PmocContractCronogramaTab contractId={id} />
+          )}
+
+          {/* Conteúdo "Visão Geral" — sempre renderizado pra não-PMOC; em PMOC
+              só quando aba ativa é 'overview'. */}
+          <div className={cn(
         'grid gap-6 lg:grid-cols-3 min-w-0 w-full',
         isPmoc && pmocTab !== 'overview' && 'hidden'
       )}>
@@ -876,6 +945,8 @@ export default function ContractDetail() {
               </CardContent>
             </Card>
           )}
+        </div>
+      </div>
         </div>
       </div>
 

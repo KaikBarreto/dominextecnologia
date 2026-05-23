@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.13',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Navegação lateral no detalhe do contrato PMOC (desktop)',
+        description: 'No desktop, abrir um contrato PMOC agora mostra uma barra lateral à esquerda com as abas (Visão Geral / Documentos / Cronograma). Item ativo destacado com borda primary à esquerda e fundo translúcido. Conteúdo principal preenche o resto da tela. Mobile mantém abas no topo (espaço vertical é valioso no celular).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Editor de textos dos documentos PMOC com largura grande no desktop',
+        description: 'Ao editar o Termo de Responsabilidade Técnica ou o Certificado, o editor agora abre num modal de ~1024px (em vez dos ~600px antigos), com 520px de altura mínima e barra de ferramentas fixa no topo (não some ao rolar texto longo). Edição mais confortável pra textos jurídicos longos. Mobile continua como drawer full-height.',
+        category: 'melhoria',
+      },
+      {
+        title: '"Imprimir PDF Anual" do Cronograma agora gera o PDF de verdade',
+        description: 'Antes, clicar em "Imprimir PDF Anual" na aba Cronograma só navegava de volta pra aba Documentos sem gerar nada. Agora chama diretamente o gerador, mostra loader enquanto trabalha, e abre o PDF de 12 meses em uma nova aba. Sem desvio.',
+        category: 'correcao',
+      },
+      {
+        title: '"Responsável Técnico" e "Técnico Executor" são campos distintos no contrato',
+        description: 'Antes, o formulário de contrato tinha 2 campos com o mesmo nome "Responsável Técnico" — um era pra escolher quem executa as OSs em campo, e o outro era o RT do PMOC (com CFT/CREA). Confuso. Agora ficam claros: "Técnicos Executores" pra quem vai a campo, e "Responsável Técnico (RT)" só na seção PMOC com tooltip explicando a Lei 13.589/2018. Na revisão (passo 4 do wizard), os dois campos aparecem em linhas separadas com seus dados respectivos.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mensagens de erro humanas ao gerar documentos PMOC',
+        description: 'Antes, se você tentava gerar um TRT sem CNPJ cadastrado, aparecia um toast vermelho com a palavra técnica "cnpj_missing". Agora aparece "CNPJ da empresa não cadastrado" como título, com descrição explicando o motivo (Lei 13.589/2018 exige) e botão "Ir pra Configurações" que leva direto pra resolver. Mesma melhoria pra 12 outros erros: RT não atribuído, RT sem CFT, contrato sem cliente, permissão insuficiente, sessão expirada, etc. E quando o PDF é gerado mas com algum campo opcional em branco (CFT, endereço), aparece um aviso amarelo dizendo "PDF gerado, mas o CFT está em branco — aparece como linha pontilhada no documento".',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aviso quando vai abrir o editor sem dados completos',
+        description: 'Na aba "Documentos" do contrato PMOC, se faltar algum campo obrigatório dos textos (CNPJ da empresa, nome ou modalidade do RT), aparece um banner amarelo no topo listando exatamente o que falta, com links clicáveis pra ir resolver. Evita que você abra o editor, escreva tudo, e só descubra na hora de gerar o PDF que tem dado faltando.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.12',
     date: '23 de maio de 2026',
     type: 'minor',

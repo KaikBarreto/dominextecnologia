@@ -25,7 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -251,7 +252,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       // e destructive); emoji ⚠️ comunica o tom de warning sem inventar variant nova.
       if (isPmoc && !responsibleTechnicianId) {
         toast({
-          title: '⚠️ Sem Responsável Técnico definido',
+          title: '⚠️ Sem Responsável Técnico (RT) definido',
           description: 'Recomendamos definir um RT antes de ativar PMOC. Você pode atribuir depois.',
         });
       }
@@ -407,8 +408,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     selectedTeamIds={selectedTeamIds}
                     onChangeUsers={setSelectedUserIds}
                     onChangeTeams={setSelectedTeamIds}
-                    label="Responsáveis Técnicos (OS)"
+                    label="Técnicos Executores"
                   />
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Técnicos ou equipes que vão a campo executar as ordens de serviço deste contrato.
+                    {' '}Diferente do Responsável Técnico (RT) regulatório do PMOC.
+                  </p>
                 </div>
                 <div className="sm:col-span-2">
                   <AssigneeMultiSelect
@@ -490,7 +495,28 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 {isPmoc && (
                   <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
                     <div className="space-y-2">
-                      <Label>Responsável Técnico</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="m-0">Responsável Técnico (RT)</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label="O que é Responsável Técnico?"
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs text-xs">
+                            Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o
+                            Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018.
+                            Diferente do Técnico Executor (quem executa as OSs no campo).
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <p className="text-xs text-muted-foreground -mt-1">
+                        CFT/CREA — supervisão regulatória do PMOC.
+                      </p>
                       <div className="flex gap-2">
                         <div className="flex-1">
                           <Select
@@ -767,7 +793,25 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               <div className="grid gap-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Nome</span><span className="font-medium text-right">{name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{clientName}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Responsáveis</span><span className="font-medium text-right">{selectedUserIds.length > 0 ? `${selectedUserIds.length} técnico(s)` : 'Nenhum'}{selectedTeamIds.length > 0 ? ` + ${selectedTeamIds.length} equipe(s)` : ''}</span></div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Técnicos Executores</span>
+                  <span className="font-medium text-right">
+                    {(() => {
+                      if (selectedUserIds.length === 0 && selectedTeamIds.length === 0) return '—';
+                      const parts: string[] = [];
+                      if (selectedUserIds.length === 1) {
+                        const name = (technicians ?? []).find(t => t.user_id === selectedUserIds[0])?.full_name;
+                        parts.push(name || '1 técnico');
+                      } else if (selectedUserIds.length > 1) {
+                        parts.push(`${selectedUserIds.length} técnicos`);
+                      }
+                      if (selectedTeamIds.length > 0) {
+                        parts.push(`${selectedTeamIds.length} equipe(s)`);
+                      }
+                      return parts.join(' + ');
+                    })()}
+                  </span>
+                </div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Frequência</span><span className="font-medium">{getFrequencyLabel(freqType, freqValue)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Início</span><span className="font-medium">{format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy')}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Horizonte</span><span className="font-medium">{horizonMonths} meses</span></div>
@@ -787,14 +831,22 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   )}
                 </div>
                 {isPmoc && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Responsável Técnico</span>
-                    <span className="font-medium text-right">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground shrink-0">Responsável Técnico (RT)</span>
+                    <div className="text-right min-w-0">
                       {(() => {
                         const rt = responsibleTechnicians.find((r) => r.id === responsibleTechnicianId);
-                        return rt ? rt.full_name : 'A definir';
+                        if (!rt) return <span className="font-medium">A definir</span>;
+                        return (
+                          <>
+                            <div className="font-medium truncate">{rt.full_name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              CFT/CREA: {rt.cft_crea ?? '—'}
+                            </div>
+                          </>
+                        );
                       })()}
-                    </span>
+                    </div>
                   </div>
                 )}
               </div>

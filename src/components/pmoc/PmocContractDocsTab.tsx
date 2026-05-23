@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Download,
   FileText,
@@ -235,6 +236,20 @@ export function PmocContractDocsTab({
   const latestCronograma = latestByType.cronograma_anual;
   const latestTrt = latestByType.termo_rt;
 
+  // Onda G — diagnóstico de campos faltantes no `templateContext`. Quando
+  // algum campo crítico estiver vazio, exibimos banner warning no topo da aba
+  // pra o gestor cadastrar ANTES de salvar/gerar (em vez de o template sair
+  // com placeholder literal tipo "[CNPJ]" no PDF).
+  const missingFields = useMemo(() => {
+    const list: Array<{ label: string; href?: string }> = [];
+    if (!templateContext?.empresa_razao_social) list.push({ label: 'Razão social da empresa', href: '/configuracoes?tab=empresa' });
+    if (!templateContext?.empresa_cnpj) list.push({ label: 'CNPJ da empresa', href: '/configuracoes?tab=empresa' });
+    if (!templateContext?.rt_nome) list.push({ label: 'Nome do Responsável Técnico', href: '/responsaveis-tecnicos' });
+    if (!templateContext?.rt_modalidade) list.push({ label: 'Modalidade do RT', href: '/responsaveis-tecnicos' });
+    if (!templateContext?.rt_cft_crea) list.push({ label: 'CFT/CREA do RT', href: '/responsaveis-tecnicos' });
+    return list;
+  }, [templateContext]);
+
   // Status visual do TRT: signed | pending | null (não gerado).
   const trtStatus: PmocDocumentSignatureStatus = latestTrt
     ? latestTrt.signature_status ?? 'pending'
@@ -259,6 +274,33 @@ export function PmocContractDocsTab({
 
   return (
     <div className="space-y-6">
+      {/* Onda G — banner de campos obrigatórios faltando. Avisa o gestor antes
+          dele gerar documento com placeholder literal no PDF. */}
+      {missingFields.length > 0 && (
+        <Alert className="border-warning/40 bg-warning/5">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertTitle>Dados faltando pra gerar documentos PMOC</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p className="text-sm">
+              Cadastre os campos abaixo antes de gerar TRT/Dossiê pra que o PDF saia com os dados reais — e não com placeholder genérico.
+            </p>
+            <ul className="ml-4 list-disc space-y-0.5 text-sm">
+              {missingFields.map((f) => (
+                <li key={f.label}>
+                  {f.href ? (
+                    <Link to={f.href} className="underline hover:text-foreground">
+                      {f.label}
+                    </Link>
+                  ) : (
+                    f.label
+                  )}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Card 0 — TRT (Onda E) — gerável independente do Dossiê */}
       <Card className="w-full min-w-0 max-w-full overflow-hidden">
         <CardHeader>

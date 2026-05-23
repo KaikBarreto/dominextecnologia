@@ -118,7 +118,9 @@ function EditorToolbar({ editor }: { editor: Editor }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b bg-muted/30 px-2 py-1.5">
+    // Onda G: toolbar sticky no topo do container do editor pra não sumir
+    // ao rolar texto longo no editor PMOC (modal full-width no desktop).
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-muted/40 px-2 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-muted/30">
       {/* Grupo: formatação inline */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
@@ -284,14 +286,15 @@ export function PmocRichTextEditor({
   }
 
   return (
-    <div className={cn('rounded-md border bg-card', className)}>
+    // O scroll vive no container externo pra que a toolbar (sticky) fique
+    // ancorada no topo enquanto o usuário rola o conteúdo. `maxHeight: 60vh`
+    // mantém o editor sob controle dentro de modais grandes.
+    <div
+      className={cn('overflow-y-auto rounded-md border bg-card', className)}
+      style={{ minHeight, maxHeight: '60vh' }}
+    >
       {!readOnly && <EditorToolbar editor={editor} />}
-      <div
-        className="overflow-y-auto"
-        style={{ minHeight, maxHeight: '60vh' }}
-      >
-        <EditorContent editor={editor} />
-      </div>
+      <EditorContent editor={editor} />
     </div>
   );
 }

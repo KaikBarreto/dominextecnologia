@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { getPmocErrorMessage } from '@/utils/pmocErrorMessages';
 
 /**
- * Mutations de geração de PDFs PMOC (Onda C/E — v1.9.x).
+ * Mutations de geração de PDFs PMOC (Onda C/E/G — v1.9.x).
  *
  * - `useGenerateDossiePdf` → edge function `generate-pmoc-dossie-pdf`
  *   (capa + termo RT + certificado).
@@ -15,17 +17,17 @@ import { useToast } from '@/hooks/use-toast';
  * Todas:
  *  - Exigem `Authorization` do usuário logado (RLS no DB + checagem same-tenant).
  *  - Retornam `{ pdf_url, version, cached, signature_status? }` ao sucesso.
- *  - Disparam toast amigável em PT-BR no erro.
+ *  - Onda G: traduzem códigos de erro técnicos (`cnpj_missing` etc.) em
+ *    mensagens amigáveis em PT-BR via `getPmocErrorMessage`, com CTA quando faz
+ *    sentido (ex: "Ir pra Configurações").
  *
  * `signature_status` (Onda E) é propagado pelo Dossiê e pelo TRT — indica se
  * o PDF foi gerado com a assinatura real do RT (`signed`) ou com linha em
  * branco pra assinar à mão (`pending`). O Cronograma retorna `null`/ausente.
  *
- * Quando o Database ainda não deployou a edge function (404), mostramos
- * mensagem clara enquanto aguarda.
- *
  * Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.2 / §4.3
  * Onda E: TRT separado + embed signature universal.
+ * Onda G: erros amigáveis + CTA no toast.
  */
 
 export type PmocSignatureStatus = 'signed' | 'pending';
@@ -47,6 +49,20 @@ type PmocEdgeFunctionName =
   | 'generate-pmoc-cronograma-pdf'
   | 'generate-pmoc-trt-pdf';
 
+/**
+ * Erro tipado lançado pelo `callEdgeFunction`. Carrega o `code` curto vindo da
+ * edge function (`cnpj_missing` etc.) quando disponível, pra que o `onError`
+ * do hook traduza pra mensagem amigável.
+ */
+class PmocEdgeError extends Error {
+  readonly code: string;
+  constructor(code: string, message?: string) {
+    super(message ?? code);
+    this.code = code;
+    this.name = 'PmocEdgeError';
+  }
+}
+
 async function callEdgeFunction(
   functionName: PmocEdgeFunctionName,
   contractId: string,
@@ -54,7 +70,7 @@ async function callEdgeFunction(
   const { data: session } = await supabase.auth.getSession();
   const accessToken = session.session?.access_token;
   if (!accessToken) {
-    throw new Error('Sessão expirada. Faça login novamente.');
+    throw new PmocEdgeError('session_expired');
   }
 
   const supabaseUrl = (import.meta as unknown as { env?: { VITE_SUPABASE_URL?: string } }).env
@@ -73,14 +89,15 @@ async function callEdgeFunction(
   });
 
   if (res.status === 404) {
-    throw new Error('Geração de PDF em breve. Aguarde a próxima atualização.');
+    throw new PmocEdgeError('edge_not_deployed');
   }
   if (res.status === 400) {
-    const body = await res.json().catch(() => ({ error: 'Dados insuficientes' }));
-    throw new Error(body?.error ?? 'Dados do contrato insuficientes para gerar o PDF.');
+    const body = await res.json().catch(() => ({ error: 'unknown' }));
+    const code = typeof body?.error === 'string' ? body.error : 'unknown';
+    throw new PmocEdgeError(code);
   }
   if (res.status === 401 || res.status === 403) {
-    throw new Error('Você não tem permissão para gerar este documento.');
+    throw new PmocEdgeError('permission_denied');
   }
   if (!res.ok) {
     throw new Error('Não foi possível gerar o PDF agora.');
@@ -91,6 +108,16 @@ async function callEdgeFunction(
     throw new Error('Resposta inválida da geração de PDF.');
   }
   return json;
+}
+
+/**
+ * Resolve o code de erro a ser traduzido — prefere `PmocEdgeError.code`, senão
+ * usa a `Error.message` (que ainda pode bater como match parcial).
+ */
+function extractErrorCode(err: unknown): string {
+  if (err instanceof PmocEdgeError) return err.code;
+  if (err instanceof Error) return err.message;
+  return String(err ?? '');
 }
 
 export function useGenerateDossiePdf() {
@@ -109,11 +136,25 @@ export function useGenerateDossiePdf() {
           : `Versão ${result.version} criada com sucesso.`,
       });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
+      const code = extractErrorCode(err);
+      const msg = getPmocErrorMessage(code, 'Erro ao gerar dossiê');
       toast({
         variant: 'destructive',
-        title: 'Erro ao gerar dossiê',
-        description: err.message,
+        title: msg.title,
+        description: msg.description,
+        action: msg.cta
+          ? (
+            <ToastAction
+              altText={msg.cta.label}
+              onClick={() => {
+                window.location.href = msg.cta!.path;
+              }}
+            >
+              {msg.cta.label}
+            </ToastAction>
+          )
+          : undefined,
       });
     },
   });
@@ -135,11 +176,25 @@ export function useGenerateCronogramaPdf() {
           : `Versão ${result.version} criada com sucesso.`,
       });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
+      const code = extractErrorCode(err);
+      const msg = getPmocErrorMessage(code, 'Erro ao gerar cronograma');
       toast({
         variant: 'destructive',
-        title: 'Erro ao gerar cronograma',
-        description: err.message,
+        title: msg.title,
+        description: msg.description,
+        action: msg.cta
+          ? (
+            <ToastAction
+              altText={msg.cta.label}
+              onClick={() => {
+                window.location.href = msg.cta!.path;
+              }}
+            >
+              {msg.cta.label}
+            </ToastAction>
+          )
+          : undefined,
       });
     },
   });
@@ -175,11 +230,25 @@ export function useGenerateTrtPdf() {
 
       toast({ title: baseTitle, description });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
+      const code = extractErrorCode(err);
+      const msg = getPmocErrorMessage(code, 'Erro ao gerar TRT');
       toast({
         variant: 'destructive',
-        title: 'Erro ao gerar TRT',
-        description: err.message,
+        title: msg.title,
+        description: msg.description,
+        action: msg.cta
+          ? (
+            <ToastAction
+              altText={msg.cta.label}
+              onClick={() => {
+                window.location.href = msg.cta!.path;
+              }}
+            >
+              {msg.cta.label}
+            </ToastAction>
+          )
+          : undefined,
       });
     },
   });

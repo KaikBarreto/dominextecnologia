@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.12";
+export const APP_VERSION = "1.9.13";
 
-export const VERSION_NOTES = "Contratos PMOC agora geram OSs imediatamente igual contratos comuns + botão 'Responsáveis Técnicos' na tela de Contratos + contador de OSs no AlertDialog antes de excluir contrato.";
+export const VERSION_NOTES = "Tela do contrato PMOC com navegação lateral no desktop + editor de textos full-width + bug fix do botão Imprimir PDF do Cronograma + nomes desambiguados (Técnico Executor vs Responsável Técnico) + mensagens de erro humanas com botões de ação direta.";
