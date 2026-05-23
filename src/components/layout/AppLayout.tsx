@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, UserCircle, LogOut } from 'lucide-react';
+import { Menu, UserCircle, LogOut, ArrowLeft } from 'lucide-react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MobilePullToRefresh } from '@/components/mobile/MobilePullToRefresh';
+import { useQueryClient } from '@tanstack/react-query';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Sidebar } from './Sidebar';
 import { TopNavbar } from './TopNavbar';
@@ -141,20 +143,30 @@ function TopbarShell() {
 }
 
 // ============================================================
-// SHELL: mobile/tablet (header simples + MobileBottomNav)
+// SHELL: mobile/tablet (header simples + MobileBottomNav + pull-to-refresh)
 // ============================================================
 function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
+  const queryClient = useQueryClient();
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries();
+  };
+
   return (
     <div className="flex h-[100dvh] w-full max-w-full flex-col">
       <MobileTabletHeader isAdminUser={isAdminUser} />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-w-0 max-w-full pb-28">
-        <RouteTransition>
-          <Outlet />
-        </RouteTransition>
-        <div className="mt-6 pb-2">
-          <SystemFooter />
-        </div>
-      </main>
+      <MobilePullToRefresh
+        onRefresh={handleRefresh}
+        className="flex-1 overflow-x-hidden min-w-0 max-w-full"
+      >
+        <main className="p-4 pb-28">
+          <RouteTransition>
+            <Outlet />
+          </RouteTransition>
+          <div className="mt-6 pb-2">
+            <SystemFooter />
+          </div>
+        </main>
+      </MobilePullToRefresh>
       <MobileBottomNav />
     </div>
   );
@@ -173,12 +185,30 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
   }, [location.pathname]);
 
   const adminTarget = isAdminUser ? '/admin/dashboard' : '/dashboard';
+  // Esconde back na home (não tem pra onde voltar) e em rotas técnico (fluxo próprio).
+  const homePaths = ['/dashboard', '/admin/dashboard'];
+  const showBackButton =
+    !homePaths.includes(location.pathname) &&
+    !location.pathname.startsWith('/os-tecnico/') &&
+    window.history.length > 1;
+
   // O tablet (≥lg) tem botão Menu visível. Mobile usa só o bottom nav.
   // (lg breakpoint do tailwind = 1024px, mesmo do MOBILE_BREAKPOINT.)
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background px-4">
-      {/* Lado esquerdo: w-10 fixo no mobile, w-10 lg pra acomodar Menu — peso simétrico ao direito */}
+      {/* Lado esquerdo: back arrow no mobile, Menu hamburger no tablet+ */}
       <div className="flex items-center gap-2 w-10">
+        {showBackButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 lg:hidden"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 hidden lg:flex">
