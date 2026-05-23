@@ -152,11 +152,11 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
     return (
       <div className="space-y-4 text-center">
         <div className="mx-auto w-12 h-12 rounded-full bg-primary flex items-center justify-center">
-          <CheckCircle className="h-6 w-6 text-foreground" />
+          <CheckCircle className="h-6 w-6 text-white" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground">Senha redefinida!</h3>
-        <p className="text-sm text-muted-foreground">Você já pode entrar com a nova senha.</p>
-        <Button variant="outline" onClick={onBack} className="border-border text-foreground hover:bg-background">
+        <h3 className="text-lg font-semibold text-white">Senha redefinida!</h3>
+        <p className="text-sm text-white/60">Você já pode entrar com a nova senha.</p>
+        <Button variant="outline" onClick={onBack} className="border-white/20 text-white hover:bg-background">
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao login
         </Button>
       </div>
@@ -170,8 +170,8 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
           <div className="mx-auto w-10 h-10 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
             <Lock className="h-4 w-4 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">Nova senha</h3>
-          <p className="text-sm text-muted-foreground">Defina sua nova senha de acesso</p>
+          <h3 className="text-lg font-semibold text-white">Nova senha</h3>
+          <p className="text-sm text-white/60">Defina sua nova senha de acesso</p>
         </div>
 
         <Form {...passwordForm}>
@@ -181,12 +181,12 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-muted-foreground">Nova senha</FormLabel>
+                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Nova senha</FormLabel>
                   <FormControl>
                     <PasswordInput
                       {...field}
                       placeholder="Mínimo 6 caracteres"
-                      className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
                       disabled={isLoading}
                     />
                   </FormControl>
@@ -200,12 +200,12 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-muted-foreground">Confirmar senha</FormLabel>
+                  <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Confirmar senha</FormLabel>
                   <FormControl>
                     <PasswordInput
                       {...field}
                       placeholder="Repita a senha"
-                      className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
                       disabled={isLoading}
                     />
                   </FormControl>
@@ -220,7 +220,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
           </form>
         </Form>
 
-        <button type="button" onClick={() => setStep('code')} className="w-full text-center text-xs text-muted-foreground hover:text-primary uppercase tracking-widest transition-colors">
+        <button type="button" onClick={() => setStep('code')} className="w-full text-center text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors">
           Voltar
         </button>
       </div>
@@ -235,10 +235,10 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
           <div className="mx-auto w-10 h-10 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
             <KeyRound className="h-4 w-4 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">Digite o código</h3>
-          <p className="text-sm text-muted-foreground">
+          <h3 className="text-lg font-semibold text-white">Digite o código</h3>
+          <p className="text-sm text-white/60">
             Enviamos um código de {CODE_LENGTH} dígitos para<br />
-            <span className="font-medium text-foreground">{email}</span>
+            <span className="font-medium text-white">{email}</span>
           </p>
         </div>
 
@@ -255,7 +255,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
               onChange={(e) => handleCodeChange(i, e.target.value)}
               onKeyDown={(e) => handleCodeKeyDown(i, e)}
               disabled={isLoading}
-              className="w-10 h-12 sm:w-11 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-md bg-background border-2 border-border text-foreground focus:border-primary focus:outline-none focus:bg-background transition-colors"
+              className="w-10 h-12 sm:w-11 sm:h-14 text-center text-lg sm:text-xl font-bold rounded-md bg-white/10 border-2 border-white/20 text-white focus:border-primary focus:outline-none focus:bg-white/10 transition-colors"
             />
           ))}
         </div>
@@ -269,12 +269,12 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
             type="button"
             onClick={() => requestCode(email)}
             disabled={resendCooldown > 0 || isLoading}
-            className="text-muted-foreground hover:text-primary uppercase tracking-widest transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
+            className="text-white/60 hover:text-primary uppercase tracking-widest transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1"
           >
             <RotateCw className="h-3 w-3" />
             {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : 'Reenviar código'}
           </button>
-          <button type="button" onClick={() => setStep('email')} className="text-muted-foreground hover:text-primary uppercase tracking-widest transition-colors">
+          <button type="button" onClick={() => setStep('email')} className="text-white/60 hover:text-primary uppercase tracking-widest transition-colors">
             Trocar email
           </button>
         </div>
@@ -286,8 +286,8 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
   return (
     <div className="space-y-4">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold text-foreground">Recuperar senha</h3>
-        <p className="text-sm text-muted-foreground">Informe seu email para receber o código</p>
+        <h3 className="text-lg font-semibold text-white">Recuperar senha</h3>
+        <p className="text-sm text-white/60">Informe seu email para receber o código</p>
       </div>
 
       <Form {...emailForm}>
@@ -297,15 +297,15 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-normal uppercase tracking-widest text-muted-foreground">Email</FormLabel>
+                <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">Email</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                     <Input
                       {...field}
                       type="email"
                       placeholder="seu@email.com"
-                      className="pl-10 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary"
+                      className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-primary"
                       disabled={isLoading}
                     />
                   </div>
@@ -321,7 +321,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
         </form>
       </Form>
 
-      <button type="button" onClick={onBack} className="w-full text-center text-xs text-muted-foreground hover:text-primary uppercase tracking-widest transition-colors">
+      <button type="button" onClick={onBack} className="w-full text-center text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors">
         Voltar ao login
       </button>
     </div>

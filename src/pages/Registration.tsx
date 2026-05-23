@@ -199,7 +199,7 @@ export default function Registration() {
           <p className="text-white/80 text-xs sm:text-sm tracking-wider sm:tracking-normal">Sistema de Gestão de Equipes Externas</p>
         </div>
 
-        <Card className="border-0 sm:border sm:border-white/15 bg-black/70 sm:bg-black/40 backdrop-blur-xl shadow-2xl rounded-t-[28px] sm:rounded-xl flex-1 sm:flex-initial animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:fade-in duration-500 ease-out">
+        <Card className="border-0 border-t border-white/10 sm:border sm:border-white/15 bg-black/30 sm:bg-black/40 backdrop-blur-2xl sm:backdrop-blur-xl shadow-2xl rounded-t-[28px] sm:rounded-xl flex-1 sm:flex-initial animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:fade-in duration-500 ease-out">
           <div className="mx-auto h-1 w-10 rounded-full bg-white/30 mt-3 mb-1 sm:hidden" />
           <CardContent className="p-6 xl:p-8 pb-[max(env(safe-area-inset-bottom),3rem)] sm:pb-6">
             <div className="space-y-6">

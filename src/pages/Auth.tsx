@@ -348,7 +348,7 @@ export default function Auth() {
           </div>
 
           {/* Bottom sheet com o form */}
-          <div className="bg-background rounded-t-[28px] shadow-2xl shadow-black/40 px-6 pt-6 pb-[max(env(safe-area-inset-bottom),3rem)] animate-in slide-in-from-bottom-12 duration-500 ease-out">
+          <div className="bg-black/40 backdrop-blur-2xl border-t border-white/10 rounded-t-[28px] shadow-2xl shadow-black/50 px-6 pt-6 pb-[max(env(safe-area-inset-bottom),3rem)] animate-in slide-in-from-bottom-12 duration-500 ease-out text-white">
             <div className="mx-auto h-1 w-10 rounded-full bg-muted mb-5" />
 
             {!showForgotPassword && (
@@ -377,17 +377,17 @@ export default function Auth() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs uppercase tracking-wider text-muted-foreground">Email</FormLabel>
+                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">Email</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                               <Input
                                 {...field}
                                 type="email"
-                                placeholder="seu@email.com"
+                                placeholder="seu@email.com" autoCapitalize="none"
                                 autoComplete="email"
                                 disabled={isLoading}
-                                className="pl-10 h-12"
+                                className="pl-10 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40"
                               />
                             </div>
                           </FormControl>
@@ -401,22 +401,22 @@ export default function Auth() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs uppercase tracking-wider text-muted-foreground">Senha</FormLabel>
+                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">Senha</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                               <Input
                                 {...field}
                                 type={showPassword ? 'text' : 'password'}
                                 placeholder="••••••••"
                                 autoComplete="current-password"
                                 disabled={isLoading}
-                                className="pl-10 pr-10 h-12"
+                                className="pl-10 pr-10 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40"
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
                                 disabled={isLoading}
                               >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -441,7 +441,7 @@ export default function Auth() {
                                 disabled={isLoading}
                               />
                             </FormControl>
-                            <FormLabel className="text-xs text-muted-foreground cursor-pointer">
+                            <FormLabel className="text-xs text-white/60 cursor-pointer">
                               Lembrar-me
                             </FormLabel>
                           </FormItem>
@@ -470,7 +470,7 @@ export default function Auth() {
                   </form>
                 </Form>
 
-                <div className="text-center text-[11px] text-muted-foreground pt-2 border-t uppercase tracking-wider">
+                <div className="text-center text-[11px] text-white/60 pt-2 border-t uppercase tracking-wider">
                   Ainda não tem conta?{' '}
                   <Link to="/cadastro" className="text-primary font-semibold hover:underline">
                     Cadastre-se
