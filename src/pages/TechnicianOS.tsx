@@ -28,6 +28,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
@@ -36,6 +39,8 @@ import { DynamicFormQuestions, type FormValidationResult } from '@/components/te
 import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
+import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
+import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
 import { osStatusLabels, osTypeLabels } from '@/types/database';
@@ -91,6 +96,14 @@ export default function TechnicianOS() {
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+
+  // Onda D v1.9.x — classificação de conformidade PMOC.
+  // Só aparece quando a OS é PMOC (`useIsPmocOrder`). Notas são obrigatórias
+  // se status é 'parcial' ou 'nao_conforme'.
+  const { isPmoc: isPmocOrder } = useIsPmocOrder(id);
+  type PmocConformity = 'conforme' | 'parcial' | 'nao_conforme';
+  const [conformityStatus, setConformityStatus] = useState<PmocConformity | ''>('');
+  const [conformityNotes, setConformityNotes] = useState<string>('');
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -229,6 +242,17 @@ export default function TechnicianOS() {
       setCheckOutTime(data.check_out_time);
       setCheckInLocation(data.check_in_location as any);
       setCheckOutLocation(data.check_out_location as any);
+      // Onda D v1.9.x — hidrata classificação PMOC se já existir (re-abertura
+      // da tela após salvar offline e antes de finalizar)
+      const existingPmocStatus = (data as any)?.pmoc_conformity_status as
+        | 'conforme'
+        | 'parcial'
+        | 'nao_conforme'
+        | null
+        | undefined;
+      if (existingPmocStatus) setConformityStatus(existingPmocStatus);
+      const existingPmocNotes = (data as any)?.pmoc_conformity_notes as string | null | undefined;
+      if (existingPmocNotes) setConformityNotes(existingPmocNotes);
       await fetchCompany((data as any).company_id);
     } catch (error: any) {
       toast({
@@ -410,11 +434,31 @@ export default function TechnicianOS() {
       return;
     }
 
+    // Onda D v1.9.x — validação de conformidade PMOC
+    if (isPmocOrder) {
+      if (!conformityStatus) {
+        toast({
+          variant: 'destructive',
+          title: 'Classificação PMOC obrigatória',
+          description: 'Selecione conforme, parcial ou não-conforme antes de finalizar.',
+        });
+        return;
+      }
+      if ((conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && !conformityNotes.trim()) {
+        toast({
+          variant: 'destructive',
+          title: 'Notas obrigatórias',
+          description: 'Descreva o que foi observado para classificação parcial ou não-conforme.',
+        });
+        return;
+      }
+    }
+
     setFinishing(true);
     try {
       const location = await getCurrentLocation();
       const now = new Date().toISOString();
-      
+
       const updateData: any = {
         check_out_time: now,
         check_out_location: location,
@@ -422,6 +466,15 @@ export default function TechnicianOS() {
       };
       if (techSignature) updateData.tech_signature = techSignature;
       if (clientSignature) updateData.client_signature = clientSignature;
+
+      // Onda D v1.9.x — persiste classificação de conformidade PMOC.
+      // Colunas service_orders.pmoc_conformity_status / pmoc_conformity_notes
+      // são adicionadas pela migration da Onda D; updateData é any, então
+      // não precisa de @ts-expect-error aqui.
+      if (isPmocOrder && conformityStatus) {
+        updateData.pmoc_conformity_status = conformityStatus;
+        updateData.pmoc_conformity_notes = conformityNotes.trim() || null;
+      }
 
       const { error } = await supabase
         .from('service_orders')
@@ -1476,6 +1529,78 @@ export default function TechnicianOS() {
                   label="Assinatura do Cliente"
                 />
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Onda D v1.9.x — Classificação de Conformidade PMOC.
+            Só aparece quando OS pertence a contrato PMOC. Bloqueia finalizar
+            se status='parcial'|'nao_conforme' sem notas. */}
+        {isCheckedIn && !isPaused && isPmocOrder && (
+          <Card className="border-info/40 bg-info/5">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <PmocComplianceBadge variant="chip" />
+                <CardTitle className="text-base">Classificação de Conformidade PMOC</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Esta OS pertence a contrato PMOC. Indique a conformidade com a Lei 13.589/2018:
+              </p>
+              <RadioGroup
+                value={conformityStatus}
+                onValueChange={(v) => setConformityStatus(v as PmocConformity)}
+              >
+                <label
+                  htmlFor="conformity-conforme"
+                  className="flex items-center gap-3 rounded-md border border-success/30 bg-success/5 px-3 py-3 cursor-pointer min-h-[44px]"
+                >
+                  <RadioGroupItem value="conforme" id="conformity-conforme" />
+                  <span className="text-sm font-medium text-success">
+                    Conforme — tudo dentro do esperado
+                  </span>
+                </label>
+                <label
+                  htmlFor="conformity-parcial"
+                  className="flex items-center gap-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-3 cursor-pointer min-h-[44px]"
+                >
+                  <RadioGroupItem value="parcial" id="conformity-parcial" />
+                  <span className="text-sm font-medium text-warning">
+                    Parcial — alguma medida fora da faixa, mas operacional
+                  </span>
+                </label>
+                <label
+                  htmlFor="conformity-nao-conforme"
+                  className="flex items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-3 cursor-pointer min-h-[44px]"
+                >
+                  <RadioGroupItem value="nao_conforme" id="conformity-nao-conforme" />
+                  <span className="text-sm font-medium text-destructive">
+                    Não-conforme — problema técnico a registrar
+                  </span>
+                </label>
+              </RadioGroup>
+              <div className="space-y-1.5">
+                <Label htmlFor="conformity-notes" className="text-xs">
+                  Notas de conformidade
+                  {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
+                    <span className="text-destructive ml-1">*</span>
+                  )}
+                </Label>
+                <Textarea
+                  id="conformity-notes"
+                  value={conformityNotes}
+                  onChange={(e) => setConformityNotes(e.target.value)}
+                  placeholder="Descreva o que foi observado..."
+                  rows={3}
+                  className="text-sm"
+                />
+                {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
+                  <p className="text-xs text-muted-foreground">
+                    Obrigatório quando a classificação é parcial ou não-conforme.
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

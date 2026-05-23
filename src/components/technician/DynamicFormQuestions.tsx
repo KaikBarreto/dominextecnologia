@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
@@ -315,6 +316,68 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           />
         );
 
+      // Onda D v1.9.x — campo sanitário PMOC.
+      // Valor numérico com unidade exibida no sufixo e validação visual quando
+      // sai da faixa esperada. Não bloqueia salvamento (intencional: técnico
+      // precisa registrar valor anômalo pra documentar a anomalia).
+      case 'pmoc_measurement': {
+        const unit = question.unit ?? null;
+        const min = question.expected_min ?? null;
+        const max = question.expected_max ?? null;
+        const numericValue = value.trim() === '' ? NaN : parseFloat(value);
+        const isOutOfRange =
+          !isNaN(numericValue) &&
+          ((min != null && numericValue < min) ||
+            (max != null && numericValue > max));
+
+        return (
+          <div className="space-y-1.5">
+            <div className="relative">
+              <Input
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="Digite a medida..."
+                value={value}
+                onChange={(e) =>
+                  setResponses((prev) => ({
+                    ...prev,
+                    [question.id]: {
+                      ...prev[question.id],
+                      question_id: question.id,
+                      response_value: e.target.value,
+                      response_photo_url: prev[question.id]?.response_photo_url || null,
+                    },
+                  }))
+                }
+                onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
+                disabled={isSaving}
+                className={cn(
+                  unit ? 'pr-16' : '',
+                  isOutOfRange && 'border-warning focus-visible:ring-warning',
+                )}
+              />
+              {unit && (
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
+                  {unit}
+                </span>
+              )}
+            </div>
+            {(min != null || max != null) && (
+              <p className="text-xs text-muted-foreground">
+                Faixa esperada: {min ?? '—'} a {max ?? '—'}{unit ? ` ${unit}` : ''}
+              </p>
+            )}
+            {isOutOfRange && (
+              <p className="text-xs text-warning flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                Valor fora da faixa esperada — confira o equipamento ou registre observação.
+              </p>
+            )}
+          </div>
+        );
+      }
+
       case 'select':
         const options = (question.options as string[]) || [];
         const selectedValues = value ? value.split('|||').filter(Boolean) : [];
@@ -461,7 +524,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           {effectiveTypes.map((type) => (
             <div key={type} className="space-y-1">
               <Badge variant="outline" className="text-xs">
-                {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type}
+                {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
               </Badge>
               {renderSingleTypeInput(question, type)}
             </div>
@@ -500,7 +563,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             <div key={type} className="space-y-1">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type}
+                  {type === 'boolean' ? 'Sim/Não' : type === 'text' ? 'Texto' : type === 'number' ? 'Número' : type === 'photo' ? 'Foto' : type === 'select' ? 'Seleção' : type === 'signature' ? 'Assinatura' : type === 'pmoc_measurement' ? 'Medida PMOC' : type}
                 </Badge>
                 {answeredType === type && (
                   <Badge variant="default" className="text-xs gap-1">

@@ -173,6 +173,47 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
       {isPmocOrder && (
         <PmocComplianceBadge variant="ribbon" withTooltip />
       )}
+      {/* Onda D v1.9.x — Card de Conformidade PMOC.
+          Aparece quando OS é PMOC e o técnico já classificou a OS no fechamento. */}
+      {isPmocOrder && serviceOrder.pmoc_conformity_status && (() => {
+        const status = serviceOrder.pmoc_conformity_status as
+          | 'conforme'
+          | 'parcial'
+          | 'nao_conforme';
+        const notes = serviceOrder.pmoc_conformity_notes;
+        const CONFORMITY_LABEL = {
+          conforme: 'Conforme',
+          parcial: 'Parcial',
+          nao_conforme: 'Não-conforme',
+        } as const;
+        const CONFORMITY_VARIANT = {
+          conforme: 'success',
+          parcial: 'warning',
+          nao_conforme: 'destructive',
+        } as const;
+        const CONFORMITY_BORDER = {
+          conforme: 'border-success/40 bg-success/5',
+          parcial: 'border-warning/40 bg-warning/5',
+          nao_conforme: 'border-destructive/40 bg-destructive/5',
+        } as const;
+        return (
+          <Card className={CONFORMITY_BORDER[status]}>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Conformidade PMOC</h4>
+                <Badge variant={CONFORMITY_VARIANT[status]}>
+                  {CONFORMITY_LABEL[status]}
+                </Badge>
+              </div>
+              {notes && (
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                  {notes}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
       <div className="flex items-center gap-4 text-sm">
         <Badge variant="secondary">{osTypeLabels[serviceOrder.os_type]}</Badge>
         {serviceOrder.scheduled_date && (

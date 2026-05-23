@@ -2452,8 +2452,11 @@ export type Database = {
         Row: {
           answer_mode: string | null
           answer_types: Json | null
+          auto_classify: boolean
           created_at: string
           description: string | null
+          expected_max: number | null
+          expected_min: number | null
           id: string
           is_required: boolean
           options: Json | null
@@ -2462,12 +2465,16 @@ export type Database = {
           question_type: string
           require_camera: boolean
           template_id: string
+          unit: string | null
         }
         Insert: {
           answer_mode?: string | null
           answer_types?: Json | null
+          auto_classify?: boolean
           created_at?: string
           description?: string | null
+          expected_max?: number | null
+          expected_min?: number | null
           id?: string
           is_required?: boolean
           options?: Json | null
@@ -2476,12 +2483,16 @@ export type Database = {
           question_type?: string
           require_camera?: boolean
           template_id: string
+          unit?: string | null
         }
         Update: {
           answer_mode?: string | null
           answer_types?: Json | null
+          auto_classify?: boolean
           created_at?: string
           description?: string | null
+          expected_max?: number | null
+          expected_min?: number | null
           id?: string
           is_required?: boolean
           options?: Json | null
@@ -2490,6 +2501,7 @@ export type Database = {
           question_type?: string
           require_camera?: boolean
           template_id?: string
+          unit?: string | null
         }
         Relationships: [
           {
@@ -2600,6 +2612,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_pmoc_default: boolean
           name: string
           service_type_id: string | null
           updated_at: string
@@ -2611,6 +2624,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_pmoc_default?: boolean
           name: string
           service_type_id?: string | null
           updated_at?: string
@@ -2622,6 +2636,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_pmoc_default?: boolean
           name?: string
           service_type_id?: string | null
           updated_at?: string
@@ -3233,163 +3248,6 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pmoc_generated_os: {
-        Row: {
-          generated_at: string
-          id: string
-          plan_id: string
-          scheduled_for: string
-          service_order_id: string
-        }
-        Insert: {
-          generated_at?: string
-          id?: string
-          plan_id: string
-          scheduled_for: string
-          service_order_id: string
-        }
-        Update: {
-          generated_at?: string
-          id?: string
-          plan_id?: string
-          scheduled_for?: string
-          service_order_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pmoc_generated_os_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "pmoc_plans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pmoc_generated_os_service_order_id_fkey"
-            columns: ["service_order_id"]
-            isOneToOne: false
-            referencedRelation: "service_orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pmoc_items: {
-        Row: {
-          created_at: string
-          equipment_id: string
-          id: string
-          plan_id: string
-        }
-        Insert: {
-          created_at?: string
-          equipment_id: string
-          id?: string
-          plan_id: string
-        }
-        Update: {
-          created_at?: string
-          equipment_id?: string
-          id?: string
-          plan_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pmoc_items_equipment_id_fkey"
-            columns: ["equipment_id"]
-            isOneToOne: false
-            referencedRelation: "equipment"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pmoc_items_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "pmoc_plans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pmoc_plans: {
-        Row: {
-          contract_id: string | null
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          form_template_id: string | null
-          frequency_config: Json | null
-          frequency_months: number
-          frequency_type: string
-          generation_horizon_months: number
-          id: string
-          name: string
-          next_generation_date: string
-          notes: string | null
-          service_type_id: string | null
-          status: string
-          technician_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          contract_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          form_template_id?: string | null
-          frequency_config?: Json | null
-          frequency_months?: number
-          frequency_type?: string
-          generation_horizon_months?: number
-          id?: string
-          name: string
-          next_generation_date: string
-          notes?: string | null
-          service_type_id?: string | null
-          status?: string
-          technician_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          contract_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          form_template_id?: string | null
-          frequency_config?: Json | null
-          frequency_months?: number
-          frequency_type?: string
-          generation_horizon_months?: number
-          id?: string
-          name?: string
-          next_generation_date?: string
-          notes?: string | null
-          service_type_id?: string | null
-          status?: string
-          technician_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pmoc_plans_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pmoc_plans_form_template_id_fkey"
-            columns: ["form_template_id"]
-            isOneToOne: false
-            referencedRelation: "form_templates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pmoc_plans_service_type_id_fkey"
-            columns: ["service_type_id"]
-            isOneToOne: false
-            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
         ]
@@ -4399,6 +4257,8 @@ export type Database = {
           parts_used: Json | null
           parts_value: number | null
           paused_at: string | null
+          pmoc_conformity_notes: string | null
+          pmoc_conformity_status: string | null
           recurrence_end_date: string | null
           recurrence_group_id: string | null
           recurrence_interval: number | null
@@ -4449,6 +4309,8 @@ export type Database = {
           parts_used?: Json | null
           parts_value?: number | null
           paused_at?: string | null
+          pmoc_conformity_notes?: string | null
+          pmoc_conformity_status?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_interval?: number | null
@@ -4499,6 +4361,8 @@ export type Database = {
           parts_used?: Json | null
           parts_value?: number | null
           paused_at?: string | null
+          pmoc_conformity_notes?: string | null
+          pmoc_conformity_status?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_interval?: number | null

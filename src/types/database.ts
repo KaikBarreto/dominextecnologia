@@ -110,6 +110,11 @@ export interface ServiceOrder {
   paused_at?: string | null;
   resumed_at?: string | null;
   completed_at?: string | null;
+  // Onda D v1.9.x — classificação de conformidade PMOC.
+  // Preenchido pelo técnico ao finalizar OS PMOC. Trigger no banco garante
+  // que só pode ser setado em OS de contrato is_pmoc=true.
+  pmoc_conformity_status?: 'conforme' | 'parcial' | 'nao_conforme' | null;
+  pmoc_conformity_notes?: string | null;
   // Relations
   customer?: Customer;
   equipment?: Equipment;
@@ -136,7 +141,7 @@ export interface FormQuestion {
   id: string;
   template_id: string;
   question: string;
-  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature';
+  question_type: 'boolean' | 'text' | 'number' | 'photo' | 'select' | 'signature' | 'pmoc_measurement';
   options?: string[];
   is_required: boolean;
   position: number;
@@ -144,6 +149,13 @@ export interface FormQuestion {
   require_camera?: boolean;
   answer_types?: string[];
   answer_mode?: 'exclusive' | 'combined';
+  /** Onda D v1.9.x — campos sanitários PMOC.
+   *  Schema vem do Database (migration ainda não aplicada quando o frontend subiu);
+   *  campos ficam opcionais até regen de types.ts. */
+  unit?: string | null;
+  expected_min?: number | null;
+  expected_max?: number | null;
+  auto_classify?: boolean | null;
   created_at: string;
 }
 
