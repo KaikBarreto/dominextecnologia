@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Printer } from 'lucide-react';
+import { AlertTriangle, Loader2, Printer, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import {
   PmocCronogramaCalendar,
@@ -10,6 +11,7 @@ import {
 } from './PmocCronogramaCalendar';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useGenerateCronogramaPdf } from '@/hooks/useGeneratePmocDocument';
+import { useGenerateRetroactiveContractOSs } from '@/hooks/useGenerateRetroactiveContractOSs';
 import type { ServiceOrder } from '@/types/database';
 
 /**
@@ -36,12 +38,22 @@ export function PmocContractCronogramaTab({
   const navigate = useNavigate();
   const { serviceOrders, isLoading } = useServiceOrders();
   const generateCronograma = useGenerateCronogramaPdf();
+  const generateRetroactive = useGenerateRetroactiveContractOSs();
 
   const contractOrders = useMemo<PmocCronogramaCalendarOrder[]>(() => {
     return (serviceOrders || []).filter(
       (o: ServiceOrder) => o.contract_id === contractId,
     ) as unknown as PmocCronogramaCalendarOrder[];
   }, [serviceOrders, contractId]);
+
+  // Quando o contrato (PMOC ou comum) não tem nenhuma OS vinculada, oferecemos
+  // gerar retroativamente. Caso típico: contrato PMOC criado antes da v1.9.12,
+  // quando a geração ainda dependia do cron desabilitado.
+  const hasNoOrders = !isLoading && contractOrders.length === 0;
+
+  const handleGenerateRetroactive = () => {
+    generateRetroactive.mutate(contractId);
+  };
 
   const handleOSClick = (os: ServiceOrder) => {
     // Em desktop e mobile, redireciona pra rota da OS (mesma de outros contextos).
@@ -87,12 +99,44 @@ export function PmocContractCronogramaTab({
         {isLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Carregando ordens…</p>
         ) : (
-          <PmocCronogramaCalendar
-            serviceOrders={contractOrders}
-            view={undefined /* deixa o gestor alternar */}
-            onOSClick={handleOSClick}
-            showControls
-          />
+          <>
+            {hasNoOrders && (
+              <Alert className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Nenhuma OS encontrada para este contrato</AlertTitle>
+                <AlertDescription className="space-y-3">
+                  <p>
+                    Este contrato não tem ordens de serviço geradas. Isso normalmente
+                    acontece quando ele foi criado antes da versão 1.9.12, em que a
+                    geração automática mudou. Você pode gerar agora todo o cronograma
+                    de uma vez — datas, técnico responsável e equipamentos do contrato
+                    serão respeitados.
+                  </p>
+                  <Button
+                    onClick={handleGenerateRetroactive}
+                    disabled={generateRetroactive.isPending}
+                    size="sm"
+                    className="min-h-[40px]"
+                  >
+                    {generateRetroactive.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    {generateRetroactive.isPending
+                      ? 'Gerando OSs…'
+                      : 'Gerar OSs deste contrato agora'}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            <PmocCronogramaCalendar
+              serviceOrders={contractOrders}
+              view={undefined /* deixa o gestor alternar */}
+              onOSClick={handleOSClick}
+              showControls
+            />
+          </>
         )}
       </CardContent>
     </Card>

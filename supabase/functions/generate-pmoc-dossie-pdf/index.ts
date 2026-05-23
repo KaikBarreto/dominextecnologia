@@ -277,7 +277,8 @@ Deno.serve(async (req) => {
         .maybeSingle(),
       supabase
         .from("company_settings")
-        .select("name, cnpj, logo_url, white_label_enabled, white_label_logo_url, city")
+        // CNPJ vive em `company_settings.document` (não há coluna `cnpj`).
+        .select("name, document, logo_url, white_label_enabled, white_label_logo_url, city")
         .eq("company_id", contract.company_id)
         .maybeSingle(),
       contract.responsible_technician_id
@@ -307,14 +308,15 @@ Deno.serve(async (req) => {
     }
 
     // ---- Validações bloqueantes (Onda G: mensagens ricas com ação)
-    const cnpj = (companySettings?.cnpj ?? "").trim();
+    // CNPJ está em `company_settings.document` no schema real (não há coluna `cnpj`).
+    const cnpj = (companySettings?.document ?? "").trim();
     if (!cnpj) {
       return jsonResponse(
         errorBody(
           "cnpj_missing",
           "CNPJ da empresa não cadastrado em Configurações > Empresa. O dossiê PMOC exige CNPJ pela Lei 13.589/2018.",
           {
-            field: "company_settings.cnpj",
+            field: "company_settings.document",
             action: { label: "Ir para Configurações", href: "/configuracoes/empresa" },
           },
         ),

@@ -418,7 +418,11 @@ export default function ContractDetail() {
   // narrowing defensivo via Record genérico até types.ts ser regenerado.
   type RtRelation = { full_name?: string; modality?: string; cft_crea?: string };
   type CustomerExtra = { address?: string; city?: string; state?: string };
-  const contractRt = (contract as unknown as { responsible_technician?: RtRelation }).responsible_technician;
+  // PostgREST join `responsible_technicians:responsible_technician_id (...)` no useContracts
+  // resulta no alias PLURAL `responsible_technicians` (não singular). Bug histórico: lia
+  // singular → contractRt sempre undefined → banner pintava RT como faltando mesmo
+  // existindo no banco. Fix: usar plural (alias real do PostgREST).
+  const contractRt = (contract as unknown as { responsible_technicians?: RtRelation }).responsible_technicians;
   const customerExtra = (contract.customers ?? {}) as unknown as CustomerExtra & { name?: string };
   const pmocTemplateContext = isPmoc
     ? {
