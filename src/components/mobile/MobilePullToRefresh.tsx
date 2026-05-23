@@ -76,14 +76,17 @@ export function MobilePullToRefresh({
     isPullingRef.current = false;
     if (pullDistance >= threshold) {
       setIsRefreshing(true);
+      const startTime = Date.now();
+      const MIN_VISIBLE_MS = 800; // garante que spinner é perceptível mesmo se refresh for instantâneo
       try {
         await onRefresh();
       } finally {
-        // Pequeno delay pra usuário enxergar o estado de refresh
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(MIN_VISIBLE_MS - elapsed, 0);
         setTimeout(() => {
           setIsRefreshing(false);
           setPullDistance(0);
-        }, 400);
+        }, remaining + 200);
       }
     } else {
       setPullDistance(0);

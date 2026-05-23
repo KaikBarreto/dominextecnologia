@@ -148,7 +148,8 @@ function TopbarShell() {
 function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
   const queryClient = useQueryClient();
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries();
+    // Aguarda refetch real das queries ativas (não só invalida silenciosamente).
+    await queryClient.refetchQueries({ type: 'active' });
   };
 
   return (
