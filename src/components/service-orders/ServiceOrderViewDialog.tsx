@@ -417,13 +417,15 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           });
         }
 
+        // Tema claro: fundo branco + ícone saturado + borda sutil colorida.
+        // Tema escuro: fundo dessaturado colorido (pattern original).
         const toneClasses: Record<ActionTone, string> = {
-          success: 'bg-success/10 text-success',
-          warning: 'bg-warning/10 text-warning',
-          edit: 'bg-warning/10 text-warning',
-          destructive: 'bg-destructive/10 text-destructive',
-          primary: 'bg-primary/10 text-primary',
-          default: 'bg-muted text-foreground',
+          success: 'bg-background border border-success/30 text-success dark:bg-success/10 dark:border-transparent',
+          warning: 'bg-background border border-warning/30 text-warning dark:bg-warning/10 dark:border-transparent',
+          edit: 'bg-background border border-warning/30 text-warning dark:bg-warning/10 dark:border-transparent',
+          destructive: 'bg-background border border-destructive/30 text-destructive dark:bg-destructive/10 dark:border-transparent',
+          primary: 'bg-background border border-primary/30 text-primary dark:bg-primary/10 dark:border-transparent',
+          default: 'bg-background border border-border text-foreground dark:bg-muted dark:border-transparent',
         };
 
         const hasPrimaryCta = serviceOrder.status !== 'cancelada';

@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export interface SettingsTab {
   value: string;
@@ -37,49 +36,36 @@ export function SettingsSidebarLayout({
   }, []);
 
   if (isMobile) {
+    // Mobile: segmented control horizontal rolável (estilo app nativo).
+    // Grupos são ignorados visualmente — todas as tabs viram pills numa linha.
     return (
       <div className="space-y-4">
-        <Select value={activeTab} onValueChange={onTabChange}>
-          <SelectTrigger className="w-full">
-            <SelectValue>
-              {(() => {
-                const currentTab = tabs.find(t => t.value === activeTab);
-                if (currentTab) {
-                  const IconComponent = currentTab.icon;
-                  return (
-                    <div className="flex items-center gap-2">
-                      <IconComponent className="h-4 w-4" />
-                      <span>{currentTab.label}</span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {groupedTabs.map((group) => (
-              <div key={group.group}>
-                {group.group && (
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {group.group}
-                  </div>
-                )}
-                {group.items.map((tab) => {
-                  const IconComponent = tab.icon;
-                  return (
-                    <SelectItem key={tab.value} value={tab.value}>
-                      <div className="flex items-center gap-2">
-                        <IconComponent className="h-4 w-4" />
-                        <span>{tab.label}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </div>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative -mx-3">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-gradient-to-l from-background to-transparent" />
+          <div className="flex gap-1.5 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tabs.map((tab) => {
+              const IconComponent = tab.icon;
+              const isActive = activeTab === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => onTabChange(tab.value)}
+                  className={cn(
+                    'snap-start shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-medium transition-all active:scale-95',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted active:bg-muted',
+                  )}
+                >
+                  <IconComponent className="h-4 w-4 shrink-0" />
+                  <span className="whitespace-nowrap">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div>{children}</div>
       </div>
     );
