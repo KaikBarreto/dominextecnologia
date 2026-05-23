@@ -61,6 +61,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { FilterButton } from '@/components/ui/FilterButton';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -149,7 +150,32 @@ export default function ServiceOrders() {
     });
   }, [serviceOrders, searchTerm, statusFilter, range, viewMode]);
 
-  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredOrders);
+  // Ordem semântica do status pra que SortableTableHead consiga ordenar
+  // por "fluxo de trabalho" (agendada → pendente → … → concluida → cancelada)
+  // em vez de alfabético. Caller-pode-mudar; manter alinhado ao enum os_status.
+  const STATUS_RANK: Record<string, number> = {
+    agendada: 0,
+    pendente: 1,
+    a_caminho: 2,
+    em_andamento: 3,
+    pausada: 4,
+    concluida: 5,
+    cancelada: 6,
+  };
+
+  // Enriquece com campos derivados pro useTableSort (datas viram timestamp;
+  // status vira rank semântico). Mesmo pattern usado em Contracts.tsx.
+  const sortableOrders = useMemo(
+    () =>
+      filteredOrders.map((os) => ({
+        ...os,
+        _scheduled_sort: os.scheduled_date ? new Date(os.scheduled_date).getTime() : 0,
+        _status_rank: STATUS_RANK[os.status] ?? 99,
+      })),
+    [filteredOrders],
+  );
+
+  const { sortedItems, sortConfig, handleSort } = useTableSort(sortableOrders);
   const pagination = useDataPagination(sortedItems);
 
   const statusOptions = statuses.length
@@ -237,15 +263,24 @@ export default function ServiceOrders() {
   });
 
   // Contagem de filtros ativos (busca, status, preset diferente do default).
+  // Usada no FilterSheet mobile, que ainda inclui o controle de "Período".
   const activeFilterCount =
     (searchTerm ? 1 : 0) +
     (statusFilter.length > 0 ? 1 : 0) +
     (preset !== 'this_month' ? 1 : 0);
 
+  // Filtros estruturados (sem contar a busca) — usado pelo FilterButton desktop,
+  // que só consolida Status (o seletor de período fica inline acima).
+  const structuredActiveCount = statusFilter.length > 0 ? 1 : 0;
+
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter([]);
     setPreset('this_month');
+  };
+
+  const clearStructuredFilters = () => {
+    setStatusFilter([]);
   };
 
   // Conteúdo da Sheet de filtros no mobile (também usado pra renderizar inline no desktop).
@@ -368,7 +403,28 @@ export default function ServiceOrders() {
                 />
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  {filterContent}
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="relative flex-1 sm:max-w-sm">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por cliente ou número..."
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <FilterButton
+                      activeCount={structuredActiveCount}
+                      onClear={clearStructuredFilters}
+                    >
+                      <FilterCheckboxGroup
+                        label="Status"
+                        options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
+                        selected={statusFilter}
+                        onChange={setStatusFilter}
+                      />
+                    </FilterButton>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       onClick={() => setStatusConfigOpen(true)}
@@ -543,8 +599,8 @@ export default function ServiceOrders() {
                                   <TableHead className="text-xs uppercase tracking-wider w-[40px]">Criador</TableHead>
                                   <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort}>Cliente</SortableTableHead>
                                   <SortableTableHead sortKey="service_type.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Tipo</SortableTableHead>
-                                  <SortableTableHead sortKey="scheduled_date" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
-                                  <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                                  <SortableTableHead sortKey="_scheduled_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Data</SortableTableHead>
+                                  <SortableTableHead sortKey="_status_rank" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                                   <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                                 </TableRow>
                               </TableHeader>

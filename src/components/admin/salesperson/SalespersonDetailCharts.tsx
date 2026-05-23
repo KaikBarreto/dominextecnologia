@@ -57,10 +57,11 @@ export function SalespersonDetailCharts({ salesperson, allSales, currentMonthSal
         <CardContent>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={monthlyPerformance}>
+              {/* Bar vertical — gradient 95%→40% (pattern Dominex). */}
               <defs>
                 <linearGradient id="cv" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={1} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.6} />
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.4} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
@@ -80,9 +81,18 @@ export function SalespersonDetailCharts({ salesperson, allSales, currentMonthSal
           {originData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={originData} cx="50%" cy="50%" outerRadius={70} dataKey="value"
+                {/* Pie — gradient diagonal 100%→55% (pattern Dominex pies). */}
+                <defs>
+                  {originData.map((_, i) => (
+                    <linearGradient key={`gradSpOrigin${i}`} id={`gradSpOrigin${i}`} x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor={COLORS[i % COLORS.length]} stopOpacity={1} />
+                      <stop offset="100%" stopColor={COLORS[i % COLORS.length]} stopOpacity={0.55} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <Pie data={originData} cx="50%" cy="50%" outerRadius={70} dataKey="value" stroke="none"
                   label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}>
-                  {originData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  {originData.map((_, i) => <Cell key={i} fill={`url(#gradSpOrigin${i})`} />)}
                 </Pie>
                 <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8 }} />
               </PieChart>
@@ -98,10 +108,11 @@ export function SalespersonDetailCharts({ salesperson, allSales, currentMonthSal
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={weeklySales}>
+              {/* Area evolução — gradient 70%→5% (pattern Dominex charts). */}
               <defs>
                 <linearGradient id="cws" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.7} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

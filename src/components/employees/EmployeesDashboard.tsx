@@ -58,8 +58,27 @@ export function EmployeesDashboard({ employees, balances }: EmployeesDashboardPr
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
+                  <defs>
+                    {/* Gradient diagonal por slice (100% → 55%). Token semântico em cada cor. */}
+                    {positionData.map((_, i) => {
+                      const color = COLORS[i % COLORS.length];
+                      return (
+                        <linearGradient
+                          key={`empdash-pie-grad-${i}`}
+                          id={`empdash-pie-grad-${i}`}
+                          x1="0"
+                          y1="0"
+                          x2="1"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor={color} stopOpacity={1} />
+                          <stop offset="100%" stopColor={color} stopOpacity={0.55} />
+                        </linearGradient>
+                      );
+                    })}
+                  </defs>
                   <Pie data={positionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name} (${value})`}>
-                    {positionData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    {positionData.map((_, i) => <Cell key={i} fill={`url(#empdash-pie-grad-${i})`} />)}
                   </Pie>
                   <Tooltip />
                 </PieChart>

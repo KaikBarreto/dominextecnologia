@@ -284,12 +284,38 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
           <CardContent className={cn(isMobile && 'p-2')}>
             <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
               <AreaChart data={monthlyData}>
+                <defs>
+                  {/* Gradiente vertical de preenchimento: forte no topo (0.7) → quase
+                      transparente na base (0.05) — clássico de chart financeiro. */}
+                  <linearGradient id="dre-grad-area-success" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.7} />
+                    <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="dre-grad-area-destructive" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.7} />
+                    <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 11 }} />
                 <YAxis tick={{ fontSize: isMobile ? 10 : 11 }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Area type="monotone" dataKey="receitas" name="Receitas" stroke="hsl(145, 65%, 42%)" fill="hsl(145, 65%, 42%)" fillOpacity={0.15} />
-                <Area type="monotone" dataKey="despesas" name="Despesas" stroke="hsl(0, 84%, 60%)" fill="hsl(0, 84%, 60%)" fillOpacity={0.15} />
+                <Area
+                  type="monotone"
+                  dataKey="receitas"
+                  name="Receitas"
+                  stroke="hsl(var(--success))"
+                  strokeWidth={2}
+                  fill="url(#dre-grad-area-success)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="despesas"
+                  name="Despesas"
+                  stroke="hsl(var(--destructive))"
+                  strokeWidth={2}
+                  fill="url(#dre-grad-area-destructive)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>

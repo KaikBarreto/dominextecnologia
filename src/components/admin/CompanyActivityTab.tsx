@@ -301,6 +301,13 @@ export function CompanyActivityTab({ companyId }: Props) {
           ) : (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={chartData}>
+                {/* Bar vertical — gradient 95%→40% (pattern Dominex). */}
+                <defs>
+                  <linearGradient id="gradActivityBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="label" />
                 <YAxis allowDecimals={false} />
@@ -309,10 +316,11 @@ export function CompanyActivityTab({ companyId }: Props) {
                   labelFormatter={(_, payload) =>
                     payload?.[0]?.payload?.fullDate ?? ''
                   }
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                 />
                 <Bar
                   dataKey="count"
-                  fill="hsl(var(--primary))"
+                  fill="url(#gradActivityBar)"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>

@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.10',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Botão "Filtros" único em 10 telas do sistema',
+        description: 'Replicamos sistema-wide o padrão que já existia em Contratos: telas com vários filtros agora têm um único botão "Filtros" no canto direito da busca, com badge mostrando quantos filtros ativos. Toque pra abrir a gaveta lateral com tudo agrupado. Telas atualizadas: Ordens de Serviço, Estoque, Agenda, Live Tracking (mapa de técnicos), CRM (pipeline), Orçamentos, Equipamentos, Movimentações Financeiras, Relatório de Ponto e Histórico de Ponto. Mais limpo, mais consistente entre as telas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tabelas ordenáveis em mais 5 telas',
+        description: 'Adicionamos ordenação clicável nos títulos das colunas em mais 5 listagens: tabela de Contas a Pagar/Receber (ordene por vencimento, valor, status), Histórico de Ponto (data, funcionário, entrada/saída), tabela de Empresas no painel master Auctus (vencimento, valor mensal, plano, segmento), tabela de Vendedores no painel Auctus (comissão, meta, saldo), e Ordens de Serviço agora ordena Data e Status pela ordem correta (data por timestamp real, status pela ordem natural do fluxo). Toque uma vez sobe, outra desce.',
+        category: 'melhoria',
+      },
+      {
+        title: '30 gráficos refeitos com degradês suaves',
+        description: 'Os gráficos do sistema (barras, pizzas, linhas, áreas) agora usam degradês leves no lugar de cores chapadas — bate o olho e parece mais moderno, sem perder legibilidade. Gráficos refeitos: Distribuição NPS, OS por Status, OS por Tipo, Volume ao Longo do Tempo, Faturamento, OS por Dia da Semana, Fluxo de Caixa, Distribuição por Categoria, Evolução Receita × Despesas (DRE), Distribuição por Cargo, Horas por dia, Origem dos Novos Clientes, Forma de Pagamento, Receita Mensal/Semanal, Churn Rate, Clientes por Segmento, Clientes por Plano, DRE Evolution, Vendas vs Meta, Origem dos Clientes, Evolução de Vendas, Atividade por Dia. Cores semânticas (verde sucesso, vermelho perigo, amarelo atenção) preservadas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.9',
     date: '23 de maio de 2026',
     type: 'minor',

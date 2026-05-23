@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.9";
+export const APP_VERSION = "1.9.10";
 
-export const VERSION_NOTES = "Polimento profundo de UI: header desktop com sino + dashboard saturado com cards coloridos e gráficos em degradê + 1 botão de filtros no lugar de selects soltos + busca modal na Agenda + lupa dentro da barra + cadastro rápido de RT no contrato + assinatura desenhada à mão como alternativa.";
+export const VERSION_NOTES = "UI consistente em todo o sistema: 1 botão de Filtros em mais 10 telas (OSs, Estoque, Agenda, Mapa, CRM, Orçamentos, Equipamentos, Movimentações, Ponto), tabelas ordenáveis pelos títulos das colunas em mais 5 telas, e 30 gráficos refeitos com degradês suaves no lugar de cores chapadas.";

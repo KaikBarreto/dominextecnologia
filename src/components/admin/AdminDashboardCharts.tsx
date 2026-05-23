@@ -18,6 +18,10 @@ const FUNNEL_GRADIENTS = [
   { id: 'fg2', color: '#8B5CF6' },
   { id: 'fg3', color: '#10B981' },
 ];
+// IDs únicos pros gradients diagonais 100%→55% das pizzas (Origem + Forma Pgto)
+// — pattern sistema-wide CEO 2026-05-23 (UI-3 → UI-2).
+const PIE_GRAD_PREFIX_ORIGIN = 'gradAdminPieOrigin';
+const PIE_GRAD_PREFIX_PAYMENT = 'gradAdminPiePayment';
 
 interface Props {
   companies: any[];
@@ -199,8 +203,17 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
               <div className="flex flex-col gap-3">
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={originData} cx="50%" cy="50%" outerRadius={80} innerRadius={35} dataKey="value" paddingAngle={2}>
-                      {originData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
+                    {/* Gradient diagonal 100%→55% por slice — pattern Dominex chart pies. */}
+                    <defs>
+                      {originData.map((e: any, i: number) => (
+                        <linearGradient key={i} id={`${PIE_GRAD_PREFIX_ORIGIN}${i}`} x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor={e.color} stopOpacity={1} />
+                          <stop offset="100%" stopColor={e.color} stopOpacity={0.55} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie data={originData} cx="50%" cy="50%" outerRadius={80} innerRadius={35} dataKey="value" paddingAngle={2} stroke="none">
+                      {originData.map((_e: any, i: number) => <Cell key={i} fill={`url(#${PIE_GRAD_PREFIX_ORIGIN}${i})`} />)}
                     </Pie>
                     <Tooltip formatter={(v: number, n: string) => {
                       const total = originData.reduce((s: number, d: any) => s + d.value, 0);
@@ -233,8 +246,16 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
               <div className="flex flex-col gap-3">
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={paymentMethodData} cx="50%" cy="50%" outerRadius={80} innerRadius={35} dataKey="value" paddingAngle={2}>
-                      {paymentMethodData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    <defs>
+                      {paymentMethodData.map((_: any, i: number) => (
+                        <linearGradient key={i} id={`${PIE_GRAD_PREFIX_PAYMENT}${i}`} x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor={COLORS[i % COLORS.length]} stopOpacity={1} />
+                          <stop offset="100%" stopColor={COLORS[i % COLORS.length]} stopOpacity={0.55} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie data={paymentMethodData} cx="50%" cy="50%" outerRadius={80} innerRadius={35} dataKey="value" paddingAngle={2} stroke="none">
+                      {paymentMethodData.map((_: any, i: number) => <Cell key={i} fill={`url(#${PIE_GRAD_PREFIX_PAYMENT}${i})`} />)}
                     </Pie>
                     <Tooltip formatter={(v: number, n: string) => {
                       const total = paymentMethodData.reduce((s: number, d: any) => s + d.value, 0);
@@ -334,9 +355,10 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart data={revenueView === 'monthly' ? monthlyRevenueData : weeklyRevenueData}>
+              {/* Area evolução — gradient 70%→5% (pattern UI-3 → UI-2). */}
               <defs>
-                <linearGradient id="cReceita" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10B981" stopOpacity={0.8} /><stop offset="95%" stopColor="#10B981" stopOpacity={0.1} /></linearGradient>
-                <linearGradient id="cMeta" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} /><stop offset="95%" stopColor="#6366F1" stopOpacity={0.05} /></linearGradient>
+                <linearGradient id="cReceita" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10B981" stopOpacity={0.7} /><stop offset="100%" stopColor="#10B981" stopOpacity={0.05} /></linearGradient>
+                <linearGradient id="cMeta" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6366F1" stopOpacity={0.35} /><stop offset="100%" stopColor="#6366F1" stopOpacity={0.05} /></linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
@@ -359,8 +381,9 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={churnRateData}>
+              {/* Area evolução — gradient 70%→5% (pattern UI-3 → UI-2). */}
               <defs>
-                <linearGradient id="cChurn" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#EF4444" stopOpacity={0.8} /><stop offset="95%" stopColor="#EF4444" stopOpacity={0.1} /></linearGradient>
+                <linearGradient id="cChurn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#EF4444" stopOpacity={0.7} /><stop offset="100%" stopColor="#EF4444" stopOpacity={0.05} /></linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />

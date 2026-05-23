@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { useTimeHistory, formatMinutes } from '@/hooks/useTimeRecords';
@@ -10,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { FilterButton } from '@/components/ui/FilterButton';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({
   value: String(i),
@@ -22,6 +24,19 @@ export function TimeReport() {
   const [month, setMonth] = useState(String(now.getMonth()));
   const [year, setYear] = useState(String(now.getFullYear()));
   const [employeeId, setEmployeeId] = useState('all');
+
+  // Contagem de filtros ativos: mês != atual, ano != atual, funcionário != "todos".
+  // Mês e ano contam só quando diferem do default da carga inicial (now).
+  const activeFiltersCount =
+    (month !== String(now.getMonth()) ? 1 : 0) +
+    (year !== String(now.getFullYear()) ? 1 : 0) +
+    (employeeId !== 'all' ? 1 : 0);
+
+  const clearFilters = () => {
+    setMonth(String(now.getMonth()));
+    setYear(String(now.getFullYear()));
+    setEmployeeId('all');
+  };
 
   const startDate = format(startOfMonth(new Date(+year, +month)), 'yyyy-MM-dd');
   const endDate = format(endOfMonth(new Date(+year, +month)), 'yyyy-MM-dd');
@@ -79,25 +94,43 @@ export function TimeReport() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
-        <Select value={month} onValueChange={setMonth}>
-          <SelectTrigger className="sm:w-[150px]"><SelectValue /></SelectTrigger>
-          <SelectContent>{MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-        </Select>
-        <Select value={year} onValueChange={setYear}>
-          <SelectTrigger className="sm:w-[100px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {[2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={employeeId} onValueChange={setEmployeeId}>
-          <SelectTrigger className="col-span-2 sm:w-[200px]"><SelectValue placeholder="Funcionário" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      {/* Filtros consolidados em UM botão "Filtros" (pattern sistema-wide v1.9.9).
+          Selects (mês / ano / funcionário) ficam dentro do FilterButton — drawer
+          de baixo no mobile, sheet lateral no desktop. */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {employeeId === 'all'
+            ? 'Visão geral de todos os funcionários'
+            : `Relatório de ${employees.find(e => e.id === employeeId)?.name ?? ''}`}
+        </p>
+        <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Mês</Label>
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Ano</Label>
+            <Select value={year} onValueChange={setYear}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Funcionário</Label>
+            <Select value={employeeId} onValueChange={setEmployeeId}>
+              <SelectTrigger><SelectValue placeholder="Funcionário" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </FilterButton>
       </div>
 
       {/* Summary Card */}
@@ -166,12 +199,19 @@ export function TimeReport() {
           <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
+                <defs>
+                  {/* Gradient vertical da barra primária — destaca topo, suaviza base. */}
+                  <linearGradient id="timereport-grad-primary-vertical" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="day" className="text-xs" />
                 <YAxis domain={[0, 12]} className="text-xs" />
                 <Tooltip formatter={(v: number) => [`${v}h`, 'Horas']} />
                 <ReferenceLine y={8} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="8h" />
-                <Bar dataKey="horas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="horas" fill="url(#timereport-grad-primary-vertical)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

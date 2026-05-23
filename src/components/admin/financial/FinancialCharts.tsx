@@ -49,10 +49,22 @@ export function FinancialCharts({ transactions, categories }: Props) {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                    {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  {/* Pie — gradient diagonal 100%→55% por slice (pattern Dominex pies). */}
+                  <defs>
+                    {data.map((entry, i) => (
+                      <linearGradient key={`gradFinCat${i}`} id={`gradFinCat${i}`} x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor={entry.color} stopOpacity={1} />
+                        <stop offset="100%" stopColor={entry.color} stopOpacity={0.55} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2} stroke="none">
+                    {data.map((_entry, i) => <Cell key={i} fill={`url(#gradFinCat${i})`} />)}
                   </Pie>
-                  <Tooltip formatter={(v: any) => fmt(Number(v))} />
+                  <Tooltip
+                    formatter={(v: any) => fmt(Number(v))}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>

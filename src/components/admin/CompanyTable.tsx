@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, CalendarIcon, Loader2, AlertTriangle } from 'lucide-react';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { useTableSort } from '@/hooks/useTableSort';
+import { Edit, Trash2, ChevronLeft, ChevronRight, CalendarIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -58,8 +60,6 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
   const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [updatingField, setUpdatingField] = useState<{ id: string; field: string } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<any>(null);
@@ -98,42 +98,20 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
     onError: () => toast({ variant: 'destructive', title: 'Erro ao excluir' }),
   });
 
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
+  // Pré-calcula campo derivado pra sort de vencimento (timestamp em vez de string ISO).
+  // useTableSort é genérico — qualquer comparação custom precisa virar campo aqui.
+  const companiesWithSortFields = useMemo(() => {
+    return companies.map((c) => ({
+      ...c,
+      _expiresAtTs: c.subscription_expires_at ? new Date(c.subscription_expires_at).getTime() : null,
+    }));
+  }, [companies]);
 
-  const sorted = useMemo(() => {
-    if (!sortColumn) return companies;
-    return [...companies].sort((a, b) => {
-      let aVal = a[sortColumn];
-      let bVal = b[sortColumn];
-      if (aVal == null) return 1;
-      if (bVal == null) return -1;
-      if (sortColumn === 'subscription_expires_at') {
-        aVal = new Date(aVal).getTime();
-        bVal = new Date(bVal).getTime();
-      }
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-      }
-      const cmp = String(aVal).localeCompare(String(bVal), 'pt-BR');
-      return sortDirection === 'asc' ? cmp : -cmp;
-    });
-  }, [companies, sortColumn, sortDirection]);
+  const { sortedItems: sorted, sortConfig, handleSort } = useTableSort(companiesWithSortFields);
 
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginated = sorted.slice(startIndex, startIndex + itemsPerPage);
-
-  const SortIcon = ({ column }: { column: string }) => {
-    if (sortColumn !== column) return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground" />;
-    return sortDirection === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />;
-  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; className: string }> = {
@@ -169,52 +147,16 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
         <Table className="min-w-[1000px]">
           <TableHeader>
             <TableRow>
-              <TableHead>
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('subscription_status')}>
-                  Status <SortIcon column="subscription_status" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('contact_name')}>
-                  Usuário Master <SortIcon column="contact_name" />
-                </Button>
-              </TableHead>
-              <TableHead className="min-w-[200px]">
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('name')}>
-                  Empresa <SortIcon column="name" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('origin')}>
-                  Origem <SortIcon column="origin" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('segment')}>
-                  Segmento <SortIcon column="segment" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('subscription_plan')}>
-                  Plano <SortIcon column="subscription_plan" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('salesperson_id')}>
-                  Vendedor <SortIcon column="salesperson_id" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('subscription_expires_at')}>
-                  Vencimento <SortIcon column="subscription_expires_at" />
-                </Button>
-              </TableHead>
-              <TableHead className="w-[140px]">
-                <Button variant="ghost" className="h-auto p-0 hover:bg-transparent font-semibold" onClick={() => handleSort('subscription_value')}>
-                  Valor Mensal <SortIcon column="subscription_value" />
-                </Button>
-              </TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <SortableTableHead sortKey="subscription_status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+              <SortableTableHead sortKey="contact_name" sortConfig={sortConfig} onSort={handleSort}>Usuário Master</SortableTableHead>
+              <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort} className="min-w-[200px]">Empresa</SortableTableHead>
+              <SortableTableHead sortKey="origin" sortConfig={sortConfig} onSort={handleSort}>Origem</SortableTableHead>
+              <SortableTableHead sortKey="segment" sortConfig={sortConfig} onSort={handleSort}>Segmento</SortableTableHead>
+              <SortableTableHead sortKey="subscription_plan" sortConfig={sortConfig} onSort={handleSort}>Plano</SortableTableHead>
+              <SortableTableHead sortKey="salesperson_id" sortConfig={sortConfig} onSort={handleSort}>Vendedor</SortableTableHead>
+              <SortableTableHead sortKey="_expiresAtTs" sortConfig={sortConfig} onSort={handleSort}>Vencimento</SortableTableHead>
+              <SortableTableHead sortKey="subscription_value" sortConfig={sortConfig} onSort={handleSort} className="w-[140px]">Valor Mensal</SortableTableHead>
+              <TableHead className="text-right text-xs uppercase tracking-wider">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

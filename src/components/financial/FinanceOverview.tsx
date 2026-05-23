@@ -314,13 +314,24 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           <CardContent className={cn(isMobile && 'p-2')}>
             <ResponsiveContainer width="100%" height={isMobile ? 200 : 250}>
               <BarChart data={cashFlowData}>
+                <defs>
+                  {/* Gradient vertical: topo opaco → base translúcida, dá "peso" às barras */}
+                  <linearGradient id="finov-grad-success-vertical" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
+                  </linearGradient>
+                  <linearGradient id="finov-grad-destructive-vertical" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
                 <YAxis tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
-                <Bar dataKey="entradas" name="Receitas" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="saidas" name="Despesas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="entradas" name="Receitas" fill="url(#finov-grad-success-vertical)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="saidas" name="Despesas" fill="url(#finov-grad-destructive-vertical)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -342,6 +353,25 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
               <div className="flex flex-col items-center gap-4">
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
+                    <defs>
+                      {/* Cada slice ganha gradient diagonal próprio: 100% → 55% da mesma cor. */}
+                      {chartData.map((_, i) => {
+                        const color = CHART_COLORS[i % CHART_COLORS.length];
+                        return (
+                          <linearGradient
+                            key={`finov-pie-grad-${i}`}
+                            id={`finov-pie-grad-${i}`}
+                            x1="0"
+                            y1="0"
+                            x2="1"
+                            y2="1"
+                          >
+                            <stop offset="0%" stopColor={color} stopOpacity={1} />
+                            <stop offset="100%" stopColor={color} stopOpacity={0.55} />
+                          </linearGradient>
+                        );
+                      })}
+                    </defs>
                     <Pie
                       data={chartData}
                       cx="50%"
@@ -352,7 +382,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                       dataKey="value"
                     >
                       {chartData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={`url(#finov-pie-grad-${index})`} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />

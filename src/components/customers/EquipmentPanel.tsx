@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
@@ -35,6 +35,7 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { FilterButton } from '@/components/ui/FilterButton';
 
 export function EquipmentPanel() {
   const isMobile = useIsMobile();
@@ -72,7 +73,20 @@ export function EquipmentPanel() {
     return matchesSearch && matchesCategory && matchesCustomer;
   });
 
-  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredEquipment);
+  // Pré-calcula campos derivados pra sort estável em colunas que dependem de
+  // lookup (nome da categoria, nome do cliente). Sem isto, ordenar por
+  // `category_id` ordenaria por UUID — inútil pro usuário.
+  const sortableEquipment = useMemo(
+    () =>
+      filteredEquipment.map((eq) => ({
+        ...eq,
+        _category_name_sort: categories.find((c) => c.id === eq.category_id)?.name?.toLowerCase() ?? '',
+        _customer_name_sort: eq.customer?.name?.toLowerCase() ?? '',
+      })),
+    [filteredEquipment, categories],
+  );
+
+  const { sortedItems, sortConfig, handleSort } = useTableSort(sortableEquipment);
   const pagination = useDataPagination(sortedItems);
 
   const handleSubmit = async (data: EquipmentInput) => {
@@ -211,9 +225,9 @@ export function EquipmentPanel() {
           )}
         </>
       ) : (
-        <>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome, identificador, marca ou cliente..."
@@ -222,27 +236,28 @@ export function EquipmentPanel() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                onClick={() => setConfigOpen(true)}
-                title="Configurar campos"
-                size="sm"
-                className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Configurar Campos
-              </Button>
-              {canManageEquipment && (
-                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewEquipment}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Equipamento
-                </Button>
-              )}
-            </div>
+            <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
+              {filterContent}
+            </FilterButton>
           </div>
-
-          {filterContent}
-        </>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={() => setConfigOpen(true)}
+              title="Configurar campos"
+              size="sm"
+              className="bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-gray-950"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Configurar Campos
+            </Button>
+            {canManageEquipment && (
+              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewEquipment}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Equipamento
+              </Button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Lista — mobile: nativa via MobileListItem. Desktop: tabela em Card. */}
@@ -400,8 +415,8 @@ export function EquipmentPanel() {
                           <TableHead className="w-[60px] text-xs uppercase tracking-wider">Foto</TableHead>
                           <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Nome</SortableTableHead>
                           <SortableTableHead sortKey="location" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Local</SortableTableHead>
-                          <SortableTableHead sortKey="customer.name" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Cliente</SortableTableHead>
-                          <SortableTableHead sortKey="category_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Categoria</SortableTableHead>
+                          <SortableTableHead sortKey="_customer_name_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Cliente</SortableTableHead>
+                          <SortableTableHead sortKey="_category_name_sort" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Categoria</SortableTableHead>
                           <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Status</SortableTableHead>
                           <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
                         </TableRow>

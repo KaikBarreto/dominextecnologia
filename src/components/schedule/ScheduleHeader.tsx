@@ -1,9 +1,9 @@
-import { ChevronLeft, ChevronRight, Plus, Filter, PauseCircle, Search as SearchIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, PauseCircle, Search as SearchIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { FilterButton } from '@/components/ui/FilterButton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OsStatus } from '@/types/database';
@@ -60,8 +60,16 @@ export function ScheduleHeader({
   statusFilter,
   onStatusFilterChange,
 }: ScheduleHeaderProps) {
-  const hasActiveFilters = technicianFilter.length > 0 || customerFilter.length > 0 || statusFilter.length > 0;
+  const activeFilterCount =
+    (technicianFilter.length > 0 ? 1 : 0) +
+    (customerFilter.length > 0 ? 1 : 0) +
+    (statusFilter.length > 0 ? 1 : 0);
   const isMobile = useIsMobile();
+  const clearAllFilters = () => {
+    onTechnicianFilterChange([]);
+    onCustomerFilterChange([]);
+    onStatusFilterChange([]);
+  };
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -103,35 +111,29 @@ export function ScheduleHeader({
             </Button>
           )}
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={hasActiveFilters ? 'border-primary text-primary' : ''}>
-                <Filter className="h-4 w-4 mr-2" />
-                Filtros
-                {hasActiveFilters && <span className="ml-1 w-2 h-2 rounded-full bg-primary" />}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 space-y-4" align="end">
-              <FilterCheckboxGroup
-                label="Técnico"
-                options={technicians.map((t) => ({ value: t.user_id, label: t.full_name }))}
-                selected={technicianFilter}
-                onChange={onTechnicianFilterChange}
-              />
-              <FilterCheckboxGroup
-                label="Cliente"
-                options={customers.map((c) => ({ value: c.id, label: c.name }))}
-                selected={customerFilter}
-                onChange={onCustomerFilterChange}
-              />
-              <FilterCheckboxGroup
-                label="Status"
-                options={statusOptions.map((s) => ({ value: s.value, label: s.label }))}
-                selected={statusFilter}
-                onChange={onStatusFilterChange}
-              />
-            </PopoverContent>
-          </Popover>
+          <FilterButton
+            activeCount={activeFilterCount}
+            onClear={clearAllFilters}
+          >
+            <FilterCheckboxGroup
+              label="Técnico"
+              options={technicians.map((t) => ({ value: t.user_id, label: t.full_name }))}
+              selected={technicianFilter}
+              onChange={onTechnicianFilterChange}
+            />
+            <FilterCheckboxGroup
+              label="Cliente"
+              options={customers.map((c) => ({ value: c.id, label: c.name }))}
+              selected={customerFilter}
+              onChange={onCustomerFilterChange}
+            />
+            <FilterCheckboxGroup
+              label="Status"
+              options={statusOptions.map((s) => ({ value: s.value, label: s.label }))}
+              selected={statusFilter}
+              onChange={onStatusFilterChange}
+            />
+          </FilterButton>
 
           {onOpenPaused && (
             <Button

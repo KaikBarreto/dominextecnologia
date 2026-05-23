@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, Filter, X, Wallet, Landmark, CreditCard } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, X, Wallet, Landmark, CreditCard } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTransactionAttachmentsCounts } from '@/hooks/useTransactionAttachments';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignedLink } from '@/components/ui/SignedLink';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { FilterButton } from '@/components/ui/FilterButton';
 import { Label } from '@/components/ui/label';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { formatBRL } from '@/utils/currency';
@@ -92,7 +92,6 @@ export function TransactionListPanel({
     if (initialAccountFilter) setAccountFilter(initialAccountFilter);
   }, [initialAccountFilter]);
   const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -356,13 +355,66 @@ export function TransactionListPanel({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Button variant="outline" onClick={() => setFiltersOpen(true)} className="gap-2 relative">
-          <Filter className="h-4 w-4" />
-          Filtros
-          {activeFiltersCount > 0 && (
-            <Badge className="ml-1 h-5 min-w-5 px-1 bg-primary text-primary-foreground">{activeFiltersCount}</Badge>
+        {/* FilterButton standard: tipo (quando type==='all') + categoria + status + conta.
+            Drawer de baixo no mobile, sheet lateral no desktop (pattern v1.9.9). */}
+        <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
+          {type === 'all' && (
+            <div className="space-y-1.5">
+              <Label>Tipo</Label>
+              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="entrada">Receitas</SelectItem>
+                  <SelectItem value="saida">Despesas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
-        </Button>
+          <div className="space-y-1.5">
+            <Label>Categoria</Label>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas categorias</SelectItem>
+                {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="paid">Pago</SelectItem>
+                <SelectItem value="pending">Pendente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Caixa / Conta bancária</Label>
+            <Select value={accountFilter} onValueChange={setAccountFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos caixas e contas</SelectItem>
+                {Array.from(accountNames.entries()).map(([id, acc]) => {
+                  const Icon = getAccIcon(acc.type);
+                  return (
+                    <SelectItem key={id} value={id}>
+                      <span className="flex items-center gap-2">
+                        <span className="rounded-full p-1" style={{ backgroundColor: acc.color }}>
+                          <Icon className="h-3 w-3 text-white" />
+                        </span>
+                        {acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        </FilterButton>
       </div>
 
       {filteredAccount && accountSummary && (
@@ -413,79 +465,6 @@ export function TransactionListPanel({
           </CardContent>
         </Card>
       )}
-
-      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Filtros</SheetTitle>
-            <SheetDescription>Refine a lista de movimentações</SheetDescription>
-          </SheetHeader>
-          <div className="space-y-4 mt-6">
-            {type === 'all' && (
-              <div className="space-y-1.5">
-                <Label>Tipo</Label>
-                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="entrada">Receitas</SelectItem>
-                    <SelectItem value="saida">Despesas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label>Categoria</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas categorias</SelectItem>
-                  {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="paid">Pago</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Caixa / Conta bancária</Label>
-              <Select value={accountFilter} onValueChange={setAccountFilter}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos caixas e contas</SelectItem>
-                  {Array.from(accountNames.entries()).map(([id, acc]) => {
-                    const Icon = getAccIcon(acc.type);
-                    return (
-                      <SelectItem key={id} value={id}>
-                        <span className="flex items-center gap-2">
-                          <span className="rounded-full p-1" style={{ backgroundColor: acc.color }}>
-                            <Icon className="h-3 w-3 text-white" />
-                          </span>
-                          {acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name}
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={clearFilters} className="flex-1 gap-1">
-                <X className="h-4 w-4" /> Limpar
-              </Button>
-              <Button onClick={() => setFiltersOpen(false)} className="flex-1">Aplicar</Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {isLoading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>

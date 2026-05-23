@@ -206,9 +206,17 @@ export function NpsDashboard() {
               {pieData.length > 0 && (
                 <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
+                    <defs>
+                      {pieData.map((entry, i) => (
+                        <linearGradient key={i} id={`nps-grad-pie-${i}`} x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor={entry.color} stopOpacity={1.0} />
+                          <stop offset="100%" stopColor={entry.color} stopOpacity={0.55} />
+                        </linearGradient>
+                      ))}
+                    </defs>
                     <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} innerRadius={35}>
                       {pieData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
+                        <Cell key={i} fill={`url(#nps-grad-pie-${i})`} stroke={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -228,11 +236,18 @@ export function NpsDashboard() {
             {avgStars.quality > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={starDistribution} layout="vertical">
+                  <defs>
+                    {/* Gradient horizontal (eixo X) pra barras layout="vertical" */}
+                    <linearGradient id="nps-grad-warning-horizontal" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} />
                   <YAxis type="category" dataKey="category" width={120} tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Bar dataKey="avg" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} barSize={24} />
+                  <Bar dataKey="avg" fill="url(#nps-grad-warning-horizontal)" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -253,11 +268,23 @@ export function NpsDashboard() {
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={trendData}>
+                <defs>
+                  <linearGradient id="nps-grad-line-success" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(160, 100%, 39%)" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(160, 100%, 39%)" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis domain={[-100, 100]} tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="nps" stroke="hsl(160, 100%, 39%)" strokeWidth={2} dot={{ r: 4 }} />
+                <Line
+                  type="monotone"
+                  dataKey="nps"
+                  stroke="url(#nps-grad-line-success)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: 'hsl(160, 100%, 39%)' }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

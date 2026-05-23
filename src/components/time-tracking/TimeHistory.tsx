@@ -15,6 +15,10 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { useTableSort } from '@/hooks/useTableSort';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 
@@ -58,6 +62,22 @@ export function TimeHistory() {
 
   const getName = (empId: string | null) => employees.find(e => e.id === empId)?.name || '—';
 
+  // Pré-calcula campos derivados pra alimentar o useTableSort: nome do funcionário,
+  // timestamps absolutos pra horário (ordenar como número), etc. O hook usa
+  // `localeCompare` em strings, `aVal - bVal` em números — então convertemos.
+  const sheetsForSort = useMemo(() => {
+    return sheets.map(sh => ({
+      ...sh,
+      _employee_name: getName(sh.employee_id),
+      _date_ts: new Date(sh.date + 'T12:00:00').getTime(),
+      _in_ts: sh.first_clock_in ? new Date(sh.first_clock_in).getTime() : 0,
+      _out_ts: sh.last_clock_out ? new Date(sh.last_clock_out).getTime() : 0,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheets, employees]);
+
+  const { sortedItems, sortConfig, handleSort } = useTableSort(sheetsForSort, '_date_ts', 'desc');
+
   const totals = useMemo(() => {
     const totalExpected = sheets.reduce((s, sh) => s + (sh.expected_min || 0), 0);
     const totalWorked = sheets.reduce((s, sh) => s + (sh.total_worked_min || 0), 0);
@@ -87,7 +107,8 @@ export function TimeHistory() {
   const desktopEmployeeValue = employeeIds.length === 1 ? employeeIds[0] : 'all';
   const desktopStatusValue = statusFilter.length === 1 ? statusFilter[0] : 'all';
 
-  const filtersBody = isMobile ? (
+  // Mobile usa o pattern antigo (FilterSheet com FilterCheckboxGroup multi-select).
+  const mobileFiltersBody = (
     <>
       <FilterCheckboxGroup
         label="Funcionário"
@@ -112,15 +133,19 @@ export function TimeHistory() {
         ]}
       />
     </>
-  ) : (
+  );
+
+  // Desktop: três filtros consolidados num FilterButton standard. Mantém
+  // mapeamento single->array dos selects (multi-select fica como mobile-only).
+  const desktopFiltersBody = (
     <>
-      <div className="space-y-2">
-        <Label className="text-xs sr-only">Funcionário</Label>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Funcionário</Label>
         <Select
           value={desktopEmployeeValue}
           onValueChange={(v) => setEmployeeIds(v === 'all' ? [] : [v])}
         >
-          <SelectTrigger className="sm:w-[200px]">
+          <SelectTrigger>
             <SelectValue placeholder="Funcionário" />
           </SelectTrigger>
           <SelectContent>
@@ -129,17 +154,17 @@ export function TimeHistory() {
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2">
-        <Label className="text-xs sr-only">Período</Label>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Período</Label>
         <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
       </div>
-      <div className="space-y-2">
-        <Label className="text-xs sr-only">Status</Label>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Status</Label>
         <Select
           value={desktopStatusValue}
           onValueChange={(v) => setStatusFilter(v === 'all' ? [] : [v])}
         >
-          <SelectTrigger className="sm:w-[160px]">
+          <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -155,11 +180,12 @@ export function TimeHistory() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Filtros: mobile mantém FilterSheet (multi-select via checkbox); desktop
+          consolida tudo num FilterButton standard (pattern sistema-wide v1.9.9). */}
       {isMobile ? (
         <div className="flex items-center justify-between gap-2">
           <FilterSheet activeCount={activeFilterCount} onClear={clearFilters}>
-            {filtersBody}
+            {mobileFiltersBody}
           </FilterSheet>
           <Button
             variant="outline"
@@ -172,11 +198,24 @@ export function TimeHistory() {
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-end flex-wrap">
-          {filtersBody}
-          <Button variant="outline" size="sm" className="gap-2 sm:self-end sm:mb-0.5" onClick={() => exportToCSV(sheets, employees)}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {sheets.length} registro{sheets.length !== 1 ? 's' : ''}
+          </p>
+          <div className="flex items-center gap-2">
+            <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
+              {desktopFiltersBody}
+            </FilterButton>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 h-9"
+              onClick={() => exportToCSV(sheets, employees)}
+              disabled={sheets.length === 0}
+            >
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+          </div>
         </div>
       )}
 
@@ -247,46 +286,46 @@ export function TimeHistory() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left px-4 py-3 font-medium">Data</th>
-                    <th className="text-left px-4 py-3 font-medium">Funcionário</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Entrada</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Saída</th>
-                    <th className="text-left px-4 py-3 font-medium">Trabalhado</th>
-                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Saldo</th>
-                    <th className="text-left px-4 py-3 font-medium">Status</th>
-                    <th className="text-right px-4 py-3 font-medium">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sheets.map(sh => {
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableTableHead sortKey="_date_ts" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
+                    <SortableTableHead sortKey="_employee_name" sortConfig={sortConfig} onSort={handleSort}>Funcionário</SortableTableHead>
+                    <SortableTableHead sortKey="_in_ts" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Entrada</SortableTableHead>
+                    <SortableTableHead sortKey="_out_ts" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Saída</SortableTableHead>
+                    <SortableTableHead sortKey="total_worked_min" sortConfig={sortConfig} onSort={handleSort}>Trabalhado</SortableTableHead>
+                    <SortableTableHead sortKey="balance_min" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Saldo</SortableTableHead>
+                    <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">Ações</SortableTableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedItems.map(sh => {
                     const stCfg = STATUS_LABELS[sh.status] || STATUS_LABELS.open;
                     return (
-                      <tr key={sh.id} className="border-b hover:bg-muted/30">
-                        <td className="px-4 py-3">{format(new Date(sh.date + 'T12:00:00'), 'dd/MM/yyyy')}</td>
-                        <td className="px-4 py-3 font-medium">{getName(sh.employee_id)}</td>
-                        <td className="px-4 py-3 hidden sm:table-cell">{sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}</td>
-                        <td className="px-4 py-3 hidden sm:table-cell">{sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}</td>
-                        <td className="px-4 py-3">{sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</td>
-                        <td className={cn('px-4 py-3 hidden md:table-cell font-medium', (sh.balance_min ?? 0) >= 0 ? 'text-success' : 'text-destructive')}>
+                      <TableRow key={sh.id} className="hover:bg-muted/30">
+                        <TableCell>{format(new Date(sh.date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="font-medium">{sh._employee_name}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{sh.first_clock_in ? format(new Date(sh.first_clock_in), 'HH:mm') : '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{sh.last_clock_out ? format(new Date(sh.last_clock_out), 'HH:mm') : '—'}</TableCell>
+                        <TableCell>{sh.total_worked_min != null ? formatMinutes(sh.total_worked_min) : '—'}</TableCell>
+                        <TableCell className={cn('hidden md:table-cell font-medium', (sh.balance_min ?? 0) >= 0 ? 'text-success' : 'text-destructive')}>
                           {sh.balance_min != null ? `${sh.balance_min >= 0 ? '+' : ''}${formatMinutes(sh.balance_min)}` : '—'}
-                        </td>
-                        <td className="px-4 py-3"><Badge className={cn('text-xs', stCfg.className)}>{stCfg.label}</Badge></td>
-                        <td className="px-4 py-3 text-right">
+                        </TableCell>
+                        <TableCell><Badge className={cn('text-xs', stCfg.className)}>{stCfg.label}</Badge></TableCell>
+                        <TableCell className="text-right">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetail(sh)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                  {sheets.length === 0 && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Nenhum registro encontrado</td></tr>
+                  {sortedItems.length === 0 && (
+                    <TableRow><TableCell colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             {sheets.length > 0 && (
               <div className="border-t px-4 py-3 flex flex-wrap gap-4 text-sm">

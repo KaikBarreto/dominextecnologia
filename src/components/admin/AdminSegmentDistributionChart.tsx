@@ -42,8 +42,17 @@ export function AdminSegmentDistributionChart({ companies }: Props) {
           <div className="grid md:grid-cols-2 gap-4 items-center">
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
-                <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value">
-                  {data.map((it) => <Cell key={it.key} fill={it.color} />)}
+                {/* Gradient diagonal 100%→55% por slice (pattern Dominex pies). */}
+                <defs>
+                  {data.map((it, i) => (
+                    <linearGradient key={`gradSeg${i}`} id={`gradSeg${i}`} x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor={it.color} stopOpacity={1} />
+                      <stop offset="100%" stopColor={it.color} stopOpacity={0.55} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none">
+                  {data.map((_it, i) => <Cell key={i} fill={`url(#gradSeg${i})`} />)}
                 </Pie>
                 <Tooltip
                   formatter={(v: number, n: string) => [`${total ? ((v / total) * 100).toFixed(1) : 0}% (${v})`, n]}

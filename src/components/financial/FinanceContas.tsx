@@ -4,8 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { useTableSort } from '@/hooks/useTableSort';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -168,7 +170,20 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
     return { pendente, vencido, prox7 };
   }, [baseFiltered, today, next7Days]);
 
-  const pagination = useDataPagination(filtered);
+  // Pré-calcula campos derivados pra ordenação na table desktop. O hook
+  // useTableSort entende números (amount, due_date_ts) e strings (status).
+  const filteredForSort = useMemo(() => {
+    return filtered.map(t => ({
+      ...t,
+      _due_ts: t.due_date ? parseLocalDate(t.due_date).getTime() : 0,
+      _amount_num: Number(t.amount),
+      _status_order: t.is_paid ? 2 : (t.due_date && isBefore(parseLocalDate(t.due_date), today) ? 0 : 1),
+    }));
+  }, [filtered, today]);
+
+  const { sortedItems, sortConfig, handleSort } = useTableSort(filteredForSort, '_due_ts', 'asc');
+
+  const pagination = useDataPagination(isMobile ? filtered : sortedItems);
 
   const isOverdue = (t: FinancialTransaction) =>
     !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
@@ -437,12 +452,12 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
-                    <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">Categoria</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Vencimento</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Valor</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
-                    <TableHead className="w-[100px] text-xs uppercase tracking-wider">Ações</TableHead>
+                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
+                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden sm:table-cell">Categoria</SortableTableHead>
+                    <SortableTableHead sortKey="_due_ts" sortConfig={sortConfig} onSort={handleSort}>Vencimento</SortableTableHead>
+                    <SortableTableHead sortKey="_amount_num" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
+                    <SortableTableHead sortKey="_status_order" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

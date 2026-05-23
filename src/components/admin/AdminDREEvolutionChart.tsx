@@ -68,10 +68,11 @@ export function AdminDREEvolutionChart({ transactions }: { transactions: Transac
         <div className={isMobile ? 'h-64' : 'h-72'}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: isMobile ? 5 : 10, left: isMobile ? -15 : 0, bottom: 0 }}>
+              {/* Area evolução — gradient 70%→5% (pattern Dominex charts). */}
               <defs>
-                <linearGradient id="dreRec" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0} /></linearGradient>
-                <linearGradient id="dreDes" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} /><stop offset="95%" stopColor="#ef4444" stopOpacity={0} /></linearGradient>
-                <linearGradient id="dreRes" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient>
+                <linearGradient id="dreRec" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity={0.7} /><stop offset="100%" stopColor="#22c55e" stopOpacity={0.05} /></linearGradient>
+                <linearGradient id="dreDes" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#ef4444" stopOpacity={0.7} /><stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} /></linearGradient>
+                <linearGradient id="dreRes" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.7} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} /></linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
               <XAxis dataKey="month" tick={{ fontSize: isMobile ? 9 : 11 }} interval={isMobile ? 2 : 0} angle={isMobile ? -45 : 0} textAnchor={isMobile ? 'end' : 'middle'} height={isMobile ? 50 : 30} />

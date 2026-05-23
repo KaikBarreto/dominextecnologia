@@ -35,6 +35,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { FilterButton } from '@/components/ui/FilterButton';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -210,7 +211,7 @@ export default function Inventory() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -221,9 +222,12 @@ export default function Inventory() {
             />
           </div>
           {categories.length > 0 && (
-            <div className="w-full sm:w-[260px]">
+            <FilterButton
+              activeCount={categoryFilter.length > 0 ? 1 : 0}
+              onClear={() => setCategoryFilter([])}
+            >
               {categoryFilterContent}
-            </div>
+            </FilterButton>
           )}
         </div>
       )}

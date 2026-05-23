@@ -35,6 +35,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { FilterButton } from '@/components/ui/FilterButton';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
@@ -182,21 +183,49 @@ function QuotesList() {
     []
   );
 
-  // Conteúdo da Sheet de filtros (mobile) / inline (desktop).
+  // Conteúdo da Sheet de filtros (mobile only).
   const filterContent = (
-    <div className={cn(isMobile ? 'space-y-4' : 'flex flex-col sm:flex-row gap-3 flex-1')}>
-      {!isMobile && (
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por cliente ou número..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      )}
-      <div className={isMobile ? '' : 'w-full sm:w-56'}>
+    <div className="space-y-4">
+      <FilterCheckboxGroup
+        label="Status"
+        options={statusOptions}
+        selected={statusFilter}
+        onChange={setStatusFilter}
+        emptyLabel="Todos"
+      />
+      <div className="pt-2 border-t">
+        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+          Configurações
+        </label>
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          onClick={() => setConfigOpen(true)}
+          type="button"
+        >
+          <Settings2 className="h-4 w-4" />
+          Configurar Proposta
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Filtros desktop — busca inline + FilterButton (Onda UI-2).
+  const desktopFilters = (
+    <div className="flex flex-col sm:flex-row gap-3">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por cliente ou número..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+      <FilterButton
+        activeCount={statusFilter.length > 0 ? 1 : 0}
+        onClear={() => setStatusFilter([])}
+      >
         <FilterCheckboxGroup
           label="Status"
           options={statusOptions}
@@ -204,23 +233,7 @@ function QuotesList() {
           onChange={setStatusFilter}
           emptyLabel="Todos"
         />
-      </div>
-      {isMobile && (
-        <div className="pt-2 border-t">
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Configurações
-          </label>
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2"
-            onClick={() => setConfigOpen(true)}
-            type="button"
-          >
-            <Settings2 className="h-4 w-4" />
-            Configurar Proposta
-          </Button>
-        </div>
-      )}
+      </FilterButton>
     </div>
   );
 
@@ -383,7 +396,7 @@ function QuotesList() {
           </div>
 
           {/* Filters desktop */}
-          {filterContent}
+          {desktopFilters}
         </>
       )}
 

@@ -5,7 +5,6 @@ import {
   TrendingUp,
   Plus,
   DollarSign,
-  Filter,
   Search,
   X,
   Users,
@@ -24,8 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+import { FilterButton } from '@/components/ui/FilterButton';
 import {
   useLeads,
   type Lead,
@@ -82,7 +81,6 @@ export default function CRM() {
     minValue: '',
     maxValue: '',
   });
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Mobile-only: alternância List/Kanban. Default mobile = Lista; desktop = Kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
@@ -785,73 +783,47 @@ export default function CRM() {
           />
         </div>
 
-        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filtros
-              {activeFiltersCount > 0 && (
-                <Badge className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-primary text-white">
-                  {activeFiltersCount}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold">Filtros</h4>
-                {activeFiltersCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
-                    <X className="h-3 w-3 mr-1" />
-                    Limpar
-                  </Button>
-                )}
-              </div>
+        <FilterButton
+          activeCount={activeFiltersCount}
+          onClear={clearFilters}
+        >
+          <FilterCheckboxGroup
+            label="Origem"
+            options={sourceOptions}
+            selected={filters.source}
+            onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
+            emptyLabel="Todas"
+          />
 
-              <FilterCheckboxGroup
-                label="Origem"
-                options={sourceOptions}
-                selected={filters.source}
-                onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
-                emptyLabel="Todas"
+          <FilterCheckboxGroup
+            label="Vendedor"
+            options={assignedToOptions}
+            selected={filters.assignedTo}
+            onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
+            emptyLabel="Todos"
+          />
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <Label>Valor Mínimo</Label>
+              <Input
+                type="number"
+                placeholder="R$ 0"
+                value={filters.minValue}
+                onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
               />
-
-              <FilterCheckboxGroup
-                label="Vendedor"
-                options={assignedToOptions}
-                selected={filters.assignedTo}
-                onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
-                emptyLabel="Todos"
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label>Valor Mínimo</Label>
-                  <Input
-                    type="number"
-                    placeholder="R$ 0"
-                    value={filters.minValue}
-                    onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Valor Máximo</Label>
-                  <Input
-                    type="number"
-                    placeholder="R$ 999.999"
-                    value={filters.maxValue}
-                    onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <Button className="w-full" onClick={() => setFiltersOpen(false)}>
-                Aplicar Filtros
-              </Button>
             </div>
-          </PopoverContent>
-        </Popover>
+            <div className="space-y-2">
+              <Label>Valor Máximo</Label>
+              <Input
+                type="number"
+                placeholder="R$ 999.999"
+                value={filters.maxValue}
+                onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
+              />
+            </div>
+          </div>
+        </FilterButton>
       </div>
 
       {/* Active Filters Display */}

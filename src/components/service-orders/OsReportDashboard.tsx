@@ -202,8 +202,18 @@ export function OsReportDashboard() {
             ) : (
               <ChartContainer config={pieConfig} className="h-[260px] w-full">
                 <PieChart>
+                  <defs>
+                    {statusData.map((entry, i) => (
+                      <linearGradient key={i} id={`os-grad-status-${i}`} x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor={entry.color} stopOpacity={1.0} />
+                        <stop offset="100%" stopColor={entry.color} stopOpacity={0.55} />
+                      </linearGradient>
+                    ))}
+                  </defs>
                   <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                    {statusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    {statusData.map((entry, i) => (
+                      <Cell key={i} fill={`url(#os-grad-status-${i})`} stroke={entry.color} />
+                    ))}
                   </Pie>
                   <ChartTooltip content={<ChartTooltipContent />} />
                 </PieChart>
@@ -222,12 +232,22 @@ export function OsReportDashboard() {
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={serviceTypeData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <defs>
+                      {serviceTypeData.map((entry, i) => (
+                        <linearGradient key={i} id={`os-grad-svc-${i}`} x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor={entry.color} stopOpacity={0.95} />
+                          <stop offset="100%" stopColor={entry.color} stopOpacity={0.4} />
+                        </linearGradient>
+                      ))}
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis type="number" allowDecimals={false} />
                     <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
                     <Tooltip formatter={(v: number) => [v, 'OS']} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {serviceTypeData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                      {serviceTypeData.map((entry, i) => (
+                        <Cell key={i} fill={`url(#os-grad-svc-${i})`} stroke={entry.color} />
+                      ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -249,11 +269,23 @@ export function OsReportDashboard() {
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={timelineData} margin={{ left: 0, right: 20 }}>
+                    <defs>
+                      <linearGradient id="os-grad-timeline-primary" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis allowDecimals={false} />
                     <Tooltip formatter={(v: number) => [v, 'OS']} />
-                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="total"
+                      stroke="url(#os-grad-timeline-primary)"
+                      strokeWidth={2.5}
+                      dot={{ r: 4, fill: 'hsl(var(--primary))' }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -271,11 +303,17 @@ export function OsReportDashboard() {
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timelineData} margin={{ left: 0, right: 20 }}>
+                    <defs>
+                      <linearGradient id="os-grad-revenue-vertical" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v: number) => [`R$ ${formatBRL(v)}`, 'Faturamento']} />
-                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="revenue" fill="url(#os-grad-revenue-vertical)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -291,11 +329,17 @@ export function OsReportDashboard() {
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weekdayData}>
+                <defs>
+                  <linearGradient id="os-grad-weekday-vertical" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                 <XAxis dataKey="day" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />
                 <Tooltip formatter={(v: number) => [v, 'OS']} />
-                <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="total" fill="url(#os-grad-weekday-vertical)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -40,8 +40,17 @@ export function AdminClientsByPlanChart({ companies }: Props) {
         <CardContent className="p-3 sm:p-4">
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={clientData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value">
-                {clientData.map((_, i) => <Cell key={i} fill={PLAN_COLORS[i % PLAN_COLORS.length]} />)}
+              {/* Gradient diagonal 100%→55% por slice. */}
+              <defs>
+                {clientData.map((_, i) => (
+                  <linearGradient key={`gradPlanC${i}`} id={`gradPlanC${i}`} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor={PLAN_COLORS[i % PLAN_COLORS.length]} stopOpacity={1} />
+                    <stop offset="100%" stopColor={PLAN_COLORS[i % PLAN_COLORS.length]} stopOpacity={0.55} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <Pie data={clientData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value" stroke="none">
+                {clientData.map((_, i) => <Cell key={i} fill={`url(#gradPlanC${i})`} />)}
               </Pie>
               <Tooltip
                 formatter={(v: number, n: string) => [`${totalC ? ((v / totalC) * 100).toFixed(1) : 0}%`, n]}
@@ -69,8 +78,16 @@ export function AdminClientsByPlanChart({ companies }: Props) {
         <CardContent className="p-3 sm:p-4">
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={revData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value">
-                {revData.map((_, i) => <Cell key={i} fill={PLAN_COLORS[i % PLAN_COLORS.length]} />)}
+              <defs>
+                {revData.map((_, i) => (
+                  <linearGradient key={`gradPlanR${i}`} id={`gradPlanR${i}`} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor={PLAN_COLORS[i % PLAN_COLORS.length]} stopOpacity={1} />
+                    <stop offset="100%" stopColor={PLAN_COLORS[i % PLAN_COLORS.length]} stopOpacity={0.55} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <Pie data={revData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value" stroke="none">
+                {revData.map((_, i) => <Cell key={i} fill={`url(#gradPlanR${i})`} />)}
               </Pie>
               <Tooltip
                 formatter={(v: number, n: string) => [`${totalR ? ((v / totalR) * 100).toFixed(1) : 0}%`, n]}

@@ -15,6 +15,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { FilterButton } from '@/components/ui/FilterButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { TrackingEventListItem } from '@/components/tracking/TrackingEventListItem';
 
@@ -282,7 +283,53 @@ export default function TechnicianTracking() {
           </div>
         </div>
       ) : (
-        filterContent
+        // Desktop: técnico + data consolidados num único FilterButton.
+        // Resumo inline ao lado mostra o que está aplicado pra não esconder
+        // todo o contexto atrás do botão.
+        <div className="flex items-center gap-3">
+          <FilterButton
+            activeCount={activeFilterCount}
+            onClear={clearFilters}
+          >
+            <FilterCheckboxGroup
+              label="Técnico"
+              options={profiles.map((p) => ({ value: p.user_id, label: p.full_name }))}
+              selected={selectedUserIds}
+              onChange={setSelectedUserIds}
+              emptyLabel="Selecione ao menos um"
+            />
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 block">
+                Data
+              </label>
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+          </FilterButton>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground truncate">
+            {selectedUserIds.length === 0 ? (
+              <span className="truncate">Selecione um técnico</span>
+            ) : selectedTechnician ? (
+              <>
+                <User className="h-4 w-4 shrink-0" />
+                <span className="truncate">{selectedTechnician.full_name}</span>
+                <span className="opacity-50">•</span>
+                <span className="shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+              </>
+            ) : (
+              <>
+                <User className="h-4 w-4 shrink-0" />
+                <span className="truncate">{selectedUserIds.length} técnicos</span>
+                <span className="opacity-50">•</span>
+                <span className="shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ----------------------------------------------------------------- */}
