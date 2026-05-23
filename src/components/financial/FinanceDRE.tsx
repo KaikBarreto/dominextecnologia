@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { generateDreHtml } from '@/utils/dreHtmlGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -28,6 +29,7 @@ interface CategoryBreakdown {
 export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   const { settings } = useCompanySettings();
   const { categories: financialCategories } = useFinancialCategories();
+  const isMobile = useIsMobile();
 
   // Filter out inter-account transfers, unpaid transactions, and credit card bill payments from DRE
   // (bill payments are balance sheet items, not P&L)
@@ -114,7 +116,7 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
     };
   }, [transactions, categoryDreGroupMap]);
 
-  // Monthly chart data
+  // Monthly chart data — mobile simplifica pros últimos 6 meses pra caber.
   const monthlyData = useMemo(() => {
     const map = new Map<string, { receitas: number; despesas: number }>();
     transactions.forEach((t) => {
@@ -124,13 +126,14 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
       else entry.despesas += Number(t.amount);
       map.set(monthKey, entry);
     });
-    return Array.from(map.entries())
+    const all = Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, val]) => ({
         month: format(parseISO(`${key}-01`), 'MMM/yy', { locale: ptBR }),
         ...val,
       }));
-  }, [transactions]);
+    return isMobile ? all.slice(-6) : all;
+  }, [transactions, isMobile]);
 
   const handleExport = () => {
     if (isExporting) return;
@@ -247,25 +250,25 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   );
 
   return (
-    <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+    <div className="space-y-5 sm:space-y-6">
+      {/* KPI Cards — mobile: 3 colunas compactas pra caber tudo na primeira tela. */}
+      <div className="grid gap-2 sm:gap-4 grid-cols-3">
         <Card className={cn('border-0', dre.margem >= 0 ? 'bg-success' : 'bg-destructive')}>
-          <CardContent className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Margem Bruta</p>
-            <p className="text-2xl sm:text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
+          <CardContent className="p-3 sm:p-5">
+            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">Margem</p>
+            <p className="text-lg sm:text-3xl font-bold mt-1 text-white">{dre.margem.toFixed(1)}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Receita Líquida</p>
-            <p className="text-xl sm:text-3xl font-bold mt-1 truncate">{formatCurrency(dre.receitaLiquida)}</p>
+          <CardContent className="p-3 sm:p-5">
+            <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider leading-tight">Receita Líq.</p>
+            <p className="text-sm sm:text-3xl font-bold mt-1 truncate">{formatCurrency(dre.receitaLiquida)}</p>
           </CardContent>
         </Card>
         <Card className={cn('border-0', dre.resultadoLiquido >= 0 ? 'bg-success' : 'bg-destructive')}>
-          <CardContent className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-white/80 uppercase tracking-wider">Resultado (EBITDA)</p>
-            <p className="text-xl sm:text-3xl font-bold mt-1 text-white truncate">{formatCurrency(dre.resultadoLiquido)}</p>
+          <CardContent className="p-3 sm:p-5">
+            <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider leading-tight">EBITDA</p>
+            <p className="text-sm sm:text-3xl font-bold mt-1 text-white truncate">{formatCurrency(dre.resultadoLiquido)}</p>
           </CardContent>
         </Card>
       </div>
@@ -273,17 +276,17 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
       {/* Chart */}
       {monthlyData.length > 1 && (
         <Card>
-          <CardHeader>
+          <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Evolução Receita × Despesas
+              Evolução Receita × Despesas{isMobile ? ' (6 meses)' : ''}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
+          <CardContent className={cn(isMobile && 'p-2')}>
+            <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
               <AreaChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 11 }} />
+                <YAxis tick={{ fontSize: isMobile ? 10 : 11 }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Area type="monotone" dataKey="receitas" name="Receitas" stroke="hsl(145, 65%, 42%)" fill="hsl(145, 65%, 42%)" fillOpacity={0.15} />
                 <Area type="monotone" dataKey="despesas" name="Despesas" stroke="hsl(0, 84%, 60%)" fill="hsl(0, 84%, 60%)" fillOpacity={0.15} />

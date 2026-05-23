@@ -7,9 +7,20 @@ import type { FinancialTransaction } from '@/types/database';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+// Versão compacta pra StatCarousel mobile — "R$ 1,2k" ou "R$ 1,2M".
+function formatCurrencyShort(value: number) {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}R$ ${(abs / 1_000_000).toFixed(1).replace('.', ',')}M`;
+  if (abs >= 1_000) return `${sign}R$ ${(abs / 1_000).toFixed(1).replace('.', ',')}k`;
+  return formatCurrency(value);
 }
 
 interface FinanceOverviewProps {
@@ -34,6 +45,7 @@ const CHART_COLORS = [
 
 export function FinanceOverview({ transactions, summary, onNavigate, onNewReceita, onNewDespesa }: FinanceOverviewProps) {
   const { accounts, balances } = useFinancialAccounts();
+  const isMobile = useIsMobile();
   const activeAccounts = accounts.filter(a => a.is_active);
 
   const getTypeIcon = (type: string) => {
@@ -41,18 +53,20 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     if (type === 'cartao') return CreditCard;
     return Landmark;
   };
-  // Category breakdown for chart
+
+  // Category breakdown for chart — mobile: top 5; desktop: top 8.
   const categoryMap = new Map<string, number>();
   transactions.forEach((t) => {
     const cat = t.category || 'Sem categoria';
     categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(t.amount));
   });
+  const chartTopN = isMobile ? 5 : 8;
   const chartData = Array.from(categoryMap.entries())
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
-    .slice(0, 8);
+    .slice(0, chartTopN);
 
-  // Cash flow bar chart data (monthly)
+  // Cash flow bar chart data (monthly) — mobile: últimos 3; desktop: tudo.
   const cashFlowMap = new Map<string, { month: string; entradas: number; saidas: number }>();
   transactions.forEach((t) => {
     const d = t.transaction_date;
@@ -65,9 +79,10 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     if (t.transaction_type === 'entrada') entry.entradas += Number(t.amount);
     else entry.saidas += Number(t.amount);
   });
-  const cashFlowData = Array.from(cashFlowMap.entries())
+  const cashFlowAll = Array.from(cashFlowMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([, v]) => v);
+  const cashFlowData = isMobile ? cashFlowAll.slice(-3) : cashFlowAll;
 
   const recentTransactions = transactions.slice(0, 8);
 
@@ -82,7 +97,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       t.is_paid ? 'Pago' : 'Pendente',
     ]);
     const csv = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -91,74 +106,158 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Summary Cards - 3 columns: Receitas → Despesas → Saldo do Período */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-        <Card className="bg-success border-0">
-          <CardContent className="p-3 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Receitas</p>
-                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalEntradas)}</p>
-              </div>
-              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-destructive border-0">
-          <CardContent className="p-3 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Despesas</p>
-                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalSaidas)}</p>
-              </div>
-              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
-                <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className={`border-0 ${summary.saldo >= 0 ? 'bg-info' : 'bg-destructive'}`}>
-          <CardContent className="p-3 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo do Período</p>
-                <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">
-                  {formatCurrency(summary.saldo)}
-                </p>
-              </div>
-              <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
-                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+  // ─── MOBILE: stats em carrossel horizontal ───────────────────────────────
+  // Usa StatCarousel — mas com valor financeiro (não contagem). Mapeamos pra
+  // string e renderizamos via label/count pra reaproveitar o componente.
+  // Como StatCarousel.count espera number e formata como inteiro, criamos
+  // uma versão inline pra mostrar moeda.
+  const mobileStats = [
+    {
+      key: 'entradas',
+      label: 'Receitas',
+      value: summary.totalEntradas,
+      icon: <TrendingUp className="h-5 w-5" />,
+      color: 'hsl(var(--success))',
+      onClick: () => onNavigate('historico'),
+    },
+    {
+      key: 'saidas',
+      label: 'Despesas',
+      value: summary.totalSaidas,
+      icon: <TrendingDown className="h-5 w-5" />,
+      color: 'hsl(var(--destructive))',
+      onClick: () => onNavigate('historico'),
+    },
+    {
+      key: 'saldo',
+      label: 'Saldo',
+      value: summary.saldo,
+      icon: <Wallet className="h-5 w-5" />,
+      color: summary.saldo >= 0 ? 'hsl(var(--info))' : 'hsl(var(--destructive))',
+      onClick: () => onNavigate('historico'),
+    },
+    {
+      key: 'a-receber',
+      label: 'A Receber',
+      value: summary.aReceber,
+      icon: <Clock className="h-5 w-5" />,
+      color: 'hsl(var(--success))',
+      onClick: () => onNavigate('contas'),
+    },
+    {
+      key: 'a-pagar',
+      label: 'A Pagar',
+      value: summary.aPagar,
+      icon: <Clock className="h-5 w-5" />,
+      color: 'hsl(var(--destructive))',
+      onClick: () => onNavigate('contas'),
+    },
+  ];
 
-      {/* Pending Cards */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-        <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
-          <CardContent className="p-3 sm:p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
-              <p className="text-lg font-bold text-success">{formatCurrency(summary.aReceber)}</p>
-            </div>
-            <Clock className="h-5 w-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
-          <CardContent className="p-3 sm:p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Pagar</p>
-              <p className="text-lg font-bold text-destructive">{formatCurrency(summary.aPagar)}</p>
-            </div>
-            <Clock className="h-5 w-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </div>
+  return (
+    <div className="space-y-5 sm:space-y-6">
+      {/* ── Resumo financeiro ── */}
+      {isMobile ? (
+        // Mobile: carrossel horizontal de chips com valor monetário.
+        <div className="relative -mx-3">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
+          <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {mobileStats.map((stat) => (
+              <button
+                key={stat.key}
+                type="button"
+                onClick={stat.onClick}
+                className="snap-start shrink-0 flex flex-col items-start justify-between gap-2 h-[110px] min-w-[140px] p-3 rounded-2xl border bg-card text-left transition-all active:scale-95"
+              >
+                <span
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0"
+                  style={{ backgroundColor: stat.color }}
+                >
+                  {stat.icon}
+                </span>
+                <div className="space-y-0.5 w-full">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">
+                    {stat.label}
+                  </p>
+                  <p className="text-base font-bold leading-tight truncate">
+                    {formatCurrencyShort(stat.value)}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        // Desktop: grid 3 colunas com receitas/despesas/saldo.
+        <>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            <Card className="bg-success border-0">
+              <CardContent className="p-3 sm:p-5">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Receitas</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalEntradas)}</p>
+                  </div>
+                  <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-destructive border-0">
+              <CardContent className="p-3 sm:p-5">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Despesas</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">{formatCurrency(summary.totalSaidas)}</p>
+                  </div>
+                  <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
+                    <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className={`border-0 ${summary.saldo >= 0 ? 'bg-info' : 'bg-destructive'}`}>
+              <CardContent className="p-3 sm:p-5">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[10px] sm:text-xs font-medium text-white/80 uppercase tracking-wider">Saldo do Período</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1 text-white truncate">
+                      {formatCurrency(summary.saldo)}
+                    </p>
+                  </div>
+                  <div className="rounded-full bg-white/20 p-2 sm:p-3 shrink-0">
+                    <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Pending Cards — só desktop (no mobile já estão no carrossel) */}
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
+              <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Receber</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(summary.aReceber)}</p>
+                </div>
+                <Clock className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('contas')}>
+              <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">A Pagar</p>
+                  <p className="text-lg font-bold text-destructive">{formatCurrency(summary.aPagar)}</p>
+                </div>
+                <Clock className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       {/* Account balances */}
       {activeAccounts.length > 0 && (
@@ -189,16 +288,16 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       )}
 
       {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button size="sm" className="bg-success hover:bg-success/90 text-white gap-2" onClick={onNewReceita}>
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
+        <Button size="sm" className="bg-success hover:bg-success/90 text-white gap-2 h-10 sm:h-9" onClick={onNewReceita}>
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Nova</span> Receita
+          Nova Receita
         </Button>
-        <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-white gap-2" onClick={onNewDespesa}>
+        <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-white gap-2 h-10 sm:h-9" onClick={onNewDespesa}>
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Nova</span> Despesa
+          Nova Despesa
         </Button>
-        <Button size="sm" variant="outline" className="gap-2" onClick={handleExportCSV}>
+        <Button size="sm" variant="outline" className="gap-2 col-span-2 sm:col-span-1 h-10 sm:h-9" onClick={handleExportCSV}>
           <FileDown className="h-4 w-4" />
           Exportar CSV
         </Button>
@@ -207,19 +306,19 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       {/* Cash Flow Bar Chart */}
       {cashFlowData.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Fluxo de Caixa
+              Fluxo de Caixa{isMobile && cashFlowAll.length > 3 ? ' (últimos 3 meses)' : ''}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+          <CardContent className={cn(isMobile && 'p-2')}>
+            <ResponsiveContainer width="100%" height={isMobile ? 200 : 250}>
               <BarChart data={cashFlowData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
+                <YAxis tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Legend />
+                <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                 <Bar dataKey="entradas" name="Receitas" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="saidas" name="Despesas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -231,12 +330,12 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Category Chart */}
         <Card>
-          <CardHeader>
+          <CardHeader className={cn(isMobile && 'p-4 pb-2')}>
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              Distribuição por Categoria
+              Distribuição por Categoria{isMobile ? ' (top 5)' : ''}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className={cn(isMobile && 'p-2')}>
             {chartData.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">Nenhum dado disponível</p>
             ) : (
@@ -272,8 +371,8 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           </CardContent>
         </Card>
 
-        {/* Recent Transactions */}
-        <Card>
+        {/* Recent Transactions — escondido no mobile (já tem aba dedicada). */}
+        <Card className="hidden lg:block">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               Últimas Movimentações

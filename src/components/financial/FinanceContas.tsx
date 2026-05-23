@@ -13,12 +13,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FABButton } from '@/components/mobile/FABButton';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -210,74 +211,129 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         </div>
       )}
 
-      {/* Sub-tab toggle */}
-      <div className="flex gap-2">
-        <Button
-          variant={subTab === 'pagar' ? 'default' : 'outline'}
-          onClick={() => { setSubTab('pagar'); setFilter('pendentes'); }}
-          className={subTab === 'pagar' ? 'bg-destructive hover:bg-destructive/90 text-white' : ''}
-        >
-          A Pagar
-        </Button>
-        <Button
-          variant={subTab === 'receber' ? 'default' : 'outline'}
-          onClick={() => { setSubTab('receber'); setFilter('pendentes'); }}
-          className={subTab === 'receber' ? 'bg-success hover:bg-success/90 text-white' : ''}
-        >
-          A Receber
-        </Button>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-full bg-warning p-2.5 shrink-0">
-              <Clock className="h-4 w-4 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Pendente</p>
-              <p className="text-lg font-bold truncate">{formatCurrency(summary.pendente)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-full bg-destructive p-2.5 shrink-0">
-              <AlertTriangle className="h-4 w-4 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Vencido</p>
-              <p className="text-lg font-bold text-destructive truncate">{formatCurrency(summary.vencido)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-full bg-primary p-2.5 shrink-0">
-              <DollarSign className="h-4 w-4 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Próximos 7 dias</p>
-              <p className="text-lg font-bold truncate">{formatCurrency(summary.prox7)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
-        {filters.map((f) => (
+      {/* Sub-tab toggle — mobile usa pillTabs scrolláveis; desktop botões */}
+      {isMobile ? (
+        <MobilePillTabs
+          tabs={[
+            { value: 'pagar', label: 'A Pagar', icon: <ArrowDownCircle className="h-3.5 w-3.5" /> },
+            { value: 'receber', label: 'A Receber', icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
+          ]}
+          activeTab={subTab}
+          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); }}
+        />
+      ) : (
+        <div className="flex gap-2">
           <Button
-            key={f.key}
-            variant={filter === f.key ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter(f.key)}
+            variant={subTab === 'pagar' ? 'default' : 'outline'}
+            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); }}
+            className={subTab === 'pagar' ? 'bg-destructive hover:bg-destructive/90 text-white' : ''}
           >
-            {f.label}
+            A Pagar
           </Button>
-        ))}
-      </div>
+          <Button
+            variant={subTab === 'receber' ? 'default' : 'outline'}
+            onClick={() => { setSubTab('receber'); setFilter('pendentes'); }}
+            className={subTab === 'receber' ? 'bg-success hover:bg-success/90 text-white' : ''}
+          >
+            A Receber
+          </Button>
+        </div>
+      )}
+
+      {/* Summary cards — mobile vira carrossel snap-x compacto */}
+      {isMobile ? (
+        <div className="relative -mx-3">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
+          <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+              <div className="rounded-full bg-warning p-2 shrink-0">
+                <Clock className="h-4 w-4 text-warning-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">Pendente</p>
+                <p className="text-sm font-bold truncate leading-tight">{formatCurrency(summary.pendente)}</p>
+              </div>
+            </div>
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+              <div className="rounded-full bg-destructive p-2 shrink-0">
+                <AlertTriangle className="h-4 w-4 text-destructive-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">Vencido</p>
+                <p className="text-sm font-bold text-destructive truncate leading-tight">{formatCurrency(summary.vencido)}</p>
+              </div>
+            </div>
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+              <div className="rounded-full bg-primary p-2 shrink-0">
+                <DollarSign className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">7 dias</p>
+                <p className="text-sm font-bold truncate leading-tight">{formatCurrency(summary.prox7)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="rounded-full bg-warning p-2.5 shrink-0">
+                <Clock className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Pendente</p>
+                <p className="text-lg font-bold truncate">{formatCurrency(summary.pendente)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="rounded-full bg-destructive p-2.5 shrink-0">
+                <AlertTriangle className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Vencido</p>
+                <p className="text-lg font-bold text-destructive truncate">{formatCurrency(summary.vencido)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="rounded-full bg-primary p-2.5 shrink-0">
+                <DollarSign className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Próximos 7 dias</p>
+                <p className="text-lg font-bold truncate">{formatCurrency(summary.prox7)}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Filters status — pillTabs em mobile, botões em desktop */}
+      {isMobile ? (
+        <MobilePillTabs
+          tabs={filters.map(f => ({ value: f.key, label: f.label }))}
+          activeTab={filter}
+          onTabChange={(v) => setFilter(v as FilterStatus)}
+        />
+      ) : (
+        <div className="flex gap-2 flex-wrap">
+          {filters.map((f) => (
+            <Button
+              key={f.key}
+              variant={filter === f.key ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter(f.key)}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       {isLoading ? (
