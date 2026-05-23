@@ -259,7 +259,7 @@ export default function Registration() {
                         <Input
                           {...register('company_name', { required: 'Nome da empresa é obrigatório' })}
                           placeholder="Ex: Minha Empresa Ltda"
-                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                          className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
                       {errors.company_name && <p className="text-sm text-destructive mt-1">{errors.company_name.message}</p>}
@@ -272,7 +272,7 @@ export default function Registration() {
                         <Input
                           {...register('contact_name', { required: 'Nome é obrigatório' })}
                           placeholder="Ex: João Silva"
-                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                          className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
                       {errors.contact_name && <p className="text-sm text-destructive mt-1">{errors.contact_name.message}</p>}
@@ -290,7 +290,7 @@ export default function Registration() {
                               pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: 'Email inválido' },
                             })}
                             placeholder="email@exemplo.com"
-                            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                            className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
                         </div>
                         {errors.company_email && <p className="text-sm text-destructive mt-1">{errors.company_email.message}</p>}
@@ -307,7 +307,7 @@ export default function Registration() {
                             })}
                             placeholder="(21) 98765-4321"
                             maxLength={15}
-                            className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                            className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
                         </div>
                         {errors.company_phone && <p className="text-sm text-destructive mt-1">{errors.company_phone.message}</p>}
@@ -367,7 +367,7 @@ export default function Registration() {
                         <PasswordInput
                           {...register('password', { required: 'Senha é obrigatória', validate: (v) => isPasswordStrong(v) || 'Senha não atende aos requisitos mínimos' })}
                           placeholder="Crie sua senha"
-                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                          className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
                       <PasswordStrengthIndicator password={passwordValue} />
@@ -383,7 +383,7 @@ export default function Registration() {
                           placeholder="Repita a senha"
                           matchAgainst={passwordValue}
                           value={confirmValue}
-                          className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                          className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
                       {errors.confirm_password && <p className="text-sm text-destructive mt-1">{errors.confirm_password.message}</p>}

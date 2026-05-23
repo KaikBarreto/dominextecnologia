@@ -186,7 +186,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
                     <PasswordInput
                       {...field}
                       placeholder="Mínimo 6 caracteres"
-                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                      className="bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
                       disabled={isLoading}
                     />
                   </FormControl>
@@ -205,7 +205,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
                     <PasswordInput
                       {...field}
                       placeholder="Repita a senha"
-                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                      className="bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
                       disabled={isLoading}
                     />
                   </FormControl>
@@ -305,7 +305,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
                       {...field}
                       type="email"
                       placeholder="seu@email.com"
-                      className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-primary"
+                      className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40 focus:border-primary"
                       disabled={isLoading}
                     />
                   </div>

@@ -387,7 +387,7 @@ export default function Auth() {
                                 placeholder="seu@email.com" autoCapitalize="none"
                                 autoComplete="email"
                                 disabled={isLoading}
-                                className="pl-10 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                                className="pl-10 h-12 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
                               />
                             </div>
                           </FormControl>
@@ -411,7 +411,7 @@ export default function Auth() {
                                 placeholder="••••••••"
                                 autoComplete="current-password"
                                 disabled={isLoading}
-                                className="pl-10 pr-10 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                                className="pl-10 pr-10 h-12 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
                               />
                               <button
                                 type="button"
@@ -549,7 +549,7 @@ export default function Auth() {
                                 autoComplete="email"
                                 autoFocus
                                 disabled={isLoading}
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                                className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                               />
                             </div>
                           </FormControl>
@@ -573,7 +573,7 @@ export default function Auth() {
                                 placeholder="••••••••"
                                 autoComplete="current-password"
                                 disabled={isLoading}
-                                className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary"
+                                className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                               />
                               <button
                                 type="button"
