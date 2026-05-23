@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -26,24 +27,22 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
     );
   }
 
-  if (variant === 'mini') {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={label}
-        className={cn(
-          'mobile-fab fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-90 animate-in fade-in zoom-in-90',
-          className
-        )}
-        style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
-      >
-        <span className="flex h-6 w-6 items-center justify-center">{icon}</span>
-      </button>
-    );
-  }
-
-  return (
+  // Portal: escapa de qualquer ancestral com `transform` (ex: MobilePullToRefresh),
+  // que cria containing block novo e quebra `position: fixed` relativo ao viewport.
+  const fab = variant === 'mini' ? (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={cn(
+        'mobile-fab fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-90 animate-in fade-in zoom-in-90',
+        className
+      )}
+      style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
+    >
+      <span className="flex h-6 w-6 items-center justify-center">{icon}</span>
+    </button>
+  ) : (
     <button
       type="button"
       onClick={onClick}
@@ -58,4 +57,6 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
       <span className="text-sm font-medium">{label}</span>
     </button>
   );
+
+  return createPortal(fab, document.body);
 }
