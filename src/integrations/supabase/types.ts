@@ -4829,6 +4829,7 @@ export type Database = {
       }
       technician_locations: {
         Row: {
+          company_id: string
           created_at: string
           event_type: string
           id: string
@@ -4838,6 +4839,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id: string
           created_at?: string
           event_type?: string
           id?: string
@@ -4847,6 +4849,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string
           created_at?: string
           event_type?: string
           id?: string
@@ -4856,6 +4859,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "technician_locations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "technician_locations_service_order_id_fkey"
             columns: ["service_order_id"]

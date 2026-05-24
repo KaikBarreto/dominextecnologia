@@ -2,6 +2,38 @@ import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
+ * In-memory cache for the current user's company_id.
+ * Tracking fires every 30s — we cannot re-query `profiles` per tick.
+ * Cache is per-user; invalidated when the user_id changes.
+ */
+let cachedCompanyId: { userId: string; companyId: string | null } | null = null;
+
+async function fetchCompanyIdForCurrentUser(): Promise<string | null> {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return null;
+
+  if (cachedCompanyId?.userId === userId) {
+    return cachedCompanyId.companyId;
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[geo-tracking] failed to fetch company_id:', error.message);
+    return null;
+  }
+
+  const companyId = data?.company_id ?? null;
+  cachedCompanyId = { userId, companyId };
+  return companyId;
+}
+
+/**
  * Hook to send periodic geolocation updates while a technician is working on an OS.
  * Starts tracking on mount (if enabled), stops on unmount.
  */
@@ -14,8 +46,17 @@ export function useGeoTracking(serviceOrderId: string | undefined, enabled: bool
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from('technician_locations' as any).insert({
+    const companyId = await fetchCompanyIdForCurrentUser();
+    if (!companyId) {
+      // Super admin sem company ou profile incompleto — tracking GPS é não-crítico.
+      // Silenciosamente pula o INSERT (RLS exigiria company_id de qualquer forma).
+      console.warn('[geo-tracking] skipping location: no company_id for current user');
+      return;
+    }
+
+    await supabase.from('technician_locations').insert({
       user_id: user.id,
+      company_id: companyId,
       service_order_id: serviceOrderId || null,
       lat,
       lng,
@@ -82,8 +123,15 @@ export async function recordLocationEvent(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  await supabase.from('technician_locations' as any).insert({
+  const companyId = await fetchCompanyIdForCurrentUser();
+  if (!companyId) {
+    console.warn('[geo-tracking] skipping event: no company_id for current user');
+    return;
+  }
+
+  await supabase.from('technician_locations').insert({
     user_id: user.id,
+    company_id: companyId,
     service_order_id: serviceOrderId,
     lat,
     lng,
