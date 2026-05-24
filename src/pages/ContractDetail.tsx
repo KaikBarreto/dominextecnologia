@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
+import { QRCodeSVG } from 'qrcode.react';
 import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken } from '@/hooks/usePmocPortal';
@@ -70,6 +72,7 @@ const FREQUENCY_OPTIONS = [
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
@@ -787,6 +790,25 @@ export default function ContractDetail() {
                 <p className="text-xs text-muted-foreground break-words">
                   Página pública desta unidade para o cliente final. Aparece no QR Code colado no quadro físico.
                 </p>
+
+                {portalUrl && (
+                  <div className="flex justify-center">
+                    <div
+                      className={cn(
+                        'inline-flex items-center justify-center rounded-xl p-4 transition-colors',
+                        resolvedTheme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-border',
+                      )}
+                    >
+                      <QRCodeSVG
+                        value={portalUrl}
+                        size={isMobile ? 130 : 160}
+                        bgColor="transparent"
+                        fgColor={resolvedTheme === 'dark' ? '#ffffff' : '#000000'}
+                        level="M"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {portalUrl ? (
                   <div className="rounded-md border bg-muted/40 p-2 text-xs font-mono break-all min-w-0">

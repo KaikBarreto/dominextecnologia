@@ -16,6 +16,7 @@ export function useContractDetail(contractId: string | undefined) {
         .select(`
           *,
           customers (id, name, document, phone),
+          responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
           contract_occurrences (id, contract_id, scheduled_date, service_order_id, status, occurrence_number, service_orders:service_orders(id, order_number, status, scheduled_date))
         `)
