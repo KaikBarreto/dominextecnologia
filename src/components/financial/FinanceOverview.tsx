@@ -44,7 +44,7 @@ const CHART_COLORS = [
 ];
 
 export function FinanceOverview({ transactions, summary, onNavigate, onNewReceita, onNewDespesa }: FinanceOverviewProps) {
-  const { accounts, balances } = useFinancialAccounts();
+  const { accounts, balances, cardBillTotals } = useFinancialAccounts();
   const isMobile = useIsMobile();
   const activeAccounts = accounts.filter(a => a.is_active);
 
@@ -266,7 +266,18 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {activeAccounts.map(a => {
               const Icon = getTypeIcon(a.type);
-              const balance = balances[a.id] ?? a.initial_balance;
+              // Cartão de crédito não tem "saldo de conta"; o valor relevante é a fatura aberta
+              // (despesas - reembolsos). Conta-corrente/caixa usa o saldo real.
+              // Mantém consistência visual com FinanceBanks.tsx (que já trata isso assim).
+              const isCard = a.type === 'cartao';
+              const balance = isCard
+                ? (cardBillTotals[a.id] ?? 0)
+                : (balances[a.id] ?? Number(a.initial_balance ?? 0));
+              // Cartão: fatura > 0 é dívida (mostra em destructive); = 0 é cinza (sem fatura).
+              // Conta/caixa: positivo verde, negativo vermelho.
+              const valueClass = isCard
+                ? (balance > 0 ? 'text-destructive' : 'text-muted-foreground')
+                : (balance >= 0 ? 'text-success' : 'text-destructive');
               return (
                 <Card key={a.id} className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('bancos')}>
                   <CardContent className="p-3 flex items-center gap-3">
@@ -274,8 +285,11 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                       <Icon className="h-4 w-4 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground truncate">{a.name}</p>
-                      <p className={`text-sm font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {a.name}
+                        {isCard && <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">· fatura</span>}
+                      </p>
+                      <p className={`text-sm font-bold ${valueClass}`}>
                         {formatCurrency(balance)}
                       </p>
                     </div>

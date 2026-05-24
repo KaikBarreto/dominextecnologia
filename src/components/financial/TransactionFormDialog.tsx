@@ -431,12 +431,15 @@ export function TransactionFormDialog({
   const selectedAccount = accounts.find(a => a.id === watchedAccountId);
   const isCardAccount = selectedAccount?.type === 'cartao';
 
-  // Auto-calculate bill month when card account or date changes
+  // Auto-calculate bill month when card account or date changes.
+  // is_paid NÃO é mais auto-setado pra cartão: a despesa entra como pendente
+  // e só fica paga quando a FATURA inteira é quitada (via Pagar Fatura). Isso
+  // corrige o bug onde a parcela (1/6) sumia do filtro "Pendentes" porque
+  // entrava como is_paid=true. Ver v1.9.15 — refactor cartão/faturas.
   useEffect(() => {
     if (!open) return;
     if (isCardAccount && watchedDate && selectedAccount) {
       form.setValue('credit_card_bill_date', computeBillDate(selectedAccount, watchedDate));
-      form.setValue('is_paid', true);
     } else if (!isCardAccount) {
       form.setValue('credit_card_bill_date', undefined);
     }
@@ -479,9 +482,16 @@ export function TransactionFormDialog({
 
     setSubmitting(true);
     try {
+      // Despesa de cartão NUNCA entra como paga — quem fica pago é a FATURA.
+      // O checkbox "Já foi pago" já é ocultado no UI pra cartão, mas o form pode
+      // ter valor true herdado de outro fluxo (default, draft, etc). Force false
+      // pra evitar o bug do (1/6) sumir do filtro Pendentes.
+      const isCardSaida = isCardAccount && data.transaction_type === 'saida';
+      const isPaidFinal = isCardSaida ? false : data.is_paid;
       const payload = {
         ...data,
-        paid_date: data.is_paid ? data.transaction_date : undefined,
+        is_paid: isPaidFinal,
+        paid_date: isPaidFinal ? data.transaction_date : undefined,
         payment_method: data.payment_method || null,
         account_id: data.account_id || null,
         credit_card_bill_date: data.credit_card_bill_date || null,

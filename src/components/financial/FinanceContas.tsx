@@ -31,6 +31,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
+import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -84,6 +86,10 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
   const { deleteTransaction, updateTransaction } = useFinancial();
   const { accounts: allAccounts } = useFinancialAccounts();
   const cashBankAccounts = allAccounts.filter(a => a.type !== 'cartao' && a.is_active);
+  // Faturas de cartão — usadas em subTab='pagar' pra agrupar despesas em
+  // linhas-de-fatura (uma linha por fatura) em vez de listar cada despesa solta.
+  // v1.9.15 — refactor cartão/faturas.
+  const { bills: allBills } = useAllCreditCardBills();
   const { movements: payrollEmpMovements } = useEmployeeMovements(payrollTxn?.employee?.id);
   const payrollBalance = useMemo(() => {
     if (!payrollTxn?.employee) return calculateEmployeeBalance([], 0);
@@ -147,11 +153,53 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
   const contaDefaultType: TransactionType = subTab === 'pagar' ? 'saida' : 'entrada';
 
+  // baseFiltered = txns "visíveis" sem as despesas de cartão (que viram linhas-de-fatura).
+  // Em subTab='pagar', as despesas com credit_card_bill_date saem daqui; quem
+  // representa elas é o agregado em `cardInvoices`. Em subTab='receber' não tem cartão.
   const baseFiltered = useMemo(() => {
-    return transactions.filter((t) =>
-      subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada'
-    );
+    return transactions.filter((t) => {
+      const correctType = subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada';
+      if (!correctType) return false;
+      // Em 'pagar', remove despesas que pertencem a fatura de cartão (vão pro bloco de invoices).
+      if (subTab === 'pagar' && t.credit_card_bill_date) return false;
+      return true;
+    });
   }, [transactions, subTab]);
+
+  // Mapa account_id → FinancialAccount pra resolver o cartão de cada bill rapidinho.
+  const cardAccountMap = useMemo(() => {
+    const map: Record<string, typeof allAccounts[number]> = {};
+    for (const a of allAccounts) {
+      if (a.type === 'cartao') map[a.id] = a;
+    }
+    return map;
+  }, [allAccounts]);
+
+  // Faturas filtradas pra subTab='pagar'. Status semântico:
+  // - pendentes = aberta + parcial + fechada (qualquer não-paga)
+  // - vencidas = não-paga com due_date < hoje
+  // - pagas = status='paid'
+  // - todas = tudo
+  // Só inclui faturas com pelo menos 1 transação ou amount_paid > 0
+  // (filtra bills "vazias" que ficaram órfãs).
+  const cardInvoices = useMemo<CreditCardBillWithTransactions[]>(() => {
+    if (subTab !== 'pagar') return [];
+    const eligible = allBills.filter((b) => {
+      const account = cardAccountMap[b.account_id];
+      if (!account) return false;
+      const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
+      return hasContent;
+    });
+    return eligible.filter((b) => {
+      if (filter === 'todas') return true;
+      if (filter === 'pagas') return b.status === 'paid';
+      if (filter === 'pendentes') return b.status !== 'paid';
+      if (filter === 'vencidas') {
+        return b.status !== 'paid' && isBefore(parseLocalDate(b.due_date), today);
+      }
+      return true;
+    });
+  }, [allBills, cardAccountMap, subTab, filter, today]);
 
   const filtered = useMemo(() => {
     return baseFiltered.filter((t) => {
@@ -165,16 +213,55 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
     });
   }, [baseFiltered, filter, today]);
 
+  // Summary: somar TODAS as fontes (txns + faturas) pra refletir "movimento total"
+  // — pendente/vencido/7dias/pago. Caso contrário o card "Pago" zeraria pra clientes
+  // que pagam tudo via cartão.
   const summary = useMemo(() => {
-    const pendente = baseFiltered.filter((t) => !t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
-    const vencido = baseFiltered.filter((t) => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today)).reduce((s, t) => s + Number(t.amount), 0);
-    const prox7 = baseFiltered.filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), today) && isBefore(parseLocalDate(t.due_date), next7Days)).reduce((s, t) => s + Number(t.amount), 0);
-    // Total já pago/recebido no período — útil pra ver "quanto já saiu/entrou
-    // neste mês" mesmo estando na aba Pendentes. Sempre olha a sub-tab inteira,
-    // independente do filtro de status acima.
-    const pago = baseFiltered.filter((t) => t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
-    return { pendente, vencido, prox7, pago };
-  }, [baseFiltered, today, next7Days]);
+    // Universo completo p/ summary: txns não-cartão + total das faturas.
+    // (Em subTab='receber' não tem cartão, então só txns.)
+    const txnUniverse = transactions.filter((t) =>
+      (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada')
+      && !(subTab === 'pagar' && t.credit_card_bill_date)
+    );
+
+    // Bills elegíveis (com conteúdo) — independente do filtro de status.
+    const billUniverse = subTab === 'pagar'
+      ? allBills.filter((b) => {
+          if (!cardAccountMap[b.account_id]) return false;
+          return (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
+        })
+      : [];
+
+    const pendenteTxn = txnUniverse.filter((t) => !t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
+    const pendenteBill = billUniverse
+      .filter((b) => b.status !== 'paid')
+      .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
+
+    const vencidoTxn = txnUniverse
+      .filter((t) => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today))
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const vencidoBill = billUniverse
+      .filter((b) => b.status !== 'paid' && isBefore(parseLocalDate(b.due_date), today))
+      .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
+
+    const prox7Txn = txnUniverse
+      .filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), today) && isBefore(parseLocalDate(t.due_date), next7Days))
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const prox7Bill = billUniverse
+      .filter((b) => b.status !== 'paid' && !isBefore(parseLocalDate(b.due_date), today) && isBefore(parseLocalDate(b.due_date), next7Days))
+      .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
+
+    // Card "Pago/Recebido": txns pagas + valor amount_paid das faturas (parciais contam).
+    const pagoTxn = txnUniverse.filter((t) => t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
+    const pagoBill = billUniverse.reduce((s, b) => s + Number(b.amount_paid ?? 0), 0);
+
+    return {
+      pendente: pendenteTxn + pendenteBill,
+      vencido: vencidoTxn + vencidoBill,
+      prox7: prox7Txn + prox7Bill,
+      pago: pagoTxn + pagoBill,
+    };
+  }, [transactions, allBills, cardAccountMap, subTab, today, next7Days]);
 
   // Pré-calcula campos derivados pra ordenação na table desktop. O hook
   // useTableSort entende números (amount, due_date_ts) e strings (status).
@@ -393,17 +480,52 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         </div>
       )}
 
+      {/* Bloco "Faturas de Cartão" — só aparece em subTab='pagar' quando há faturas
+          elegíveis. Cada linha é destacada (border colorido + ícone cartão + badge
+          de quantidade de despesas). Click abre detalhe, "Pagar Fatura" abre modal
+          (bloqueado até o fechamento). v1.9.15. */}
+      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
+              Faturas de Cartão
+            </h3>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+              {cardInvoices.length} {cardInvoices.length === 1 ? 'fatura' : 'faturas'}
+            </Badge>
+          </div>
+          <div className="rounded-xl border bg-card overflow-hidden">
+            {cardInvoices.map((bill) => {
+              const account = cardAccountMap[bill.account_id];
+              if (!account) return null;
+              return (
+                <CreditCardInvoiceRow
+                  key={bill.id}
+                  invoice={bill}
+                  account={account}
+                  cashBankAccounts={cashBankAccounts}
+                  isMobile={isMobile}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       {isLoading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && cardInvoices.length === 0 ? (
         <EmptyState
           icon={<DollarSign className="h-12 w-12" />}
           title="Nenhuma conta encontrada"
           description="Nenhum registro para o filtro selecionado"
         />
+      ) : filtered.length === 0 ? (
+        // Só faturas — não mostra empty state nem a tabela vazia abaixo.
+        null
       ) : isMobile ? (
         <div className="space-y-3">
           <div className="rounded-xl border bg-card overflow-hidden">

@@ -109,7 +109,7 @@ export function useCreditCardBills(accountId?: string) {
           .from('credit_card_bills')
           .select('*')
           .eq('account_id', accountId!)
-          .order('reference_month', { ascending: false }),
+          .order('due_date', { ascending: true }),
         supabase
           .from('financial_transactions')
           .select('id, description, amount, transaction_date, category, is_paid, credit_card_bill_date')
@@ -127,11 +127,20 @@ export function useCreditCardBills(accountId?: string) {
         (txnsByMonth[t.credit_card_bill_date] ??= []).push(t);
       }
 
-      return (billsResult.data as CreditCardBill[]).map((bill) => {
+      // Ordem final: faturas em aberto/parcial/fechada por due_date ASC,
+      // pagas vão pro fim. CEO quer próximas vencer no topo. v1.9.15.
+      const enriched = (billsResult.data as CreditCardBill[]).map((bill) => {
         const transactions = txnsByMonth[bill.reference_month] ?? [];
         const total_amount = transactions.reduce((s, t) => s + Number(t.amount), 0);
         return { ...bill, transactions, total_amount } as CreditCardBillWithTransactions;
       });
+      enriched.sort((a, b) => {
+        const aPriority = a.status === 'paid' ? 1 : 0;
+        const bPriority = b.status === 'paid' ? 1 : 0;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return a.due_date.localeCompare(b.due_date);
+      });
+      return enriched;
     },
   });
 
@@ -238,5 +247,76 @@ export function useCreditCardBills(accountId?: string) {
     isLoading: billsQuery.isLoading,
     getOrCreateBill,
     payBill,
+  };
+}
+
+/**
+ * Variante do hook que carrega TODAS as faturas de TODOS os cartões do tenant.
+ * Usado pela tela Contas a Pagar pra agrupar despesas de cartão em linhas-de-fatura
+ * (em vez de mostrar cada despesa individualmente). RLS na tabela cuida do escopo.
+ *
+ * Reaproveita o `payBill` do hook principal — basta o caller chamar
+ * `useCreditCardBills(account_id)` quando precisar disparar o pagamento.
+ * v1.9.15 — refactor cartão/faturas.
+ */
+export function useAllCreditCardBills() {
+  const billsQuery = useQuery({
+    queryKey: ['credit-card-bills', 'all'],
+    queryFn: async () => {
+      const [billsResult, txnsResult] = await Promise.all([
+        supabase
+          .from('credit_card_bills')
+          .select('*')
+          .order('due_date', { ascending: true }),
+        supabase
+          .from('financial_transactions')
+          .select('id, description, amount, transaction_date, category, is_paid, credit_card_bill_date, account_id')
+          .eq('transaction_type', 'saida')
+          .not('credit_card_bill_date', 'is', null),
+      ]);
+
+      if (billsResult.error) throw billsResult.error;
+
+      // Index por (account_id + reference_month) — o mesmo cartão pode ter
+      // várias faturas (uma por mês). Sem agrupamento por conta, duas faturas
+      // de cartões diferentes no mesmo mês colapsariam.
+      const txnsByKey: Record<string, Array<{
+        id: string;
+        description: string;
+        amount: number;
+        transaction_date: string;
+        category?: string;
+        is_paid: boolean;
+        credit_card_bill_date: string | null;
+        account_id: string | null;
+      }>> = {};
+      for (const t of (txnsResult.data ?? [])) {
+        if (!t.credit_card_bill_date || !t.account_id) continue;
+        const key = `${t.account_id}__${t.credit_card_bill_date}`;
+        (txnsByKey[key] ??= []).push(t);
+      }
+
+      const enriched = (billsResult.data as CreditCardBill[]).map((bill) => {
+        const key = `${bill.account_id}__${bill.reference_month}`;
+        const transactions = txnsByKey[key] ?? [];
+        const total_amount = transactions.reduce((s, t) => s + Number(t.amount), 0);
+        return { ...bill, transactions, total_amount } as CreditCardBillWithTransactions;
+      });
+
+      // Mesma ordem do hook por conta: abertas/parciais/fechadas primeiro,
+      // pagas no fim. Tudo ASC por due_date.
+      enriched.sort((a, b) => {
+        const aPriority = a.status === 'paid' ? 1 : 0;
+        const bPriority = b.status === 'paid' ? 1 : 0;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return a.due_date.localeCompare(b.due_date);
+      });
+      return enriched;
+    },
+  });
+
+  return {
+    bills: billsQuery.data ?? [],
+    isLoading: billsQuery.isLoading,
   };
 }

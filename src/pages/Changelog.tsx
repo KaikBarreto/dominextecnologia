@@ -40,6 +40,43 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.17',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Visão Geral mostra o saldo certo do cartão de crédito',
+        description: 'Antes, o quadro do cartão de crédito na Visão Geral do Financeiro aparecia sempre zerado, mesmo com fatura em aberto e várias despesas lançadas. Agora mostra o valor real da fatura aberta (despesas - reembolsos), em vermelho quando há saldo a pagar. Bate certinho com o que a tela "Caixas e Cartões" já mostrava.',
+        category: 'correcao',
+      },
+      {
+        title: 'Parcela (1/6) de despesa no cartão para de "sumir" do filtro Pendentes',
+        description: 'Antes, ao lançar uma despesa parcelada (ex: 6x no cartão), o sistema marcava automaticamente a primeira parcela como "paga", e ela sumia do filtro Pendentes em Contas a Pagar — você via só (2/6) a (6/6) e ficava com a impressão de que o sistema pulou a primeira. Agora nenhuma parcela de cartão entra como paga. Quem fica "pago" é a fatura inteira, quando você quita ela. Todas as parcelas aparecem direitinho.',
+        category: 'correcao',
+      },
+      {
+        title: 'Contas a Pagar agora agrupa despesas de cartão como UMA linha de fatura',
+        description: 'Antes, se você tinha 30 compras no cartão num mês, apareciam 30 linhas em Contas a Pagar — virava bagunça pra rolar. Agora aparece um bloco "Faturas de Cartão" no topo, com uma linha destacada por fatura (ícone do cartão, etiqueta com a quantidade de despesas, valor total). Clicar abre o detalhe com a lista completa de despesas dentro daquela fatura. O botão "Pagar Fatura" fica bloqueado (com cadeado e dica explicando) até a data de fechamento do cartão — depois dela libera, e você paga a fatura inteira escolhendo de qual conta sai o dinheiro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Faturas em Contas e Cartões ordenadas da mais próxima vencer pro fim',
+        description: 'Ao clicar em "Ver Faturas" de um cartão na tela Caixas e Cartões, as faturas agora aparecem em ordem crescente de vencimento — a próxima a vencer fica no topo, e as faturas já pagas vão pro fim. Antes vinham da mais recente pra mais antiga, o que não ajudava a priorizar o que pagar primeiro.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Faturas em 2 colunas no desktop',
+        description: 'Na tela Caixas e Cartões, ao ver as faturas de um cartão no desktop, agora aparecem em grade de 2 colunas (em vez de uma linha por fatura ocupando a tela inteira). Você vê mais faturas de uma vez, sem rolar tanto. Mobile mantém o formato em coluna única.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Card "Pago" e "Recebido" agora considera valor já quitado das faturas',
+        description: 'Em Contas a Pagar e a Receber, o card verde "Total Pago/Recebido" agora soma também o que você já pagou das faturas de cartão (não só as despesas comuns). Antes, quem pagava tudo via cartão via "R$ 0 pago" no card mesmo depois de quitar várias faturas — agora reflete o movimento financeiro real.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.16',
     date: '24 de maio de 2026',
     type: 'minor',

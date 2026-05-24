@@ -140,6 +140,11 @@ export function useFinancial() {
 
           if (installmentBillDate) billMonthsToCreate.add(installmentBillDate);
 
+          // Parcelas de cartão: NENHUMA entra paga (quem fica paga é a FATURA).
+          // Parcelas não-cartão (boleto, etc.): comportamento legado — só a 1ª
+          // pode estar paga se o usuário marcou no form. Fix p/ bug do (1/6)
+          // sumir do filtro Pendentes em Contas a Pagar. v1.9.15.
+          const parcelIsPaid = isCardInstallment ? false : (i === 0 ? rest.is_paid : false);
           const sanitized = normalizeOptionalForeignKeys(
             {
               ...rest,
@@ -147,8 +152,8 @@ export function useFinancial() {
               description: `${rest.description} (${i + 1}/${n})`,
               transaction_date: dueDateStr,
               due_date: dueDateStr,
-              is_paid: i === 0 ? rest.is_paid : false,
-              paid_date: i === 0 && rest.is_paid ? dueDateStr : undefined,
+              is_paid: parcelIsPaid,
+              paid_date: parcelIsPaid ? dueDateStr : undefined,
               credit_card_bill_date: installmentBillDate ?? null,
               created_by: user?.id,
               company_id,

@@ -301,7 +301,9 @@ function BillPanel({ account, accounts, onClose }: BillPanelProps) {
           </div>
         )
       ) : (
-        <div className="space-y-3">
+        // Desktop: grid 2-col em telas grandes (lg+). Faturas expandidas mantêm
+        // sua coluna — não esticam pra full-width. CEO aprovou densidade extra.
+        <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
           {bills.map(bill => {
             const statusCfg = BILL_STATUS_CONFIG[bill.status] ?? BILL_STATUS_CONFIG.open;
             const StatusIcon = statusCfg.icon;
