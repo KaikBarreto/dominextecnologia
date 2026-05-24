@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -2293,6 +2268,7 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          amount_received: number
           cancelled_at: string | null
           cancelled_reason: string | null
           category: string | null
@@ -2326,6 +2302,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          amount_received?: number
           cancelled_at?: string | null
           cancelled_reason?: string | null
           category?: string | null
@@ -2359,6 +2336,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          amount_received?: number
           cancelled_at?: string | null
           cancelled_reason?: string | null
           category?: string | null
@@ -5423,6 +5401,10 @@ export type Database = {
         }
         Returns: Json
       }
+      recalc_amount_received: {
+        Args: { p_parent_id: string }
+        Returns: undefined
+      }
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
         Returns: string
@@ -5582,9 +5564,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: [

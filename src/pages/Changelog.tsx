@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.15',
+    date: '23 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Receber uma conta a receber parcialmente',
+        description: 'Antes, ao marcar uma conta a receber como recebida, só dava pra confirmar o valor cheio — se o cliente pagasse só uma parte, você não tinha como registrar sem trapacear. Agora aparece um campo "Valor recebido" no modal (já preenchido com o que falta receber). Se você digitar menos que o total, o sistema pede o novo vencimento do saldo restante e mostra um resumo em tempo real: Valor da conta / Já recebido / Recebendo agora / Restante após este recebimento. A conta continua na listagem com um badge amarelo "Parcial" e o texto "Recebido: R$ X de R$ Y" abaixo do valor. Quando você marcar os restantes, ela vira "Paga" automaticamente. Dentro do detalhe da conta parcial, você vê o histórico de todos os recebimentos (data, valor, forma de pagamento, conta destino) com botão pra estornar qualquer um — o saldo volta a ficar pendente. Vale só pra contas únicas; parceladas continuam quitando parcela por parcela. Funciona em mobile e desktop.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tarifas de máquina não aparecem mais como linhas soltas na listagem',
+        description: 'Quando você marcava uma conta como recebida com tarifa de máquina (ex: 2% no Pix, taxa do cartão), aparecia uma linha separada na listagem chamada "Tarifa do recebimento" que confundia — parecia uma conta a pagar autônoma. Agora a tarifa fica vinculada à conta-mãe e aparece só dentro do detalhe dela (e continua no histórico de transações relacionadas). A listagem principal de Contas a Pagar/a Receber fica mais limpa. O cálculo de receitas/despesas no DRE e no saldo das contas bancárias segue somando tudo normalmente — zero perda de informação contábil.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.14',
     date: '23 de maio de 2026',
     type: 'minor',

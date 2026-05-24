@@ -676,6 +676,10 @@ export function TransactionListPanel({
         open={!!receivingTxn}
         onOpenChange={(v) => { if (!v) setReceivingTxn(null); }}
         amount={Number(receivingTxn?.amount ?? 0)}
+        amountReceived={Number((receivingTxn as any)?.amount_received ?? 0)}
+        allowPartial
+        installmentTotal={receivingTxn?.installment_total ?? 1}
+        currentDueDate={receivingTxn?.due_date}
         title="Como foi recebido?"
         description={receivingTxn?.description}
         onConfirm={async (payment) => {
@@ -688,6 +692,8 @@ export function TransactionListPanel({
             fee_amount: payment.fee_amount,
             notes: payment.notes,
             customer_id: (receivingTxn as any).customer_id,
+            amountReceived: payment.amount_received,
+            newDueDate: payment.new_due_date,
           });
           setReceivingTxn(null);
         }}

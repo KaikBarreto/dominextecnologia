@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2 } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -38,6 +38,7 @@ function parseLocalDate(dateStr: string): Date {
 }
 import { ContaFormDialog } from './ContaFormDialog';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
+import { ReceivableDetailModal } from './ReceivableDetailModal';
 import type { TransactionType } from '@/types/database';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useDataPagination } from '@/hooks/useDataPagination';
@@ -74,6 +75,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
   const [receivingTxn, setReceivingTxn] = useState<PayrollTxn | null>(null);
   const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
   const [payrollTxn, setPayrollTxn] = useState<PayrollTxn | null>(null);
+  const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
   const [payDespAccountId, setPayDespAccountId] = useState('');
   const [payDespDate, setPayDespDate] = useState('');
   const [payDespMethod, setPayDespMethod] = useState('pix');
@@ -191,6 +193,19 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
 
   const isOverdue = (t: FinancialTransaction) =>
     !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
+
+  /** Conta a receber que tem pelo menos 1 recebimento parcial registrado, mas ainda não foi quitada. */
+  const isPartial = (t: FinancialTransaction) =>
+    t.transaction_type === 'entrada' && !t.is_paid && Number(t.amount_received ?? 0) > 0;
+
+  /** Status mutuamente exclusivo: paga > vencida > parcial > pendente. */
+  type RowStatus = 'paga' | 'vencida' | 'parcial' | 'pendente';
+  const getStatus = (t: FinancialTransaction): RowStatus => {
+    if (t.is_paid) return 'paga';
+    if (isOverdue(t)) return 'vencida';
+    if (isPartial(t)) return 'parcial';
+    return 'pendente';
+  };
 
   const filters: { key: FilterStatus; label: string }[] = [
     { key: 'pendentes', label: 'Pendentes' },
@@ -393,13 +408,22 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         <div className="space-y-3">
           <div className="rounded-xl border bg-card overflow-hidden">
             {pagination.paginatedItems.map((t) => {
-              const overdue = isOverdue(t);
+              const status = getStatus(t);
+              const overdue = status === 'vencida';
+              const partial = status === 'parcial';
+              const received = Number(t.amount_received ?? 0);
               const itemActions: ItemAction[] = [
                 ...(!t.is_paid ? [{
                   key: 'mark-paid',
                   label: subTab === 'receber' ? 'Marcar recebido' : 'Marcar pago',
                   icon: <Check className="h-4 w-4" />,
                   onClick: () => handleMarkAsPaidClick(t),
+                }] : []),
+                ...(partial ? [{
+                  key: 'view-details',
+                  label: 'Ver histórico',
+                  icon: <Receipt className="h-4 w-4" />,
+                  onClick: () => setViewingTxn(t),
                 }] : []),
                 {
                   key: 'edit',
@@ -416,27 +440,29 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                   onClick: () => setDeletingId(t.id),
                 },
               ];
-              const statusColor = t.is_paid
-                ? 'bg-success'
-                : overdue
-                  ? 'bg-destructive'
-                  : subTab === 'receber'
-                    ? 'bg-success/70'
-                    : 'bg-warning';
+              const statusColor =
+                status === 'paga' ? 'bg-success'
+                : status === 'vencida' ? 'bg-destructive'
+                : status === 'parcial' ? 'bg-warning'
+                : subTab === 'receber' ? 'bg-success/70'
+                : 'bg-warning';
               return (
                 <MobileListItem
                   key={t.id}
                   actions={itemActions}
-                  className={cn(overdue && !t.is_paid && 'bg-destructive/5')}
+                  className={cn(overdue && 'bg-destructive/5', partial && 'bg-warning/5')}
+                  onClick={partial ? () => setViewingTxn(t) : undefined}
                   leading={
                     <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
                       {t.payroll_kind === 'salary'
                         ? <Users className="h-5 w-5" />
-                        : t.is_paid
+                        : status === 'paga'
                           ? <Check className="h-5 w-5" />
-                          : overdue
+                          : status === 'vencida'
                             ? <AlertTriangle className="h-5 w-5" />
-                            : <Clock className="h-5 w-5" />}
+                            : status === 'parcial'
+                              ? <Receipt className="h-5 w-5" />
+                              : <Clock className="h-5 w-5" />}
                     </div>
                   }
                   title={
@@ -445,12 +471,19 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                     </div>
                   }
                   subtitle={
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span>
-                        {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
-                      </span>
-                      {t.employee && <span className="truncate">{t.employee.name}</span>}
-                      {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>
+                          {t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Sem vencimento'}
+                        </span>
+                        {t.employee && <span className="truncate">{t.employee.name}</span>}
+                        {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
+                      </div>
+                      {partial && (
+                        <span className="text-warning text-[11px]">
+                          Recebido: {formatCurrency(received)} de {formatCurrency(Number(t.amount))}
+                        </span>
+                      )}
                     </div>
                   }
                   trailing={
@@ -458,10 +491,12 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                       <span className={cn('font-semibold text-sm whitespace-nowrap', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
                         {formatCurrency(t.amount)}
                       </span>
-                      {t.is_paid ? (
+                      {status === 'paga' ? (
                         <Badge className="bg-success text-white text-[10px] px-1.5 py-0">Pago</Badge>
-                      ) : overdue ? (
+                      ) : status === 'vencida' ? (
                         <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">Vencida</Badge>
+                      ) : status === 'parcial' ? (
+                        <Badge className="bg-warning text-white text-[10px] px-1.5 py-0">Parcial</Badge>
                       ) : (
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Pendente</Badge>
                       )}
@@ -489,8 +524,12 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagination.paginatedItems.map((t) => (
-                    <TableRow key={t.id} className={cn(isOverdue(t) && 'bg-destructive/5')}>
+                  {pagination.paginatedItems.map((t) => {
+                    const status = getStatus(t);
+                    const partial = status === 'parcial';
+                    const received = Number(t.amount_received ?? 0);
+                    return (
+                    <TableRow key={t.id} className={cn(status === 'vencida' && 'bg-destructive/5', partial && 'bg-warning/5')}>
                       <TableCell>
                         <div>
                           <p className="font-medium flex items-center gap-1.5">
@@ -506,24 +545,33 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                       </TableCell>
                       <TableCell className="text-sm">
                         {t.due_date ? (
-                          <span className={cn(isOverdue(t) && 'text-destructive font-semibold')}>
+                          <span className={cn(status === 'vencida' && 'text-destructive font-semibold')}>
                             {format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR })}
-                            {isOverdue(t) && <AlertTriangle className="inline ml-1 h-3.5 w-3.5" />}
+                            {status === 'vencida' && <AlertTriangle className="inline ml-1 h-3.5 w-3.5" />}
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-xs">Sem vencimento</span>
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className={`font-medium ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
-                          {formatCurrency(t.amount)}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className={`font-medium ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
+                            {formatCurrency(t.amount)}
+                          </span>
+                          {partial && (
+                            <span className="text-[11px] text-warning">
+                              Recebido: {formatCurrency(received)} de {formatCurrency(Number(t.amount))}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {t.is_paid ? (
+                        {status === 'paga' ? (
                           <Badge className="bg-success text-white">Pago</Badge>
-                        ) : isOverdue(t) ? (
+                        ) : status === 'vencida' ? (
                           <Badge className="bg-destructive text-white">Vencida</Badge>
+                        ) : status === 'parcial' ? (
+                          <Badge className="bg-warning text-white">Parcial</Badge>
                         ) : (
                           <Badge variant="secondary">Pendente</Badge>
                         )}
@@ -531,7 +579,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                       <TableCell>
                         <div className="flex items-center gap-1">
                           {!t.is_paid && (
-                            <Button variant="ghost" size="icon" className="text-success h-8 w-8" onClick={() => handleMarkAsPaidClick(t)} title="Marcar como pago">
+                            <Button variant="ghost" size="icon" className="text-success h-8 w-8" onClick={() => handleMarkAsPaidClick(t)} title={subTab === 'receber' ? 'Marcar como recebido' : 'Marcar como pago'}>
                               <Check className="h-4 w-4" />
                             </Button>
                           )}
@@ -542,6 +590,11 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {partial && (
+                                <DropdownMenuItem onClick={() => setViewingTxn(t)}>
+                                  <Eye className="h-4 w-4 mr-2" /> Ver histórico
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => handleEdit(t)}>
                                 <Pencil className="h-4 w-4 mr-2" /> Editar
                               </DropdownMenuItem>
@@ -553,7 +606,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );})}
                 </TableBody>
               </Table>
             </div>
@@ -599,10 +652,20 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         />
       )}
 
+      <ReceivableDetailModal
+        open={!!viewingTxn}
+        onOpenChange={(v) => { if (!v) setViewingTxn(null); }}
+        transaction={viewingTxn}
+      />
+
       <ReceivePaymentModal
         open={!!receivingTxn}
         onOpenChange={(v) => { if (!v) setReceivingTxn(null); }}
         amount={Number(receivingTxn?.amount ?? 0)}
+        amountReceived={Number((receivingTxn as any)?.amount_received ?? 0)}
+        allowPartial
+        installmentTotal={receivingTxn?.installment_total ?? 1}
+        currentDueDate={receivingTxn?.due_date}
         title="Como foi recebido?"
         description={receivingTxn?.description}
         onConfirm={async (payment) => {
@@ -615,6 +678,8 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
             fee_amount: payment.fee_amount,
             notes: payment.notes,
             customer_id: (receivingTxn as any).customer_id,
+            amountReceived: payment.amount_received,
+            newDueDate: payment.new_due_date,
           });
           setReceivingTxn(null);
         }}

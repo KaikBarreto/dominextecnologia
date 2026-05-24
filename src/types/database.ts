@@ -191,6 +191,8 @@ export interface FinancialTransaction {
   category?: string;
   description: string;
   amount: number;
+  /** Soma das filhas de recebimento parcial (mantida por trigger no banco). 0 quando nada foi recebido ainda. */
+  amount_received?: number;
   transaction_date: string;
   due_date?: string;
   paid_date?: string;
