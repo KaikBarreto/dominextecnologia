@@ -233,7 +233,7 @@ export function SidebarMenuContent() {
         {/* Logo */}
         <NavLink
           to={isAdminUser ? adminHomePath : '/dashboard'}
-          className="relative h-14 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
+          className="relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
         >
           {showLogoLoading ? (
             collapsed

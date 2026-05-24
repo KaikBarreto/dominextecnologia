@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, UserCircle, LogOut, ArrowLeft } from 'lucide-react';
+// UserCircle continua importado porque o MobileTabletHeader (tablet >=lg) ainda
+// usa o atalho pro perfil. No DesktopSidebarHeader o avatar/perfil vive dentro
+// do dropdown do sidebar, então o botão duplicado foi removido (v1.9.22 polish).
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -170,20 +173,8 @@ function DesktopSidebarHeader() {
         <div className="flex items-center gap-1 shrink-0">
           <NotificationsBell />
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => navigate(isAdminUser ? '/admin/configuracoes' : '/perfil')}
-                aria-label={isAdminUser ? 'Configurações do Admin' : 'Meu Perfil'}
-              >
-                <UserCircle className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{isAdminUser ? 'Configurações' : 'Meu Perfil'}</TooltipContent>
-          </Tooltip>
+          {/* Botão de perfil removido — já existe no avatar do sidebar (dropdown).
+              Evita duplicidade visual no header desktop. */}
 
           <Tooltip>
             <TooltipTrigger asChild>
