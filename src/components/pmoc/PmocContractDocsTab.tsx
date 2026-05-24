@@ -49,6 +49,35 @@ import {
   htmlPreview,
   type PmocTemplateContext,
 } from '@/utils/pmocDocumentTemplates';
+import type { PmocVariableContext } from '@/utils/pmocVariables';
+
+/**
+ * Mapeia o shape "antigo" `PmocTemplateContext` (snake_case) pro shape "novo"
+ * `PmocVariableContext` (chaves com ponto, igual ao `data-pmoc-var`). Mantém
+ * o legado funcionando em ContractDetail sem precisar refatorar a montagem do
+ * contexto lá.
+ *
+ * O conjunto novo é SUPERSET — adiciona chaves que ContractDetail ainda não
+ * monta (ex: `empresa.email`, `rt.registro`, `cliente.cidade`,
+ * `contrato.nome`). Pra essas, fica `undefined` → badge vermelho até alguém
+ * estender a montagem do contexto em ContractDetail.
+ */
+function toVariableContext(ctx: Partial<PmocTemplateContext> | undefined): PmocVariableContext {
+  if (!ctx) return {};
+  return {
+    'empresa.razao_social': ctx.empresa_razao_social,
+    'empresa.cnpj': ctx.empresa_cnpj,
+    'empresa.cidade': ctx.cidade,
+    'rt.nome': ctx.rt_nome,
+    'rt.modalidade': ctx.rt_modalidade,
+    'rt.cft_crea': ctx.rt_cft_crea,
+    'cliente.nome': ctx.customer_name,
+    'cliente.endereco': ctx.customer_address,
+    'contrato.frequencia': ctx.contract_frequency_label,
+    'contrato.vigencia_inicio': ctx.contract_start_date_extenso,
+    'data.hoje_extenso': ctx.generated_at_extenso,
+  };
+}
 
 /**
  * Aba "Documentos" do contrato PMOC (Onda C — v1.9.x).
@@ -210,13 +239,17 @@ export function PmocContractDocsTab({
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
 
-  // Templates default pré-preenchidos com contexto
-  const defaultTermoRt = useMemo(
-    () => buildDefaultTermoRtHtml(templateContext ?? {}),
-    [templateContext],
-  );
-  const defaultCertificado = useMemo(
-    () => buildDefaultCertificadoHtml(templateContext ?? {}),
+  // Onda H — templates default NÃO recebem mais ctx: emitem `<span
+  // data-pmoc-var>` que vira badge visual no editor. Substituição pelo valor
+  // real acontece (a) no NodeView do editor pra UX e (b) na edge function de
+  // PDF pra rendering final.
+  const defaultTermoRt = useMemo(() => buildDefaultTermoRtHtml(), []);
+  const defaultCertificado = useMemo(() => buildDefaultCertificadoHtml(), []);
+
+  // Contexto no shape novo (chaves com ponto). Passado ao editor via prop
+  // `templateContext` pra pintar badges azul (cheio) / vermelho (vazio).
+  const variableContext = useMemo(
+    () => toVariableContext(templateContext),
     [templateContext],
   );
 
@@ -494,7 +527,8 @@ export function PmocContractDocsTab({
         onSave={saveTermoRT}
         onResetToDefault={resetTermoRTToDefault}
         isSaving={isSaving}
-        helperText="Esse texto será embutido na página 2 do PDF do Dossiê PMOC."
+        helperText="Esse texto será embutido na página 2 do PDF do Dossiê PMOC. Variáveis aparecem como badges; o PDF final substitui pelo valor cadastrado."
+        templateContext={variableContext}
       />
       <PmocDocEditorDialog
         open={editorOpen === 'certificado'}
@@ -505,7 +539,8 @@ export function PmocContractDocsTab({
         onSave={saveCertificado}
         onResetToDefault={resetCertificadoToDefault}
         isSaving={isSaving}
-        helperText="Esse texto será embutido na página 3 do PDF do Dossiê PMOC."
+        helperText="Esse texto será embutido na página 3 do PDF do Dossiê PMOC. Variáveis aparecem como badges; o PDF final substitui pelo valor cadastrado."
+        templateContext={variableContext}
       />
 
       {/* Onda E — atalho rápido pra cadastrar assinatura do RT do contrato. */}

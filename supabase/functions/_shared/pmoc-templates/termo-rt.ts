@@ -2,9 +2,17 @@
 // pmoc-templates/termo-rt.ts — Termo de Responsabilidade Técnica.
 // =============================================================================
 // Renderiza o HTML do Termo RT no PDF. Se gestor não customizou
-// (htmlContent=null), monta o template padrão com placeholders substituídos.
+// (htmlContent=null), monta o template padrão com placeholders de variável.
 //
-// Sempre passa pelo sanitizer ANTES de render (defesa em camada server-side).
+// Pipeline (Onda H — v1.9.x):
+//   1. raw HTML (do banco ou default) — pode conter <span data-pmoc-var="...">
+//   2. substituteVariables(raw, variableContext) — troca spans por valores reais
+//   3. sanitizeHtml(...) — defesa em camada server-side (whitelist tags/attrs)
+//   4. renderHtmlToPdf(...) — desenha no PDF
+//
+// ORDEM IMPORTA: o sanitizer strippa o atributo `data-pmoc-var` do <span>
+// (não está na whitelist). Se trocar a ordem, o span chega "limpo" no
+// substituteVariables e a substituição falha silenciosamente.
 //
 // Onda E (v1.9.x): suporta marker <!-- SIGNATURE_BLOCK --> no HTML. Após o
 // renderer terminar o texto, desenha automaticamente o bloco de assinatura
@@ -20,6 +28,7 @@ import {
   drawRtSignatureBlock,
   SIGNATURE_BLOCK_HEIGHT,
 } from "./signature-embed.ts";
+import { PmocVariableContext, substituteVariables } from "./variables.ts";
 
 // Marcador opcional no HTML pra posicionar o bloco de assinatura. Se ausente,
 // desenhamos no rodapé da última página automaticamente. Mantemos o sanitizer
@@ -29,48 +38,52 @@ import {
 export const SIGNATURE_BLOCK_MARKER = "<!-- SIGNATURE_BLOCK -->";
 
 /**
- * Monta o HTML padrão do Termo RT já com placeholders substituídos.
- * Texto exato fornecido pelo CEO (§3.2 do plano da Onda C).
+ * Monta o HTML padrão do Termo RT com spans `data-pmoc-var` (Onda H).
  *
- * Onda E: o bloco final "RESPONSÁVEL TÉCNICO: ___________" é substituído pelo
- * marker SIGNATURE_BLOCK_MARKER (que vira o bloco de assinatura desenhado pelo
- * signature-embed.ts, com imagem se houver).
+ * O texto vem do CEO (§3.2 do plano Onda C), agora com variáveis em vez de
+ * valores pré-substituídos. Após `substituteVariables`, vira o texto final.
+ * Espelha 1:1 `src/utils/pmocDocumentTemplates.ts#buildDefaultTermoRtHtml`
+ * pra que o gestor vendo no editor seja idêntico ao PDF.
+ *
+ * Onda E: o bloco final é seguido por SIGNATURE_BLOCK_MARKER (que vira o
+ * bloco de assinatura desenhado pelo signature-embed.ts).
  */
-export function buildDefaultTermoRtHtml(ctx: TemplateContext): string {
-  const cft = ctx.rt.cft_crea || "____________________";
-  const empresaUpper = ctx.empresa.razao_social.toUpperCase();
+export function buildDefaultTermoRtHtml(): string {
   return `
-    <h1>TERMO DE RESPONSABILIDADE TÉCNICA – PMOC</h1>
-    <p>A empresa <strong>${escapeHtml(ctx.empresa.razao_social)}</strong>, inscrita no CNPJ nº <strong>${escapeHtml(ctx.empresa.cnpj)}</strong>, responsável pela execução dos serviços de manutenção preventiva, corretiva e higienização dos sistemas de climatização da unidade contratante, declara para os devidos fins que os serviços relacionados ao Plano de Manutenção, Operação e Controle (PMOC) serão executados sob supervisão técnica do profissional abaixo identificado:</p>
-    <h2>RESPONSÁVEL TÉCNICO</h2>
-    <p>Nome: <strong>${escapeHtml(ctx.rt.nome)}</strong><br>
-    Modalidade: ${escapeHtml(ctx.rt.modalidade)}<br>
-    Registro Profissional CFT: ${escapeHtml(cft)}</p>
-    <p>O responsável técnico acima qualificado será responsável pela supervisão técnica do PMOC, validação dos procedimentos executados, orientações técnicas e conformidade dos serviços relacionados aos sistemas de climatização da unidade atendida.</p>
-    <p>Os serviços operacionais poderão ser executados por equipe técnica operacional da <strong>${escapeHtml(ctx.empresa.razao_social)}</strong>, devidamente treinada e orientada, ficando o responsável técnico encarregado da supervisão geral do plano de manutenção.</p>
-    <p>A documentação referente ao PMOC ficará disponível na unidade para apresentação aos órgãos fiscalizadores competentes.</p>
-    <p>${escapeHtml(ctx.cidade)}, ____ de ___________________ de 20____.</p>
-    <h3>CONTRATANTE:</h3>
-    <p>___________________________________________</p>
-    <h3>${escapeHtml(empresaUpper)}:</h3>
-    <p>___________________________________________</p>
-    ${SIGNATURE_BLOCK_MARKER}
-  `;
-}
+<h2>TERMO DE RESPONSABILIDADE TÉCNICA — PMOC</h2>
 
-function escapeHtml(s: string | null | undefined): string {
-  if (!s) return "";
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+<p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, responsável pela execução dos serviços de manutenção preventiva, corretiva e higienização dos sistemas de climatização da unidade contratante, declara para os devidos fins que os serviços relacionados ao Plano de Manutenção, Operação e Controle (PMOC) serão executados sob supervisão técnica do profissional abaixo identificado:</p>
+
+<h3>RESPONSÁVEL TÉCNICO</h3>
+
+<p><strong>Nome:</strong> <span data-pmoc-var="rt.nome"></span><br>
+<strong>Modalidade:</strong> <span data-pmoc-var="rt.modalidade"></span><br>
+<strong>Registro Profissional CFT:</strong> <span data-pmoc-var="rt.cft_crea"></span></p>
+
+<p>O responsável técnico acima qualificado será responsável pela supervisão técnica do PMOC, validação dos procedimentos executados, orientações técnicas e conformidade dos serviços relacionados aos sistemas de climatização da unidade atendida.</p>
+
+<p>Os serviços operacionais poderão ser executados por equipe técnica operacional da <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, devidamente treinada e orientada, ficando o responsável técnico encarregado da supervisão geral do plano de manutenção.</p>
+
+<p>A documentação referente ao PMOC ficará disponível na unidade para apresentação aos órgãos fiscalizadores competentes.</p>
+
+<p><span data-pmoc-var="empresa.cidade"></span>, ____ de ___________________ de 20____.</p>
+
+<p><strong>CONTRATANTE:</strong></p>
+
+<p>___________________________________________</p>
+
+<p><strong><span data-pmoc-var="empresa.razao_social"></span>:</strong></p>
+
+<p>___________________________________________</p>
+
+${SIGNATURE_BLOCK_MARKER}
+`.trim();
 }
 
 /**
  * Renderiza a página do Termo RT. Se `customHtml` é fornecido, sanitiza e usa.
- * Senão, monta o default a partir do `ctx`.
+ * Senão, monta o default. Em ambos os casos, `variableContext` é aplicado
+ * ANTES do sanitizer pra substituir os `<span data-pmoc-var="X">`.
  *
  * Retorna { page, pagesUsed, tagsRemoved, attrsRemoved, signaturePending }
  * pra logging.
@@ -88,16 +101,22 @@ export async function drawTermoRtPage(
   pdf: PDFDocument,
   ctx: TemplateContext,
   customHtml: string | null,
+  variableContext: PmocVariableContext | null = null,
 ): Promise<RenderTermoRtResult> {
   const raw = customHtml && customHtml.trim().length > 0
     ? customHtml
-    : buildDefaultTermoRtHtml(ctx);
+    : buildDefaultTermoRtHtml();
+
+  // ---- (Onda H) Substituir variáveis ANTES do sanitizer.
+  //      Sanitizer remove o atributo data-pmoc-var de <span>, então a ordem
+  //      inversa quebra o pipeline (span chega "vazio" no substituidor).
+  const substituted = substituteVariables(raw, variableContext);
 
   // SANITIZE OBRIGATÓRIO — defesa em camada server-side (Regra Plataforma §2.7)
   // O sanitizer strippa o comentário <!-- SIGNATURE_BLOCK --> também, mas isso
   // é OK: o marker só serve pro template default sinalizar onde IRIA o bloco;
   // o desenho do bloco de assinatura é sempre feito no rodapé da última página.
-  const { clean, tagsRemoved, attrsRemoved } = sanitizeHtml(raw);
+  const { clean, tagsRemoved, attrsRemoved } = sanitizeHtml(substituted);
 
   // Nova página sempre (termo começa em folha limpa)
   const initialPage = pdf.addPage([A4_W, A4_H]);

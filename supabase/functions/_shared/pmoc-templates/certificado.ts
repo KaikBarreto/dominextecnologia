@@ -4,6 +4,14 @@
 // Página 3 do dossiê. HTML rich (default ou customizado pelo gestor) +
 // bloco de assinatura do RT (Onda E) + selo "Conforme Lei 13.589/2018" no
 // rodapé absoluto.
+//
+// Pipeline (Onda H — v1.9.x):
+//   1. raw HTML (do banco ou default) — pode conter <span data-pmoc-var="...">
+//   2. substituteVariables(raw, variableContext) — troca spans por valores reais
+//   3. sanitizeHtml(...) — defesa em camada server-side (whitelist tags/attrs)
+//   4. renderHtmlToPdf(...) — desenha no PDF
+//
+// Ver `termo-rt.ts` pra explicação da ordem (sanitizer strippa data-pmoc-var).
 // =============================================================================
 
 import { PDFDocument, PDFPage, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
@@ -14,35 +22,26 @@ import {
   drawRtSignatureBlock,
   SIGNATURE_BLOCK_HEIGHT,
 } from "./signature-embed.ts";
+import { PmocVariableContext, substituteVariables } from "./variables.ts";
 
 const BLACK = rgb(0, 0, 0);
 
-export function buildDefaultCertificadoHtml(ctx: TemplateContext): string {
-  // Onda G: CFT vazio vira linha pontilhada (campo preenchido à mão).
-  //         Endereço vazio vira "—" (separador semântico).
-  const cftDisplay = ctx.rt.cft_crea && ctx.rt.cft_crea.trim()
-    ? escapeHtml(ctx.rt.cft_crea)
-    : "____________________";
-  const addressDisplay = ctx.customer.address && ctx.customer.address.trim()
-    ? escapeHtml(ctx.customer.address)
-    : "—";
+/**
+ * Template padrão do Certificado de Conformidade com spans `data-pmoc-var`
+ * (Onda H). Espelha 1:1 `src/utils/pmocDocumentTemplates.ts#buildDefaultCertificadoHtml`
+ * pra paridade entre o que o gestor vê no editor e o PDF gerado.
+ */
+export function buildDefaultCertificadoHtml(): string {
   return `
-    <h1>CERTIFICADO DE CONFORMIDADE</h1>
-    <p>Certificamos que a unidade <strong>${escapeHtml(ctx.customer.name)}</strong>, localizada em ${addressDisplay}, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong>${escapeHtml(ctx.rt.nome)}</strong> (${escapeHtml(ctx.rt.modalidade)} - CFT ${cftDisplay}).</p>
-    <p>Periodicidade das manutenções: ${escapeHtml(ctx.contract.frequency_label)}.</p>
-    <p>Vigência: a partir de ${escapeHtml(ctx.contract.start_date_extenso)}.</p>
-    <p>Documento gerado em ${escapeHtml(ctx.generated_at_extenso)}.</p>
-  `;
-}
+<h2>CERTIFICADO DE CONFORMIDADE</h2>
 
-function escapeHtml(s: string | null | undefined): string {
-  if (!s) return "";
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+<p>Certificamos que a unidade <strong><span data-pmoc-var="cliente.nome"></span></strong>, localizada em <span data-pmoc-var="cliente.endereco"></span>, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong><span data-pmoc-var="rt.nome"></span></strong> (<span data-pmoc-var="rt.modalidade"></span> — CFT <span data-pmoc-var="rt.cft_crea"></span>).</p>
+
+<p><strong>Periodicidade das manutenções:</strong> <span data-pmoc-var="contrato.frequencia"></span>.<br>
+<strong>Vigência:</strong> a partir de <span data-pmoc-var="contrato.vigencia_inicio"></span>.</p>
+
+<p>Documento gerado em <span data-pmoc-var="data.hoje_extenso"></span>.</p>
+`.trim();
 }
 
 export interface RenderCertificadoResult {
@@ -58,12 +57,18 @@ export async function drawCertificadoPage(
   pdf: PDFDocument,
   ctx: TemplateContext,
   customHtml: string | null,
+  variableContext: PmocVariableContext | null = null,
 ): Promise<RenderCertificadoResult> {
   const raw = customHtml && customHtml.trim().length > 0
     ? customHtml
-    : buildDefaultCertificadoHtml(ctx);
+    : buildDefaultCertificadoHtml();
 
-  const { clean, tagsRemoved, attrsRemoved } = sanitizeHtml(raw);
+  // ---- (Onda H) Substituir variáveis ANTES do sanitizer.
+  //      Sanitizer remove o atributo data-pmoc-var de <span>; ordem inversa
+  //      faz o substituidor encontrar spans vazios e quebra o pipeline.
+  const substituted = substituteVariables(raw, variableContext);
+
+  const { clean, tagsRemoved, attrsRemoved } = sanitizeHtml(substituted);
 
   const initialPage = pdf.addPage([A4_W, A4_H]);
   const result = await renderHtmlToPdf(pdf, clean, {

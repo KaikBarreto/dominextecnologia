@@ -15,10 +15,27 @@ import {
   Link2Off,
   Undo,
   Redo,
+  Tag,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { PmocVariableNode, type PmocVariableStorage } from './tiptap/PmocVariableNode';
+import {
+  PMOC_VARIABLES_BY_CATEGORY,
+  PMOC_VARIABLE_CATEGORY_LABELS,
+  type PmocVariableCategory,
+  type PmocVariableContext,
+  type PmocVariableKey,
+} from '@/utils/pmocVariables';
 
 /**
  * Editor rich-text PMOC (Onda C — v1.9.x).
@@ -31,11 +48,21 @@ import { Button } from '@/components/ui/button';
  * - DOMPurify é aplicado como segunda camada quando o `value` vem de fonte
  *   externa (banco, template-base). Edição local não passa por DOMPurify a
  *   cada keystroke pra não interromper o cursor — sanitização vale na entrada.
+ * - `data-pmoc-var` é whitelist explícita em DOMPurify (preserva nós de
+ *   variável; sem isso, o DOMPurify removeria o atributo e quebraria o badge).
+ *
+ * Variáveis PMOC (Onda H):
+ * - Cada `<span data-pmoc-var="X"></span>` é renderizado como badge colorido
+ *   via `PmocVariableNode`.
+ * - Toolbar tem botão "Inserir variável" com dropdown agrupado por categoria.
+ * - `templateContext` (valores reais) é exposto via `editor.storage.pmocVariable`
+ *   pra o NodeView pintar azul/vermelho conforme campo cheio/vazio.
  *
  * Mobile-first: a toolbar agrupa por categoria e quebra naturalmente em
  * largura pequena. Botões com `min-h-[44px]` no mobile pra alvo tátil.
  *
  * Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §5.3 / §1.1a
+ *        docs/planos/2026-05-23-pmoc-onda-H-variaveis-badges.md
  */
 
 export interface PmocRichTextEditorProps {
@@ -46,11 +73,22 @@ export interface PmocRichTextEditorProps {
   /** Quando true, desabilita edição (usado em preview). */
   readOnly?: boolean;
   className?: string;
+  /**
+   * Contexto runtime com os valores reais das variáveis PMOC. Usado pelo
+   * NodeView pra mostrar badge azul (cheio) ou vermelho (vazio). Não é
+   * usado pra substituir o HTML — substituição só acontece no momento de
+   * gerar o PDF (edge function).
+   */
+  templateContext?: PmocVariableContext | null;
 }
 
 /**
  * Sanitiza HTML preservando tags básicas que o editor PMOC aceita.
  * Removida segurança contra `<script>`, `on*` handlers, URLs `javascript:`.
+ *
+ * `data-pmoc-var` e `data-pmoc-label` são preservados pra que os nós de
+ * variável PMOC sobrevivam ao parse (sem isso, DOMPurify removeria os
+ * atributos e quebraria os badges).
  */
 function sanitizeHtml(input: string): string {
   if (!input) return '';
@@ -61,7 +99,7 @@ function sanitizeHtml(input: string): string {
       'h2', 'h3',
       'a', 'span', 'div',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'data-pmoc-var', 'data-pmoc-label'],
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
   });
 }
@@ -92,6 +130,68 @@ function ToolbarButton({ onClick, active, disabled, label, icon }: ToolbarButton
     >
       {icon}
     </Button>
+  );
+}
+
+/**
+ * Dropdown "Inserir variável" — lista as 17 variáveis PMOC agrupadas por
+ * categoria. Ao clicar, insere o nó `pmocVariable` no cursor atual.
+ */
+function InsertVariableMenu({ editor }: { editor: Editor }) {
+  const categories: PmocVariableCategory[] = ['empresa', 'rt', 'cliente', 'contrato', 'data'];
+
+  const handleInsert = (key: PmocVariableKey) => {
+    editor.chain().focus().insertPmocVariable(key).run();
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onMouseDown={(e) => e.preventDefault()}
+          aria-label="Inserir variável"
+          title="Inserir variável PMOC"
+          className="h-9 px-2 sm:h-8 sm:px-2 shrink-0 gap-1"
+        >
+          <Tag className="h-4 w-4" />
+          <span className="hidden text-xs sm:inline">Variável</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="max-h-[70vh] w-64 overflow-y-auto"
+      >
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Inserir variável PMOC
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {categories.map((cat, idx) => {
+          const items = PMOC_VARIABLES_BY_CATEGORY[cat];
+          if (items.length === 0) return null;
+          return (
+            <div key={cat}>
+              {idx > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                {PMOC_VARIABLE_CATEGORY_LABELS[cat]}
+              </DropdownMenuLabel>
+              {items.map(({ key, meta }) => (
+                <DropdownMenuItem
+                  key={key}
+                  onSelect={() => handleInsert(key)}
+                  className="text-sm"
+                >
+                  <Tag className="mr-2 h-3.5 w-3.5 text-primary" />
+                  {meta.label}
+                </DropdownMenuItem>
+              ))}
+            </div>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -199,6 +299,13 @@ function EditorToolbar({ editor }: { editor: Editor }) {
 
       <div className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
 
+      {/* Grupo: variáveis PMOC */}
+      <div className="flex items-center gap-0.5">
+        <InsertVariableMenu editor={editor} />
+      </div>
+
+      <div className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
+
       {/* Grupo: histórico */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
@@ -225,6 +332,7 @@ export function PmocRichTextEditor({
   minHeight = 240,
   readOnly = false,
   className,
+  templateContext,
 }: PmocRichTextEditorProps) {
   // Sanitiza valor externo na primeira passagem e a cada vez que value muda
   // de origem (não a cada keystroke local).
@@ -242,6 +350,7 @@ export function PmocRichTextEditor({
         autolink: true,
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
+      PmocVariableNode,
     ],
     content: sanitizedInitial,
     editable: !readOnly,
@@ -275,6 +384,22 @@ export function PmocRichTextEditor({
     editor.setEditable(!readOnly);
   }, [editor, readOnly]);
 
+  // Mantém o storage do PmocVariableNode sincronizado com o `templateContext`
+  // recebido por prop. NodeView lê de `editor.storage.pmocVariable.context`
+  // pra decidir badge azul (cheio) ou vermelho (vazio).
+  // Quando o contexto muda (ex: gestor cadastrou CNPJ em outra aba), força
+  // re-render dos NodeViews via dispatch de uma transação no-op.
+  useEffect(() => {
+    if (!editor) return;
+    const storage = editor.storage.pmocVariable as PmocVariableStorage | undefined;
+    if (!storage) return;
+    storage.context = templateContext ?? null;
+    // Força re-render dos NodeViews (dispatch vazio re-aplica decorations e
+    // re-monta NodeViews quando atributos não mudam — usamos `setMeta` pra
+    // sinalizar atualização e o editor reflete).
+    editor.view.dispatch(editor.view.state.tr.setMeta('pmocVariable:context', Date.now()));
+  }, [editor, templateContext]);
+
   if (!editor) {
     return (
       <div
@@ -298,4 +423,3 @@ export function PmocRichTextEditor({
     </div>
   );
 }
-

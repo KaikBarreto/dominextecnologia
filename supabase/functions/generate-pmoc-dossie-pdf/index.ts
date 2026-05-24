@@ -31,6 +31,7 @@ import {
   dateToExtenso,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
+import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -278,13 +279,19 @@ Deno.serve(async (req) => {
       supabase
         .from("company_settings")
         // CNPJ vive em `company_settings.document` (não há coluna `cnpj`).
-        .select("name, document, logo_url, white_label_enabled, white_label_logo_url, city")
+        // Onda H: campos extra alimentam o PmocVariableContext do termo/cert.
+        .select(
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email",
+        )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
       contract.responsible_technician_id
         ? supabase
             .from("responsible_technicians")
-            .select("full_name, cft_crea, modality, signature_image_url, stamp_image_url")
+            // Onda H: registry_number entra no contexto de variáveis.
+            .select(
+              "full_name, cft_crea, modality, registry_number, signature_image_url, stamp_image_url",
+            )
             .eq("id", contract.responsible_technician_id)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
@@ -449,12 +456,51 @@ Deno.serve(async (req) => {
       generated_at_extenso: dateToExtenso(new Date()),
     };
 
+    // ---- 7.5 (Onda H) PmocVariableContext — chaves "ponto" pra substituir
+    //          os <span data-pmoc-var="X"> no HTML do termo/certificado.
+    //          17 chaves espelhando o catálogo em variables.ts. Vazio aqui vira
+    //          linha pontilhada `____________________` no PDF final.
+    const empresaEnderecoFull = [
+      companySettings?.address,
+      companySettings?.address_number,
+      companySettings?.neighborhood,
+      companySettings?.complement,
+    ]
+      .map((s) => (typeof s === "string" ? s.trim() : ""))
+      .filter((s) => s.length > 0)
+      .join(", ");
+
+    const variableContext: PmocVariableContext = {
+      "empresa.nome": tenantName,
+      "empresa.razao_social": tenantName,
+      "empresa.cnpj": cnpj,
+      "empresa.endereco": empresaEnderecoFull,
+      "empresa.cidade": (companySettings?.city ?? "").trim(),
+      "empresa.estado": (companySettings?.state ?? "").trim(),
+      "empresa.telefone": (companySettings?.phone ?? "").trim(),
+      "empresa.email": (companySettings?.email ?? "").trim(),
+      "rt.nome": rt.full_name,
+      "rt.modalidade": rt.modality ?? "",
+      "rt.cft_crea": (rt.cft_crea ?? "").trim(),
+      "rt.registro": ((rt as { registry_number?: string | null }).registry_number ?? "").trim(),
+      "cliente.nome": customer?.name ?? "",
+      "cliente.endereco": (customer?.address ?? "").trim(),
+      "cliente.cidade": (customer?.city ?? "").trim(),
+      "contrato.nome": contract.name ?? "",
+      "contrato.vigencia_inicio": dateToExtenso(contract.start_date ?? null),
+      "contrato.frequencia": frequencyLabelFrom(
+        (contract.frequency_value ?? null) as number | null,
+        (contract.frequency_type ?? null) as string | null,
+      ),
+      "data.hoje_extenso": dateToExtenso(new Date()),
+    };
+
     // ---- 8. content_hash dos campos dinâmicos
     //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
-    //    Quando o RT atualiza a assinatura, todos os PDFs daquele contrato
-    //    regeneram na próxima geração (cache miss garantido).
+    //    Onda H: bump pra dossie_v3 (variableContext entra — campos novos do
+    //    company_settings/RT invalidam cache certinho).
     const hashInput = JSON.stringify({
-      v: "dossie_v2",
+      v: "dossie_v3",
       tenant: { name: tenantName, cnpj, city: cidade, logo: !!logoBytes },
       rt: {
         nome: ctx.rt.nome,
@@ -466,6 +512,7 @@ Deno.serve(async (req) => {
       contract: ctx.contract,
       termo: customDocs?.termo_rt_content ?? null,
       cert: customDocs?.certificado_content ?? null,
+      vars: variableContext,
     });
     const contentHash = await sha256Hex(hashInput);
 
@@ -531,8 +578,18 @@ Deno.serve(async (req) => {
     pdf.setProducer("Dominex");
 
     await drawCapaPage(pdf, ctx);
-    const termoResult = await drawTermoRtPage(pdf, ctx, customDocs?.termo_rt_content ?? null);
-    const certResult = await drawCertificadoPage(pdf, ctx, customDocs?.certificado_content ?? null);
+    const termoResult = await drawTermoRtPage(
+      pdf,
+      ctx,
+      customDocs?.termo_rt_content ?? null,
+      variableContext,
+    );
+    const certResult = await drawCertificadoPage(
+      pdf,
+      ctx,
+      customDocs?.certificado_content ?? null,
+      variableContext,
+    );
 
     const pdfBytes = await pdf.save();
     const pdfSize = pdfBytes.length;

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { PmocRichTextEditor } from './PmocRichTextEditor';
+import type { PmocVariableContext } from '@/utils/pmocVariables';
 
 /**
  * Modal de edição rich-text dos termos PMOC (Onda C — v1.9.x).
@@ -49,6 +50,12 @@ export interface PmocDocEditorDialogProps {
   isSaving?: boolean;
   /** Dica explicativa exibida acima do editor. */
   helperText?: string;
+  /**
+   * Contexto runtime das variáveis PMOC. Usado pelo editor pra pintar badges
+   * (azul = valor cheio, vermelho = vazio). Opcional — sem ele, badges sempre
+   * mostram "(vazio)".
+   */
+  templateContext?: PmocVariableContext | null;
 }
 
 export function PmocDocEditorDialog({
@@ -61,6 +68,7 @@ export function PmocDocEditorDialog({
   onResetToDefault,
   isSaving = false,
   helperText,
+  templateContext,
 }: PmocDocEditorDialogProps) {
   const isMobile = useIsMobile();
   const seed = initialHtml && initialHtml.trim() !== '' ? initialHtml : defaultHtml;
@@ -195,6 +203,7 @@ export function PmocDocEditorDialog({
             // não estoura tela.
             minHeight={isMobile ? 280 : 520}
             placeholder="Edite o texto do documento PMOC…"
+            templateContext={templateContext}
           />
           <p className="text-[11px] text-muted-foreground">
             Este texto será embutido no PDF do dossiê PMOC ao gerar uma nova versão.

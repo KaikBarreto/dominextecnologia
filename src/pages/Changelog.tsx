@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.16',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Etiquetas coloridas pras variáveis no editor dos documentos PMOC',
+        description: 'No editor do Termo de Responsabilidade Técnica e do Certificado, onde antes apareciam valores tipo "Glacial Cold Brasil" ou "34.901.457/0001-99" misturados ao texto, agora aparecem etiquetas coloridas: azul quando o sistema tem o dado cadastrado, vermelho quando o dado está em branco no cadastro (ex: CFT/CREA do RT não preenchido). Fica visualmente óbvio o que vai aparecer no PDF e o que precisa ser cadastrado antes de gerar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Botão "Inserir variável" com 19 variáveis disponíveis',
+        description: 'A barra de ferramentas do editor ganhou um botão "Inserir variável" (ícone de etiqueta). Toque pra abrir um menu agrupado: Empresa (nome, razão social, CNPJ, endereço, cidade, estado, telefone, email), Responsável Técnico (nome, modalidade, CFT/CREA, registro), Cliente (nome, endereço, cidade), Contrato (nome, vigência, frequência) e Data (data de hoje por extenso). Escolha onde inserir uma variável: ela vira uma etiqueta que troca pelo valor real só na hora de gerar o PDF.',
+        category: 'recurso',
+      },
+      {
+        title: 'Espaçamento maior entre blocos de assinatura no PDF do Termo RT',
+        description: 'Os 3 blocos de assinatura no PDF (CONTRATANTE / EMPRESA / RESPONSÁVEL TÉCNICO) ficavam visualmente apertados — sem espaço pra assinar à caneta no papel impresso. Aumentamos o respiro entre eles. Quando o RT tem assinatura cadastrada (upload de imagem ou desenho), a imagem continua aparecendo embedada acima da linha do bloco do RT como antes.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Substituição de variáveis acontece no servidor (cache forçado a regenerar)',
+        description: 'A substituição das variáveis pelos valores reais agora acontece no momento exato em que o PDF é gerado, no servidor. Como a lógica mudou, todos os documentos PMOC vão regenerar automaticamente da próxima vez que você clicar em "Gerar TRT" ou "Gerar Dossiê" (vai aparecer "Versão 2" mesmo sem mudança no texto editado). Versões antigas continuam baixáveis no histórico de versões.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.9.15',
     date: '23 de maio de 2026',
     type: 'minor',
