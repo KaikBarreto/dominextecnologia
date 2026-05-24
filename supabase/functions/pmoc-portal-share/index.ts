@@ -258,7 +258,28 @@ Deno.serve(async (req) => {
       supabase
         .from("company_settings")
         .select(
-          "name, logo_url, white_label_enabled, white_label_logo_url, white_label_primary_color, address, city, state",
+          [
+            "name",
+            "logo_url",
+            "white_label_enabled",
+            "white_label_logo_url",
+            "white_label_primary_color",
+            "white_label_icon_url",
+            "address",
+            "city",
+            "state",
+            "document",
+            "phone",
+            "email",
+            "zip_code",
+            "report_header_bg_color",
+            "report_header_text_color",
+            "report_header_logo_size",
+            "report_header_show_logo_bg",
+            "report_header_logo_bg_color",
+            "report_status_bar_color",
+            "report_header_logo_type",
+          ].join(", "),
         )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
@@ -581,9 +602,27 @@ Deno.serve(async (req) => {
     // 4) Payload final — TODO campo retornado tem que estar autorizado em §3.2
     //    do portal-rls-rules. Nenhum UUID interno, nenhum campo bruto.
     // -------------------------------------------------------------------------
+    // Onda redesign 2026-05-24 (continuação): header do portal espelha o do
+    // Relatório de Serviço (ReportHeader). Quando white_label_enabled=true,
+    // expomos os configs de report_header pra UI casar 1:1 com o que o cliente
+    // configurou. Caso contrário, `report_header=null` e o front usa
+    // DEFAULT_HEADER_CONFIG.
+    const reportHeader = useWhiteLabel
+      ? {
+          bg_color: (companySettings as any)?.report_header_bg_color ?? null,
+          text_color: (companySettings as any)?.report_header_text_color ?? null,
+          logo_size: (companySettings as any)?.report_header_logo_size ?? null,
+          show_logo_bg: (companySettings as any)?.report_header_show_logo_bg ?? null,
+          logo_bg_color: (companySettings as any)?.report_header_logo_bg_color ?? null,
+          status_bar_color: (companySettings as any)?.report_status_bar_color ?? null,
+          logo_type: (companySettings as any)?.report_header_logo_type ?? null,
+          icon_url: (companySettings as any)?.white_label_icon_url ?? null,
+        }
+      : null;
+
     const payload = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.3.0", // 1.3.0 — Redesign portal: schedule + white_label_enabled + status raw
+      payload_version: "1.4.0", // 1.4.0 — Header do portal espelha ReportHeader (cores/logo configurados + CNPJ/phone/email)
       unit: {
         name: customer?.name ?? null,
         address: customer?.address ?? null,
@@ -627,7 +666,14 @@ Deno.serve(async (req) => {
         // Onda redesign 2026-05-24: o portal usa esse flag pra decidir se mostra
         // o rodapé "Powered by Dominex". White-label ativo → esconde a marca.
         white_label_enabled: useWhiteLabel,
-        // NOTA: telefone/email do tenant intencionalmente NÃO expostos (decisão CEO).
+        // Onda 1.4.0 — header do portal igual ao Relatório de Serviço (decisão
+        // CEO 2026-05-24): CNPJ + telefone + email + CEP agora SÃO expostos pra
+        // dar identidade completa ao tenant no portal público.
+        document: (companySettings as any)?.document ?? null,
+        phone: (companySettings as any)?.phone ?? null,
+        email: (companySettings as any)?.email ?? null,
+        zip_code: (companySettings as any)?.zip_code ?? null,
+        report_header: reportHeader,
       },
       schedule,
       history,

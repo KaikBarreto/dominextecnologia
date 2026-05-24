@@ -26,6 +26,10 @@ import {
 } from '@/components/pmoc/PmocCronogramaCalendar';
 import { OsDetailPortalModal } from '@/components/pmoc/OsDetailPortalModal';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
+import {
+  DEFAULT_HEADER_CONFIG,
+  type ReportHeaderConfig,
+} from '@/components/technician/ReportHeader';
 import { cn } from '@/lib/utils';
 import {
   fetchPmocPortal,
@@ -132,7 +136,11 @@ function setThemeColor(color: string) {
   if (el) el.setAttribute('content', color);
 }
 
-function usePortalSeo(payload: PortalPayload | undefined, token: string | undefined) {
+function usePortalSeo(
+  payload: PortalPayload | undefined,
+  token: string | undefined,
+  themeColor: string,
+) {
   useEffect(() => {
     if (!payload || !token) return;
 
@@ -158,8 +166,9 @@ function usePortalSeo(payload: PortalPayload | undefined, token: string | undefi
     setMeta('name', 'twitter:title', title);
     setMeta('name', 'twitter:description', description);
 
-    // Cor da status bar do navegador casa com o tenant — feel app nativo no iOS Safari.
-    setThemeColor(payload.tenant.primary_color || DEFAULT_THEME_COLOR);
+    // Onda 1.4.0 — status bar do navegador casa com o bg do header configurado
+    // (espelha o do Relatório de Serviço). Feel app nativo no iOS Safari.
+    setThemeColor(themeColor || DEFAULT_THEME_COLOR);
 
     setJsonLd('pmoc-portal', {
       '@context': 'https://schema.org',
@@ -177,7 +186,7 @@ function usePortalSeo(payload: PortalPayload | undefined, token: string | undefi
       document.title = 'Dominex — Gestão de Equipes de Campo e Ordens de Serviço';
       setThemeColor(DEFAULT_THEME_COLOR);
     };
-  }, [payload, token]);
+  }, [payload, token, themeColor]);
 }
 
 // ----- Página -----------------------------------------------------------------
@@ -194,8 +203,6 @@ export default function PmocPublicPortal() {
     },
     queryFn: () => fetchPmocPortal(token!),
   });
-
-  usePortalSeo(data, token);
 
   if (isLoading) return <PortalSkeleton />;
 
@@ -225,6 +232,35 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
+
+  // Onda 1.4.0 — Header do portal espelha o do Relatório de Serviço.
+  // Quando white-label: usa os configs do tenant (com fallback campo-a-campo
+  // pro DEFAULT_HEADER_CONFIG). Quando NÃO white-label: usa o default inteiro.
+  const headerConfig: ReportHeaderConfig = useMemo(() => {
+    const rh = tenant.report_header;
+    if (!rh || !tenant.white_label_enabled) return DEFAULT_HEADER_CONFIG;
+    return {
+      bgColor: rh.bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+      textColor: rh.text_color || DEFAULT_HEADER_CONFIG.textColor,
+      logoSize: rh.logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+      showLogoBg: rh.show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+      logoBgColor: rh.logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
+      statusBarColor: rh.status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+      logoType: (rh.logo_type as 'full' | 'icon') || DEFAULT_HEADER_CONFIG.logoType,
+    };
+  }, [tenant.report_header, tenant.white_label_enabled]);
+
+  // Resolve o logo a usar (igual ao ReportHeader: se logoType='icon' usa icon_url
+  // do white-label, fallback pro logo_url do tenant).
+  const resolvedLogo = useMemo(() => {
+    if (headerConfig.logoType === 'icon') {
+      return tenant.report_header?.icon_url || tenant.logo_url;
+    }
+    return tenant.logo_url;
+  }, [headerConfig.logoType, tenant.logo_url, tenant.report_header]);
+
+  // SEO + theme-color (cor do header) — precisa ser depois de headerConfig.
+  usePortalSeo(payload, token, headerConfig.bgColor);
 
   // Sticky bar com blur no mobile: aparece quando o hero "saiu" do viewport.
   // Mantém o nome da unidade visível no topo, sensação de navigation bar nativa.
@@ -261,14 +297,6 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     return map;
   }, [schedule, history]);
 
-  const primaryColor = tenant.primary_color || '#5555FF';
-  const heroStyle = useMemo(
-    () => ({
-      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)`,
-    }),
-    [primaryColor],
-  );
-
   const lastUpdate = useMemo(
     () => format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }),
     [],
@@ -280,6 +308,10 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     const original = osById.get(order.id);
     if (original) setSelectedOS(original);
   };
+
+  const logoPx = headerConfig.logoSize;
+  const hasAddress = !!unit.address;
+  const tenantAddress = tenant.address ?? null;
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
@@ -295,9 +327,9 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
       >
         <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-4 pb-2 pt-1">
-          {tenant.logo_url ? (
+          {resolvedLogo ? (
             <img
-              src={tenant.logo_url}
+              src={resolvedLogo}
               alt=""
               className="h-6 w-6 shrink-0 rounded-md bg-muted object-contain p-0.5"
               aria-hidden="true"
@@ -323,60 +355,147 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         </div>
       </div>
 
-      {/* Seção 1 — Hero (com safe-area-top pra respeitar notch) */}
+      {/* Onda 1.4.0 — Header empresa (espelha ReportHeader do técnico).
+          Coluna direita troca "OS #/tipo" por "Nome unidade + Saúde".
+          Cores e logo vêm do `headerConfig` (white-label) ou DEFAULT. */}
       <header
-        className="relative px-4 pb-8 text-white sm:px-6"
+        className="p-4 sm:p-6"
         style={{
-          ...heroStyle,
-          paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+          background: headerConfig.bgColor,
+          color: headerConfig.textColor,
+          paddingTop: 'max(1rem, env(safe-area-inset-top))',
         }}
       >
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              {tenant.logo_url ? (
-                <img
-                  src={tenant.logo_url}
-                  alt={tenant.name}
-                  className="h-10 w-10 shrink-0 rounded-xl bg-white/95 object-contain p-1 sm:h-12 sm:w-12"
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+          {/* Logo + dados empresa */}
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            {resolvedLogo ? (
+              <img
+                src={resolvedLogo}
+                alt={tenant.name}
+                className="shrink-0 rounded-lg object-contain"
+                style={{
+                  height: `${logoPx}px`,
+                  width: `${logoPx}px`,
+                  ...(headerConfig.showLogoBg
+                    ? {
+                        backgroundColor: headerConfig.logoBgColor || 'rgba(255,255,255,0.95)',
+                        padding: '6px',
+                      }
+                    : {}),
+                }}
+              />
+            ) : (
+              <div
+                className="flex shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  height: `${logoPx}px`,
+                  width: `${logoPx}px`,
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                }}
+              >
+                <Building2
+                  style={{
+                    width: logoPx * 0.4,
+                    height: logoPx * 0.4,
+                    color: headerConfig.textColor,
+                    opacity: 0.7,
+                  }}
+                  aria-hidden="true"
                 />
-              ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 sm:h-12 sm:w-12">
-                  <ShieldCheck className="h-6 w-6 text-white" aria-hidden="true" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1
+                className="break-words text-base font-bold leading-tight sm:text-xl"
+                style={{ color: headerConfig.textColor }}
+              >
+                {tenant.name || 'Empresa'}
+              </h1>
+              {tenant.document && (
+                <p
+                  className="text-xs sm:text-sm"
+                  style={{ color: headerConfig.textColor, opacity: 0.9 }}
+                >
+                  CNPJ: {tenant.document}
+                </p>
+              )}
+              {(tenant.phone || tenant.email) && (
+                <div
+                  className="mt-0.5 flex flex-col gap-x-4 gap-y-0 text-xs sm:flex-row sm:flex-wrap"
+                  style={{ color: headerConfig.textColor, opacity: 0.8 }}
+                >
+                  {tenant.phone && <span>{tenant.phone}</span>}
+                  {tenant.email && <span className="break-all">{tenant.email}</span>}
                 </div>
               )}
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
-                  {tenant.name}
-                </p>
-                <p className="text-[11px] opacity-70">Portal PMOC</p>
-              </div>
             </div>
-            <HealthBadge status={contract.health_status} overdueCount={contract.overdue_count} />
           </div>
 
-          <div className="space-y-2">
-            <h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl sm:leading-snug">
+          {/* Endereço da EMPRESA (mobile — inline, igual ReportHeader) */}
+          {tenantAddress && (
+            <p
+              className="text-xs sm:hidden"
+              style={{ color: headerConfig.textColor, opacity: 0.75 }}
+            >
+              {tenantAddress}
+              {tenant.city && `, ${tenant.city}`}
+              {tenant.state && ` - ${tenant.state}`}
+              {tenant.zip_code && ` | CEP: ${tenant.zip_code}`}
+            </p>
+          )}
+
+          {/* Coluna direita: nome da UNIDADE + badge de saúde
+              (substitui o "OS #N + tipo" do ReportHeader) */}
+          <div className="flex shrink-0 items-center justify-between gap-2 sm:ml-auto sm:flex-col sm:items-end">
+            <div
+              className="break-words text-right text-base font-bold leading-tight sm:text-xl"
+              style={{ color: headerConfig.textColor }}
+            >
               {unit.name ?? 'Unidade'}
-            </h1>
-            {unit.address && (
-              <p className="flex items-start gap-1.5 text-sm leading-relaxed opacity-90">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="break-words">
-                  {[unit.address, unit.city, unit.state].filter(Boolean).join(' — ')}
-                </span>
-              </p>
-            )}
-          </div>
-
-          <div className="rounded-xl bg-white/15 backdrop-blur-sm">
-            <PmocComplianceBadge
-              variant="ribbon"
-              className="border-white/30 bg-transparent text-white [&_p]:text-white [&_span]:bg-white/20"
+            </div>
+            <HealthBadge
+              status={contract.health_status}
+              overdueCount={contract.overdue_count}
+              textColor={headerConfig.textColor}
             />
           </div>
         </div>
+
+        {/* Endereço da EMPRESA (desktop — embaixo, igual ReportHeader) */}
+        {tenantAddress && (
+          <p
+            className="mx-auto mt-2 hidden w-full max-w-5xl text-xs sm:block"
+            style={{ color: headerConfig.textColor, opacity: 0.75 }}
+          >
+            {tenantAddress}
+            {tenant.city && `, ${tenant.city}`}
+            {tenant.state && ` - ${tenant.state}`}
+            {tenant.zip_code && ` | CEP: ${tenant.zip_code}`}
+          </p>
+        )}
+
+        {/* Endereço da UNIDADE — abaixo do header de empresa, contextualiza o portal */}
+        {hasAddress && (
+          <p
+            className="mx-auto mt-3 flex w-full max-w-5xl items-start gap-1.5 text-xs sm:text-sm"
+            style={{ color: headerConfig.textColor, opacity: 0.85 }}
+          >
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+            <span className="break-words">
+              {[unit.address, unit.city, unit.state].filter(Boolean).join(' — ')}
+            </span>
+          </p>
+        )}
       </header>
+
+      {/* Status bar fina (espelha ReportHeader). Texto: contexto PMOC legal. */}
+      <div
+        className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide sm:text-sm"
+        style={{ backgroundColor: headerConfig.statusBarColor, color: '#ffffff' }}
+      >
+        Plano de Manutenção, Operação e Controle — Lei 13.589/2018
+      </div>
 
       {/* Sentinel pra detectar quando o hero sai do viewport (sticky bar aparece). */}
       <div ref={heroSentinelRef} aria-hidden="true" className="h-px w-full" />
@@ -622,20 +741,29 @@ function Section({
   );
 }
 
+/**
+ * Onda 1.4.0 — `textColor` recebido do header config (white-label ou default).
+ * Como o header agora pode ter bg claro ou escuro, o badge usa fundo translúcido
+ * a partir do próprio `textColor` (rgba dinâmico) pra contrastar em ambos os
+ * cenários sem precisar saber qual é qual.
+ */
 function HealthBadge({
   status,
   overdueCount,
+  textColor = '#ffffff',
 }: {
   status: PortalHealthStatus;
   overdueCount: number;
+  textColor?: string;
 }) {
   const cfg = HEALTH_CONFIG[status] ?? HEALTH_CONFIG.em_dia;
+  // Fundo translúcido derivado do textColor pra contrastar em qualquer bg.
+  const isLight = textColor === '#ffffff' || textColor.toLowerCase() === '#fff';
+  const bgTint = isLight ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)';
   return (
     <div
-      className={cn(
-        'flex shrink-0 flex-col items-end gap-0.5 rounded-xl bg-white/15 px-3 py-2',
-        'backdrop-blur-sm',
-      )}
+      className="flex shrink-0 flex-col items-end gap-0.5 rounded-xl px-3 py-2 backdrop-blur-sm"
+      style={{ backgroundColor: bgTint, color: textColor }}
       aria-label={`Status sanitário: ${cfg.label}`}
     >
       <span className="text-[10px] font-semibold uppercase tracking-widest opacity-80">

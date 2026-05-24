@@ -13,7 +13,7 @@ import type { PortalPayload } from '@/types/pmocPortal';
  *
  * Schema:
  *  - docs/planos/2026-05-23-pmoc-v1.9-arquitetura.md §2.4
- *  - Redesign 2026-05-24 — payload_version 1.3.0.
+ *  - Redesign 2026-05-24 — payload_version 1.4.0 (header espelha ReportHeader).
  */
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -89,7 +89,7 @@ function buildMockPayload(_token: string): PortalPayload {
 
   return {
     generated_at: new Date().toISOString(),
-    payload_version: '1.3.0',
+    payload_version: '1.4.0',
     unit: {
       name: 'Restaurante Bom Sabor Ltda',
       address: 'Av. Paulista, 1000 - Bela Vista',
@@ -126,6 +126,12 @@ function buildMockPayload(_token: string): PortalPayload {
       state: 'SP',
       // Flip pra `true` em dev pra testar modo white-label.
       white_label_enabled: false,
+      document: '12.345.678/0001-90',
+      phone: '(11) 98765-4321',
+      email: 'contato@exemplo.com.br',
+      zip_code: '01310-100',
+      // null = não white-label → o front cai no DEFAULT_HEADER_CONFIG.
+      report_header: null,
     },
     // Onda redesign — OSs futuras (cronograma).
     schedule: [

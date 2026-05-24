@@ -1,13 +1,17 @@
 /**
  * Contrato de payload do portal PMOC público.
  *
- * Fonte da verdade: edge function `pmoc-portal-share` (payload_version 1.3.0).
+ * Fonte da verdade: edge function `pmoc-portal-share` (payload_version 1.4.0).
  *
  * Evolução:
  *  - 1.0/1.1 — Onda B: payload inicial (history).
  *  - 1.2.0 — Onda E: documentos reais + signature_status.
  *  - 1.3.0 — Redesign 2026-05-24: adiciona `schedule`, `tenant.white_label_enabled`
  *    e expõe `status` raw em cada entrada (necessário pra UI pintar badge por cor).
+ *  - 1.4.0 — Redesign 2026-05-24 (cont.): header do portal espelha o do Relatório
+ *    de Serviço. Tenant ganha `document`, `phone`, `email`, `zip_code` e
+ *    `report_header` (configs de cor/logo); telefone/email PASSARAM A ser
+ *    expostos por decisão CEO.
  *
  * Planos:
  *  - docs/planos/2026-05-23-pmoc-v1.9-arquitetura.md §2.4
@@ -82,6 +86,24 @@ export interface PortalResponsibleTechnician {
   registry_number: string | null;
 }
 
+/**
+ * Onda 1.4.0 — configs visuais do header do portal, espelhados do
+ * Relatório de Serviço (ReportHeader). `null` (qualquer campo) → o front
+ * cai no `DEFAULT_HEADER_CONFIG` do ReportHeader pro campo correspondente.
+ *
+ * Só é populado quando `tenant.white_label_enabled === true`.
+ */
+export interface PortalReportHeaderConfig {
+  bg_color: string | null;
+  text_color: string | null;
+  logo_size: number | null;
+  show_logo_bg: boolean | null;
+  logo_bg_color: string | null;
+  status_bar_color: string | null;
+  logo_type: 'full' | 'icon' | null;
+  icon_url: string | null;
+}
+
 export interface PortalTenant {
   name: string;
   logo_url: string | null;
@@ -95,6 +117,19 @@ export interface PortalTenant {
    * no portal público. `true` → tenant white-label, esconde marca Dominex.
    */
   white_label_enabled: boolean;
+  /**
+   * Onda 1.4.0 — campos novos do tenant (header do portal espelha
+   * o Relatório de Serviço). `document` = CNPJ formatado.
+   */
+  document: string | null;
+  phone: string | null;
+  email: string | null;
+  zip_code: string | null;
+  /**
+   * `null` → usar `DEFAULT_HEADER_CONFIG` inteiro (não white-label).
+   * Quando preenchido, cada campo `null` interno cai no default só pra ele.
+   */
+  report_header: PortalReportHeaderConfig | null;
 }
 
 export interface PortalOsPhoto {
