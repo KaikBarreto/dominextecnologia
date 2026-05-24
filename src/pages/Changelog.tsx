@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.22',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Categorias do Financeiro deixou de ser tela dedicada',
+        description: 'A aba "Configurações" do Financeiro (que só tinha a gestão de categorias) saiu do menu. Agora em "Contas e Cartões" tem um botão "Categorias" no header — clica nele e abre uma janela com toda a lista de categorias de receita e despesa pra você gerenciar (criar, editar, excluir, reordenar). O módulo Financeiro foi de 6 abas pra 5, mais limpo e direto. Quem tinha link salvo pra /financeiro/configuracoes cai automaticamente em "Contas e Cartões" (onde o botão Categorias está visível).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Criar categoria nova direto do lançamento de transação',
+        description: 'Em "Nova Transação", ao lado do campo "Categoria" agora tem um botão "+". Clica nele pra criar uma categoria nova na hora, sem precisar fechar o formulário e ir até a tela de categorias. Quando você salva, a categoria nova já vem selecionada na transação que estava criando. Funciona pra receita e despesa.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.9.21',
     date: '24 de maio de 2026',
     type: 'minor',

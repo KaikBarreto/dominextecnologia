@@ -6,7 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { FinanceOverview } from '@/components/financial/FinanceOverview';
 import { TransactionListPanel } from '@/components/financial/TransactionListPanel';
-import { FinanceCategorias } from '@/components/financial/FinanceCategorias';
 import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { FinanceBanks } from '@/components/financial/FinanceBanks';
@@ -19,7 +18,6 @@ import {
   CalendarClock,
   Landmark,
   FileBarChart,
-  Settings as SettingsIcon,
 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -28,13 +26,16 @@ import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSi
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
+// Aliases /financeiro/categorias e /financeiro/configuracoes ficam mapeados pra
+// 'bancos' — é lá que vive o botão "Gerenciar Categorias" agora (v1.9.22).
+// Quem cair nessas URLs antigas vai pra "Contas e Cartões" sem aviso ruidoso.
 const ROUTE_TAB_MAP: Record<string, string> = {
   '/financeiro': 'visao-geral',
   '/financeiro/movimentacoes': 'historico',
   '/financeiro/contas': 'contas',
   '/financeiro/caixas-bancos': 'bancos',
-  '/financeiro/categorias': 'configuracoes', // legacy alias → config
-  '/financeiro/configuracoes': 'configuracoes',
+  '/financeiro/categorias': 'bancos',
+  '/financeiro/configuracoes': 'bancos',
   '/financeiro/dre': 'dre',
 };
 
@@ -43,7 +44,6 @@ const TAB_ROUTE_MAP: Record<string, string> = {
   'historico': '/financeiro/movimentacoes',
   'contas': '/financeiro/contas',
   'bancos': '/financeiro/caixas-bancos',
-  'configuracoes': '/financeiro/configuracoes',
   'dre': '/financeiro/dre',
 };
 
@@ -71,13 +71,14 @@ export default function Finance() {
 
   // Lista completa de abas + filtragem por módulo. Abas marcadas com
   // requiresAdvanced só aparecem se o tenant tem finance_advanced.
+  // Categorias deixou de ser aba em v1.9.22 — gestão vive dentro de
+  // "Contas e Cartões" (botão "Gerenciar Categorias") e no TransactionFormDialog.
   const TABS: Array<SettingsTab & { requiresAdvanced?: boolean }> = [
     { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
     { value: 'historico', label: 'Movimentações', icon: HistoryIcon },
     { value: 'contas', label: 'Contas a Pagar/Receber', icon: CalendarClock, requiresAdvanced: true },
     { value: 'bancos', label: 'Contas e Cartões', icon: Landmark, requiresAdvanced: true },
     { value: 'dre', label: 'DRE - Resultado', icon: FileBarChart, requiresAdvanced: true },
-    { value: 'configuracoes', label: 'Configurações', icon: SettingsIcon },
   ];
 
   const visibleTabs = TABS.filter(t => !t.requiresAdvanced || hasModule('finance_advanced'));
@@ -314,12 +315,6 @@ export default function Finance() {
           )}
 
           {activeTab === 'bancos' && <FinanceBanks />}
-
-          {activeTab === 'configuracoes' && (
-            <div className="space-y-6">
-              <FinanceCategorias />
-            </div>
-          )}
 
           {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
         </div>

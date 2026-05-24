@@ -13,8 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Upload, X, CreditCard, Info, FileText, Download, Layers, Plus } from 'lucide-react';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { CategoryFormDialog } from './CategoryFormDialog';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -371,13 +372,14 @@ interface TransactionFormDialogProps {
 export function TransactionFormDialog({
   open, onOpenChange, transaction, onSubmit, isLoading, defaultType = 'entrada',
 }: TransactionFormDialogProps) {
-  const { categories: dbCategories } = useFinancialCategories();
+  const { categories: dbCategories, createCategory } = useFinancialCategories();
   const { accounts } = useFinancialAccounts();
   const { toast } = useToast();
   const isEditing = !!transaction;
   const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const uploadSharedMutation = useUploadTransactionAttachmentShared();
 
   const getCategoriesForType = (type: 'entrada' | 'saida') => {
@@ -566,7 +568,21 @@ export function TransactionFormDialog({
     </div>
   );
 
+  // Handler do CategoryFormDialog inline: cria categoria e auto-seleciona
+  // no form. Usa createCategory.mutateAsync direto (em vez de delegar pro
+  // FinanceCategorias) pra capturar o `name` retornado e setar no Select.
+  // Invalidação do queryKey já roda dentro do onSuccess do hook → o Select
+  // recarrega sozinho na próxima renderização.
+  const handleCreateCategoryInline = async (data: any) => {
+    const created = await createCategory.mutateAsync(data);
+    if (created?.name) {
+      form.setValue('category', created.name, { shouldDirty: true });
+    }
+    setCategoryFormOpen(false);
+  };
+
   return (
+    <>
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
@@ -606,30 +622,50 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Category */}
+          {/* Category — Select + botão "+" inline pra criar categoria sem
+              precisar sair do form. Auto-seleciona a nova categoria criada
+              (UX premium: usuário sente que faltou X, cria, e ela já está
+              selecionada). */}
           <FormField control={form.control} name="category" render={({ field }) => (
             <FormItem>
               <FormLabel>Categoria</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger></FormControl>
-                <SelectContent>
-                  {dbCats ? dbCats.map((cat) => {
-                    const Icon = getCategoryIcon(cat.icon);
-                    return (
-                      <SelectItem key={cat.id} value={cat.name}>
-                        <span className="flex items-center gap-2">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
-                            <Icon className="h-3 w-3 text-white" />
+              <div className="flex gap-2">
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {dbCats ? dbCats.map((cat) => {
+                      const Icon = getCategoryIcon(cat.icon);
+                      return (
+                        <SelectItem key={cat.id} value={cat.name}>
+                          <span className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: cat.color }}>
+                              <Icon className="h-3 w-3 text-white" />
+                            </span>
+                            {cat.name}
                           </span>
-                          {cat.name}
-                        </span>
-                      </SelectItem>
-                    );
-                  }) : fallbackCategories[transactionType].map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                        </SelectItem>
+                      );
+                    }) : fallbackCategories[transactionType].map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => setCategoryFormOpen(true)}
+                  title="Nova categoria"
+                  aria-label="Nova categoria"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <FormMessage />
             </FormItem>
           )} />
@@ -851,5 +887,17 @@ export function TransactionFormDialog({
         </form>
       </Form>
     </ResponsiveModal>
+
+    {/* Modal "Nova Categoria" — renderizado fora do ResponsiveModal pai pra
+        evitar conflito de stacking entre Drawer (mobile) e o modal-filho.
+        Auto-seleciona a nova categoria no Select via handleCreateCategoryInline. */}
+    <CategoryFormDialog
+      open={categoryFormOpen}
+      onOpenChange={setCategoryFormOpen}
+      category={null}
+      onSubmit={handleCreateCategoryInline}
+      isLoading={createCategory.isPending}
+    />
+    </>
   );
 }

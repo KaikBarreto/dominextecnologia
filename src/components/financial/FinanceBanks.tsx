@@ -21,7 +21,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Plus, Pencil, Trash2, ArrowLeftRight, Landmark, Wallet, CreditCard,
   ChevronDown, ChevronRight, Receipt, CheckCircle2, Clock, AlertCircle, ArrowRight,
-  Calculator, Loader2, ArrowLeft,
+  Calculator, Loader2, ArrowLeft, Tags,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
@@ -29,6 +29,7 @@ import { useCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks
 import { useRecalculateBills } from '@/hooks/useRecalculateBills';
 import { TransferFormDialog } from './TransferFormDialog';
 import { BankInstitutionCombobox, BankLogo } from './BankInstitutionCombobox';
+import { FinanceCategorias } from './FinanceCategorias';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
 import { format, parseISO } from 'date-fns';
@@ -598,6 +599,7 @@ export function FinanceBanks() {
   const [editing, setEditing] = useState<FinancialAccount | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<FinancialAccount | null>(null);
   const [recalcCard, setRecalcCard] = useState<FinancialAccount | null>(null);
   const recalculateBills = useRecalculateBills();
@@ -709,14 +711,24 @@ export function FinanceBanks() {
     <div className="space-y-5">
       {/* ── Seção 1: Caixas e Contas Bancárias ── */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Landmark className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Caixas e Contas Bancárias</h3>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {/* Botão "Categorias" — gestão deixou de ser aba em v1.9.22 e mora
+                aqui agora. Ícone Tags semântico, label curto pra caber junto
+                com Transferir/Nova Conta no mesmo header. No mobile,
+                "Categorias" some o label e fica só o ícone pra não estourar
+                a linha. */}
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setCategoriesOpen(true)}>
+              <Tags className="h-4 w-4" />
+              <span className="hidden sm:inline">Categorias</span>
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setTransferOpen(true)} disabled={cashBankAccounts.length < 2}>
-              <ArrowLeftRight className="h-4 w-4" /> Transferir
+              <ArrowLeftRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Transferir</span>
             </Button>
             <Button size="sm" className="gap-2" onClick={() => openNew('banco')}>
               <Plus className="h-4 w-4" /> Nova Conta
@@ -1242,6 +1254,19 @@ export function FinanceBanks() {
         onSubmit={async (d) => { await transfer.mutateAsync(d); }}
         isLoading={transfer.isPending}
       />
+
+      {/* Modal "Gerenciar Categorias" — desktop grande (sm:max-w-4xl) pra
+          caber o grid 2-col (receitas | despesas) do FinanceCategorias sem
+          espremer. No mobile, o ResponsiveModal vira Drawer e a lista vertical
+          do FinanceCategorias mobile (pills + FAB) já é otimizada pra isso. */}
+      <ResponsiveModal
+        open={categoriesOpen}
+        onOpenChange={setCategoriesOpen}
+        title="Categorias do Financeiro"
+        className="sm:max-w-4xl"
+      >
+        <FinanceCategorias />
+      </ResponsiveModal>
 
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
