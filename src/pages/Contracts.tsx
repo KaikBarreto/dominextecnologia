@@ -82,13 +82,13 @@ const HEALTH_CONFIG: Record<
 > = {
   em_dia: { label: 'Em dia', shortLabel: 'Em dia', variant: 'success' },
   manutencao_pendente: {
-    label: 'Manutenção pendente',
-    shortLabel: 'Pendente',
+    label: 'Manutenção Pendente',
+    shortLabel: 'Manutenção Pendente',
     variant: 'warning',
   },
   necessita_atencao: {
-    label: 'Necessita atenção',
-    shortLabel: 'Atenção',
+    label: 'ATENÇÃO',
+    shortLabel: 'ATENÇÃO',
     variant: 'destructive',
   },
 };
@@ -301,7 +301,7 @@ export default function Contracts() {
             <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="em_dia">Em dia</SelectItem>
             <SelectItem value="manutencao_pendente">Manutenção pendente</SelectItem>
-            <SelectItem value="necessita_atencao">Necessita atenção</SelectItem>
+            <SelectItem value="necessita_atencao">ATENÇÃO</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -547,7 +547,7 @@ export default function Contracts() {
                           className="self-start text-[10px] px-2 py-0.5 whitespace-nowrap"
                           title={healthTooltip}
                         >
-                          {healthCfg.shortLabel}
+                          {healthCfg.label}
                         </Badge>
                       </div>
                     }
@@ -600,6 +600,9 @@ export default function Contracts() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>
+                          Status
+                        </SortableTableHead>
                         <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>
                           Contrato
                         </SortableTableHead>
@@ -608,9 +611,6 @@ export default function Contracts() {
                         </SortableTableHead>
                         <SortableTableHead sortKey="frequency_type" sortConfig={sortConfig} onSort={handleSort}>
                           Frequência
-                        </SortableTableHead>
-                        <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>
-                          Status
                         </SortableTableHead>
                         <SortableTableHead sortKey="_health_rank" sortConfig={sortConfig} onSort={handleSort}>
                           Saúde
@@ -645,6 +645,9 @@ export default function Contracts() {
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => navigate(`/contratos/${contract.id}`)}
                           >
+                            <TableCell>
+                              <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+                            </TableCell>
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2 min-w-0">
                                 <ScrollText className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -666,9 +669,6 @@ export default function Contracts() {
                               <Badge variant="secondary">
                                 {getFrequencyLabel(contract.frequency_type, contract.frequency_value)}
                               </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                             </TableCell>
                             <TableCell>
                               <Tooltip>

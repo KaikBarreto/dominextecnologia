@@ -111,10 +111,10 @@ export function ContractsFilterButton({
                 <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="em_dia">Em dia</SelectItem>
                 <SelectItem value="manutencao_pendente">
-                  Manutenção pendente
+                  Manutenção Pendente
                 </SelectItem>
                 <SelectItem value="necessita_atencao">
-                  Necessita atenção
+                  ATENÇÃO
                 </SelectItem>
               </SelectContent>
             </Select>

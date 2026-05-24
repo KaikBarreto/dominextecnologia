@@ -68,7 +68,7 @@ const HEALTH_CONFIG: Record<PortalHealthStatus, {
 }> = {
   em_dia: { label: 'Em dia', tone: 'success', ringClass: 'ring-success/30' },
   manutencao_pendente: { label: 'Manutenção pendente', tone: 'warning', ringClass: 'ring-warning/30' },
-  necessita_atencao: { label: 'Necessita atenção', tone: 'destructive', ringClass: 'ring-destructive/30' },
+  necessita_atencao: { label: 'ATENÇÃO', tone: 'destructive', ringClass: 'ring-destructive/30' },
 };
 
 const OS_STATUS_CONFIG: Record<PortalOsStatus, { label: string; className: string }> = {

@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,10 @@ const variantClasses: Record<RowActionVariant, string> = {
     'focus:bg-destructive focus:text-white hover:bg-destructive hover:text-white data-[highlighted]:bg-destructive data-[highlighted]:text-white',
 };
 
+// Pequeno grace-period entre sair do trigger e o cursor chegar no content.
+// Sem isso o menu fecharia antes do usuário conseguir alcançar os items.
+const HOVER_CLOSE_DELAY_MS = 150;
+
 export function RowActionsMenu({
   actions,
   align = 'end',
@@ -43,10 +48,25 @@ export function RowActionsMenu({
   ariaLabel = 'Ações',
 }: RowActionsMenuProps) {
   const visible = actions.filter((a) => !a.hidden);
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   if (visible.length === 0) return null;
 
+  const cancelClose = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => setOpen(false), HOVER_CLOSE_DELAY_MS);
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -54,6 +74,8 @@ export function RowActionsMenu({
           className={cn('h-8 w-8 active:scale-95 transition-transform', triggerClassName)}
           aria-label={ariaLabel}
           onClick={(e) => e.stopPropagation()}
+          onMouseEnter={() => { cancelClose(); setOpen(true); }}
+          onMouseLeave={scheduleClose}
         >
           <MoreVertical className="h-4 w-4" />
         </Button>
@@ -62,6 +84,8 @@ export function RowActionsMenu({
         align={align}
         className="min-w-[180px]"
         onClick={(e) => e.stopPropagation()}
+        onMouseEnter={cancelClose}
+        onMouseLeave={scheduleClose}
       >
         {visible.map((action, i) => {
           const Icon = action.icon;
@@ -71,6 +95,7 @@ export function RowActionsMenu({
               onClick={(e) => {
                 e.stopPropagation();
                 action.onClick(e);
+                setOpen(false);
               }}
               disabled={action.disabled}
               className={cn(
