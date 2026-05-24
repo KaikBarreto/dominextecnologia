@@ -325,19 +325,12 @@ export function FinanceCategorias() {
     );
   }
 
-  // ─── DESKTOP LAYOUT (intacto) ──────────────────────────────────────────────
+  // ─── DESKTOP LAYOUT ────────────────────────────────────────────────────────
+  // Header próprio removido em v1.9.22 polish: hoje o componente só vive
+  // dentro de modal (FinanceBanks "Gerenciar Categorias"), que já tem seu
+  // próprio title — header interno era duplicado visualmente.
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 rounded-xl bg-muted p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
-          <SettingsIcon className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold">Configurações do Financeiro</h2>
-          <p className="text-sm text-muted-foreground">Gerencie categorias de receita e despesa do módulo financeiro</p>
-        </div>
-      </div>
-
       {isLoading ? (
         <div className="p-6 space-y-3">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
