@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.21',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Abas laterais do Financeiro e do Contrato PMOC padronizadas com o resto do sistema',
+        description: 'Antes, as abas laterais do módulo Financeiro e do detalhe do Contrato PMOC tinham um visual diferente do resto do sistema (borda fina à esquerda + fundo bem suave). Agora estão idênticas às demais telas que já usam barra lateral de abas (Configurações, Funcionários, Orçamentos, Ordens de Serviço, Serviços, Painel Auctus): item ativo com fundo primário sólido e texto branco. Mobile mantém o padrão de pílulas roláveis no topo. Mesma cara em todo o app — fica mais fácil bater o olho e saber onde está.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.20',
     date: '24 de maio de 2026',
     type: 'minor',

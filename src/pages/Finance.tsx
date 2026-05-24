@@ -24,7 +24,7 @@ import {
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { FinanceShellNav, type FinanceShellTab } from '@/components/financial/FinanceShellNav';
+import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
@@ -71,7 +71,7 @@ export default function Finance() {
 
   // Lista completa de abas + filtragem por módulo. Abas marcadas com
   // requiresAdvanced só aparecem se o tenant tem finance_advanced.
-  const TABS: Array<FinanceShellTab & { requiresAdvanced?: boolean }> = [
+  const TABS: Array<SettingsTab & { requiresAdvanced?: boolean }> = [
     { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
     { value: 'historico', label: 'Movimentações', icon: HistoryIcon },
     { value: 'contas', label: 'Contas a Pagar/Receber', icon: CalendarClock, requiresAdvanced: true },
@@ -267,14 +267,12 @@ export default function Finance() {
         icon={DollarSign}
       />
 
-      <div className={cn('flex gap-4', isMobile ? 'flex-col' : 'flex-row')}>
-        <FinanceShellNav
-          tabs={visibleTabs}
-          activeTab={activeTab}
-          onTabChange={handleNavigate}
-        />
-
-        <div className="flex-1 min-w-0 space-y-4">
+      <SettingsSidebarLayout
+        tabs={visibleTabs}
+        activeTab={activeTab}
+        onTabChange={handleNavigate}
+      >
+        <div className="space-y-4">
           <DateRangeFilter
             value={range}
             preset={preset}
@@ -325,7 +323,7 @@ export default function Finance() {
 
           {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
         </div>
-      </div>
+      </SettingsSidebarLayout>
 
       <TransactionFormDialog
         open={formOpen}
