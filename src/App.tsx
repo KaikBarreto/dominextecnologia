@@ -48,6 +48,7 @@ class ErrorBoundary extends React.Component<
 }
 
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
+import { SwipeBackProvider } from "@/components/SwipeBackProvider";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -381,7 +382,9 @@ const App = () => (
           <PageTitleUpdater />
           <AuthProvider>
             <UsageTracker />
-            <AppRoutes />
+            <SwipeBackProvider>
+              <AppRoutes />
+            </SwipeBackProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
