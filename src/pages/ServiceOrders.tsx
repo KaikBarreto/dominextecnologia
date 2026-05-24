@@ -79,11 +79,16 @@ export default function ServiceOrders() {
   const location = useLocation();
   const [pendingFocusSearch, setPendingFocusSearch] = useState(false);
 
-  // Captura intent ao chegar via /ordens-servico { state: { focusSearch: true } }
+  // Captura intent ao chegar via /ordens-servico { state: { focusSearch | initialStatus } }
   useEffect(() => {
-    const state = location.state as { focusSearch?: boolean } | null;
+    const state = location.state as { focusSearch?: boolean; initialStatus?: string } | null;
     if (state?.focusSearch) {
       setPendingFocusSearch(true);
+    }
+    if (state?.initialStatus) {
+      setStatusFilter([state.initialStatus]);
+    }
+    if (state?.focusSearch || state?.initialStatus) {
       window.history.replaceState({}, '');
     }
   }, [location.state]);

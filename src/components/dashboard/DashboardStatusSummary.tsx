@@ -39,7 +39,7 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
                 return (
                   <button
                     key={key}
-                    onClick={() => navigate('/os')}
+                    onClick={() => navigate('/ordens-servico', { state: { initialStatus: key } })}
                     className="w-full text-left group"
                   >
                     <div className="flex items-center justify-between mb-1">
