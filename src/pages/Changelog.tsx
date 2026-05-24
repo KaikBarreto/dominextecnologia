@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.20',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Criar contrato com OSs agora cria as OSs de verdade',
+        description: 'Antes, ao criar um contrato (PMOC ou comum) com várias ocorrências — por exemplo, 17 manutenções trimestrais em 48 meses — o sistema mostrava "17 ocorrências" no resumo do contrato, mas nenhuma OS aparecia na agenda, no portal PMOC ou em Contas a Receber. As OSs eram bloqueadas silenciosamente por uma regra de segurança interna porque faltava a referência da empresa no momento da criação. Agora cada OS é criada com a referência correta e aparece tudo certinho. Mesma correção aplicada ao botão "Gerar OSs agora" da aba Cronograma do contrato — se você tem contratos antigos sem as OSs criadas, basta abrir o contrato, ir na aba Cronograma e clicar nesse botão, que ele recupera tudo de uma vez.',
+        category: 'correcao',
+      },
+      {
+        title: 'Aba Cronograma do contrato com painel lateral no desktop',
+        description: 'Ao abrir um contrato e ir na aba Cronograma, agora o calendário fica à esquerda e um painel lateral à direita mostra as OSs do dia selecionado — com informações do cliente, equipamento, status, técnico responsável e botão pra ir direto preencher a OS. Mesma experiência da tela de Agenda principal. Clica num dia do calendário pra ver tudo daquele dia. No celular, clicar numa OS continua abrindo direto o detalhe.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cores semânticas no calendário do contrato',
+        description: 'As OSs no calendário da aba Cronograma agora aparecem coloridas pelo status: verde quando concluída, laranja quando pendente (no prazo) e vermelho quando atrasada (passou da data e ainda não foi feita). Texto branco em todos os casos pra ficar legível. Bate a olho qual OS precisa de atenção imediata.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.19',
     date: '24 de maio de 2026',
     type: 'minor',

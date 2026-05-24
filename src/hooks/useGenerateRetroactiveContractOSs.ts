@@ -34,10 +34,14 @@ export function useGenerateRetroactiveContractOSs() {
   return useMutation({
     mutationFn: async (contractId: string) => {
       // Carrega contrato + itens
+      // `company_id` é OBRIGATÓRIO no payload da OS (RLS em service_orders
+      // exige). Sem ele, o INSERT era rejeitado silenciosamente e o botão
+      // "Gerar OSs agora" parecia funcionar mas não criava nada. Fix v1.9.20.
       const { data: contract, error: contractErr } = await supabase
         .from('contracts')
         .select(`
           id,
+          company_id,
           name,
           customer_id,
           technician_id,
@@ -105,6 +109,9 @@ export function useGenerateRetroactiveContractOSs() {
 
         const osPayload = normalizeOptionalForeignKeys(
           {
+            // Ver comentário no .select acima — company_id é mandatório
+            // pra RLS de service_orders aceitar o INSERT.
+            company_id: c.company_id,
             customer_id: c.customer_id,
             equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
             technician_id: c.technician_id || null,

@@ -254,6 +254,12 @@ export function useContracts() {
 
           const osPayload = normalizeOptionalForeignKeys(
             {
+              // RLS de service_orders exige company_id no INSERT
+              // (WITH CHECK em get_user_company_id(auth.uid())). Sem isso,
+              // todas as OSs do contrato eram rejeitadas silenciosamente
+              // e o toast destrutivo do fim do loop era engolido pelo
+              // toast de sucesso. Fix de produção v1.9.20.
+              company_id: profile.company_id,
               customer_id: input.customer_id,
               equipment_id: equipmentIds.length === 1 ? equipmentIds[0] : null,
               technician_id: input.technician_id || null,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   addMonths,
   subMonths,
@@ -62,13 +62,59 @@ export interface PmocCronogramaCalendarProps {
    * normalmente trata click no card como "selecionar"; aqui apenas repassamos.
    */
   onOSClick?: (os: CalendarOrder) => void;
+  /**
+   * Click em UM DIA do calendário (vazio ou cheio). Usado pra drill-in lateral:
+   * o pai recebe a data e pode renderizar painel com as OSs do dia. Diferente
+   * de `onOSClick`, que dispara só ao clicar numa OS específica.
+   */
+  onDayClick?: (date: Date) => void;
+  /**
+   * Data selecionada (controlada externamente). Quando preenchida, o calendário
+   * navega pra essa data como "current". Mantém `initialDate` para casos não
+   * controlados.
+   */
+  selectedDate?: Date;
   initialDate?: Date;
   /**
    * Permite esconder os controles de navegação (prev/today/next + tabs).
    * Útil quando o pai já tem header próprio.
    */
   showControls?: boolean;
+  /**
+   * Quando true, sobrescreve a cor de cada OS no calendário pelo status
+   * PMOC: verde (concluída), laranja (pendente futura), vermelho (atrasada).
+   * Texto branco em todos os casos. Usa tokens semânticos via `hsl(var(--…))`
+   * pra respeitar white-label e modo claro/escuro.
+   *
+   * Implementação: injeta `service_type.color` derivado do status em cada
+   * OS antes de passar pro calendário interno — o `EventCard` já aplica
+   * a cor custom como background e texto branco quando vê `service_type.color`.
+   */
+  pmocStatusColors?: boolean;
   className?: string;
+}
+
+/**
+ * Mapeia status da OS pra cor semântica PMOC. Usado quando `pmocStatusColors`
+ * está ligado. Retorna o valor CSS que vai direto no `style.backgroundColor`.
+ */
+function getPmocStatusColor(
+  order: CalendarOrder,
+  todayKey: string,
+): string {
+  if (order.status === 'concluida') {
+    return 'hsl(var(--success))';
+  }
+  const isLate =
+    order.status !== 'cancelada' &&
+    !!order.scheduled_date &&
+    order.scheduled_date < todayKey;
+  if (isLate) {
+    return 'hsl(var(--destructive))';
+  }
+  // Tudo o mais (agendada/pendente/em_andamento/a_caminho/pausada/cancelada
+  // futura): laranja "pendente".
+  return 'hsl(var(--warning))';
 }
 
 // Noop seguro: o calendar interno espera handlers; em readOnly não fazemos nada.
@@ -80,14 +126,48 @@ export function PmocCronogramaCalendar({
   view: viewProp,
   readOnly = false,
   onOSClick,
+  onDayClick,
+  selectedDate,
   initialDate,
   showControls = true,
+  pmocStatusColors = false,
   className,
 }: PmocCronogramaCalendarProps) {
   const isMobile = useIsMobile();
   const [internalView, setInternalView] = useState<PmocCronogramaView>(viewProp ?? 'month');
   const view = viewProp ?? internalView;
-  const [currentDate, setCurrentDate] = useState<Date>(initialDate ?? new Date());
+  // Quando o pai controla `selectedDate`, ele vira a fonte da verdade — assim
+  // o calendário acompanha cliques no painel lateral. Internalmente ainda
+  // mantemos `currentDate` pra navegação prev/next/today.
+  const [currentDate, setCurrentDate] = useState<Date>(selectedDate ?? initialDate ?? new Date());
+
+  // Sincroniza `currentDate` quando o pai muda `selectedDate` (controlled).
+  // Usamos `getTime()` no dep array pra comparar por valor — instâncias Date
+  // diferentes com o mesmo timestamp não causam re-render desnecessário.
+  useEffect(() => {
+    if (selectedDate) setCurrentDate(selectedDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate?.getTime()]);
+
+  // Pré-processa as OSs quando `pmocStatusColors` está ligado: injeta uma
+  // `service_type.color` sintética baseada em status. Isso aciona o caminho
+  // de cor custom do EventCard (background colorido + texto branco) sem
+  // mexer no componente compartilhado da Agenda.
+  const decoratedOrders = useMemo<CalendarOrder[]>(() => {
+    if (!pmocStatusColors) return serviceOrders;
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const todayKey = `${y}-${m}-${d}`;
+    return serviceOrders.map((order) => ({
+      ...order,
+      service_type: {
+        ...((order as any).service_type ?? {}),
+        color: getPmocStatusColor(order, todayKey),
+      },
+    } as CalendarOrder));
+  }, [serviceOrders, pmocStatusColors]);
 
   const handlePrev = () => {
     if (view === 'month') setCurrentDate((d) => subMonths(d, 1));
@@ -118,13 +198,20 @@ export function PmocCronogramaCalendar({
   const handleDateDoubleClick: ((date: Date) => void) | undefined = undefined;
   const handleDrop = noopDrop;
 
+  // Click num dia do mês: notifica o pai (drill-in lateral) E atualiza o
+  // "current" interno pra manter o feedback visual de seleção.
+  const handleDateSelect = (d: Date) => {
+    setCurrentDate(d);
+    if (onDayClick) onDayClick(d);
+  };
+
   const renderedCalendar = useMemo(() => {
     if (view === 'month') {
       return (
         <MonthlyCalendar
           currentDate={currentDate}
-          serviceOrders={serviceOrders}
-          onDateSelect={(d) => setCurrentDate(d)}
+          serviceOrders={decoratedOrders}
+          onDateSelect={handleDateSelect}
           onDateDoubleClick={handleDateDoubleClick}
           onOrderSelect={handleOrderSelect}
           onDrop={handleDrop}
@@ -135,7 +222,7 @@ export function PmocCronogramaCalendar({
       return (
         <WeeklyCalendar
           currentDate={currentDate}
-          orders={serviceOrders}
+          orders={decoratedOrders}
           onOrderSelect={handleOrderSelect}
           onSlotClick={handleSlotClick}
           onDrop={handleDrop}
@@ -145,14 +232,14 @@ export function PmocCronogramaCalendar({
     return (
       <DailyCalendar
         currentDate={currentDate}
-        orders={serviceOrders}
+        orders={decoratedOrders}
         onOrderSelect={handleOrderSelect}
         onSlotClick={handleSlotClick}
         onDrop={handleDrop}
       />
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, currentDate, serviceOrders, readOnly]);
+  }, [view, currentDate, decoratedOrders, readOnly]);
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
