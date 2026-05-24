@@ -23,10 +23,6 @@ import {
   Boxes,
   ScrollText,
   Clock,
-  History,
-  CalendarClock,
-  Landmark,
-  FileBarChart,
   LogOut,
   Sun,
   Moon,
@@ -98,19 +94,7 @@ const tenantMenuItems: MenuItem[] = [
     ],
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
-  {
-    title: 'Financeiro',
-    icon: DollarSign,
-    screenKey: 'screen:finance',
-    children: [
-      { title: 'Visão Geral', icon: LayoutDashboard, path: '/financeiro', screenKey: 'screen:finance' },
-      { title: 'Movimentações', icon: History, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
-      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
-      { title: 'Contas e Cartões', icon: Landmark, path: '/financeiro/caixas-bancos', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
-      { title: 'DRE - Resultado', icon: FileBarChart, path: '/financeiro/dre', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
-      { title: 'Configurações', icon: SettingsIcon, path: '/financeiro/configuracoes', screenKey: 'screen:finance' },
-    ],
-  },
+  { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [

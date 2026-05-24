@@ -12,10 +12,20 @@ import { FinanceContas } from '@/components/financial/FinanceContas';
 import { FinanceBanks } from '@/components/financial/FinanceBanks';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { isTransactionInDateRange } from '@/lib/finance-date';
-import { DollarSign } from 'lucide-react';
+import {
+  DollarSign,
+  LayoutDashboard,
+  History as HistoryIcon,
+  CalendarClock,
+  Landmark,
+  FileBarChart,
+  Settings as SettingsIcon,
+} from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { FinanceShellNav, type FinanceShellTab } from '@/components/financial/FinanceShellNav';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
 const ROUTE_TAB_MAP: Record<string, string> = {
@@ -57,6 +67,27 @@ export default function Finance() {
   const [defaultType, setDefaultType] = useState<TransactionType>('entrada');
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
   const { toast } = useToast();
+  const { hasModule } = useCompanyModules();
+
+  // Lista completa de abas + filtragem por módulo. Abas marcadas com
+  // requiresAdvanced só aparecem se o tenant tem finance_advanced.
+  const TABS: Array<FinanceShellTab & { requiresAdvanced?: boolean }> = [
+    { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
+    { value: 'historico', label: 'Movimentações', icon: HistoryIcon },
+    { value: 'contas', label: 'Contas a Pagar/Receber', icon: CalendarClock, requiresAdvanced: true },
+    { value: 'bancos', label: 'Contas e Cartões', icon: Landmark, requiresAdvanced: true },
+    { value: 'dre', label: 'DRE - Resultado', icon: FileBarChart, requiresAdvanced: true },
+    { value: 'configuracoes', label: 'Configurações', icon: SettingsIcon },
+  ];
+
+  const visibleTabs = TABS.filter(t => !t.requiresAdvanced || hasModule('finance_advanced'));
+
+  // Se o usuário acessou uma rota que ele não tem permissão (deep-link expirado,
+  // downgrade de plano), redireciona pra Visão Geral sem aviso ruidoso.
+  useEffect(() => {
+    const isVisible = visibleTabs.some(t => t.value === activeTab);
+    if (!isVisible) navigate('/financeiro', { replace: true });
+  }, [activeTab, visibleTabs, navigate]);
 
   const {
     transactions, isLoading,
@@ -224,17 +255,6 @@ export default function Finance() {
     setFormOpen(true);
   };
 
-  const PAGE_META: Record<string, { title: string; description: string }> = {
-    'visao-geral': { title: 'Visão Geral', description: 'Resumo financeiro da sua empresa' },
-    'historico': { title: 'Movimentações', description: 'Histórico completo de receitas e despesas' },
-    'contas': { title: 'Contas a Pagar / Receber', description: 'Gerencie vencimentos e cobranças' },
-    'bancos': { title: 'Contas e Cartões', description: 'Gerencie caixas, contas bancárias e cartões de crédito' },
-    'configuracoes': { title: 'Configurações do Financeiro', description: 'Categorias, regras e personalização' },
-    'dre': { title: 'DRE — Demonstrativo de Resultado', description: 'Análise de resultado do exercício' },
-  };
-
-  const meta = PAGE_META[activeTab] || PAGE_META['visao-geral'];
-
   // No mobile, tabs que tem FAB (movimentações, contas) precisam de padding extra
   // pra última linha não ficar coberta pelo botão.
   const tabHasFab = activeTab === 'historico' || activeTab === 'contas' || activeTab === 'bancos';
@@ -242,61 +262,69 @@ export default function Finance() {
   return (
     <div className={cn('space-y-4 sm:space-y-6', isMobile && tabHasFab && 'pb-24')}>
       <MobilePageHeader
-        title={meta.title}
-        subtitle={meta.description}
+        title="Financeiro"
+        subtitle="Gerencie suas finanças"
         icon={DollarSign}
       />
 
-      <DateRangeFilter
-        value={range}
-        preset={preset}
-        onPresetChange={setPreset}
-        onRangeChange={setRange}
-      />
+      <div className={cn('flex gap-4', isMobile ? 'flex-col' : 'flex-row')}>
+        <FinanceShellNav
+          tabs={visibleTabs}
+          activeTab={activeTab}
+          onTabChange={handleNavigate}
+        />
 
-      <div className="flex-1 min-w-0">
-        {activeTab === 'visao-geral' && (
-          <FinanceOverview
-            transactions={filteredTransactions}
-            summary={summary}
-            onNavigate={handleNavigate}
-            onNewReceita={() => handleNew('entrada')}
-            onNewDespesa={() => handleNew('saida')}
+        <div className="flex-1 min-w-0 space-y-4">
+          <DateRangeFilter
+            value={range}
+            preset={preset}
+            onPresetChange={setPreset}
+            onRangeChange={setRange}
           />
-        )}
 
-        {activeTab === 'historico' && (
-          <TransactionListPanel
-            title="Movimentações"
-            type="all"
-            transactions={filteredTransactions}
-            isLoading={isLoading}
-            onNew={() => handleNew('entrada')}
-            onEdit={handleEdit}
-            onDelete={(id) => deleteTransaction.mutateAsync(id)}
-            onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
-            initialAccountFilter={accountFilterParam}
-            onClearAccountFilter={clearAccountFilterParam}
-          />
-        )}
+          {activeTab === 'visao-geral' && (
+            <FinanceOverview
+              transactions={filteredTransactions}
+              summary={summary}
+              onNavigate={handleNavigate}
+              onNewReceita={() => handleNew('entrada')}
+              onNewDespesa={() => handleNew('saida')}
+            />
+          )}
 
-        {activeTab === 'contas' && (
-          <FinanceContas
-            transactions={contasTransactions}
-            isLoading={isLoading}
-            onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
-          />
-        )}
+          {activeTab === 'historico' && (
+            <TransactionListPanel
+              title="Movimentações"
+              type="all"
+              transactions={filteredTransactions}
+              isLoading={isLoading}
+              onNew={() => handleNew('entrada')}
+              onEdit={handleEdit}
+              onDelete={(id) => deleteTransaction.mutateAsync(id)}
+              onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
+              initialAccountFilter={accountFilterParam}
+              onClearAccountFilter={clearAccountFilterParam}
+            />
+          )}
 
-        {activeTab === 'bancos' && <FinanceBanks />}
+          {activeTab === 'contas' && (
+            <FinanceContas
+              transactions={contasTransactions}
+              isLoading={isLoading}
+              onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
+            />
+          )}
 
-        {activeTab === 'configuracoes' && (
-          <div className="space-y-6">
-            <FinanceCategorias />
-          </div>
-        )}
+          {activeTab === 'bancos' && <FinanceBanks />}
 
-        {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
+          {activeTab === 'configuracoes' && (
+            <div className="space-y-6">
+              <FinanceCategorias />
+            </div>
+          )}
+
+          {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
+        </div>
       </div>
 
       <TransactionFormDialog

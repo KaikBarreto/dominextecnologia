@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.19',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Módulo Financeiro reunido numa única tela com abas',
+        description: 'Antes, o Financeiro abria como 6 telas separadas no menu lateral (Visão Geral, Movimentações, Contas a Pagar/Receber, Contas e Cartões, DRE, Configurações), cada uma com suas próprias sub-abas e filtros — dava sensação de tudo espalhado. Agora vira UMA tela "Financeiro" com 6 abas. No computador, as abas ficam numa barra lateral à esquerda (igual ao detalhe do contrato PMOC). No celular, viram pílulas roláveis fixas no topo. Toda a lógica de cada tela continua exatamente igual — você não perde nenhum filtro nem funcionalidade.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Menu lateral, menu superior e drawer mobile mais limpos',
+        description: 'O grupo "Financeiro" no menu lateral (e nos menus do topo e do drawer mobile) deixou de ser um grupo expansível com 6 sub-itens. Agora é só 1 item "Financeiro" que leva direto pra tela unificada. A navegação entre as áreas (Visão Geral, Movimentações, Contas, Cartões, DRE, Configurações) acontece dentro da própria tela, pelas abas. Menu lateral fica visualmente menos pesado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.18',
     date: '24 de maio de 2026',
     type: 'minor',
