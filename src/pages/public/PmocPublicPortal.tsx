@@ -88,6 +88,35 @@ const TABS: SettingsTab[] = [
   { value: 'historico', label: 'Histórico', icon: Wrench },
 ];
 
+/**
+ * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
+ * Usado pra tingir Tailwind classes (`bg-primary`, `text-primary-foreground`) do
+ * sidebar/pills do portal com a cor do banner do tenant white-label.
+ */
+function hexToHsl(hex: string | null | undefined): string | null {
+  if (!hex) return null;
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const m = full.match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return null;
+  const r = parseInt(m[1], 16) / 255;
+  const g = parseInt(m[2], 16) / 255;
+  const b = parseInt(m[3], 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let H = 0, S = 0;
+  if (max !== min) {
+    const d = max - min;
+    S = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) H = ((g - b) / d + (g < b ? 6 : 0));
+    else if (max === g) H = ((b - r) / d + 2);
+    else H = ((r - g) / d + 4);
+    H /= 6;
+  }
+  return `${Math.round(H * 360)} ${Math.round(S * 100)}% ${Math.round(l * 100)}%`;
+}
+
 function parseLocal(date: string | null): Date | null {
   if (!date) return null;
   try {
@@ -250,6 +279,21 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     };
   }, [tenant.report_header, tenant.white_label_enabled]);
 
+  // Tinge `--primary` no escopo do portal com a cor do banner do tenant white-label.
+  // Resultado: itens ativos do sidebar/pills, botões "primary" e demais elementos
+  // que usam bg-primary/text-primary herdam a identidade visual do tenant.
+  // Quando não-whitelabel, retorna undefined (mantém tema padrão Dominex).
+  const themeOverride = useMemo<React.CSSProperties | undefined>(() => {
+    if (!tenant.white_label_enabled) return undefined;
+    const hsl = hexToHsl(headerConfig.bgColor);
+    if (!hsl) return undefined;
+    return {
+      // CSS variables exigem `as any` no React.CSSProperties.
+      ['--primary' as any]: hsl,
+      ['--primary-foreground' as any]: '0 0% 100%',
+    };
+  }, [tenant.white_label_enabled, headerConfig.bgColor]);
+
   // Resolve o logo a usar (igual ao ReportHeader: se logoType='icon' usa icon_url
   // do white-label, fallback pro logo_url do tenant).
   const resolvedLogo = useMemo(() => {
@@ -314,7 +358,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const tenantAddress = tenant.address ?? null;
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground">
+    <div className="min-h-[100dvh] bg-background text-foreground" style={themeOverride}>
       {/* Sticky bar mobile com blur — aparece quando o hero sai do viewport.
           Mantém o nome da unidade visível como navigation bar de app nativo. */}
       <div
