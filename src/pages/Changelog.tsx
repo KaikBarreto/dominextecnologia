@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.23',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Cards no topo da tela Ordens de Serviço repensados',
+        description: 'Antes apareciam 7 cards de status (Agendada, Pendente, A Caminho, Em Andamento, Pausada, Concluída, Cancelada) lado a lado — visualmente bagunçado e pouco acionável. Agora são 4 cards grandes no mesmo estilo dos do Dashboard (cor sólida, valor em destaque, halo decorativo): OS Abertas (laranja — tudo que não está concluído nem cancelado), Concluídas (verde — feitas no período), Atrasadas (vermelho — passou da data e ainda não foi feita) e Próximos 7 dias (azul — agendadas pros próximos dias). Os 4 cards respeitam o filtro de período. No mobile, carrossel horizontal com snap; no desktop, grade de 4 colunas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Filtro por status migrado pro botão Filtros',
+        description: 'Os 7 status (Agendada, Pendente, A Caminho, Em Andamento, Pausada, Concluída, Cancelada) deixaram de ser cards clicáveis no topo da tela e ficam agora dentro do botão Filtros (onde já estavam disponíveis também). Você seleciona quais status quer ver pelos checkboxes do painel de filtros — comportamento idêntico ao que já existia, só consolidou num lugar só.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.22',
     date: '24 de maio de 2026',
     type: 'minor',
