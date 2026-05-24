@@ -37,9 +37,11 @@ const variantClasses: Record<RowActionVariant, string> = {
     'focus:bg-destructive focus:text-white hover:bg-destructive hover:text-white data-[highlighted]:bg-destructive data-[highlighted]:text-white',
 };
 
-// Pequeno grace-period entre sair do trigger e o cursor chegar no content.
-// Sem isso o menu fecharia antes do usuário conseguir alcançar os items.
-const HOVER_CLOSE_DELAY_MS = 150;
+// Delay pra abrir filtra cursor de passagem (evita piscar quando o mouse só
+// "atravessa" o trigger indo pra outro elemento). Delay pra fechar dá grace
+// pro usuário atravessar do trigger ao content sem o menu sumir.
+const HOVER_OPEN_DELAY_MS = 80;
+const HOVER_CLOSE_DELAY_MS = 200;
 
 export function RowActionsMenu({
   actions,
@@ -49,19 +51,26 @@ export function RowActionsMenu({
 }: RowActionsMenuProps) {
   const visible = actions.filter((a) => !a.hidden);
   const [open, setOpen] = useState(false);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (visible.length === 0) return null;
 
-  const cancelClose = () => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
+  const cancelTimers = () => {
+    if (openTimerRef.current) { clearTimeout(openTimerRef.current); openTimerRef.current = null; }
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+  };
+
+  // Só agenda abrir se ainda não está aberto — re-renders do Radix (que dispara
+  // data-state="open" e pode re-disparar onPointerEnter) viram no-op.
+  const scheduleOpen = () => {
+    cancelTimers();
+    if (open) return;
+    openTimerRef.current = setTimeout(() => setOpen(true), HOVER_OPEN_DELAY_MS);
   };
 
   const scheduleClose = () => {
-    cancelClose();
+    cancelTimers();
     closeTimerRef.current = setTimeout(() => setOpen(false), HOVER_CLOSE_DELAY_MS);
   };
 
@@ -74,8 +83,8 @@ export function RowActionsMenu({
           className={cn('h-8 w-8 active:scale-95 transition-transform', triggerClassName)}
           aria-label={ariaLabel}
           onClick={(e) => e.stopPropagation()}
-          onMouseEnter={() => { cancelClose(); setOpen(true); }}
-          onMouseLeave={scheduleClose}
+          onPointerEnter={(e) => { if (e.pointerType === 'mouse') scheduleOpen(); }}
+          onPointerLeave={(e) => { if (e.pointerType === 'mouse') scheduleClose(); }}
         >
           <MoreVertical className="h-4 w-4" />
         </Button>
@@ -84,8 +93,8 @@ export function RowActionsMenu({
         align={align}
         className="min-w-[180px]"
         onClick={(e) => e.stopPropagation()}
-        onMouseEnter={cancelClose}
-        onMouseLeave={scheduleClose}
+        onPointerEnter={cancelTimers}
+        onPointerLeave={(e) => { if (e.pointerType === 'mouse') scheduleClose(); }}
       >
         {visible.map((action, i) => {
           const Icon = action.icon;
