@@ -23,10 +23,10 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-      <Card>
+      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
               <AlertTriangle className="h-5 w-5 text-muted-foreground" />
               Requer Atenção
             </CardTitle>
@@ -67,7 +67,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                 {items.length > 5 && (
                   <button
                     onClick={() => navigate('/ordens-servico')}
-                    className="w-full text-center text-xs text-primary font-medium py-2.5 border-t hover:bg-muted/40 flex items-center justify-center gap-1"
+                    className="w-full text-center text-xs text-primary font-medium min-h-11 py-2.5 border-t hover:bg-muted/40 active:bg-muted/60 flex items-center justify-center gap-1"
                   >
                     Ver todas as OS críticas <ArrowRight className="h-3 w-3" />
                   </button>
@@ -79,7 +79,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                   <div
                     key={os.id}
                     onClick={() => navigate('/ordens-servico')}
-                    className="rounded-lg border border-border p-3 space-y-1.5 cursor-pointer hover:border-primary/30 transition-colors"
+                    className="rounded-lg border border-border p-3 space-y-1.5 cursor-pointer hover:border-primary/30 active:scale-[0.98] transition-all"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-sm font-semibold text-foreground">
@@ -111,7 +111,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                 {items.length > 5 && (
                   <button
                     onClick={() => navigate('/ordens-servico')}
-                    className="w-full text-center text-xs text-primary font-medium py-2 hover:underline flex items-center justify-center gap-1"
+                    className="w-full text-center text-xs text-primary font-medium min-h-11 py-2 hover:underline flex items-center justify-center gap-1"
                   >
                     Ver todas as OS <ArrowRight className="h-3 w-3" />
                   </button>

@@ -220,7 +220,7 @@ function SubDocCard({
   topRightSlot?: ReactNode;
 }) {
   return (
-    <div className="flex h-full flex-col gap-2 rounded-lg border bg-muted/20 p-3 active:scale-[0.998] transition-transform">
+    <div className="flex h-full flex-col gap-2 rounded-xl border bg-muted/20 p-3 transition-transform">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="break-words text-sm font-semibold">{title}</p>
@@ -253,7 +253,7 @@ function SubDocCard({
           <Button
             variant="edit-ghost"
             size="sm"
-            className="min-h-[40px] active:scale-[0.97] transition-transform"
+            className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
             onClick={onEdit}
           >
             <Pencil className="mr-1 h-3.5 w-3.5" />
@@ -389,7 +389,7 @@ export function PmocContractDocsTab({
           sub-card do Dossiê — assim o gestor edita o TRT num lugar SÓ. Mesmo
           conteúdo é usado pelo TRT standalone (botão "Baixar TRT individual"
           dentro do sub-card) e pelo Dossiê completo. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
@@ -469,7 +469,7 @@ export function PmocContractDocsTab({
                     variant="outline"
                     onClick={handleGenerateTrt}
                     disabled={generateTrt.isPending}
-                    className="min-h-[40px] active:scale-[0.97] transition-transform"
+                    className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
                   >
                     {generateTrt.isPending ? (
                       <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -502,7 +502,7 @@ export function PmocContractDocsTab({
                 size="sm"
                 onClick={handleGenerateDossie}
                 disabled={generateDossie.isPending}
-                className="min-h-[44px] active:scale-[0.97] transition-transform"
+                className="min-h-11 active:scale-[0.97] transition-transform rounded-xl"
               >
                 {generateDossie.isPending ? (
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -517,7 +517,7 @@ export function PmocContractDocsTab({
       </Card>
 
       {/* Card 2 — Cronograma Anual */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
             <CalendarRange className="h-5 w-5 shrink-0" />
@@ -542,7 +542,7 @@ export function PmocContractDocsTab({
               size="sm"
               onClick={handleGenerateCronograma}
               disabled={generateCronograma.isPending}
-              className="min-h-[44px] active:scale-[0.97] transition-transform"
+              className="min-h-11 active:scale-[0.97] transition-transform rounded-xl"
             >
               {generateCronograma.isPending ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -641,7 +641,7 @@ function DownloadLatestButton({
       size="sm"
       onClick={handleClick}
       disabled={busy}
-      className="min-h-[40px]"
+      className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
     >
       {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
       {label}
@@ -660,7 +660,7 @@ function VersionHistory({
 
   if (isLoading) {
     return (
-      <Card className="w-full">
+      <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardContent className="py-4 text-center text-xs text-muted-foreground">
           Carregando histórico…
         </CardContent>
@@ -670,7 +670,7 @@ function VersionHistory({
 
   if (documents.length === 0) {
     return (
-      <Card className="w-full">
+      <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardContent className="py-4 text-center text-xs text-muted-foreground">
           Nenhuma versão gerada ainda.
         </CardContent>
@@ -688,14 +688,14 @@ function VersionHistory({
   );
 
   return (
-    <Card className="w-full">
+    <Card className="w-full rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
           <button
             type="button"
             className={cn(
-              'flex w-full items-center justify-between gap-2 px-4 py-3 text-left',
-              'text-sm font-semibold',
+              'flex w-full items-center justify-between gap-2 px-4 py-3 text-left min-h-11',
+              'text-sm font-semibold active:scale-[0.995] transition-transform',
             )}
           >
             <span>Histórico de versões ({documents.length})</span>
@@ -728,7 +728,7 @@ function TypeBlock({ title, docs }: { title: string; docs: PmocDocument[] }) {
         {docs.map(d => (
           <li
             key={d.id}
-            className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2"
+            className="flex items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium">

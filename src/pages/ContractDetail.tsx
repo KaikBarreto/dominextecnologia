@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { QRCodeSVG } from 'qrcode.react';
@@ -196,8 +196,27 @@ export default function ContractDetail() {
     }
   };
 
-  const sortedOccurrences = useMemo(() => 
-    (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number), 
+  // Sticky bar mobile: aparece quando o header da tela sai do viewport.
+  // Sensação de navigation bar nativa iOS (mantém contexto ao rolar).
+  const headerSentinelRef = useRef<HTMLDivElement | null>(null);
+  const [headerOffscreen, setHeaderOffscreen] = useState(false);
+  useEffect(() => {
+    if (!isMobile) {
+      setHeaderOffscreen(false);
+      return;
+    }
+    const sentinel = headerSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setHeaderOffscreen(!entry.isIntersecting),
+      { rootMargin: '0px', threshold: 0 },
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [isMobile]);
+
+  const sortedOccurrences = useMemo(() =>
+    (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number),
     [contract]
   );
   const { sortedItems: sortedOcc, sortConfig: occSortConfig, handleSort: handleOccSort } = useTableSort(sortedOccurrences);
@@ -350,13 +369,20 @@ export default function ContractDetail() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
+        {/* Esqueleto no formato dos cards finais — header + 2 cards principais + side. */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-xl" />
+          <div className="flex-1 space-y-1.5 min-w-0">
+            <Skeleton className="h-5 w-2/3 max-w-[260px]" />
+            <Skeleton className="h-3 w-1/3 max-w-[180px]" />
+          </div>
+        </div>
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-4">
-            <Skeleton className="h-48" />
-            <Skeleton className="h-64" />
+            <Skeleton className="h-48 rounded-2xl lg:rounded-lg" />
+            <Skeleton className="h-64 rounded-2xl lg:rounded-lg" />
           </div>
-          <Skeleton className="h-64" />
+          <Skeleton className="h-64 rounded-2xl lg:rounded-lg" />
         </div>
       </div>
     );
@@ -364,9 +390,19 @@ export default function ContractDetail() {
 
   if (!contract) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground">Contrato não encontrado</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate('/contratos')}>
+      <div
+        className="flex flex-col items-center justify-center px-6 text-center min-h-[60vh] lg:min-h-[40vh]"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-4">
+          <ScrollText className="h-8 w-8" aria-hidden="true" />
+        </div>
+        <p className="text-muted-foreground mb-4">Contrato não encontrado</p>
+        <Button
+          variant="outline"
+          className="min-h-11 active:scale-95 transition-transform rounded-xl"
+          onClick={() => navigate('/contratos')}
+        >
           <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
       </div>
@@ -431,13 +467,48 @@ export default function ContractDetail() {
 
   return (
     <div className="space-y-6 overflow-hidden max-w-full w-full">
+      {/* Sticky bar mobile-only com nome + status. Aparece quando o header da
+          tela (sentinel logo abaixo) sai do viewport. Posicionada `top-16` pra
+          ficar logo abaixo do header global do AppLayout (h-16). Visual de
+          navigation bar nativa iOS com backdrop blur. */}
+      <div
+        aria-hidden={!headerOffscreen}
+        className={cn(
+          'fixed inset-x-0 top-16 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md lg:hidden',
+          'transition-all duration-200 ease-out',
+          headerOffscreen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0',
+        )}
+      >
+        <div className="flex items-center gap-2 px-4 py-2 min-w-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 min-h-11 min-w-11 active:scale-95 transition-transform rounded-xl"
+            onClick={() => navigate('/contratos')}
+            aria-label="Voltar"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">
+            {contract.name}
+          </p>
+          <Badge variant={statusCfg.variant} className="shrink-0">{statusCfg.label}</Badge>
+        </div>
+      </div>
+
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-9 sm:w-9" onClick={() => navigate('/contratos')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 min-h-11 min-w-11 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9 active:scale-95 transition-transform rounded-xl"
+          onClick={() => navigate('/contratos')}
+          aria-label="Voltar"
+        >
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg sm:text-2xl font-bold truncate">{contract.name}</h1>
+            <h1 className="text-lg sm:text-2xl font-bold truncate leading-tight">{contract.name}</h1>
             <Badge variant={statusCfg.variant} className="shrink-0">{statusCfg.label}</Badge>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm truncate">{contract.customers?.name || 'Cliente'}</p>
@@ -451,6 +522,11 @@ export default function ContractDetail() {
           />
         </div>
       </div>
+
+      {/* Sentinel pro IntersectionObserver da sticky bar mobile. Quando esse
+          div sai do viewport, a mini bar acima aparece. Altura zero (não
+          impacta layout). */}
+      <div ref={headerSentinelRef} aria-hidden="true" className="h-px -mt-3 lg:hidden" />
 
       {/*
         Navegação PMOC: usa o componente canônico SettingsSidebarLayout
@@ -471,7 +547,7 @@ export default function ContractDetail() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6 min-w-0 w-full">
           {/* Info card */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader>
               <CardTitle className="flex min-w-0 items-center gap-2 break-words">
                 <ScrollText className="h-5 w-5 shrink-0" />
@@ -507,7 +583,7 @@ export default function ContractDetail() {
           </Card>
 
           {/* Equipment */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader>
               <CardTitle className="min-w-0 text-base sm:text-lg break-words">Equipamentos do Contrato ({items.length})</CardTitle>
             </CardHeader>
@@ -517,7 +593,7 @@ export default function ContractDetail() {
               ) : (
                 <div className="space-y-2 min-w-0">
                   {items.slice((eqPage - 1) * 5, eqPage * 5).map(item => (
-                    <div key={item.id} className="flex min-w-0 flex-col items-start gap-3 rounded-md border p-3 sm:flex-row sm:items-center">
+                    <div key={item.id} className="flex min-w-0 flex-col items-start gap-3 rounded-xl border p-3 sm:flex-row sm:items-center">
                       <div className="min-w-0 flex-1">
                         <p className="break-words text-sm font-medium">{item.item_name}</p>
                         {item.item_description && <p className="break-words text-xs text-muted-foreground">{item.item_description}</p>}
@@ -533,8 +609,8 @@ export default function ContractDetail() {
                         {(eqPage - 1) * 5 + 1}-{Math.min(eqPage * 5, items.length)} de {items.length}
                       </span>
                       <div className="flex w-full gap-2 sm:w-auto">
-                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => setEqPage(p => p - 1)} disabled={eqPage <= 1}>Anterior</Button>
-                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => setEqPage(p => p + 1)} disabled={eqPage >= Math.ceil(items.length / 5)}>Próxima</Button>
+                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setEqPage(p => p - 1)} disabled={eqPage <= 1}>Anterior</Button>
+                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setEqPage(p => p + 1)} disabled={eqPage >= Math.ceil(items.length / 5)}>Próxima</Button>
                       </div>
                     </div>
                   )}
@@ -544,7 +620,7 @@ export default function ContractDetail() {
           </Card>
 
           {/* Receivables */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
               <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
                 <DollarSign className="h-5 w-5 shrink-0" />
@@ -562,7 +638,7 @@ export default function ContractDetail() {
                     Agenda
                   </Label>
                 </div>
-                <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => {
+                <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => {
                   setRecDescription(`Mensalidade - ${contract.name}`);
                   setShowReceivableModal(true);
                 }}>
@@ -576,7 +652,7 @@ export default function ContractDetail() {
               ) : (
                 <div className="space-y-2 min-w-0">
                   {recPagination.paginatedItems.map(t => (
-                    <div key={t.id} className="space-y-2 rounded-md border p-3 text-sm min-w-0">
+                    <div key={t.id} className="space-y-2 rounded-xl border p-3 text-sm min-w-0">
                       <div className="flex min-w-0 items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{t.description}</p>
@@ -590,15 +666,15 @@ export default function ContractDetail() {
                         <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
                         <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
                           {!t.is_paid && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-success" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
-                              <Check className="h-3.5 w-3.5" />
+                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-success active:scale-90 transition-transform rounded-xl" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
+                              <Check className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => handleOpenEditRec(t)}>
-                            <Pencil className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-warning active:scale-90 transition-transform rounded-xl" title="Editar" onClick={() => handleOpenEditRec(t)}>
+                            <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-destructive active:scale-90 transition-transform rounded-xl" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
+                            <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -617,7 +693,7 @@ export default function ContractDetail() {
           </Card>
 
           {/* Occurrences */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader>
               <CardTitle className="min-w-0 text-base sm:text-lg break-words">Ocorrências ({occurrences.length})</CardTitle>
             </CardHeader>
@@ -629,7 +705,7 @@ export default function ContractDetail() {
                     const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
                     const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
                     return (
-                      <div key={occ.id} className={cn('min-w-0 space-y-2 rounded-md border p-3', isPast && 'border-warning/50 bg-warning/5')}>
+                      <div key={occ.id} className={cn('min-w-0 space-y-2 rounded-xl border p-3', isPast && 'border-warning/50 bg-warning/5')}>
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-mono text-xs text-muted-foreground">#{occ.occurrence_number}</span>
                           <Badge variant={occStatusCfg.variant} className="shrink-0">{occStatusCfg.label}</Badge>
@@ -644,19 +720,19 @@ export default function ContractDetail() {
                         </div>
                         <div className="flex items-center justify-end gap-1">
                           {occ.service_order_id && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                              <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3.5 w-3.5" />
+                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 active:scale-90 transition-transform rounded-xl" asChild>
+                              <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer" aria-label="Abrir OS em nova aba">
+                                <ExternalLink className="h-4 w-4" />
                               </a>
                             </Button>
                           )}
                           {occ.status === 'scheduled' && (
                             <Button
-                              variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-warning"
+                              variant="ghost" size="icon" className="min-h-11 min-w-11 text-muted-foreground hover:text-warning active:scale-90 transition-transform rounded-xl"
                               title="Pular esta ocorrência"
                               onClick={() => updateOccurrenceStatus.mutate({ id: occ.id, status: 'skipped' })}
                             >
-                              <SkipForward className="h-3.5 w-3.5" />
+                              <SkipForward className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
@@ -737,7 +813,7 @@ export default function ContractDetail() {
 
         {/* Right column */}
         <div className="space-y-6 min-w-0 w-full">
-          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader><CardTitle className="text-base break-words">Resumo</CardTitle></CardHeader>
             <CardContent className="space-y-4 text-sm min-w-0">
               <div className="flex min-w-0 items-start justify-between gap-3">
@@ -762,13 +838,13 @@ export default function ContractDetail() {
                   <span className="min-w-0 break-words text-right font-medium">{format(parseLocalDate(stats.nextOccurrence.scheduled_date), 'dd/MM/yyyy')}</span>
                 </div>
               )}
-              <Button variant="outline" className="mt-2 w-full" onClick={() => setShowRenewDialog(true)}>
+              <Button variant="outline" className="mt-2 w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(true)}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Renovar Contrato
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader><CardTitle className="text-base break-words">Financeiro</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm min-w-0">
               <div className="flex min-w-0 items-start justify-between gap-3">
@@ -786,7 +862,7 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader><CardTitle className="text-base break-words">Progresso</CardTitle></CardHeader>
             <CardContent className="space-y-3 min-w-0">
               <Progress value={stats.progressPercent} className="h-3" />
@@ -798,7 +874,7 @@ export default function ContractDetail() {
 
           {/* Portal PMOC Público (Onda B v1.9.1) — só pra contratos PMOC. */}
           {isPmoc && (
-            <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base break-words">
                   <ShieldCheck className="h-4 w-4 text-info shrink-0" />
@@ -845,7 +921,7 @@ export default function ContractDetail() {
                     size="sm"
                     onClick={handleCopyPortalLink}
                     disabled={!portalUrl}
-                    className="min-h-[40px]"
+                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
                   >
                     <Copy className="h-3.5 w-3.5 mr-1" />
                     Copiar link
@@ -855,7 +931,7 @@ export default function ContractDetail() {
                     size="sm"
                     onClick={handleOpenPortal}
                     disabled={!portalUrl}
-                    className="min-h-[40px]"
+                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
                   >
                     <ExternalLink className="h-3.5 w-3.5 mr-1" />
                     Abrir portal
@@ -865,7 +941,7 @@ export default function ContractDetail() {
                     size="sm"
                     onClick={handlePrintQrCode}
                     disabled={!portalUrl || downloadingQr}
-                    className="col-span-2 min-h-[40px]"
+                    className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
                   >
                     {downloadingQr ? (
                       <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -880,7 +956,7 @@ export default function ContractDetail() {
                       size="sm"
                       onClick={() => setShowRegenerateDialog(true)}
                       disabled={!publicToken || regenerateToken.isPending}
-                      className="col-span-2 min-h-[40px]"
+                      className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
                     >
                       <RefreshCw className="h-3.5 w-3.5 mr-1" />
                       Regenerar token
@@ -956,7 +1032,7 @@ export default function ContractDetail() {
               <Input type="number" min="1" max="60" value={recInstallments} onChange={e => setRecInstallments(e.target.value)} placeholder="12" />
             </div>
           )}
-          <Button className="w-full" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
+          <Button className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
             {recSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
             {recFrequency !== 'unica' ? `Criar ${recInstallments || 1} Parcelas` : 'Criar Conta a Receber'}
           </Button>
@@ -1043,7 +1119,7 @@ export default function ContractDetail() {
           <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={editRecAmount} onChange={e => setEditRecAmount(e.target.value)} /></div>
           <div><Label>Vencimento</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
           <div className="flex flex-col gap-2 pt-2">
-            <Button onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
+            <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
               {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Salvar
             </Button>
           </div>

@@ -324,7 +324,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
             <h2 className="text-xl font-bold">Contas</h2>
             <p className="text-sm text-muted-foreground">Programação financeira — contas a pagar e a receber</p>
           </div>
-          <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} className="gap-2">
+          <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} className="gap-2 min-h-11 rounded-xl">
             <Plus className="h-4 w-4" /> Nova Conta
           </Button>
         </div>
@@ -345,14 +345,14 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           <Button
             variant={subTab === 'pagar' ? 'default' : 'outline'}
             onClick={() => { setSubTab('pagar'); setFilter('pendentes'); }}
-            className={subTab === 'pagar' ? 'bg-destructive hover:bg-destructive/90 text-white' : ''}
+            className={cn('min-h-11 rounded-xl', subTab === 'pagar' && 'bg-destructive hover:bg-destructive/90 text-white')}
           >
             A Pagar
           </Button>
           <Button
             variant={subTab === 'receber' ? 'default' : 'outline'}
             onClick={() => { setSubTab('receber'); setFilter('pendentes'); }}
-            className={subTab === 'receber' ? 'bg-success hover:bg-success/90 text-white' : ''}
+            className={cn('min-h-11 rounded-xl', subTab === 'receber' && 'bg-success hover:bg-success/90 text-white')}
           >
             A Receber
           </Button>
@@ -365,34 +365,34 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent" />
           <div className="flex gap-2 overflow-x-auto px-3 pb-1 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
               <div className="rounded-full bg-warning p-2 shrink-0">
                 <Clock className="h-4 w-4 text-warning-foreground" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">Pendente</p>
-                <p className="text-sm font-bold truncate leading-tight">{formatCurrency(summary.pendente)}</p>
+                <p className="text-sm font-bold truncate leading-tight tabular-nums">{formatCurrency(summary.pendente)}</p>
               </div>
             </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
               <div className="rounded-full bg-destructive p-2 shrink-0">
                 <AlertTriangle className="h-4 w-4 text-destructive-foreground" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">Vencido</p>
-                <p className="text-sm font-bold text-destructive truncate leading-tight">{formatCurrency(summary.vencido)}</p>
+                <p className="text-sm font-bold text-destructive truncate leading-tight tabular-nums">{formatCurrency(summary.vencido)}</p>
               </div>
             </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
               <div className="rounded-full bg-primary p-2 shrink-0">
                 <DollarSign className="h-4 w-4 text-primary-foreground" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">7 dias</p>
-                <p className="text-sm font-bold truncate leading-tight">{formatCurrency(summary.prox7)}</p>
+                <p className="text-sm font-bold truncate leading-tight tabular-nums">{formatCurrency(summary.prox7)}</p>
               </div>
             </div>
-            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card">
+            <div className="snap-start shrink-0 flex items-center gap-2 min-w-[160px] p-3 rounded-2xl border bg-card shadow-sm">
               <div className="rounded-full bg-success p-2 shrink-0">
                 <CheckCircle2 className="h-4 w-4 text-white" />
               </div>
@@ -400,47 +400,47 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">
                   {subTab === 'receber' ? 'Recebido' : 'Pago'}
                 </p>
-                <p className="text-sm font-bold text-success truncate leading-tight">{formatCurrency(summary.pago)}</p>
+                <p className="text-sm font-bold text-success truncate leading-tight tabular-nums">{formatCurrency(summary.pago)}</p>
               </div>
             </div>
           </div>
         </div>
       ) : (
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="rounded-2xl shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-warning p-2.5 shrink-0">
                 <Clock className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Pendente</p>
-                <p className="text-lg font-bold truncate">{formatCurrency(summary.pendente)}</p>
+                <p className="text-lg font-bold truncate tabular-nums">{formatCurrency(summary.pendente)}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-destructive p-2.5 shrink-0">
                 <AlertTriangle className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Vencido</p>
-                <p className="text-lg font-bold text-destructive truncate">{formatCurrency(summary.vencido)}</p>
+                <p className="text-lg font-bold text-destructive truncate tabular-nums">{formatCurrency(summary.vencido)}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-primary p-2.5 shrink-0">
                 <DollarSign className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Próximos 7 dias</p>
-                <p className="text-lg font-bold truncate">{formatCurrency(summary.prox7)}</p>
+                <p className="text-lg font-bold truncate tabular-nums">{formatCurrency(summary.prox7)}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="rounded-2xl shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-full bg-success p-2.5 shrink-0">
                 <CheckCircle2 className="h-4 w-4 text-white" />
@@ -449,7 +449,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   {subTab === 'receber' ? 'Total Recebido' : 'Total Pago'}
                 </p>
-                <p className="text-lg font-bold text-success truncate">{formatCurrency(summary.pago)}</p>
+                <p className="text-lg font-bold text-success truncate tabular-nums">{formatCurrency(summary.pago)}</p>
               </div>
             </CardContent>
           </Card>
@@ -492,7 +492,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
               {cardInvoices.length} {cardInvoices.length === 1 ? 'fatura' : 'faturas'}
             </Badge>
           </div>
-          <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
             {cardInvoices.map((bill) => {
               const account = cardAccountMap[bill.account_id];
               if (!account) return null;
@@ -513,7 +513,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       {/* Content */}
       {isLoading ? (
         <div className="space-y-3">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
         </div>
       ) : filtered.length === 0 && cardInvoices.length === 0 ? (
         <EmptyState
@@ -526,7 +526,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         null
       ) : isMobile ? (
         <div className="space-y-3">
-          <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
             {pagination.paginatedItems.map((t) => {
               const status = getStatus(t);
               const overdue = status === 'vencida';
@@ -570,7 +570,11 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                 <MobileListItem
                   key={t.id}
                   actions={itemActions}
-                  className={cn(overdue && 'bg-destructive/5', partial && 'bg-warning/5')}
+                  className={cn(
+                    'transition-transform active:scale-[0.98]',
+                    overdue && 'bg-destructive/5',
+                    partial && 'bg-warning/5',
+                  )}
                   onClick={partial ? () => setViewingTxn(t) : undefined}
                   leading={
                     <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
@@ -608,7 +612,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                   }
                   trailing={
                     <div className="flex flex-col items-end gap-1">
-                      <span className={cn('font-semibold text-sm whitespace-nowrap', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
+                      <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', subTab === 'receber' ? 'text-success' : 'text-destructive')}>
                         {formatCurrency(t.amount)}
                       </span>
                       {status === 'paga' ? (
@@ -629,7 +633,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           <DataTablePagination page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} />
         </div>
       ) : (
-        <Card>
+        <Card className="rounded-2xl shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
@@ -675,11 +679,11 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className={`font-medium ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
+                          <span className={`font-medium tabular-nums ${subTab === 'receber' ? 'text-success' : 'text-destructive'}`}>
                             {formatCurrency(t.amount)}
                           </span>
                           {partial && (
-                            <span className="text-[11px] text-warning">
+                            <span className="text-[11px] text-warning tabular-nums">
                               Recebido: {formatCurrency(received)} de {formatCurrency(Number(t.amount))}
                             </span>
                           )}
@@ -862,9 +866,10 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">Cancelar</Button>
             <Button
               disabled={!payDespAccountId || !payDespDate}
+              className="min-h-11 rounded-xl"
               onClick={async () => {
                 if (!payingDespesaTxn || !payDespAccountId) return;
                 await onMarkAsPaid({

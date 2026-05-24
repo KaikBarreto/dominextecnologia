@@ -316,15 +316,15 @@ export function TransactionListPanel({
           </div>
           <div className="flex items-center gap-2">
             {someSelected && (
-              <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+              <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="min-h-11 rounded-xl">
                 <Trash2 className="mr-2 h-4 w-4" /> Excluir {selectedIds.size}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1">
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1 min-h-11 rounded-xl">
               <FileDown className="h-4 w-4" /> CSV
             </Button>
             {onNew && (
-              <Button onClick={onNew} className={buttonColor}>
+              <Button onClick={onNew} className={cn('min-h-11 rounded-xl', buttonColor)}>
                 <Plus className="mr-2 h-4 w-4" />
                 {newLabel}
               </Button>
@@ -419,7 +419,7 @@ export function TransactionListPanel({
       </div>
 
       {filteredAccount && accountSummary && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-primary/30 bg-primary/5 rounded-2xl shadow-sm">
           <CardContent className="p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 min-w-0">
@@ -437,7 +437,7 @@ export function TransactionListPanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs"
+                className="h-8 gap-1 text-xs rounded-lg"
                 onClick={clearAccountFilterOnly}
               >
                 <X className="h-3.5 w-3.5" /> Remover filtro
@@ -446,19 +446,19 @@ export function TransactionListPanel({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs">
               <div>
                 <p className="text-muted-foreground">Saldo inicial</p>
-                <p className="font-semibold">{formatBRL(accountSummary.initialBalance)}</p>
+                <p className="font-semibold tabular-nums">{formatBRL(accountSummary.initialBalance)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Entradas no período</p>
-                <p className="font-semibold text-success">+ {formatBRL(accountSummary.entradas)}</p>
+                <p className="font-semibold text-success tabular-nums">+ {formatBRL(accountSummary.entradas)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Saídas no período</p>
-                <p className="font-semibold text-destructive">− {formatBRL(accountSummary.saidas)}</p>
+                <p className="font-semibold text-destructive tabular-nums">− {formatBRL(accountSummary.saidas)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Saldo atual</p>
-                <p className={`font-semibold ${accountSummary.currentBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                <p className={`font-semibold tabular-nums ${accountSummary.currentBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {formatBRL(accountSummary.currentBalance)}
                 </p>
               </div>
@@ -468,7 +468,7 @@ export function TransactionListPanel({
       )}
 
       {isLoading ? (
-        <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>
+        <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}</div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<DollarSign className="h-12 w-12" />}
@@ -483,7 +483,7 @@ export function TransactionListPanel({
               <span className="text-xs text-muted-foreground">Selecionar todos</span>
             </div>
           )}
-          <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
             {pagination.paginatedItems.map((t) => {
               const isEntrada = t.transaction_type === 'entrada';
               const itemActions: ItemAction[] = [
@@ -512,7 +512,10 @@ export function TransactionListPanel({
                 <MobileListItem
                   key={t.id}
                   actions={itemActions}
-                  className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}
+                  className={cn(
+                    'transition-transform active:scale-[0.98]',
+                    selectedIds.has(t.id) && 'bg-primary/5',
+                  )}
                   leading={
                     <div
                       className={cn(
@@ -544,7 +547,7 @@ export function TransactionListPanel({
                   }
                   trailing={
                     <div className="flex flex-col items-end gap-1">
-                      <span className={cn('font-semibold text-sm whitespace-nowrap', isEntrada ? 'text-success' : 'text-destructive')}>
+                      <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', isEntrada ? 'text-success' : 'text-destructive')}>
                         {isEntrada ? '+' : '-'} {formatCurrency(t.amount)}
                       </span>
                       <Badge variant={t.is_paid ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
@@ -563,7 +566,7 @@ export function TransactionListPanel({
           />
         </div>
       ) : (
-        <Card>
+        <Card className="rounded-2xl shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
@@ -621,7 +624,7 @@ export function TransactionListPanel({
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className={`font-medium ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
+                        <span className={`font-medium tabular-nums ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                           {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                         </span>
                       </TableCell>

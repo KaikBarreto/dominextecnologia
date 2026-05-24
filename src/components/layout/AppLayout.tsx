@@ -270,7 +270,10 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
   // O tablet (≥lg) tem botão Menu visível. Mobile usa só o bottom nav.
   // (lg breakpoint do tailwind = 1024px, mesmo do MOBILE_BREAKPOINT.)
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background px-4">
+    <header
+      className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b bg-background px-4"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
       {/* Lado esquerdo: back arrow no mobile, Menu hamburger no tablet+ */}
       <div className="flex items-center gap-2 min-w-10">
         {showBackButton && (

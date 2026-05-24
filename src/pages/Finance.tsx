@@ -261,7 +261,9 @@ export default function Finance() {
   const tabHasFab = activeTab === 'historico' || activeTab === 'contas' || activeTab === 'bancos';
 
   return (
-    <div className={cn('space-y-4 sm:space-y-6', isMobile && tabHasFab && 'pb-24')}>
+    // min-h-[100dvh] garante que empty states + transição de aba ocupem toda
+    // a viewport real (respeitando barras dinâmicas do iOS Safari).
+    <div className={cn('min-h-[100dvh] space-y-4 sm:space-y-6', isMobile && tabHasFab && 'pb-24')}>
       <MobilePageHeader
         title="Financeiro"
         subtitle="Gerencie suas finanças"

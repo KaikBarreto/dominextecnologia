@@ -405,7 +405,10 @@ export default function ServiceOrders() {
   );
 
   return (
-    <div className={cn('space-y-6', isMobile && 'pb-24')}>
+    <div
+      className={cn('space-y-6', isMobile && 'min-h-[100dvh] pb-24')}
+      style={isMobile ? { paddingTop: 'env(safe-area-inset-top)' } : undefined}
+    >
       <MobilePageHeader
         title="Ordens de Serviço"
         subtitle="Gerencie suas ordens de serviço"
@@ -427,7 +430,7 @@ export default function ServiceOrders() {
                     <Input
                       ref={mobileSearchInputRef}
                       placeholder="Buscar OS..."
-                      className="pl-10 h-10"
+                      className="pl-10 h-11 rounded-lg"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -546,7 +549,7 @@ export default function ServiceOrders() {
                 {isMobile ? (
                   isLoading ? (
                     <div className="space-y-2">
-                      {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                      {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)}
                     </div>
                   ) : filteredOrders.length === 0 ? (
                     <EmptyState
@@ -556,7 +559,7 @@ export default function ServiceOrders() {
                     />
                   ) : (
                     <>
-                      <div className="rounded-xl border bg-card overflow-hidden">
+                      <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
                         {pagination.paginatedItems.map((os) => {
                           const itemActions: ItemAction[] = [
                             {
@@ -829,11 +832,19 @@ export default function ServiceOrders() {
                   </div>
                 )}
                 {isLoading ? (
-                  <div className="flex gap-4 overflow-x-auto pb-4">
+                  <div className={cn(
+                    'flex gap-4 overflow-x-auto pb-4',
+                    // Snap horizontal por coluna no mobile dá feeling iOS (cada
+                    // swipe encaixa numa coluna). No desktop, scroll livre.
+                    isMobile && 'snap-x snap-mandatory'
+                  )}>
                     {[0, 1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className="min-w-[280px] flex-1 flex flex-col rounded-lg border bg-muted/30"
+                        className={cn(
+                          'min-w-[280px] flex-1 flex flex-col rounded-2xl border bg-muted/30',
+                          isMobile && 'snap-start'
+                        )}
                       >
                         <div className="px-3 pt-3 pb-2 border-b">
                           <Skeleton className="h-1 w-full rounded-full mb-2.5" />
@@ -858,13 +869,21 @@ export default function ServiceOrders() {
                     ))}
                   </div>
                 ) : (
-                <div className="flex gap-4 overflow-x-auto pb-4">
+                <div className={cn(
+                  'flex gap-4 overflow-x-auto pb-4',
+                  // Snap horizontal por coluna no mobile dá feeling iOS (cada
+                  // swipe encaixa numa coluna). No desktop, scroll livre.
+                  isMobile && 'snap-x snap-mandatory'
+                )}>
                   {kanbanColumns.map((col) => {
                     const columnOrders = filteredOrders.filter((os) => os.status === col.key);
                     return (
                       <div
                         key={col.key}
-                        className="min-w-[280px] flex-1 flex flex-col rounded-lg border bg-muted/30"
+                        className={cn(
+                          'min-w-[280px] flex-1 flex flex-col rounded-2xl border bg-muted/30',
+                          isMobile && 'snap-start'
+                        )}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                           e.preventDefault();
@@ -890,7 +909,11 @@ export default function ServiceOrders() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 active:scale-95 transition-transform"
+                                  className={cn(
+                                    'active:scale-[0.98] transition-transform',
+                                    // Hit area 44pt no mobile (iOS guideline); compacto no desktop.
+                                    isMobile ? 'h-11 w-11' : 'h-7 w-7'
+                                  )}
                                   onClick={() => handleNewOsWithStatus(col.key)}
                                   title={`Criar OS em "${col.label}"`}
                                   aria-label={`Criar OS em ${col.label}`}
@@ -917,7 +940,7 @@ export default function ServiceOrders() {
                               draggable
                               onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
                               onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}
-                              className="group relative cursor-pointer active:cursor-grabbing hover:shadow-md transition-shadow"
+                              className="group relative cursor-pointer active:cursor-grabbing rounded-2xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
                             >
                               {/* Editar + Excluir no canto superior direito — visíveis só no hover do card.
                                   Editar = hover laranja (warning), Excluir = hover vermelho (destructive). */}

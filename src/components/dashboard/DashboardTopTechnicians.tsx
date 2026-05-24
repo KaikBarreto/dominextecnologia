@@ -30,10 +30,10 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
-      <Card>
+      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
               <Trophy className="h-5 w-5 text-muted-foreground" />
               Desempenho da Equipe
             </CardTitle>
@@ -122,7 +122,7 @@ export function DashboardTopTechnicians({ technicians, isLoading, emCampoAgora }
                 )}
                 <button
                   onClick={() => navigate('/ordens-servico')}
-                  className="text-xs text-primary font-medium hover:underline flex items-center gap-1 ml-auto"
+                  className="text-xs text-primary font-medium hover:underline active:scale-95 transition-transform flex items-center gap-1 ml-auto min-h-9 px-2 -mr-2"
                 >
                   Ver relatório <ArrowRight className="h-3 w-3" />
                 </button>

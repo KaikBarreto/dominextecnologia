@@ -19,9 +19,9 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-      <Card>
+      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start">
+          <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left justify-center lg:justify-start leading-tight">
             <ListChecks className="h-5 w-5 text-muted-foreground" />
             OS por Status
           </CardTitle>
@@ -40,7 +40,7 @@ export function DashboardStatusSummary({ counts, isLoading }: { counts: Record<s
                   <button
                     key={key}
                     onClick={() => navigate('/ordens-servico', { state: { initialStatus: key } })}
-                    className="w-full text-left group"
+                    className="w-full text-left group min-h-11 py-1 rounded-lg active:scale-[0.98] transition-transform"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-sm font-medium ${config.colorClass} group-hover:underline`}>{config.label}</span>

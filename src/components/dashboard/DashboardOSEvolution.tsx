@@ -28,10 +28,10 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }}>
-      <Card>
+      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <CardHeader className="pb-2">
           <div className="flex flex-col items-center gap-2 lg:flex-row lg:justify-between">
-            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left">
+            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 text-center lg:text-left leading-tight">
               <Activity className="h-5 w-5 text-muted-foreground" />
               Evolução de OS
             </CardTitle>
@@ -40,7 +40,7 @@ export function DashboardOSEvolution({ data, isLoading }: { data: EvolutionData;
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                  className={`min-h-9 px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 ${
                     view === v
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'

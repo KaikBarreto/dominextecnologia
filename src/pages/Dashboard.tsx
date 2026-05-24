@@ -290,7 +290,10 @@ export default function Dashboard() {
   const firstName = profile?.full_name?.split(' ')[0] || 'Usuário';
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div
+      className="min-h-[100dvh] space-y-5 lg:space-y-6"
+      style={{ paddingTop: 'max(0px, env(safe-area-inset-top))' }}
+    >
       <MobilePageHeader
         title={`Olá, ${firstName}! 👋`}
         subtitle={getGreeting()}
@@ -319,7 +322,7 @@ export default function Dashboard() {
       <DashboardKPIs data={kpiData} isLoading={isLoading} />
 
       {/* Main Grid: 3/5 left + 2/5 right on desktop, single column on mobile with custom order */}
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5 lg:gap-6">
         {/* Left column */}
         <div className="contents lg:block lg:space-y-6">
           <div className="order-1 lg:order-none">

@@ -184,10 +184,10 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-      <Card>
+      <Card className="rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm overflow-hidden">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-sm lg:text-base font-semibold flex items-center gap-2 leading-tight">
               <MapPin className="h-5 w-5 text-muted-foreground" />
               Equipe em Campo
             </CardTitle>
@@ -217,7 +217,7 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
                         <Button
                           variant="link"
                           size="sm"
-                          className="h-auto p-0 text-xs gap-1"
+                          className="h-auto p-0 text-xs gap-1 min-h-9 active:scale-95 transition-transform"
                           onClick={() => navigate('/mapa-ao-vivo')}
                         >
                           Abrir Mapa ao Vivo <ArrowRight className="h-3 w-3" />

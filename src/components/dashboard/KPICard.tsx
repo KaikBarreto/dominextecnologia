@@ -48,7 +48,7 @@ export function KPICard({
       <Card
         className={cn(
           'border-0 overflow-hidden rounded-2xl shadow-md',
-          onClick && 'cursor-pointer group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200',
+          onClick && 'cursor-pointer group hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200',
           bgClass,
           // gradient sutil top→bottom pra dar profundidade (cor do bg base + leve clareada)
           'bg-gradient-to-br from-white/10 to-transparent',
