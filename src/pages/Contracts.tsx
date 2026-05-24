@@ -37,6 +37,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { KPICard } from '@/components/dashboard/KPICard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
 import { useContractsHealth, type ContractHealthStatus } from '@/hooks/useContractHealth';
@@ -388,60 +389,42 @@ export default function Contracts() {
         </>
       ) : (
         <>
-          {/* Desktop KPIs — mantidos idênticos ao original. */}
+          {/* Desktop KPIs — padrão KPICard saturado (igual Dashboard/OS) */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Contratos Ativos</p>
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-12 mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-primary">{stats.active}</p>
-                  )}
-                </div>
-                <CheckCircle className="h-8 w-8 text-primary" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">OSs Geradas (mês)</p>
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-12 mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold">{stats.osGeneratedThisMonth}</p>
-                  )}
-                </div>
-                <Calendar className="h-8 w-8 text-muted-foreground" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Próximas 7 dias</p>
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-12 mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-warning">{stats.upcomingOccurrences}</p>
-                  )}
-                </div>
-                <Clock className="h-8 w-8 text-warning" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Vencendo em 30d</p>
-                  {isLoading ? (
-                    <Skeleton className="h-8 w-12 mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-destructive">{stats.expiringContracts}</p>
-                  )}
-                </div>
-                <AlertTriangle className="h-8 w-8 text-destructive" />
-              </CardContent>
-            </Card>
+            {isLoading ? (
+              [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[108px] rounded-2xl" />)
+            ) : (
+              <>
+                <KPICard
+                  title="Contratos Ativos"
+                  value={stats.active}
+                  icon={CheckCircle}
+                  bgClass="bg-success"
+                  delay={0}
+                />
+                <KPICard
+                  title="OSs Geradas (mês)"
+                  value={stats.osGeneratedThisMonth}
+                  icon={Calendar}
+                  bgClass="bg-info"
+                  delay={0.05}
+                />
+                <KPICard
+                  title="Próximas 7 dias"
+                  value={stats.upcomingOccurrences}
+                  icon={Clock}
+                  bgClass="bg-warning"
+                  delay={0.1}
+                />
+                <KPICard
+                  title="Vencendo em 30d"
+                  value={stats.expiringContracts}
+                  icon={AlertTriangle}
+                  bgClass="bg-destructive"
+                  delay={0.15}
+                />
+              </>
+            )}
           </div>
 
           {/* Desktop toolbar: busca + único botão "Filtros" (Sheet à direita).
@@ -585,7 +568,7 @@ export default function Contracts() {
                       </div>
                     }
                     subtitle={
-                      <span className={cn('truncate', nextOcc && nextOccDateColor(nextOcc.scheduled_date))}>
+                      <span className="truncate text-muted-foreground">
                         {contract.customers?.name ? `${contract.customers.name} • ` : ''}
                         {subtitleParts.join(' • ')}
                       </span>

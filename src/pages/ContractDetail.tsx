@@ -582,6 +582,102 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
+          {/* Portal PMOC Público — logo após Informações pra ficar visível sem scrollar.
+              Só pra contratos PMOC (tem token público). */}
+          {isPmoc && (
+            <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base break-words">
+                  <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                  Portal Público
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 min-w-0">
+                <p className="text-xs text-muted-foreground break-words">
+                  Página pública desta unidade para o cliente final. Aparece no QR Code colado no quadro físico.
+                </p>
+
+                {portalUrl && (
+                  <div className="flex justify-center">
+                    <div
+                      className={cn(
+                        'inline-flex items-center justify-center rounded-xl p-4 transition-colors',
+                        resolvedTheme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-border',
+                      )}
+                    >
+                      <QRCodeSVG
+                        value={portalUrl}
+                        size={isMobile ? 130 : 160}
+                        bgColor="transparent"
+                        fgColor={resolvedTheme === 'dark' ? '#ffffff' : '#000000'}
+                        level="M"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {portalUrl ? (
+                  <div className="rounded-md border bg-muted/40 p-2 text-xs font-mono break-all min-w-0">
+                    {portalUrl}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Link público em geração. Ative o módulo PMOC ou aguarde o próximo deploy.
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyPortalLink}
+                    disabled={!portalUrl}
+                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                    Copiar link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenPortal}
+                    disabled={!portalUrl}
+                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    Abrir portal
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrintQrCode}
+                    disabled={!portalUrl || downloadingQr}
+                    className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                  >
+                    {downloadingQr ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Printer className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Imprimir QR Code
+                  </Button>
+                  {canRegenerateToken && (
+                    <Button
+                      variant="destructive-ghost"
+                      size="sm"
+                      onClick={() => setShowRegenerateDialog(true)}
+                      disabled={!publicToken || regenerateToken.isPending}
+                      className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      Regenerar token
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Equipment */}
           <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
             <CardHeader>
@@ -872,100 +968,6 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          {/* Portal PMOC Público (Onda B v1.9.1) — só pra contratos PMOC. */}
-          {isPmoc && (
-            <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base break-words">
-                  <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                  Portal Público
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 min-w-0">
-                <p className="text-xs text-muted-foreground break-words">
-                  Página pública desta unidade para o cliente final. Aparece no QR Code colado no quadro físico.
-                </p>
-
-                {portalUrl && (
-                  <div className="flex justify-center">
-                    <div
-                      className={cn(
-                        'inline-flex items-center justify-center rounded-xl p-4 transition-colors',
-                        resolvedTheme === 'dark' ? 'bg-card border border-border' : 'bg-white border border-border',
-                      )}
-                    >
-                      <QRCodeSVG
-                        value={portalUrl}
-                        size={isMobile ? 130 : 160}
-                        bgColor="transparent"
-                        fgColor={resolvedTheme === 'dark' ? '#ffffff' : '#000000'}
-                        level="M"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {portalUrl ? (
-                  <div className="rounded-md border bg-muted/40 p-2 text-xs font-mono break-all min-w-0">
-                    {portalUrl}
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-                    Link público em geração. Ative o módulo PMOC ou aguarde o próximo deploy.
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyPortalLink}
-                    disabled={!portalUrl}
-                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                  >
-                    <Copy className="h-3.5 w-3.5 mr-1" />
-                    Copiar link
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenPortal}
-                    disabled={!portalUrl}
-                    className="min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                    Abrir portal
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePrintQrCode}
-                    disabled={!portalUrl || downloadingQr}
-                    className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                  >
-                    {downloadingQr ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                    ) : (
-                      <Printer className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    Imprimir QR Code
-                  </Button>
-                  {canRegenerateToken && (
-                    <Button
-                      variant="destructive-ghost"
-                      size="sm"
-                      onClick={() => setShowRegenerateDialog(true)}
-                      disabled={!publicToken || regenerateToken.isPending}
-                      className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                      Regenerar token
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
           </div>
         );
