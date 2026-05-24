@@ -36,6 +36,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { cn } from '@/lib/utils';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
@@ -852,14 +854,23 @@ export default function ServiceOrders() {
                           </div>
                         </div>
                         <div className="flex-1 p-2 space-y-2 max-h-[60vh] overflow-y-auto">
-                          {columnOrders.map((os) => (
+                          {columnOrders.map((os) => {
+                            const creator = (os as any).created_by_profile as { full_name: string | null; avatar_url: string | null } | null;
+                            const creatorInitials = (creator?.full_name || '?')
+                              .trim()
+                              .split(/\s+/)
+                              .slice(0, 2)
+                              .map(w => w[0])
+                              .join('')
+                              .toUpperCase();
+                            return (
                             <Card
                               key={os.id}
                               draggable
                               onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
-                              className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+                              className="relative cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
                             >
-                              <CardContent className="p-3 space-y-1">
+                              <CardContent className="p-3 pb-7 space-y-1">
                                 <div className="flex items-center justify-between">
                                   <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
                                   <div className="flex gap-1">
@@ -885,8 +896,30 @@ export default function ServiceOrders() {
                                   </p>
                                 )}
                               </CardContent>
+                              {/* Avatar do criador da OS — canto inferior direito do card.
+                                  Tooltip mostra nome do usuário (email vive em auth.users,
+                                  fora do alcance do client; pra adicionar precisa migration). */}
+                              <TooltipProvider delayDuration={150}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Avatar className="absolute -bottom-1.5 -right-1.5 h-6 w-6 ring-2 ring-background shadow-md cursor-help">
+                                      {creator?.avatar_url ? (
+                                        <AvatarImage src={creator.avatar_url} alt={creator.full_name || ''} />
+                                      ) : null}
+                                      <AvatarFallback className="text-[9px] font-medium bg-muted text-muted-foreground">
+                                        {creatorInitials}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="text-xs">
+                                    <p className="font-medium">{creator?.full_name || 'Usuário'}</p>
+                                    <p className="text-muted-foreground">Criador da OS</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </Card>
-                          ))}
+                            );
+                          })}
                           {columnOrders.length === 0 && (
                             <p className="text-xs text-muted-foreground text-center py-4">Nenhuma OS</p>
                           )}
