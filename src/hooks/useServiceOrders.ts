@@ -113,18 +113,26 @@ export function useServiceOrders() {
       });
 
       // Lookup batch dos perfis dos criadores (preenche `created_by_profile` no front
-      // — usado pelo avatar da coluna "Criador" da lista de OS).
+      // — usado pelo avatar da coluna "Criador" da lista de OS e pelo tooltip
+      // do avatar dentro de cada card do kanban).
       const createdByIds = Array.from(
         new Set(allData.map((o: any) => o.created_by).filter(Boolean))
       );
-      const profileMap = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+      const profileMap = new Map<string, { full_name: string | null; avatar_url: string | null; email: string | null }>();
       if (createdByIds.length > 0) {
+        // `email` em profiles é populado por trigger a partir de auth.users (migration
+        // aplicada em paralelo). Cast pra `any` no campo pra não quebrar tsc enquanto
+        // o types.ts ainda não foi regenerado — comportamento estável após regen.
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, full_name, avatar_url')
+          .select('user_id, full_name, avatar_url, email' as any)
           .in('user_id', createdByIds);
         (profiles || []).forEach((p: any) => {
-          profileMap.set(p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url });
+          profileMap.set(p.user_id, {
+            full_name: p.full_name,
+            avatar_url: p.avatar_url,
+            email: p.email ?? null,
+          });
         });
       }
 

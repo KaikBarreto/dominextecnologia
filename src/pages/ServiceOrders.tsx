@@ -139,7 +139,10 @@ export default function ServiceOrders() {
   };
 
   const filteredOrders = useMemo(() => {
-    const baseOrders = viewMode === 'kanban' ? serviceOrders : filterByDate(serviceOrders, 'scheduled_date');
+    // Filtro de data aplica em TUDO (kanban, lista, KPIs) — DateRangeFilter no topo
+    // é a fonte da verdade do recorte temporal da tela. Antes o kanban ignorava
+    // o filtro e mostrava o universo completo, o que dessincronizava com os KPIs.
+    const baseOrders = filterByDate(serviceOrders, 'scheduled_date');
     return baseOrders.filter((os) => {
       const osCode = getOsCode(os);
       const orderNum = String(os.order_number).padStart(6, '0');
@@ -153,7 +156,7 @@ export default function ServiceOrders() {
       const matchesStatus = statusFilter.length === 0 || statusFilter.includes(os.status);
       return matchesSearch && matchesStatus;
     });
-  }, [serviceOrders, searchTerm, statusFilter, range, viewMode]);
+  }, [serviceOrders, searchTerm, statusFilter, range, filterByDate]);
 
   // Ordem semântica do status pra que SortableTableHead consiga ordenar
   // por "fluxo de trabalho" (agendada → pendente → … → concluida → cancelada)
@@ -436,11 +439,17 @@ export default function ServiceOrders() {
                 <div className="relative -mx-3">
                   <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-background to-transparent" />
                   <div className="flex gap-3 overflow-x-auto px-3 pb-1 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {kpiCards.map((card) => (
-                      <div key={card.title} className="snap-start shrink-0 w-[78%]">
-                        <KPICard {...card} />
-                      </div>
-                    ))}
+                    {isLoading
+                      ? [0, 1, 2, 3].map((i) => (
+                          <div key={i} className="snap-start shrink-0 w-[78%]">
+                            <Skeleton className="h-[108px] w-full rounded-2xl" />
+                          </div>
+                        ))
+                      : kpiCards.map((card) => (
+                          <div key={card.title} className="snap-start shrink-0 w-[78%]">
+                            <KPICard {...card} />
+                          </div>
+                        ))}
                   </div>
                 </div>
               </>
@@ -478,8 +487,8 @@ export default function ServiceOrders() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
+                      variant="outline"
                       onClick={() => setStatusConfigOpen(true)}
-                      className="bg-gradient-to-b from-gray-700 to-gray-900 text-white hover:from-gray-600 hover:to-gray-800"
                     >
                       <Settings className="mr-2 h-4 w-4" />
                       <span className="hidden sm:inline">Configurações</span>
@@ -494,9 +503,13 @@ export default function ServiceOrders() {
                 </div>
 
                 <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-                  {kpiCards.map((card) => (
-                    <KPICard key={card.title} {...card} />
-                  ))}
+                  {isLoading
+                    ? [0, 1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-[108px] w-full rounded-2xl" />
+                      ))
+                    : kpiCards.map((card) => (
+                        <KPICard key={card.title} {...card} />
+                      ))}
                 </div>
               </>
             )}
@@ -810,6 +823,36 @@ export default function ServiceOrders() {
                     </div>
                   </div>
                 )}
+                {isLoading ? (
+                  <div className="flex gap-4 overflow-x-auto pb-4">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="min-w-[280px] flex-1 flex flex-col rounded-lg border bg-muted/30"
+                      >
+                        <div className="px-3 pt-3 pb-2 border-b">
+                          <Skeleton className="h-1 w-full rounded-full mb-2.5" />
+                          <div className="flex items-center justify-between">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-8" />
+                          </div>
+                        </div>
+                        <div className="flex-1 p-2 space-y-2">
+                          {[0, 1, 2].map((j) => (
+                            <div key={j} className="rounded-lg border bg-card p-3 space-y-2">
+                              <div className="flex justify-between">
+                                <Skeleton className="h-3 w-20" />
+                                <Skeleton className="h-3 w-12" />
+                              </div>
+                              <Skeleton className="h-4 w-3/4" />
+                              <Skeleton className="h-3 w-1/2" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                 <div className="flex gap-4 overflow-x-auto pb-4">
                   {kanbanColumns.map((col) => {
                     const columnOrders = filteredOrders.filter((os) => os.status === col.key);
@@ -855,7 +898,7 @@ export default function ServiceOrders() {
                         </div>
                         <div className="flex-1 p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                           {columnOrders.map((os) => {
-                            const creator = (os as any).created_by_profile as { full_name: string | null; avatar_url: string | null } | null;
+                            const creator = (os as any).created_by_profile as { full_name: string | null; avatar_url: string | null; email: string | null } | null;
                             const creatorInitials = (creator?.full_name || '?')
                               .trim()
                               .split(/\s+/)
@@ -870,7 +913,7 @@ export default function ServiceOrders() {
                               onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
                               className="relative cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
                             >
-                              <CardContent className="p-3 pb-7 space-y-1">
+                              <CardContent className="p-3 pr-10 space-y-1">
                                 <div className="flex items-center justify-between">
                                   <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
                                   <div className="flex gap-1">
@@ -897,12 +940,12 @@ export default function ServiceOrders() {
                                 )}
                               </CardContent>
                               {/* Avatar do criador da OS — canto inferior direito do card.
-                                  Tooltip mostra nome do usuário (email vive em auth.users,
-                                  fora do alcance do client; pra adicionar precisa migration). */}
+                                  Tooltip mostra nome + email (espelhado de auth.users por
+                                  trigger em profiles.email) + rótulo "Criador da OS". */}
                               <TooltipProvider delayDuration={150}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Avatar className="absolute -bottom-1.5 -right-1.5 h-6 w-6 ring-2 ring-background shadow-md cursor-help">
+                                    <Avatar className="absolute bottom-2 right-2 h-6 w-6 ring-2 ring-background shadow-md cursor-help">
                                       {creator?.avatar_url ? (
                                         <AvatarImage src={creator.avatar_url} alt={creator.full_name || ''} />
                                       ) : null}
@@ -913,7 +956,10 @@ export default function ServiceOrders() {
                                   </TooltipTrigger>
                                   <TooltipContent side="left" className="text-xs">
                                     <p className="font-medium">{creator?.full_name || 'Usuário'}</p>
-                                    <p className="text-muted-foreground">Criador da OS</p>
+                                    {creator?.email && (
+                                      <p className="text-muted-foreground">{creator.email}</p>
+                                    )}
+                                    <p className="text-muted-foreground mt-0.5">Criador da OS</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -928,6 +974,7 @@ export default function ServiceOrders() {
                     );
                   })}
                 </div>
+                )}
               </>
             )}
 
