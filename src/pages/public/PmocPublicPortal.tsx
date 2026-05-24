@@ -794,31 +794,40 @@ function Section({
 function HealthBadge({
   status,
   overdueCount,
-  textColor = '#ffffff',
 }: {
   status: PortalHealthStatus;
   overdueCount: number;
+  /** @deprecated mantido por compat; o badge agora pinta SEMPRE bg sólido + texto branco. */
   textColor?: string;
 }) {
   const cfg = HEALTH_CONFIG[status] ?? HEALTH_CONFIG.em_dia;
-  // Fundo translúcido derivado do textColor pra contrastar em qualquer bg.
-  const isLight = textColor === '#ffffff' || textColor.toLowerCase() === '#fff';
-  const bgTint = isLight ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)';
+  // bg saturado por status + texto branco sempre (cor do bg JÁ comunica o estado;
+  // dot virou redundante e foi removido).
+  const bgClass = cfg.tone === 'success'
+    ? 'bg-success'
+    : cfg.tone === 'warning'
+      ? 'bg-warning'
+      : 'bg-destructive';
   return (
     <div
-      className="flex shrink-0 flex-col items-end gap-0.5 rounded-xl px-3 py-2 backdrop-blur-sm"
-      style={{ backgroundColor: bgTint, color: textColor }}
-      aria-label={`Status sanitário: ${cfg.label}`}
+      className={cn(
+        bgClass,
+        'text-white shadow-sm',
+        // Mobile: chip pill compacto (1 linha).
+        'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1',
+        // Desktop: bloco vertical com header "STATUS" + label + pendências.
+        'sm:flex sm:flex-col sm:items-end sm:gap-0.5 sm:rounded-xl sm:px-3 sm:py-2',
+      )}
+      aria-label={`Status sanitário: ${cfg.label}${overdueCount > 0 ? ` (${overdueCount} pendência${overdueCount === 1 ? '' : 's'})` : ''}`}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
+      <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-white/80 sm:block">
         Status
       </span>
-      <span className="flex items-center gap-1.5 text-sm font-bold leading-tight">
-        <span className={cn('h-2 w-2 rounded-full ring-2', `bg-${cfg.tone}`, cfg.ringClass)} />
+      <span className="text-xs font-semibold leading-none sm:text-sm sm:font-bold sm:leading-tight">
         {cfg.label}
       </span>
       {overdueCount > 0 && (
-        <span className="text-[10px] opacity-80">
+        <span className="hidden text-[10px] text-white/85 sm:block">
           {overdueCount} {overdueCount === 1 ? 'pendência' : 'pendências'}
         </span>
       )}
@@ -997,44 +1006,12 @@ function PortalFooter({
   portalUrl: string;
   lastUpdate: string;
 }) {
-  const tenantLocation = [tenant.city, tenant.state].filter(Boolean).join(' / ');
-  const hasContactBlock = !!(tenant.address || tenantLocation);
-
   return (
     <footer
       className="mx-auto mt-10 w-full max-w-5xl space-y-6 px-4 pt-8 sm:px-6"
       style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
       <PmocComplianceBadge variant="footer" />
-
-      {/* Bloco do tenant (sempre que houver endereço/cidade) */}
-      {hasContactBlock && (
-        <div
-          className={cn(
-            'rounded-2xl border border-border bg-card p-4',
-            'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
-          )}
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-              <Building2 className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="break-words text-sm font-semibold leading-snug">{tenant.name}</p>
-              {tenant.address && (
-                <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
-                  {tenant.address}
-                </p>
-              )}
-              {tenantLocation && (
-                <p className="break-words text-xs leading-relaxed text-muted-foreground">
-                  {tenantLocation}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="space-y-1 text-center">
         <p className="text-[11px] text-muted-foreground">
