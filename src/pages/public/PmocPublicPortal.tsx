@@ -217,9 +217,9 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     contract,
     responsible_technician,
     tenant,
-    schedule,
-    history,
-    documents,
+    schedule = [],
+    history = [],
+    documents = [],
   } = payload;
 
   const isMobile = useIsMobile();
