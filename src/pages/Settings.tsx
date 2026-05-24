@@ -25,9 +25,12 @@ import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useUserCompany } from '@/hooks/useUserCompany';
 import { ModuleGateModal, MODULE_INFO } from '@/components/ModuleGateModal';
 import { ReportHeader, DEFAULT_HEADER_CONFIG } from '@/components/technician/ReportHeader';
 import { Slider } from '@/components/ui/slider';
+import { DangerZoneCard } from '@/components/settings/DangerZoneCard';
+import type { AppRole } from '@/types/database';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
@@ -42,8 +45,12 @@ const settingsTabs: SettingsTab[] = [
 ];
 
 export default function Settings() {
-  const { hasScreenAccess } = useAuth();
+  const { hasScreenAccess, hasRole } = useAuth();
   const { hasModule } = useCompanyModules();
+  const { companyId } = useUserCompany();
+  // Gate da Zona de Perigo: admin do tenant OR super_admin Auctus.
+  // Backend rechecka via RPC SECURITY DEFINER (regra-lei #1 — filtro client é UX).
+  const canResetSystem = hasRole('admin') || hasRole('super_admin' as AppRole);
   const [wlGateOpen, setWlGateOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
@@ -407,6 +414,7 @@ export default function Settings() {
     switch (activeTab) {
       case 'empresa':
         return (
+          <div className="space-y-6">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -904,6 +912,16 @@ export default function Settings() {
               )}
             </CardContent>
           </Card>
+
+          {/* Zona de Perigo — apenas admin do tenant OR super_admin Auctus.
+              Backend rechecka via RPC SECURITY DEFINER. */}
+          {canResetSystem && (
+            <DangerZoneCard
+              companyName={settings?.name ?? ''}
+              companyId={companyId ?? ''}
+            />
+          )}
+          </div>
         );
 
       case 'usabilidade':

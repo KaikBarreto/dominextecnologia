@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.18',
+    date: '24 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Botão "Zerar Sistema" pro dono da empresa (Configurações → Empresa)',
+        description: 'No final da aba "Empresa" em Configurações aparece uma nova "Zona de Perigo" — visível apenas pro administrador da empresa. Lá tem o botão "Zerar Sistema" que abre uma janela com 11 caixinhas pra escolher exatamente o que apagar: Clientes, Equipamentos, Orçamentos, Contratos, Ordens de Serviço, Cadastro de Materiais, Estoque, Movimentações Financeiras, Categorias Financeiras, Funcionários e RH, e Configurações Personalizadas. Tem "Selecionar tudo" e exige digitar o nome da empresa pra confirmar (proteção contra clique acidental). Marcar "Cadastro de Materiais" auto-marca "Estoque" (não dá pra ter movimentação sem material). A empresa, seus usuários e o histórico de pagamentos da assinatura nunca são tocados — o sistema volta ao estado inicial, como se a empresa tivesse acabado de ser criada. Toda zerada fica registrada em log de auditoria.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.9.17',
     date: '24 de maio de 2026',
     type: 'minor',

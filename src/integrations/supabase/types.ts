@@ -1380,6 +1380,59 @@ export type Database = {
           },
         ]
       }
+      destructive_actions_audit: {
+        Row: {
+          action_type: string
+          company_email_snapshot: string | null
+          company_id: string | null
+          company_name_snapshot: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          payload: Json
+          performed_by: string | null
+          performed_by_email: string | null
+          performed_by_role: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          company_email_snapshot?: string | null
+          company_id?: string | null
+          company_name_snapshot?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          payload?: Json
+          performed_by?: string | null
+          performed_by_email?: string | null
+          performed_by_role?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          company_email_snapshot?: string | null
+          company_id?: string | null
+          company_name_snapshot?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          payload?: Json
+          performed_by?: string | null
+          performed_by_email?: string | null
+          performed_by_role?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "destructive_actions_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domiflix_episodes: {
         Row: {
           created_at: string
@@ -5408,6 +5461,14 @@ export type Database = {
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
         Returns: string
+      }
+      reset_system_audit_start: {
+        Args: { p_company_id: string; p_options: Json }
+        Returns: string
+      }
+      reset_system_step: {
+        Args: { p_audit_id: string; p_company_id: string; p_step: string }
+        Returns: Json
       }
     }
     Enums: {
