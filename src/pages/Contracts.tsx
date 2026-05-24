@@ -41,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
 import { useContractsHealth, type ContractHealthStatus } from '@/hooks/useContractHealth';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useDataPagination } from '@/hooks/useDataPagination';
@@ -747,36 +748,40 @@ export default function Contracts() {
                               {itemCount} {itemCount === 1 ? 'item' : 'itens'}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  title={contract.status === 'active' ? 'Pausar' : 'Retomar'}
-                                  onClick={() =>
-                                    updateContractStatus.mutate({
-                                      id: contract.id,
-                                      status: contract.status === 'active' ? 'paused' : 'active',
-                                    })
-                                  }
-                                >
-                                  {contract.status === 'active' ? (
-                                    <Pause className="h-4 w-4" />
-                                  ) : (
-                                    <Play className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="destructive-ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => {
-                                    setDeleteConfirmed(false);
-                                    setDeleteTarget(contract.id);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <RowActionsMenu
+                                  actions={[
+                                    {
+                                      label: 'Visualizar',
+                                      icon: Eye,
+                                      onClick: () => navigate(`/contratos/${contract.id}`),
+                                    },
+                                    {
+                                      label: contract.status === 'active' ? 'Pausar' : 'Retomar',
+                                      icon: contract.status === 'active' ? Pause : Play,
+                                      onClick: () =>
+                                        updateContractStatus.mutate({
+                                          id: contract.id,
+                                          status: contract.status === 'active' ? 'paused' : 'active',
+                                        }),
+                                    },
+                                    {
+                                      label: 'Editar',
+                                      icon: Pencil,
+                                      variant: 'edit',
+                                      onClick: () => navigate(`/contratos/${contract.id}`),
+                                    },
+                                    {
+                                      label: 'Excluir',
+                                      icon: Trash2,
+                                      variant: 'delete',
+                                      onClick: () => {
+                                        setDeleteConfirmed(false);
+                                        setDeleteTarget(contract.id);
+                                      },
+                                    },
+                                  ]}
+                                />
                               </div>
                             </TableCell>
                           </TableRow>

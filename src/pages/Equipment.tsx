@@ -15,6 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent } from '@/components/ui/card';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { cn } from '@/lib/utils';
 
 export default function EquipmentPage() {
@@ -155,12 +156,23 @@ function CategoriesPanel() {
                   {cat.description && (
                     <span className="text-xs text-muted-foreground hidden sm:inline">{cat.description}</span>
                   )}
-                  <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditColor(cat.color); }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(cat.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <RowActionsMenu
+                    triggerClassName="h-7 w-7"
+                    actions={[
+                      {
+                        label: 'Editar',
+                        icon: Pencil,
+                        variant: 'edit',
+                        onClick: () => { setEditingId(cat.id); setEditName(cat.name); setEditColor(cat.color); },
+                      },
+                      {
+                        label: 'Excluir',
+                        icon: Trash2,
+                        variant: 'delete',
+                        onClick: () => setDeleteId(cat.id),
+                      },
+                    ]}
+                  />
                 </>
               )}
             </CardContent>

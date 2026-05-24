@@ -5,6 +5,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCustomerOrigins, type CustomerOrigin } from '@/hooks/useCustomerOrigins';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -94,8 +95,13 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
                     <IconPreview name={o.icon} className="h-3.5 w-3.5 text-white" />
                   </div>
                   <span className="flex-1 text-sm font-medium truncate">{o.name}</span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(o)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="icon" variant="destructive-ghost" className="h-7 w-7" onClick={() => deleteOrigin.mutate(o.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <RowActionsMenu
+                    triggerClassName="h-7 w-7"
+                    actions={[
+                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEdit(o) },
+                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => deleteOrigin.mutate(o.id) },
+                    ]}
+                  />
                 </>
               )}
             </div>

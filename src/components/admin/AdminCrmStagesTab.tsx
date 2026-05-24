@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { useAdminCrmStages, type AdminCrmStage } from '@/hooks/useAdminCrm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -75,8 +76,13 @@ export function AdminCrmStagesTab() {
                   <span className="flex-1 text-sm font-medium truncate">{s.name}</span>
                   {s.is_won && <Badge variant="outline" className="text-[10px] border-green-500 text-green-600"><Trophy className="h-3 w-3 mr-1" />Ganho</Badge>}
                   {s.is_lost && <Badge variant="outline" className="text-[10px] border-red-500 text-red-600"><Ban className="h-3 w-3 mr-1" />Perdido</Badge>}
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(s)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteStage.mutate(s.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <RowActionsMenu
+                    triggerClassName="h-7 w-7"
+                    actions={[
+                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEdit(s) },
+                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => deleteStage.mutate(s.id) },
+                    ]}
+                  />
                 </>
               )}
             </div>

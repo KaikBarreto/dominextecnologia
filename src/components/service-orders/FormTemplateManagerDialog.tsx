@@ -41,6 +41,7 @@ import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hoo
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 
 interface FormTemplateManagerDialogProps {
   children?: React.ReactNode;
@@ -289,18 +290,13 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
             )}
           </div>
         </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => setEditingQuestionId(question.id)}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button 
-            variant="destructive-ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={() => handleDeleteQuestion(question.id)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <RowActionsMenu
+            actions={[
+              { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => setEditingQuestionId(question.id) },
+              { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => handleDeleteQuestion(question.id) },
+            ]}
+          />
         </div>
       </div>
     );

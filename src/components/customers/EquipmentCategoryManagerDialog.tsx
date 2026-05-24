@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { useEquipment } from '@/hooks/useEquipment';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -203,12 +204,13 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
                   ) : (
                     <>
                       <span className="flex-1 text-sm font-medium">{cat.name}</span>
-                      <Button variant="edit-ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(cat.id, cat.name, cat.color)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="destructive-ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(cat.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <RowActionsMenu
+                        triggerClassName="h-7 w-7"
+                        actions={[
+                          { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEdit(cat.id, cat.name, cat.color) },
+                          { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) },
+                        ]}
+                      />
                     </>
                   )}
                 </div>

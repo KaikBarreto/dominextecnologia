@@ -28,6 +28,7 @@ import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogr
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useContractDetail } from '@/hooks/useContractDetail';
 import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -419,13 +420,13 @@ export default function ContractDetail() {
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm truncate">{contract.customers?.name || 'Cliente'}</p>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => setShowEditForm(true)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => { setDeleteConfirmed(false); setShowDeleteDialog(true); }}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <div className="shrink-0">
+          <RowActionsMenu
+            actions={[
+              { label: 'Editar contrato', icon: Pencil, variant: 'edit', onClick: () => setShowEditForm(true) },
+              { label: 'Excluir contrato', icon: Trash2, variant: 'delete', onClick: () => { setDeleteConfirmed(false); setShowDeleteDialog(true); } },
+            ]}
+          />
         </div>
       </div>
 

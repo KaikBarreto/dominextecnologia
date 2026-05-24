@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { InventoryFormDialog } from '@/components/inventory/InventoryFormDialog';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
@@ -418,24 +419,12 @@ export default function Inventory() {
                             {item.sale_price ? formatCurrency(item.sale_price) : '-'}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="edit-ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={(e) => handleEdit(item, e)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="destructive-ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={(e) => handleDeleteClick(item, e)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            <RowActionsMenu
+                              actions={[
+                                { label: 'Editar', icon: Edit, variant: 'edit', onClick: () => handleEdit(item) },
+                                { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(item) },
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       ))}

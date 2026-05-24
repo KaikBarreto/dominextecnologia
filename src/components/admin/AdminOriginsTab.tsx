@@ -7,6 +7,7 @@ import { ColorPicker } from '@/components/ui/ColorPicker';
 import { useCompanyOrigins, type CompanyOrigin } from '@/hooks/useCompanyOrigins';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 
 const ICON_OPTIONS = ['Globe', 'UserPlus', 'Megaphone', 'Handshake', 'Phone', 'Mail', 'MapPin', 'Star', 'Heart', 'Target', 'Zap', 'TrendingUp', 'Share2', 'Users'];
 
@@ -92,8 +93,13 @@ export function AdminOriginsTab() {
                     <IconPreview name={o.icon || 'Globe'} className="h-3.5 w-3.5 text-white" />
                   </div>
                   <span className="flex-1 text-sm font-medium truncate">{o.name}</span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(o)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteOrigin.mutate(o.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <RowActionsMenu
+                    triggerClassName="h-7 w-7"
+                    actions={[
+                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => startEdit(o) },
+                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => deleteOrigin.mutate(o.id) },
+                    ]}
+                  />
                 </>
               )}
             </div>

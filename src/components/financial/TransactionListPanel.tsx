@@ -13,6 +13,7 @@ import { SignedLink } from '@/components/ui/SignedLink';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { Label } from '@/components/ui/label';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { formatBRL } from '@/utils/currency';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
 import { RelatedTransactionsDialog } from './RelatedTransactionsDialog';
@@ -626,11 +627,18 @@ export function TransactionListPanel({
                       </TableCell>
                       <TableCell><Badge variant={t.is_paid ? 'default' : 'secondary'}>{t.is_paid ? 'Pago' : 'Pendente'}</Badge></TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {!t.is_paid && <Button variant="ghost" size="icon" className="text-success" onClick={() => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id })} title="Marcar como pago"><Check className="h-4 w-4" /></Button>}
-                          <Button variant="edit-ghost" size="icon" onClick={() => onEdit(t)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="destructive-ghost" size="icon" onClick={() => requestDelete(t.id)}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
+                        <RowActionsMenu
+                          actions={[
+                            {
+                              label: t.transaction_type === 'entrada' ? 'Marcar como recebido' : 'Marcar como pago',
+                              icon: Check,
+                              onClick: () => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id }),
+                              hidden: t.is_paid,
+                            },
+                            { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => onEdit(t) },
+                            { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id) },
+                          ] satisfies RowAction[]}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

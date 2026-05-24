@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFinancialAccounts, type FinancialAccount, type AccountInput } from '@/hooks/useFinancialAccounts';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { useRecalculateBills } from '@/hooks/useRecalculateBills';
 import { TransferFormDialog } from './TransferFormDialog';
@@ -854,13 +855,14 @@ export function FinanceBanks() {
                           </Badge>
                         </div>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeletingId(a.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <RowActionsMenu
+                          triggerClassName="h-7 w-7"
+                          actions={[
+                            { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEdit(a) },
+                            { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeletingId(a.id) },
+                          ]}
+                        />
                       </div>
                     </div>
                     <div className="mt-3 pt-3 border-t">
@@ -1029,13 +1031,14 @@ export function FinanceBanks() {
                           </Badge>
                         </div>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeletingId(a.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <RowActionsMenu
+                          triggerClassName="h-7 w-7"
+                          actions={[
+                            { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEdit(a) },
+                            { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeletingId(a.id) },
+                          ]}
+                        />
                       </div>
                     </div>
 

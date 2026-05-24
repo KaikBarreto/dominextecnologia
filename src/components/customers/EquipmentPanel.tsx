@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useEquipment, type EquipmentInput } from '@/hooks/useEquipment';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
 import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
@@ -456,24 +457,14 @@ export function EquipmentPanel() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                              <div onClick={(e) => e.stopPropagation()}>
                                 {canManageEquipment && (
-                                  <>
-                                    <Button
-                                      variant="edit-ghost"
-                                      size="icon"
-                                      onClick={() => handleEdit(eq)}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="destructive-ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteClick(eq)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </>
+                                  <RowActionsMenu
+                                    actions={[
+                                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEdit(eq) },
+                                      { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(eq) },
+                                    ]}
+                                  />
                                 )}
                               </div>
                             </TableCell>

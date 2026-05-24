@@ -1,11 +1,12 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Pencil, Trash2, Car, Wrench, Gift, HardHat, Package } from 'lucide-react';
 import { formatBRL } from '@/utils/currency';
 import type { CostResource } from '@/hooks/useCostResources';
 import { useCostResourceItems } from '@/hooks/useCostResources';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 interface CostResourceCardProps {
@@ -37,6 +37,7 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
   const Icon = categoryIcons[resource.category] || Package;
   const isGift = resource.category === 'gift';
   const photoUrl = (resource as any).photo_url;
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const totalValue = items.reduce((sum, item) => sum + (item.value || 0), 0);
   const hourlyRate = resource.monthly_hours > 0 ? totalValue / resource.monthly_hours : 0;
@@ -70,15 +71,13 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
             <Badge variant={resource.is_active ? 'default' : 'secondary'} className="text-xs">
               {resource.is_active ? 'Ativo' : 'Inativo'}
             </Badge>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(resource)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </AlertDialogTrigger>
+            <RowActionsMenu
+              actions={[
+                { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => onEdit(resource) },
+                { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setConfirmDeleteOpen(true) },
+              ]}
+            />
+            <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Excluir {isGift ? 'brinde' : 'recurso'}?</AlertDialogTitle>

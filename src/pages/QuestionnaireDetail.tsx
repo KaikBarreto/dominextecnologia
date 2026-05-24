@@ -23,6 +23,7 @@ import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hoo
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -440,13 +441,13 @@ export default function QuestionnaireDetail() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => openEditModal(question)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteQuestionId(question.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                  <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                    <RowActionsMenu
+                      actions={[
+                        { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEditModal(question) },
+                        { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteQuestionId(question.id) },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

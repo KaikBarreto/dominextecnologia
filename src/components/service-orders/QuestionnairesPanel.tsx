@@ -21,6 +21,7 @@ import {
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -223,23 +224,13 @@ export function QuestionnairesPanel() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="edit-ghost"
-                              size="icon"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/questionarios/${template.id}`); }}
-                              title="Editar"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive-ghost"
-                              size="icon"
-                              onClick={(e) => { e.stopPropagation(); setDeleteId(template.id); }}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <RowActionsMenu
+                              actions={[
+                                { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => navigate(`/questionarios/${template.id}`) },
+                                { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(template.id) },
+                              ]}
+                            />
                           </div>
                         </TableCell>
                       </TableRow>

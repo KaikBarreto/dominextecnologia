@@ -8,14 +8,12 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useTableSort } from '@/hooks/useTableSort';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, MoreHorizontal, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -699,33 +697,34 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          {!t.is_paid && (
-                            <Button variant="ghost" size="icon" className="text-success h-8 w-8" onClick={() => handleMarkAsPaidClick(t)} title={subTab === 'receber' ? 'Marcar como recebido' : 'Marcar como pago'}>
-                              <Check className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {partial && (
-                                <DropdownMenuItem onClick={() => setViewingTxn(t)}>
-                                  <Eye className="h-4 w-4 mr-2" /> Ver histórico
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => handleEdit(t)}>
-                                <Pencil className="h-4 w-4 mr-2" /> Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setDeletingId(t.id)} className="text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                        <RowActionsMenu
+                          actions={[
+                            {
+                              label: subTab === 'receber' ? 'Marcar como recebido' : 'Marcar como pago',
+                              icon: Check,
+                              onClick: () => handleMarkAsPaidClick(t),
+                              hidden: t.is_paid,
+                            },
+                            {
+                              label: 'Ver histórico',
+                              icon: Eye,
+                              onClick: () => setViewingTxn(t),
+                              hidden: !partial,
+                            },
+                            {
+                              label: 'Editar',
+                              icon: Pencil,
+                              variant: 'edit',
+                              onClick: () => handleEdit(t),
+                            },
+                            {
+                              label: 'Excluir',
+                              icon: Trash2,
+                              variant: 'delete',
+                              onClick: () => setDeletingId(t.id),
+                            },
+                          ] satisfies RowAction[]}
+                        />
                       </TableCell>
                     </TableRow>
                   );})}

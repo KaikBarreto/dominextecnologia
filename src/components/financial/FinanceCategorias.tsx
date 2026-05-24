@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
@@ -163,13 +164,13 @@ export function FinanceCategorias() {
               </div>
             </div>
             {!isSystem && (
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEdit(cat)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleteId(cat.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <RowActionsMenu
+                  actions={[
+                    { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) },
+                    { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(cat.id) },
+                  ]}
+                />
               </div>
             )}
           </div>

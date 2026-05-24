@@ -8,12 +8,10 @@ import {
   Search,
   Pencil,
   Trash2,
-  Clock,
   CheckCircle2,
-  AlertCircle,
-  XCircle,
+  AlertTriangle,
   Calendar,
-  CalendarClock,
+  CalendarDays,
   Eye,
   ExternalLink,
   Settings,
@@ -54,29 +52,20 @@ import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFi
 import { NpsDashboard } from '@/components/service-orders/NpsDashboard';
 import { OsReportDashboard } from '@/components/service-orders/OsReportDashboard';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
-import { format } from 'date-fns';
+import { format, addDays, isBefore, parseISO, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
-import { StatCarousel } from '@/components/mobile/StatCarousel';
+import { KPICard } from '@/components/dashboard/KPICard';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { getIsPmocFromOrder } from '@/hooks/useIsPmocOrder';
-
-const statusConfig: Record<OsStatus, { icon: any; color: string; bgColor: string; hex: string }> = {
-  agendada: { icon: CalendarClock, color: 'text-white', bgColor: 'bg-violet-500', hex: '#8b5cf6' },
-  pendente: { icon: Clock, color: 'text-white', bgColor: 'bg-warning', hex: '#f59e0b' },
-  a_caminho: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-indigo-500', hex: '#6366f1' },
-  em_andamento: { icon: AlertCircle, color: 'text-white', bgColor: 'bg-info', hex: '#0ea5e9' },
-  pausada: { icon: Clock, color: 'text-white', bgColor: 'bg-amber-600', hex: '#d97706' },
-  concluida: { icon: CheckCircle2, color: 'text-white', bgColor: 'bg-success', hex: '#22c55e' },
-  cancelada: { icon: XCircle, color: 'text-white', bgColor: 'bg-destructive', hex: '#ef4444' },
-};
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -243,24 +232,41 @@ export default function ServiceOrders() {
     { value: 'nps', label: 'NPS e Satisfação', icon: Star },
   ];
 
-  // Stat items para o StatCarousel — mesmos contadores/ícones/cores de antes.
-  const statItems = (Object.keys(statusConfig) as OsStatus[]).map((status) => {
-    const config = statusConfig[status];
-    const Icon = config.icon;
-    const count = serviceOrders.filter((os) => os.status === status).length;
-    return {
-      key: status,
-      label: getStatusLabel(status),
-      count,
-      icon: <Icon className="h-4 w-4" />,
-      accentColor: config.hex,
-      active: statusFilter.includes(status),
-      onClick: () =>
-        setStatusFilter((prev) =>
-          prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
-        ),
-    };
-  });
+  // 4 KPIs no estilo Dashboard (substituem os 7 cards de status).
+  // Todos respeitam `filteredOrders` (já filtrado pelo DateRangeFilter da tela).
+  // Cards são read-only — controle de filtro por status migrou pra dentro do FilterButton/Sheet.
+  // Helper local: parse YYYY-MM-DD como horário local pra evitar UTC shift.
+  const parseLocalDate = (dateStr: string) => parseISO(dateStr + 'T12:00:00');
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const next7 = useMemo(() => addDays(today, 7), [today]);
+
+  const kpiData = useMemo(() => {
+    const osAbertas = filteredOrders.filter(
+      (o) => !['concluida', 'cancelada'].includes(o.status),
+    ).length;
+    const osConcluidas = filteredOrders.filter((o) => o.status === 'concluida').length;
+    const osAtrasadas = filteredOrders.filter(
+      (o) =>
+        !['concluida', 'cancelada'].includes(o.status) &&
+        o.scheduled_date &&
+        isBefore(parseLocalDate(o.scheduled_date), today),
+    ).length;
+    const osProx7 = filteredOrders.filter(
+      (o) =>
+        !['concluida', 'cancelada'].includes(o.status) &&
+        o.scheduled_date &&
+        !isBefore(parseLocalDate(o.scheduled_date), today) &&
+        isBefore(parseLocalDate(o.scheduled_date), next7),
+    ).length;
+    return { osAbertas, osConcluidas, osAtrasadas, osProx7 };
+  }, [filteredOrders, today, next7]);
+
+  const kpiCards = [
+    { title: 'OS Abertas', value: kpiData.osAbertas, icon: ClipboardList, bgClass: 'bg-warning', delay: 0 },
+    { title: 'Concluídas', value: kpiData.osConcluidas, icon: CheckCircle2, bgClass: 'bg-success', delay: 1 },
+    { title: 'Atrasadas', value: kpiData.osAtrasadas, icon: AlertTriangle, bgClass: 'bg-destructive', delay: 2 },
+    { title: 'Próximos 7 dias', value: kpiData.osProx7, icon: CalendarDays, bgClass: 'bg-info', delay: 3 },
+  ];
 
   // Contagem de filtros ativos (busca, status, preset diferente do default).
   // Usada no FilterSheet mobile, que ainda inclui o controle de "Período".
@@ -391,7 +397,16 @@ export default function ServiceOrders() {
                   </FilterSheet>
                 </div>
 
-                <StatCarousel items={statItems} loading={isLoading} />
+                <div className="relative -mx-3">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-background to-transparent" />
+                  <div className="flex gap-3 overflow-x-auto px-3 pb-1 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {kpiCards.map((card) => (
+                      <div key={card.title} className="snap-start shrink-0 w-[78%]">
+                        <KPICard {...card} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -442,7 +457,11 @@ export default function ServiceOrders() {
                   </div>
                 </div>
 
-                <StatCarousel items={statItems} loading={isLoading} />
+                <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                  {kpiCards.map((card) => (
+                    <KPICard key={card.title} {...card} />
+                  ))}
+                </div>
               </>
             )}
 
@@ -678,24 +697,34 @@ export default function ServiceOrders() {
                                         </Select>
                                       </TableCell>
                                       <TableCell>
-                                        <div className="flex gap-1">
-                                          <Button variant="ghost" size="icon" title="Visualizar OS" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}>
-                                            <Eye className="h-4 w-4 text-muted-foreground" />
-                                          </Button>
-                                          <Button variant="ghost" size="icon" title="Abrir Questionário" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
-                                            <ExternalLink className="h-4 w-4 text-primary" />
-                                          </Button>
-                                          {canEditOS && (
-                                            <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(os)}>
-                                              <Pencil className="h-4 w-4" />
-                                            </Button>
-                                          )}
-                                          {canDeleteOS && (
-                                            <Button variant="destructive-ghost" size="icon" onClick={() => handleDeleteClick(os)}>
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          )}
-                                        </div>
+                                        <RowActionsMenu
+                                          actions={[
+                                            {
+                                              label: 'Visualizar OS',
+                                              icon: Eye,
+                                              onClick: () => { setViewingOsId(os.id); setViewDialogOpen(true); },
+                                            },
+                                            {
+                                              label: 'Abrir questionário',
+                                              icon: ExternalLink,
+                                              onClick: () => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank'),
+                                            },
+                                            {
+                                              label: 'Editar',
+                                              icon: Pencil,
+                                              variant: 'edit',
+                                              onClick: () => handleEdit(os),
+                                              hidden: !canEditOS,
+                                            },
+                                            {
+                                              label: 'Excluir',
+                                              icon: Trash2,
+                                              variant: 'delete',
+                                              onClick: () => handleDeleteClick(os),
+                                              hidden: !canDeleteOS,
+                                            },
+                                          ]}
+                                        />
                                       </TableCell>
                                     </TableRow>
                                   );

@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
 import { useQuotes, STATUS_LABELS, STATUS_COLORS, type Quote } from '@/hooks/useQuotes';
 import { useQuoteConversion } from '@/hooks/useQuoteConversion';
@@ -36,6 +35,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
@@ -535,106 +535,50 @@ function QuotesList() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <TooltipProvider delayDuration={300}>
-                      <div className="flex justify-end gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewQuote(q)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Visualizar</TooltipContent>
-                        </Tooltip>
-
-                        {q.status === 'enviado' && (
-                          <>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
-                                  onClick={() => setApprovingQuote(q)}>
-                                  <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Aprovar (registrar recebimento)</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                                  onClick={() => updateStatus.mutate({ id: q.id, status: 'rejeitado' })}>
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Rejeitar</TooltipContent>
-                            </Tooltip>
-                          </>
-                        )}
-
-                        {q.status === 'rascunho' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-success"
-                                onClick={() => setApprovingQuote(q)}>
-                                <CheckCircle2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Aprovar (registrar recebimento)</TooltipContent>
-                          </Tooltip>
-                        )}
-
-                        {q.status === 'aprovado' && !q.converted_to_os_id && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary"
-                                onClick={() => convertToServiceOrder.mutate(q)}
-                                disabled={isConverting}>
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Converter em OS</TooltipContent>
-                          </Tooltip>
-                        )}
-
-                        {q.financial_transaction_id && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="outline" className="h-7 gap-1 text-success border-success/40">
-                                <DollarSign className="h-3 w-3" /> Recebido
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>Lançamento financeiro gerado</TooltipContent>
-                          </Tooltip>
-                        )}
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8"
-                              onClick={() => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank')}>
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Abrir em nova guia</TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="edit-ghost" size="icon" className="h-8 w-8"
-                              onClick={() => { setEditQuote(q); setFormOpen(true); }}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Editar</TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(q.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Excluir</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TooltipProvider>
+                    <div className="flex items-center justify-end gap-2">
+                      {q.financial_transaction_id && (
+                        <Badge variant="outline" className="h-7 gap-1 text-success border-success/40" title="Lançamento financeiro gerado">
+                          <DollarSign className="h-3 w-3" /> Recebido
+                        </Badge>
+                      )}
+                      <RowActionsMenu
+                        actions={[
+                          { label: 'Visualizar', icon: Eye, onClick: () => setViewQuote(q) },
+                          { label: 'Abrir proposta em nova guia', icon: ExternalLink, onClick: () => window.open(`${window.location.origin}/proposta/${q.token}`, '_blank') },
+                          {
+                            label: 'Aprovar (registrar recebimento)',
+                            icon: CheckCircle2,
+                            onClick: () => setApprovingQuote(q),
+                            hidden: q.status !== 'enviado' && q.status !== 'rascunho',
+                          },
+                          {
+                            label: 'Rejeitar',
+                            icon: XCircle,
+                            onClick: () => updateStatus.mutate({ id: q.id, status: 'rejeitado' }),
+                            hidden: q.status !== 'enviado',
+                          },
+                          {
+                            label: 'Converter em OS',
+                            icon: ArrowRight,
+                            onClick: () => convertToServiceOrder.mutate(q),
+                            disabled: isConverting,
+                            hidden: !(q.status === 'aprovado' && !q.converted_to_os_id),
+                          },
+                          {
+                            label: 'Editar',
+                            icon: Pencil,
+                            variant: 'edit',
+                            onClick: () => { setEditQuote(q); setFormOpen(true); },
+                          },
+                          {
+                            label: 'Excluir',
+                            icon: Trash2,
+                            variant: 'delete',
+                            onClick: () => setDeleteId(q.id),
+                          },
+                        ]}
+                      />
+                    </div>
                   </TableCell>
                 </TableRow>
                 );

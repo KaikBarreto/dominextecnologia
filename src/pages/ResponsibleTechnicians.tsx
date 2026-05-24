@@ -33,6 +33,7 @@ import {
   type ResponsibleTechnician,
 } from '@/hooks/useResponsibleTechnicians';
 import { ResponsibleTechnicianFormDialog } from '@/components/pmoc/ResponsibleTechnicianFormDialog';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 
 // Multi-select status: vazio = todos. Valores possíveis: 'active' | 'inactive'.
 type StatusKey = 'active' | 'inactive';
@@ -412,34 +413,25 @@ export default function ResponsibleTechnicians() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                  <Button
-                                    variant="edit-ghost"
-                                    size="icon"
-                                    onClick={() => openEdit(rt)}
-                                    title="Editar"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  {rt.is_active ? (
-                                    <Button
-                                      variant="destructive-ghost"
-                                      size="icon"
-                                      onClick={() => setToDeactivate(rt)}
-                                      title="Inativar"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleReactivate(rt)}
-                                      title="Reativar"
-                                    >
-                                      <RotateCcw className="h-4 w-4" />
-                                    </Button>
-                                  )}
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <RowActionsMenu
+                                    actions={[
+                                      { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => openEdit(rt) },
+                                      {
+                                        label: 'Inativar',
+                                        icon: Trash2,
+                                        variant: 'delete',
+                                        onClick: () => setToDeactivate(rt),
+                                        hidden: !rt.is_active,
+                                      },
+                                      {
+                                        label: 'Reativar',
+                                        icon: RotateCcw,
+                                        onClick: () => handleReactivate(rt),
+                                        hidden: rt.is_active,
+                                      },
+                                    ]}
+                                  />
                                 </div>
                               </TableCell>
                             </TableRow>

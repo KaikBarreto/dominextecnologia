@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCustomers } from '@/hooks/useCustomers';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -352,21 +353,30 @@ export default function Customers() {
                                 ) : '-'}
                               </TableCell>
                               <TableCell>
-                                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                  {canEditCustomer && (
-                                    <Button variant="edit-ghost" size="icon" onClick={(e) => handleEdit(customer, e)}>
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  {canDeleteCustomer && (
-                                    <Button
-                                      variant="destructive-ghost"
-                                      size="icon"
-                                      onClick={(e) => handleDeleteClick(customer, e)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  )}
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <RowActionsMenu
+                                    actions={[
+                                      {
+                                        label: 'Visualizar',
+                                        icon: Eye,
+                                        onClick: () => navigate(`/clientes/${customer.id}`),
+                                      },
+                                      {
+                                        label: 'Editar',
+                                        icon: Pencil,
+                                        variant: 'edit',
+                                        onClick: () => handleEdit(customer),
+                                        hidden: !canEditCustomer,
+                                      },
+                                      {
+                                        label: 'Excluir',
+                                        icon: Trash2,
+                                        variant: 'delete',
+                                        onClick: () => handleDeleteClick(customer),
+                                        hidden: !canDeleteCustomer,
+                                      },
+                                    ]}
+                                  />
                                 </div>
                               </TableCell>
                             </TableRow>

@@ -20,6 +20,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Badge } from '@/components/ui/badge';
 import { useTaskTypes } from '@/hooks/useTaskTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -210,18 +211,12 @@ export function TaskTypesPanel() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="edit-ghost" size="icon" onClick={() => handleEdit(tt)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive-ghost"
-                          size="icon"
-                          onClick={() => { setToDeleteId(tt.id); setDeleteDialogOpen(true); }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <RowActionsMenu
+                        actions={[
+                          { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEdit(tt) },
+                          { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => { setToDeleteId(tt.id); setDeleteDialogOpen(true); } },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

@@ -11,6 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCrmStages, type CrmStage } from '@/hooks/useCrmStages';
 import { cn } from '@/lib/utils';
 
@@ -118,9 +119,13 @@ export function StageManagerDialog({ children }: StageManagerDialogProps) {
           {stage.is_won && <Trophy className="h-3.5 w-3.5 text-success" />}
           {stage.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive" />}
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="edit-ghost" size="icon" className="h-8 w-8" onClick={() => setEditingId(stage.id)}><Pencil className="h-3.5 w-3.5" /></Button>
-          <Button variant="destructive-ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(stage.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <RowActionsMenu
+            actions={[
+              { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => setEditingId(stage.id) },
+              { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteId(stage.id) },
+            ]}
+          />
         </div>
       </div>
     );

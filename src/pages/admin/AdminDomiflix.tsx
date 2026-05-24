@@ -38,6 +38,7 @@ import { FABButton } from "@/components/mobile/FABButton";
 import { MobileListItem, type ItemAction } from "@/components/mobile/MobileListItem";
 import { EmptyState } from "@/components/mobile/EmptyState";
 import { FilterCheckboxGroup } from "@/components/mobile/FilterCheckboxGroup";
+import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
 
 // ─────────────── Image upload helper ───────────────
 async function uploadImage(file: File, folder: string): Promise<string> {
@@ -1156,22 +1157,12 @@ export default function AdminDomiflix() {
                       <Button size="sm" variant="outline" onClick={() => setSelectedTitleId(t.id)} className="flex-1">
                         Gerenciar episódios
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="edit-ghost"
-                        onClick={() => setTitleDialog({ open: true, title: t })}
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="destructive-ghost"
-                        onClick={() => setConfirmDel(t.id)}
-                        aria-label="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <RowActionsMenu
+                        actions={[
+                          { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => setTitleDialog({ open: true, title: t }) },
+                          { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setConfirmDel(t.id) },
+                        ]}
+                      />
                     </div>
                   </CardContent>
                 </Card>
