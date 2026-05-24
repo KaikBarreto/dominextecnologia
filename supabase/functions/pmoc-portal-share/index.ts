@@ -20,7 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, apikey, authorization, x-client-info",
 };
 
 const TOKEN_REGEX = /^[0-9a-f]{32}$/;
@@ -555,10 +555,13 @@ Deno.serve(async (req) => {
           (contract.frequency_value ?? null) as number | null,
           (contract.frequency_type ?? null) as string | null,
         ),
+        next_pmoc_generation_date: contract.next_pmoc_generation_date ?? null,
         next_maintenance_date: contract.next_pmoc_generation_date ?? null,
         compliance_text:
           contract.pmoc_legal_compliance_text ?? "Conforme Lei Federal 13.589/2018",
         status_label: STATUS_CONTRACT_LABEL[contract.status] ?? "—",
+        health_status: health?.health_status ?? "em_dia",
+        overdue_count: health?.overdue_count ?? 0,
       },
       health: {
         status: health?.health_status ?? "em_dia",

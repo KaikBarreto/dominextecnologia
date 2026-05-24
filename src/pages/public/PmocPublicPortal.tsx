@@ -424,7 +424,7 @@ function HealthBadge({
   status: PortalHealthStatus;
   overdueCount: number;
 }) {
-  const cfg = HEALTH_CONFIG[status];
+  const cfg = HEALTH_CONFIG[status] ?? HEALTH_CONFIG.em_dia;
   return (
     <div
       className={cn(
