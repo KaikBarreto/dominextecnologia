@@ -535,13 +535,13 @@ export default function Contracts() {
                       </span>
                     }
                     trailing={
-                      <div className="flex flex-col items-end gap-1">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[120px]">
                         <Badge variant={statusCfg.variant} className="text-[10px] px-2 py-0.5 whitespace-nowrap">
                           {statusCfg.label}
                         </Badge>
                         <Badge
                           variant={healthCfg.variant}
-                          className="text-[9px] px-1.5 py-0 h-4 whitespace-nowrap"
+                          className="text-[10px] px-2 py-0.5 whitespace-nowrap"
                           title={healthTooltip}
                         >
                           {healthCfg.shortLabel}
