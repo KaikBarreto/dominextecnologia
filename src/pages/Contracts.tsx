@@ -384,48 +384,9 @@ export default function Contracts() {
               {filterContent}
             </FilterSheet>
           </div>
-
-          <StatCarousel items={statItems} loading={isLoading} />
         </>
       ) : (
         <>
-          {/* Desktop KPIs — padrão KPICard saturado (igual Dashboard/OS) */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {isLoading ? (
-              [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[108px] rounded-2xl" />)
-            ) : (
-              <>
-                <KPICard
-                  title="Contratos Ativos"
-                  value={stats.active}
-                  icon={CheckCircle}
-                  bgClass="bg-success"
-                  delay={0}
-                />
-                <KPICard
-                  title="OSs Geradas (mês)"
-                  value={stats.osGeneratedThisMonth}
-                  icon={Calendar}
-                  bgClass="bg-info"
-                  delay={0.05}
-                />
-                <KPICard
-                  title="Próximas 7 dias"
-                  value={stats.upcomingOccurrences}
-                  icon={Clock}
-                  bgClass="bg-warning"
-                  delay={0.1}
-                />
-                <KPICard
-                  title="Vencendo em 30d"
-                  value={stats.expiringContracts}
-                  icon={AlertTriangle}
-                  bgClass="bg-destructive"
-                  delay={0.15}
-                />
-              </>
-            )}
-          </div>
 
           {/* Desktop toolbar: busca + único botão "Filtros" (Sheet à direita).
               Substitui os 3 selects soltos da versão antiga — desentulha a tela
