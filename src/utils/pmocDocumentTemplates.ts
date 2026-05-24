@@ -83,14 +83,20 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p><strong>CONTRATANTE:</strong></p>
 
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>___________________________________________</p>
 
 <p><strong>${v('empresa.razao_social')}:</strong></p>
 
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>___________________________________________</p>
 
 <p><strong>RESPONSÁVEL TÉCNICO:</strong></p>
 
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>___________________________________________</p>
 
 <p>${v('rt.nome')}<br>
@@ -113,6 +119,8 @@ export function buildDefaultCertificadoHtml(): string {
 
 <p>Documento gerado em ${v('data.hoje_extenso')}.</p>
 
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>___________________________________________<br>
 ${v('rt.nome')}<br>
 ${v('rt.modalidade')} — CFT ${v('rt.cft_crea')}</p>

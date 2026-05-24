@@ -273,8 +273,10 @@ Deno.serve(async (req) => {
         // CNPJ vive em `company_settings.document` (não há coluna `cnpj`).
         // Onda H: incluímos campos extra (address, state, phone, email) pra
         // alimentar o PmocVariableContext que substitui <span data-pmoc-var>.
+        // Onda I: + report_header_* pra estilizar o cabeçalho identidade do
+        //         tenant no topo do TRT (espelha ReportHeader da OS).
         .select(
-          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email",
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size",
         )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
@@ -388,14 +390,64 @@ Deno.serve(async (req) => {
     // Cidade (do company_settings, fallback do customer)
     const cidade = (companySettings?.city ?? customer?.city ?? "").trim() || "_______________________";
 
-    // ---- 7. Monta TemplateContext (sem logo — TRT não usa capa)
+    // ---- (Onda I — v1.9.x) Carregar logo do tenant pro cabeçalho do TRT.
+    //      Best-effort: se falhar download, header desenha a inicial do nome.
+    //      Respeita white-label (usa white_label_logo_url quando ativo).
+    const trtUseWhiteLabel = companySettings?.white_label_enabled === true;
+    const trtLogoUrl = trtUseWhiteLabel
+      ? companySettings?.white_label_logo_url ?? companySettings?.logo_url ?? null
+      : companySettings?.logo_url ?? null;
+
+    let trtLogoBytes: Uint8Array | null = null;
+    let trtLogoMime: "image/png" | "image/jpeg" | null = null;
+    if (trtLogoUrl) {
+      try {
+        const res = await fetch(trtLogoUrl);
+        if (res.ok) {
+          const ct = res.headers.get("content-type") ?? "";
+          if (ct.includes("png")) {
+            trtLogoBytes = new Uint8Array(await res.arrayBuffer());
+            trtLogoMime = "image/png";
+          } else if (ct.includes("jpeg") || ct.includes("jpg")) {
+            trtLogoBytes = new Uint8Array(await res.arrayBuffer());
+            trtLogoMime = "image/jpeg";
+          }
+        }
+      } catch {
+        // sem logo é ok — header cai no fallback de inicial
+      }
+    }
+
+    // ---- (Onda I — v1.9.x) Cores do report_header_* (fallback DEFAULT do front).
+    //      Lemos campos extras do company_settings via cast porque o type
+    //      atual da edge não inclui report_header_* — query feita com select(*)
+    //      em select de cima carrega todos. Aqui só extraímos.
+    const trtHeaderBg =
+      ((companySettings as unknown as Record<string, unknown>)?.report_header_bg_color as string | null) ?? null;
+    const trtHeaderText =
+      ((companySettings as unknown as Record<string, unknown>)?.report_header_text_color as string | null) ?? null;
+    const trtHeaderLogoSize =
+      ((companySettings as unknown as Record<string, unknown>)?.report_header_logo_size as number | null) ?? null;
+
+    // ---- 7. Monta TemplateContext (TRT agora usa logo + endereço completo no header)
     const ctx: TemplateContext = {
       empresa: {
         razao_social: tenantName,
         cnpj,
         cidade,
-        logo_bytes: null,
-        logo_mime: null,
+        logo_bytes: trtLogoBytes,
+        logo_mime: trtLogoMime,
+        phone: companySettings?.phone ?? null,
+        email: companySettings?.email ?? null,
+        address: companySettings?.address ?? null,
+        address_number: companySettings?.address_number ?? null,
+        neighborhood: companySettings?.neighborhood ?? null,
+        state: companySettings?.state ?? null,
+        zip_code: companySettings?.zip_code ?? null,
+        header_bg_color: trtHeaderBg,
+        header_text_color: trtHeaderText,
+        header_logo_size: trtHeaderLogoSize,
+        white_label_enabled: trtUseWhiteLabel,
       },
       rt: {
         nome: rt.full_name,
@@ -478,9 +530,29 @@ Deno.serve(async (req) => {
     //         Onda H+ (v1.9.x): bump pra trt_v3 — entraram 3 chaves novas
     //         `contrato.criado_{dia,mes,ano}`. Sem bump, tenants antigos
     //         continuariam recebendo PDF cacheado SEM as datas substituídas.
+    //         Onda I (v1.9.x): bump pra trt_v4 — cabeçalho identidade tenant
+    //         (logo + endereço + cores), rodapé Dominex (depende de
+    //         white-label) e espaçamento das linhas de assinatura mudaram
+    //         o output visual.
     const hashInput = JSON.stringify({
-      v: "trt_v3",
-      tenant: { name: tenantName, cnpj, city: cidade },
+      v: "trt_v4",
+      tenant: {
+        name: tenantName,
+        cnpj,
+        city: cidade,
+        logo: !!trtLogoBytes,
+        phone: companySettings?.phone ?? null,
+        email: companySettings?.email ?? null,
+        address: companySettings?.address ?? null,
+        address_number: companySettings?.address_number ?? null,
+        neighborhood: companySettings?.neighborhood ?? null,
+        state: companySettings?.state ?? null,
+        zip_code: companySettings?.zip_code ?? null,
+        header_bg: trtHeaderBg,
+        header_text: trtHeaderText,
+        header_logo_size: trtHeaderLogoSize,
+        white_label: trtUseWhiteLabel,
+      },
       rt: {
         nome: ctx.rt.nome,
         modalidade: ctx.rt.modalidade,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Download,
@@ -206,48 +206,60 @@ function SubDocCard({
   helperTooltip,
   onEdit,
   edited,
+  extraActions,
+  topRightSlot,
 }: {
   title: string;
   preview: string;
   helperTooltip: string;
   onEdit: () => void;
   edited: boolean;
+  /** Ações extras (ex: baixar TRT individual, adicionar assinatura) — vão no rodapé do sub-card, antes do botão Editar. */
+  extraActions?: ReactNode;
+  /** Slot opcional no canto superior direito (ex: badge de status). */
+  topRightSlot?: ReactNode;
 }) {
   return (
-    <div className="flex h-full flex-col gap-2 rounded-lg border bg-muted/20 p-3">
+    <div className="flex h-full flex-col gap-2 rounded-lg border bg-muted/20 p-3 active:scale-[0.998] transition-transform">
       <div className="flex items-start justify-between gap-2">
-        <p className="break-words text-sm font-semibold">{title}</p>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Info className="h-3 w-3" aria-hidden="true" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="left" className="max-w-xs text-xs">
-            {helperTooltip}
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="break-words text-sm font-semibold">{title}</p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <Info className="h-3 w-3" aria-hidden="true" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-xs text-xs">
+              {helperTooltip}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        {topRightSlot}
       </div>
-      <p className="min-h-[48px] flex-1 break-words text-xs text-muted-foreground">
-        {preview || 'Texto padrão do sistema. Clique em "Editar" pra personalizar.'}
+      <p className="min-h-[40px] flex-1 break-words text-xs text-muted-foreground">
+        {preview || 'Texto padrão do sistema. Toque em "Editar" pra personalizar.'}
       </p>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         {edited ? (
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="self-start text-[10px]">
             Personalizado
           </Badge>
         ) : (
           <span className="text-[10px] text-muted-foreground">Texto padrão</span>
         )}
-        <Button
-          variant="edit-ghost"
-          size="sm"
-          className="min-h-[36px]"
-          onClick={onEdit}
-        >
-          <Pencil className="mr-1 h-3.5 w-3.5" />
-          Editar
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {extraActions}
+          <Button
+            variant="edit-ghost"
+            size="sm"
+            className="min-h-[40px] active:scale-[0.97] transition-transform"
+            onClick={onEdit}
+          >
+            <Pencil className="mr-1 h-3.5 w-3.5" />
+            Editar texto
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -371,48 +383,48 @@ export function PmocContractDocsTab({
         </Alert>
       )}
 
-      {/* Card 0 — TRT (Onda E) — gerável independente do Dossiê */}
+      {/* Card 1 — Dossiê PMOC (TRT + Certificado vivem aqui dentro)
+          ===========================================================
+          Onda I (v1.9.x): TRT NÃO é mais um card separado no topo. Vive como
+          sub-card do Dossiê — assim o gestor edita o TRT num lugar SÓ. Mesmo
+          conteúdo é usado pelo TRT standalone (botão "Baixar TRT individual"
+          dentro do sub-card) e pelo Dossiê completo. */}
       <Card className="w-full min-w-0 max-w-full overflow-hidden">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 break-words">
-              <ShieldCheck className="h-5 w-5 shrink-0" />
-              <span className="min-w-0 break-words">
-                Termo de Responsabilidade Técnica (TRT)
-              </span>
-              {latestTrt && (
+            <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
+              <FileText className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 break-words">Dossiê PMOC</span>
+              {latestDossie && (
                 <Badge variant="secondary" className="ml-2">
-                  v{latestTrt.version}
+                  v{latestDossie.version}
                 </Badge>
               )}
             </CardTitle>
-            <SignatureStatusBadge status={trtStatus} />
+            <SignatureStatusBadge status={dossieStatus} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Documento curto (1 página) com declaração de responsabilidade técnica do RT,
-            conforme Lei Federal 13.589/2018. Pode ser gerado independente do Dossiê completo.
+            Documento completo: capa + Termo de Responsabilidade Técnica + Certificado de Conformidade.
           </p>
-          {latestTrt && (
-            <p className="text-xs text-muted-foreground">
-              Última geração: {formatGeneratedAt(latestTrt.generated_at)}
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            Última geração: {formatGeneratedAt(latestDossie?.generated_at)}
+          </p>
         </CardHeader>
-        <CardContent className="space-y-3 min-w-0">
+        <CardContent className="space-y-4 min-w-0">
           {trtStatus === 'pending' && (
             <Alert className="border-warning/40 bg-warning/5">
               <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle>Assinatura pendente</AlertTitle>
+              <AlertTitle>Assinatura do RT pendente</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p>
-                  O RT atual desse contrato não tem assinatura cadastrada. O TRT foi gerado
-                  com linha em branco pra assinar à mão. Você pode adicionar a assinatura
-                  agora pro PDF ser regerado automaticamente em todos os documentos (TRT, Dossiê).
+                  O RT não tem assinatura cadastrada. Os PDFs (TRT e Dossiê) foram gerados
+                  com linha em branco pra assinar à mão. Cadastre a assinatura agora pra
+                  o PDF ser regerado automaticamente.
                 </p>
                 <Button
                   size="sm"
                   variant="edit-ghost"
-                  className="mt-1 min-h-[36px]"
+                  className="mt-1 min-h-[40px] active:scale-[0.97] transition-transform"
                   onClick={() => setSignatureDialogOpen(true)}
                   disabled={!responsibleTechnicianId}
                 >
@@ -428,60 +440,52 @@ export function PmocContractDocsTab({
             </Alert>
           )}
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {latestTrt?.pdf_storage_path && (
-              <DownloadLatestButton doc={latestTrt} label="Baixar última versão" />
-            )}
-            <Button
-              size="sm"
-              onClick={handleGenerateTrt}
-              disabled={generateTrt.isPending}
-              className="min-h-[40px]"
-            >
-              {generateTrt.isPending ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-1 h-4 w-4" />
-              )}
-              {latestTrt ? 'Atualizar TRT' : 'Gerar TRT'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 1 — Dossiê PMOC */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden">
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 break-words">
-              <FileText className="h-5 w-5 shrink-0" />
-              <span className="min-w-0 break-words">Dossiê PMOC</span>
-              {latestDossie && (
-                <Badge variant="secondary" className="ml-2">
-                  v{latestDossie.version}
-                </Badge>
-              )}
-            </CardTitle>
-            <SignatureStatusBadge status={dossieStatus} />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Última geração: {formatGeneratedAt(latestDossie?.generated_at)}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 min-w-0">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Stack vertical sempre (mobile-first). No desktop também vertical
+              porque os sub-cards carregam ação própria e ficam mais legíveis. */}
+          <div className="flex flex-col gap-3">
             <SubDocCard
               title="Termo de Responsabilidade Técnica"
               preview={termoRtPreview}
               edited={!!termoRtHtml}
-              helperTooltip="Esse texto vai pra página 2 do PDF do Dossiê PMOC. Você pode editar e salvar — ou usar o texto padrão do sistema."
+              helperTooltip="Esse texto vai pra página 2 do Dossiê PMOC e também é o conteúdo do TRT individual (baixe abaixo). Editar aqui afeta os 2 PDFs."
               onEdit={() => setEditorOpen('termo_rt')}
+              topRightSlot={
+                <div className="flex items-center gap-1.5">
+                  {latestTrt && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      v{latestTrt.version}
+                    </Badge>
+                  )}
+                  <SignatureStatusBadge status={trtStatus} />
+                </div>
+              }
+              extraActions={
+                <>
+                  {latestTrt?.pdf_storage_path && (
+                    <DownloadLatestButton doc={latestTrt} label="Baixar TRT" />
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateTrt}
+                    disabled={generateTrt.isPending}
+                    className="min-h-[40px] active:scale-[0.97] transition-transform"
+                  >
+                    {generateTrt.isPending ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1 h-4 w-4" />
+                    )}
+                    {latestTrt ? 'Gerar TRT individual' : 'Gerar TRT'}
+                  </Button>
+                </>
+              }
             />
             <SubDocCard
               title="Certificado de Conformidade"
               preview={certificadoPreview}
               edited={!!certificadoHtml}
-              helperTooltip="Esse texto vai pra página 3 do PDF do Dossiê PMOC, com o selo da Lei Federal 13.589/2018."
+              helperTooltip="Esse texto vai pra página 3 do Dossiê PMOC, com o selo da Lei Federal 13.589/2018. Só existe dentro do Dossiê."
               onEdit={() => setEditorOpen('certificado')}
             />
           </div>
@@ -498,14 +502,14 @@ export function PmocContractDocsTab({
                 size="sm"
                 onClick={handleGenerateDossie}
                 disabled={generateDossie.isPending}
-                className="min-h-[40px]"
+                className="min-h-[44px] active:scale-[0.97] transition-transform"
               >
                 {generateDossie.isPending ? (
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                 ) : (
                   <RefreshCw className="mr-1 h-4 w-4" />
                 )}
-                {latestDossie ? 'Gerar nova versão' : 'Gerar PDF completo'}
+                {latestDossie ? 'Gerar nova versão' : 'Gerar Dossiê completo'}
               </Button>
             </div>
           </div>
@@ -515,7 +519,7 @@ export function PmocContractDocsTab({
       {/* Card 2 — Cronograma Anual */}
       <Card className="w-full min-w-0 max-w-full overflow-hidden">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 break-words">
+          <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
             <CalendarRange className="h-5 w-5 shrink-0" />
             <span className="min-w-0 break-words">Cronograma Anual</span>
             {latestCronograma && (
@@ -538,7 +542,7 @@ export function PmocContractDocsTab({
               size="sm"
               onClick={handleGenerateCronograma}
               disabled={generateCronograma.isPending}
-              className="min-h-[40px]"
+              className="min-h-[44px] active:scale-[0.97] transition-transform"
             >
               {generateCronograma.isPending ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />

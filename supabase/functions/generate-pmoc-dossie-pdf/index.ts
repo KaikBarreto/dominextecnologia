@@ -283,8 +283,10 @@ Deno.serve(async (req) => {
         .from("company_settings")
         // CNPJ vive em `company_settings.document` (não há coluna `cnpj`).
         // Onda H: campos extra alimentam o PmocVariableContext do termo/cert.
+        // Onda I: + report_header_* pra estilizar o cabeçalho identidade do
+        //         tenant no topo do Termo RT (embedded no Dossiê).
         .select(
-          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email",
+          "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size",
         )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
@@ -424,6 +426,15 @@ Deno.serve(async (req) => {
     // Cidade (do company_settings, fallback do customer)
     const cidade = (companySettings?.city ?? customer?.city ?? "").trim() || "_______________________";
 
+    // ---- (Onda I — v1.9.x) Cores do report_header_* pro cabeçalho identidade
+    //      tenant no Termo RT (embedded no Dossiê).
+    const dossieHeaderBg =
+      ((companySettings as unknown as Record<string, unknown>)?.report_header_bg_color as string | null) ?? null;
+    const dossieHeaderText =
+      ((companySettings as unknown as Record<string, unknown>)?.report_header_text_color as string | null) ?? null;
+    const dossieHeaderLogoSize =
+      ((companySettings as unknown as Record<string, unknown>)?.report_header_logo_size as number | null) ?? null;
+
     // ---- 7. Monta TemplateContext
     const ctx: TemplateContext = {
       empresa: {
@@ -432,6 +443,20 @@ Deno.serve(async (req) => {
         cidade,
         logo_bytes: logoBytes,
         logo_mime: logoMime,
+        // Onda I (v1.9.x) — campos extras pro cabeçalho identidade tenant no
+        // Termo RT (página 2 do Dossiê) e pro rodapé Dominex (oculto em
+        // white-label).
+        phone: companySettings?.phone ?? null,
+        email: companySettings?.email ?? null,
+        address: companySettings?.address ?? null,
+        address_number: companySettings?.address_number ?? null,
+        neighborhood: companySettings?.neighborhood ?? null,
+        state: companySettings?.state ?? null,
+        zip_code: companySettings?.zip_code ?? null,
+        header_bg_color: dossieHeaderBg,
+        header_text_color: dossieHeaderText,
+        header_logo_size: dossieHeaderLogoSize,
+        white_label_enabled: useWhiteLabel,
       },
       rt: {
         nome: rt.full_name,
@@ -513,9 +538,29 @@ Deno.serve(async (req) => {
     //    company_settings/RT invalidam cache certinho).
     //    Onda H+ (v1.9.x): bump pra dossie_v4 — 3 chaves novas
     //    `contrato.criado_{dia,mes,ano}` entraram no variableContext.
+    //    Onda I (v1.9.x): bump pra dossie_v5 — cabeçalho identidade tenant
+    //    no Termo RT (logo + endereço + cores), rodapé Dominex novo
+    //    (substitui "Powered by Dominex" antigo, oculto em white-label) e
+    //    espaçamento das linhas de assinatura mudaram o output visual.
     const hashInput = JSON.stringify({
-      v: "dossie_v4",
-      tenant: { name: tenantName, cnpj, city: cidade, logo: !!logoBytes },
+      v: "dossie_v5",
+      tenant: {
+        name: tenantName,
+        cnpj,
+        city: cidade,
+        logo: !!logoBytes,
+        phone: companySettings?.phone ?? null,
+        email: companySettings?.email ?? null,
+        address: companySettings?.address ?? null,
+        address_number: companySettings?.address_number ?? null,
+        neighborhood: companySettings?.neighborhood ?? null,
+        state: companySettings?.state ?? null,
+        zip_code: companySettings?.zip_code ?? null,
+        header_bg: dossieHeaderBg,
+        header_text: dossieHeaderText,
+        header_logo_size: dossieHeaderLogoSize,
+        white_label: useWhiteLabel,
+      },
       rt: {
         nome: ctx.rt.nome,
         modalidade: ctx.rt.modalidade,

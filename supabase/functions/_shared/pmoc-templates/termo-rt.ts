@@ -29,6 +29,8 @@ import {
   SIGNATURE_BLOCK_HEIGHT,
 } from "./signature-embed.ts";
 import { PmocVariableContext, substituteVariables } from "./variables.ts";
+import { drawTenantHeader } from "./header.ts";
+import { drawDominexFooter } from "./footer.ts";
 
 // Marcador opcional no HTML pra posicionar o bloco de assinatura. Se ausente,
 // desenhamos no rodapé da última página automaticamente. Mantemos o sanitizer
@@ -70,10 +72,14 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p><strong>CONTRATANTE:</strong></p>
 
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>___________________________________________</p>
 
 <p><strong><span data-pmoc-var="empresa.razao_social"></span>:</strong></p>
 
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>___________________________________________</p>
 
 ${SIGNATURE_BLOCK_MARKER}
@@ -120,9 +126,40 @@ export async function drawTermoRtPage(
 
   // Nova página sempre (termo começa em folha limpa)
   const initialPage = pdf.addPage([A4_W, A4_H]);
+
+  // -- Onda I (v1.9.x): cabeçalho com identidade do tenant no topo do TRT.
+  //    Replica o visual do ReportHeader da OS (logo + nome + CNPJ + endereço).
+  //    Sempre desenha (mesmo sem opt-in) — tenant é a parte regulatória do
+  //    documento, faz sentido aparecer também no PDF standalone.
+  const headerResult = await drawTenantHeader(
+    pdf,
+    initialPage,
+    {
+      name: ctx.empresa.razao_social,
+      cnpj: ctx.empresa.cnpj || null,
+      phone: ctx.empresa.phone ?? null,
+      email: ctx.empresa.email ?? null,
+      address: ctx.empresa.address ?? null,
+      address_number: ctx.empresa.address_number ?? null,
+      neighborhood: ctx.empresa.neighborhood ?? null,
+      city: ctx.empresa.cidade || null,
+      state: ctx.empresa.state ?? null,
+      zip_code: ctx.empresa.zip_code ?? null,
+      logo_bytes: ctx.empresa.logo_bytes ?? null,
+      logo_mime: ctx.empresa.logo_mime ?? null,
+    },
+    {
+      bgColor: ctx.empresa.header_bg_color ?? null,
+      textColor: ctx.empresa.header_text_color ?? null,
+      logoSize: ctx.empresa.header_logo_size ?? null,
+    },
+  );
+
+  // Conteúdo começa abaixo do header (com respiro de 18pt).
+  const contentStartY = headerResult.bottomY - 18;
   const result = await renderHtmlToPdf(pdf, clean, {
     startPage: initialPage,
-    cursorY: A4_H - MARGIN_Y,
+    cursorY: contentStartY,
     newPage: () => pdf.addPage([A4_W, A4_H]),
   });
 
@@ -153,6 +190,12 @@ export async function drawTermoRtPage(
       width: CONTENT_W,
     },
   );
+
+  // -- Onda I (v1.9.x): rodapé Dominex centralizado, só se NÃO for white-label.
+  //    Desenhamos na MESMA página onde está o bloco de assinatura (última do TRT).
+  await drawDominexFooter(pdf, sigPage, {
+    enabled: ctx.empresa.white_label_enabled !== true,
+  });
 
   return {
     page: sigPage,

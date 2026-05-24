@@ -13,6 +13,12 @@ import {
   type PmocVariableKey,
 } from '@/utils/pmocVariables';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * TipTap Node "pmocVariable" — badge visual de variável PMOC.
@@ -65,28 +71,41 @@ function VariableBadgeView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper as="span" className="inline-block align-middle">
-      <span
-        contentEditable={false}
-        data-pmoc-var={rawKey}
-        data-pmoc-empty={isEmpty ? 'true' : 'false'}
-        title={
-          isEmpty
-            ? `${label} — campo vazio. Cadastre o dado pra preencher no PDF.`
-            : `${label}: ${value}`
-        }
-        className={cn(
-          'inline-flex items-center gap-1 rounded px-1.5 py-0.5 align-middle mx-0.5',
-          'text-xs font-medium select-none whitespace-nowrap',
-          'cursor-default',
-          isEmpty
-            ? 'bg-destructive text-destructive-foreground'
-            : 'bg-primary text-primary-foreground',
-        )}
-      >
-        <Tag className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>{label}</span>
-        {isEmpty && <span className="opacity-90">(vazio)</span>}
-      </span>
+      <TooltipProvider delayDuration={120}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              contentEditable={false}
+              data-pmoc-var={rawKey}
+              data-pmoc-empty={isEmpty ? 'true' : 'false'}
+              className={cn(
+                'inline-flex items-center gap-1 rounded px-1.5 py-0.5 align-middle mx-0.5',
+                'text-xs font-medium select-none whitespace-nowrap',
+                'cursor-help',
+                isEmpty
+                  ? 'bg-destructive text-destructive-foreground'
+                  : 'bg-primary text-primary-foreground',
+              )}
+            >
+              <Tag className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span>{label}</span>
+              {isEmpty && <span className="opacity-90">(vazio)</span>}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs max-w-[280px]">
+            <p className="font-semibold">{label}</p>
+            {isEmpty ? (
+              <p className="text-muted-foreground mt-0.5">
+                Campo vazio. Cadastre o dado pra preencher no PDF.
+              </p>
+            ) : (
+              <p className="text-muted-foreground mt-0.5 break-words">
+                {value}
+              </p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </NodeViewWrapper>
   );
 }

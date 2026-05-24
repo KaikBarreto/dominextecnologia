@@ -23,6 +23,7 @@ import {
   SIGNATURE_BLOCK_HEIGHT,
 } from "./signature-embed.ts";
 import { PmocVariableContext, substituteVariables } from "./variables.ts";
+import { drawDominexFooter } from "./footer.ts";
 
 const BLACK = rgb(0, 0, 0);
 
@@ -78,9 +79,10 @@ export async function drawCertificadoPage(
   });
 
   // -- Onda E: bloco de assinatura do RT (acima do selo no rodapé).
-  //    Reservamos pelo menos espaço do bloco + selo (~50pt). Se não cabe na
-  //    página corrente, abre nova.
-  const SEAL_RESERVED = 60; // espaço reservado pro selo no rodapé
+  //    Reservamos espaço pro selo "Conforme Lei" + (se aplicável) o footer
+  //    Dominex novo (~72pt). Onda I (v1.9.x): bump pra 90pt quando há footer.
+  const isWhiteLabel = ctx.empresa.white_label_enabled === true;
+  const SEAL_RESERVED = isWhiteLabel ? 60 : 90;
   const SPACE_NEEDED = SIGNATURE_BLOCK_HEIGHT + 20 + SEAL_RESERVED;
 
   let sigPage = result.page;
@@ -112,12 +114,13 @@ export async function drawCertificadoPage(
   // está o bloco de assinatura (último frame da renderização).
   const finalPage = sigPage;
   const helvBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const helv = await pdf.embedFont(StandardFonts.Helvetica);
 
   const sealText = "Conforme Lei Federal 13.589/2018";
   const sealSize = 11;
   const sealW = helvBold.widthOfTextAtSize(sealText, sealSize);
-  const sealY = MARGIN_Y / 2 + 10;
+  // Onda I (v1.9.x): quando há footer Dominex, sobe o selo pra não colidir
+  //                  com o logo. White-label mantém posição antiga (sem footer).
+  const sealY = isWhiteLabel ? MARGIN_Y / 2 + 10 : MARGIN_Y + 20;
 
   finalPage.drawText(sealText, {
     x: (A4_W - sealW) / 2,
@@ -136,16 +139,11 @@ export async function drawCertificadoPage(
     color: BLACK,
   });
 
-  // Rodapé "Powered by Dominex"
-  const footerText = "Powered by Dominex";
-  const footerSize = 8;
-  const footerW = helv.widthOfTextAtSize(footerText, footerSize);
-  finalPage.drawText(footerText, {
-    x: (A4_W - footerW) / 2,
-    y: sealY - 14,
-    size: footerSize,
-    font: helv,
-    color: rgb(0.4, 0.4, 0.4),
+  // -- Onda I (v1.9.x): rodapé Dominex centralizado (logo + URL).
+  //    SÓ aparece quando NÃO é white-label — substitui o antigo
+  //    "Powered by Dominex" texto-puro.
+  await drawDominexFooter(pdf, finalPage, {
+    enabled: !isWhiteLabel,
   });
 
   return {

@@ -12,6 +12,22 @@ export interface TemplateContextEmpresa {
   cidade: string;      // pode ser do company_settings ou customer
   logo_bytes?: Uint8Array | null;
   logo_mime?: "image/png" | "image/jpeg" | null;
+  // ---- Onda I (v1.9.x) — campos extras pro cabeçalho do tenant no TRT.
+  //      Opcionais; quando ausentes, o header simplesmente não renderiza
+  //      a linha correspondente (ex.: sem telefone → sem bullet).
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  address_number?: string | null;
+  neighborhood?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  /** Cores do report_header_* (fallback DEFAULT_HEADER_CONFIG). */
+  header_bg_color?: string | null;
+  header_text_color?: string | null;
+  header_logo_size?: number | null;
+  /** Quando true, o rodapé Dominex NÃO renderiza. */
+  white_label_enabled?: boolean;
 }
 
 export interface TemplateContextRT {
