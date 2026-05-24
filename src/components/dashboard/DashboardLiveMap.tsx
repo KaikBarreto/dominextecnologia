@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { MapPin, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { buildCustomerAddress, geocodeAddress } from '@/utils/geolocation';
 import 'leaflet/dist/leaflet.css';
 
 interface TechInField {
@@ -20,6 +22,7 @@ interface TechInField {
 const DEFAULT_CENTER: [number, number] = [-22.9, -43.2];
 const DEFAULT_ZOOM = 4;
 const ACTIVE_ZOOM = 12;
+const CITY_ZOOM = 13;
 const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
@@ -40,6 +43,25 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
   const leafletMapRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
   const markerRefs = useRef<any[]>([]);
+
+  // Quando 0 técnicos em campo, focar no endereço da empresa (zoom de cidade)
+  // em vez de cair no centro padrão (Brasil inteiro). CEO 2026-05-24.
+  const { settings: companySettings } = useCompanySettings();
+  const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (!companySettings) return;
+    const addr = buildCustomerAddress({
+      address: companySettings.address,
+      city: companySettings.city,
+      state: companySettings.state,
+      zip_code: companySettings.zip_code,
+    });
+    if (!addr) return;
+    geocodeAddress(addr).then((coords) => {
+      if (coords) setCompanyCoords(coords);
+    });
+  }, [companySettings]);
 
   const syncMapData = useCallback(async (leafletModule?: typeof import('leaflet')) => {
     const map = leafletMapRef.current;
@@ -62,7 +84,11 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
     tileLayerRef.current?.setUrl(getTileUrl());
 
     if (technicians.length === 0) {
-      map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      if (companyCoords) {
+        map.setView([companyCoords.lat, companyCoords.lng], CITY_ZOOM);
+      } else {
+        map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      }
     } else if (technicians.length === 1) {
       map.setView([technicians[0].lat, technicians[0].lng], ACTIVE_ZOOM);
     } else {
@@ -71,7 +97,7 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
     }
 
     requestAnimationFrame(() => map.invalidateSize());
-  }, [technicians]);
+  }, [technicians, companyCoords]);
 
   // CEO 2026-05-23: o mapa SEMPRE monta — sem técnico ele continua visível,
   // apenas centrado no DEFAULT_CENTER (Rio/SP) com zoom de país. A mensagem
@@ -92,10 +118,18 @@ export function DashboardLiveMap({ technicians, isLoading }: { technicians: Tech
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      const initialCenter: [number, number] = technicians.length > 0
-        ? [technicians[0].lat, technicians[0].lng]
-        : DEFAULT_CENTER;
-      const initialZoom = technicians.length > 0 ? ACTIVE_ZOOM : DEFAULT_ZOOM;
+      let initialCenter: [number, number];
+      let initialZoom: number;
+      if (technicians.length > 0) {
+        initialCenter = [technicians[0].lat, technicians[0].lng];
+        initialZoom = ACTIVE_ZOOM;
+      } else if (companyCoords) {
+        initialCenter = [companyCoords.lat, companyCoords.lng];
+        initialZoom = CITY_ZOOM;
+      } else {
+        initialCenter = DEFAULT_CENTER;
+        initialZoom = DEFAULT_ZOOM;
+      }
 
       const map = L.map(mapElementRef.current, {
         scrollWheelZoom: false,

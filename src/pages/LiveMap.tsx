@@ -270,20 +270,34 @@ export default function LiveMap() {
   }, [companySettings]);
 
   // Initialize map
+  // Importante: só inicializa DEPOIS que `resolvedTheme` chegou (next-themes
+  // resolve o tema em segundo passo). Sem isso, o primeiro mount criava o
+  // tile com TILE_LIGHT hardcoded e o useEffect de toggle ainda rodava com
+  // `leafletMapRef.current === null` — então o mapa "não respeitava o tema"
+  // até o usuário alternar manualmente.
+  const themeForInitRef = useRef<string | undefined>(undefined);
+  themeForInitRef.current = resolvedTheme;
+
   useEffect(() => {
+    if (!resolvedTheme) return;
+    if (leafletMapRef.current) return;
+
+    let cancelled = false;
+
     const initMap = async () => {
       const L = await import('leaflet');
       (window as any).L = L;
 
-      if (!mapRef.current || leafletMapRef.current) return;
+      if (cancelled || !mapRef.current || leafletMapRef.current) return;
 
+      const isDark = themeForInitRef.current === 'dark';
       const map = L.map(mapRef.current).setView([-15.7801, -47.9292], 4);
 
-      tileLayerRef.current = L.tileLayer(TILE_LIGHT, {
+      tileLayerRef.current = L.tileLayer(isDark ? TILE_DARK : TILE_LIGHT, {
         attribution: '© CartoDB © OSM',
       }).addTo(map);
 
-      labelsLayerRef.current = L.tileLayer(TILE_LABELS_LIGHT, {
+      labelsLayerRef.current = L.tileLayer(isDark ? TILE_LABELS_DARK : TILE_LABELS_LIGHT, {
         attribution: '',
         pane: 'overlayPane',
       }).addTo(map);
@@ -294,6 +308,14 @@ export default function LiveMap() {
 
     initMap();
 
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedTheme]);
+
+  // Cleanup do mapa no unmount (separado do init pra não recriar ao trocar tema)
+  useEffect(() => {
     return () => {
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();

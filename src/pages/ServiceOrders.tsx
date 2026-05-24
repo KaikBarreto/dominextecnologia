@@ -911,20 +911,37 @@ export default function ServiceOrders() {
                               key={os.id}
                               draggable
                               onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
-                              className="relative cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+                              onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}
+                              className="group relative cursor-pointer active:cursor-grabbing hover:shadow-md transition-shadow"
                             >
+                              {/* Editar + Excluir no canto superior direito — visíveis só no hover do card.
+                                  Editar = hover laranja (warning), Excluir = hover vermelho (destructive). */}
+                              <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {canEditOS && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 hover:bg-warning hover:text-white"
+                                    onClick={(e) => { e.stopPropagation(); handleEdit(os); }}
+                                    title="Editar"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {canDeleteOS && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 hover:bg-destructive hover:text-white"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(os); }}
+                                    title="Excluir"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
                               <CardContent className="p-3 pr-10 space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
-                                  <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}>
-                                      <Eye className="h-3 w-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEdit(os)}>
-                                      <Pencil className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
+                                <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
                                 <p className="text-sm font-medium">{os.customer?.name || 'N/A'}</p>
                                 {os.service_type && (
                                   <div className="flex items-center gap-1">
