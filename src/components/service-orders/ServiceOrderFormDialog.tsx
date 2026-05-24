@@ -37,7 +37,7 @@ import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { ServiceOrder } from '@/types/database';
+import type { ServiceOrder, OsStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
@@ -69,6 +69,9 @@ interface ServiceOrderFormDialogProps {
   defaultDate?: string;
   defaultTime?: string;
   defaultCustomerId?: string;
+  // Status pré-preenchido quando a OS é criada via "+" de uma coluna do kanban.
+  // Quando ausente, o backend usa o default do schema ('pendente').
+  defaultStatus?: OsStatus;
 }
 
 const STEPS = [
@@ -78,7 +81,7 @@ const STEPS = [
 ];
 
 export function ServiceOrderFormDialog({
-  open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId,
+  open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultStatus,
 }: ServiceOrderFormDialogProps) {
   const { customers, createCustomer } = useCustomers();
   const { data: technicians } = useProfiles();
@@ -370,7 +373,8 @@ export function ServiceOrderFormDialog({
         form_template_id: formTemplateId || null,
         require_tech_signature: requireTechSignature,
         require_client_signature: requireClientSignature,
-        status: 'pendente',
+        // Quando criada via "+" de coluna do kanban, defaultStatus respeita aquela coluna.
+        status: defaultStatus ?? 'pendente',
         created_by: user?.id,
         recurrence_type: recurrenceType,
         recurrence_interval: recurrenceInterval,
@@ -430,6 +434,9 @@ export function ServiceOrderFormDialog({
       equipment_items: equipment_items.length > 0 ? equipment_items : undefined,
       assignee_user_ids: selectedAssigneeUserIds,
       assignee_team_ids: selectedAssigneeTeamIds,
+      // Status pré-preenchido pela coluna do kanban (se aplicável).
+      // Sem defaultStatus, omitimos pra o backend usar o default do schema.
+      ...(defaultStatus ? { status: defaultStatus } : {}),
     };
     await onSubmit(cleanedData);
     draft.clearDraft();

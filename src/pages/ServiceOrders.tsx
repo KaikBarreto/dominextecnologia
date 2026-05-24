@@ -106,7 +106,21 @@ export default function ServiceOrders() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  // Default = kanban (preferência do CEO). Persiste a escolha do usuário em localStorage:
+  // se ele alternar pra lista, fica em lista nas próximas visitas.
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => {
+    if (typeof window === 'undefined') return 'kanban';
+    const saved = localStorage.getItem('os-view-mode');
+    return saved === 'list' || saved === 'kanban' ? saved : 'kanban';
+  });
+  // Status pré-preenchido pra Nova OS quando criada via "+" do header de uma coluna do kanban.
+  // undefined = botão global "Nova OS" (sem pré-seleção, form usa default do schema).
+  const [initialStatus, setInitialStatus] = useState<OsStatus | undefined>(undefined);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('os-view-mode', viewMode);
+  }, [viewMode]);
 
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
@@ -225,6 +239,26 @@ export default function ServiceOrders() {
   };
 
   const kanbanColumns = statusOptions;
+
+  // "+" no header da coluna só faz sentido em status NÃO-terminais.
+  // Criar OS já "concluida" ou "cancelada" pelo atalho seria pegadinha pro gestor.
+  const CREATE_NEW_BLOCKED_STATUSES: OsStatus[] = ['concluida', 'cancelada'];
+  const canCreateNewInColumn = (status: OsStatus) =>
+    canCreateOS && !CREATE_NEW_BLOCKED_STATUSES.includes(status);
+
+  // Abre o modal de Nova OS com status pré-preenchido pela coluna do kanban.
+  const handleNewOsWithStatus = (status: OsStatus) => {
+    setEditingOS(null);
+    setInitialStatus(status);
+    setFormOpen(true);
+  };
+
+  // Quando o modal fecha (por qualquer motivo), zera o status pré-preenchido
+  // pra que o próximo "Nova OS" (global) não herde um status antigo.
+  const handleFormOpenChange = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) setInitialStatus(undefined);
+  };
 
   const sidebarTabs: SettingsTab[] = [
     { value: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
@@ -788,10 +822,34 @@ export default function ServiceOrders() {
                           if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key);
                         }}
                       >
-                        <div className="flex items-center gap-2 p-3 border-b">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: col.color }} />
-                          <span className="text-sm font-semibold">{col.label}</span>
-                          <Badge variant="secondary" className="ml-auto text-xs">{columnOrders.length}</Badge>
+                        {/* Header coluna — padrão EcoSistema (barra colorida em cima + título uppercase + "+") */}
+                        <div className="px-3 pt-3 pb-2 border-b">
+                          <div
+                            className="h-1 w-full rounded-full mb-2.5"
+                            style={{ backgroundColor: col.color }}
+                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-bold text-sm tracking-wide text-foreground uppercase truncate">
+                              {col.label}
+                            </h3>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-xs text-muted-foreground tabular-nums">
+                                {columnOrders.length}
+                              </span>
+                              {canCreateNewInColumn(col.key) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 active:scale-95 transition-transform"
+                                  onClick={() => handleNewOsWithStatus(col.key)}
+                                  title={`Criar OS em "${col.label}"`}
+                                  aria-label={`Criar OS em ${col.label}`}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         <div className="flex-1 p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                           {columnOrders.map((os) => (
@@ -851,8 +909,9 @@ export default function ServiceOrders() {
 
             <ServiceOrderFormDialog
               open={formOpen}
-              onOpenChange={setFormOpen}
+              onOpenChange={handleFormOpenChange}
               serviceOrder={editingOS}
+              defaultStatus={initialStatus}
               onSubmit={handleSubmit}
               isLoading={createServiceOrder.isPending || updateServiceOrder.isPending}
             />

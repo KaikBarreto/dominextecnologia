@@ -112,8 +112,25 @@ export function useServiceOrders() {
         assigneeMap.set(a.service_order_id, list);
       });
 
+      // Lookup batch dos perfis dos criadores (preenche `created_by_profile` no front
+      // — usado pelo avatar da coluna "Criador" da lista de OS).
+      const createdByIds = Array.from(
+        new Set(allData.map((o: any) => o.created_by).filter(Boolean))
+      );
+      const profileMap = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+      if (createdByIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, avatar_url')
+          .in('user_id', createdByIds);
+        (profiles || []).forEach((p: any) => {
+          profileMap.set(p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url });
+        });
+      }
+
       allData.forEach((order: any) => {
         order._assignee_user_ids = assigneeMap.get(order.id) || [];
+        order.created_by_profile = order.created_by ? profileMap.get(order.created_by) ?? null : null;
         // Apply snapshot fallback for deleted entities
         const snap = order.snapshot_data;
         if (!order.customer && snap?.customer) order.customer = snap.customer;
