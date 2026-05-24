@@ -37,5 +37,10 @@ verify_jwt = false
 [functions.reset-password-with-code]
 verify_jwt = false
 
+# pmoc-portal-share: portal público de unidade (token de 32 hex no query string)
+# Validação do token + retorno 404 unificado são feitos dentro da função.
+[functions.pmoc-portal-share]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company
