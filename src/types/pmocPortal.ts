@@ -1,13 +1,17 @@
 /**
- * Contrato de payload do portal PMOC público (Onda B — v1.9.1).
+ * Contrato de payload do portal PMOC público.
  *
- * Fonte da verdade do schema vive na edge function `pmoc-portal-share`
- * (a ser implementada pelo dev-database). Este type é o contrato provisório
- * que a tela consome — quando a edge function real for deployada, este arquivo
- * pode precisar de ajustes pontuais. Mantido flexível (campos podem evoluir).
+ * Fonte da verdade: edge function `pmoc-portal-share` (payload_version 1.3.0).
  *
- * Plano mestre: docs/planos/2026-05-23-pmoc-v1.9-arquitetura.md §2.4
- * Plano da onda: docs/planos/2026-05-23-pmoc-onda-B-portal-publico.md §3.2
+ * Evolução:
+ *  - 1.0/1.1 — Onda B: payload inicial (history).
+ *  - 1.2.0 — Onda E: documentos reais + signature_status.
+ *  - 1.3.0 — Redesign 2026-05-24: adiciona `schedule`, `tenant.white_label_enabled`
+ *    e expõe `status` raw em cada entrada (necessário pra UI pintar badge por cor).
+ *
+ * Planos:
+ *  - docs/planos/2026-05-23-pmoc-v1.9-arquitetura.md §2.4
+ *  - docs/planos/2026-05-24-pmoc-portal-publico-redesign.md
  */
 
 export type PortalHealthStatus =
@@ -24,120 +28,134 @@ export type PortalOsStatus =
   | 'concluida'
   | 'cancelada';
 
-export type PortalDocumentType =
-  | 'pmoc_formal'
-  | 'termo_rt'
-  | 'cronograma'
-  | 'certificado';
-
 /**
- * Onda C — tipos dos documentos REAIS (Dossiê PMOC e Cronograma Anual).
- *
- * Os tipos antigos (`pmoc_formal`, `termo_rt`, `cronograma`, `certificado`)
- * usados em `documents_placeholder` foram fundidos em 2 documentos finais:
- *  - `dossie_pmoc` → capa + termo RT + certificado em 1 PDF de 3 páginas.
+ * Onda C/E — tipos dos documentos reais.
+ *  - `dossie_pmoc` → capa + termo RT + certificado.
  *  - `cronograma_anual` → 12 páginas (1 mês/página).
- *
- * Onda E — TRT separado, gerável independente do Dossiê.
- *  - `termo_rt` → PDF de 1 página com declaração de responsabilidade técnica.
+ *  - `termo_rt` → PDF de 1 página com declaração de RT.
  */
-export type PortalRealDocumentType = 'dossie_pmoc' | 'cronograma_anual' | 'termo_rt';
+export type PortalRealDocumentType =
+  | 'dossie_pmoc'
+  | 'cronograma_anual'
+  | 'termo_rt';
 
 /**
  * Onda E — status da assinatura embarcada no PDF.
- *
- * - `'signed'`  → assinatura do RT foi embutida no PDF.
- * - `'pending'` → PDF saiu com linha em branco pra assinar à mão.
- * - `null`      → não se aplica (ex.: Cronograma) ou doc anterior à Onda E.
+ *  - `'signed'`  → assinatura do RT foi embutida.
+ *  - `'pending'` → PDF saiu com linha em branco pra assinar à mão.
+ *  - `null`      → não se aplica (ex.: Cronograma) ou doc anterior à Onda E.
  */
 export type PortalDocumentSignatureStatus = 'signed' | 'pending' | null;
 
 export interface PortalUnit {
-  name: string;
+  /** Nome do cliente (cardápio: "Unidade Centro - Filial 1"). */
+  name: string | null;
   address: string | null;
-  customer_name: string;
+  city: string | null;
+  state: string | null;
 }
 
 export interface PortalContract {
-  name: string;
-  start_date: string;
+  name: string | null;
+  start_date: string | null;
   /** Ex: "Mensal", "Trimestral" — já formatado pra exibição. */
   frequency_label: string;
   next_pmoc_generation_date: string | null;
-  /** "Conforme Lei Federal 13.589/2018" (texto literal). */
+  /** Alias estável pra mesma data, caso UI prefira outro nome. */
+  next_maintenance_date: string | null;
+  /** "Conforme Lei Federal 13.589/2018" (texto literal ou customizado). */
   compliance_text: string;
+  status_label: string;
   health_status: PortalHealthStatus;
   overdue_count: number;
 }
 
+export interface PortalHealth {
+  status: PortalHealthStatus;
+  overdue_count: number;
+}
+
 export interface PortalResponsibleTechnician {
-  full_name: string;
+  full_name: string | null;
   cft_crea: string | null;
   modality: string | null;
+  registry_number: string | null;
 }
 
 export interface PortalTenant {
   name: string;
   logo_url: string | null;
-  /** Hex string (ex: "#0066cc"). Edge function decide fallback se nulo. */
+  /** Hex string (ex: "#0066cc"). Null quando NÃO white-label (edge function decide). */
   primary_color: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  /**
+   * Redesign 2026-05-24 — flag que controla a exibição do rodapé Dominex
+   * no portal público. `true` → tenant white-label, esconde marca Dominex.
+   */
+  white_label_enabled: boolean;
 }
 
 export interface PortalOsPhoto {
   url: string;
-  caption: string | null;
-}
-
-export interface PortalHistoryEntry {
-  os_number: number;
-  scheduled_date: string;
-  completed_date: string | null;
-  status: PortalOsStatus;
-  service_type_label: string | null;
-  /** Descrição pública — sem notas internas. */
-  description: string | null;
-  technician_first_name: string | null;
-  public_photos: PortalOsPhoto[];
-  rating: number | null;
-}
-
-export interface PortalDocumentPlaceholder {
-  type: PortalDocumentType;
-  label: string;
-  /** Onda B: sempre `false`. Onda C trocará pra `true` quando documentos reais existirem. */
-  available: boolean;
+  alt: string | null;
 }
 
 /**
- * Onda C — entrada de documento real no payload do portal público.
- *
- * - `available=true` → tem PDF gerado e `pdf_url` (signed URL TTL 24h).
- * - `available=false` → fallback defensivo "Disponível em breve" no UI.
- *
- * Onda E — `signature_status` indica se a assinatura está embarcada no PDF.
- * Só faz sentido em `dossie_pmoc` e `termo_rt`. `cronograma_anual` envia `null`.
+ * Entrada de OS no histórico (concluídas) OU no cronograma (futuras/em andamento).
+ * Os dois compartilham o mesmo shape; `schedule` simplesmente tem `rating=null`
+ * por construção (OS não-concluída não foi avaliada).
+ */
+export interface PortalOsEntry {
+  number: number | null;
+  scheduled_date: string | null;
+  completed_at: string | null;
+  /** Status raw (enum os_status) — usado pra mapear cor do badge. */
+  status: PortalOsStatus;
+  /** Texto exibível em PT-BR já pronto. */
+  status_label: string;
+  service_type_label: string | null;
+  /** Descrição pública (truncada server-side em 200 chars). */
+  public_description: string;
+  /** Primeiro nome do técnico responsável (LGPD: nunca sobrenome). */
+  technician_first_name: string | null;
+  public_photos: PortalOsPhoto[];
+  rating: number | null;
+  rating_comment: string | null;
+}
+
+/** Alias mantido por clareza semântica nas telas. */
+export type PortalHistoryEntry = PortalOsEntry;
+export type PortalScheduleEntry = PortalOsEntry;
+
+/**
+ * Onda C/E — documento real no payload público.
+ *  - `available=true` → tem PDF e `pdf_url` (signed URL TTL 24h).
+ *  - `available=false` → fallback "Disponível em breve" no UI.
  */
 export interface PortalRealDocument {
   type: PortalRealDocumentType;
   label: string;
   available: boolean;
-  version?: number;
-  generated_at?: string;
-  pdf_url?: string;
-  signature_status?: PortalDocumentSignatureStatus;
+  version: number | null;
+  generated_at: string | null;
+  pdf_url: string | null;
+  signature_status: PortalDocumentSignatureStatus;
 }
 
 export interface PortalPayload {
+  generated_at: string;
+  payload_version: string;
   unit: PortalUnit;
   contract: PortalContract;
+  health: PortalHealth;
   responsible_technician: PortalResponsibleTechnician | null;
   tenant: PortalTenant;
+  /** Redesign 2026-05-24 — OSs futuras + em andamento (limit 50). */
+  schedule: PortalScheduleEntry[];
+  /** OSs concluídas (limit 20, ordem completed_at DESC). */
   history: PortalHistoryEntry[];
-  /**
-   * @deprecated Onda C — usar `documents_real`. Mantido temporariamente pra
-   * compatibilidade com edge function antiga até deploy da nova.
-   */
-  documents_placeholder?: PortalDocumentPlaceholder[];
-  /** Onda C — documentos reais (dossiê + cronograma) com signed URLs. */
-  documents_real?: PortalRealDocument[];
+  /** Documentos reais (dossiê + cronograma + TRT). Renomeado de `documents_real` em 1.3.0. */
+  documents: PortalRealDocument[];
 }

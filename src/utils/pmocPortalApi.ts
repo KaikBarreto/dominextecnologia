@@ -1,22 +1,19 @@
 import type { PortalPayload } from '@/types/pmocPortal';
 
 /**
- * Cliente do portal PMOC público (Onda B — v1.9.1).
+ * Cliente do portal PMOC público.
  *
- * Por enquanto opera em **modo mock** — a edge function `pmoc-portal-share`
- * será criada pelo dev-database depois. O contrato (path + query string)
- * já é o final: quando a edge subir, o switch automático passa a usar dados reais
- * sem precisar de mudança na página.
+ * Em produção, faz fetch à edge function `pmoc-portal-share` (verify_jwt=false).
  *
- * Regra:
- * - Token que começa com "demo_" ou env `VITE_USE_MOCK_PMOC_PORTAL=true` → MOCK.
- * - Qualquer outro token → fetch real na edge function.
+ * Modo mock:
+ *  - Token começa com "demo_" ou env `VITE_USE_MOCK_PMOC_PORTAL=true`.
+ *  - Sem env do Supabase configurada (fallback dev local).
  *
- * Quando a edge function chegar, o Database só precisa garantir que tokens reais
- * NÃO começam com "demo_" (já é a convenção planejada — base32 sem prefixo).
+ * Tokens reais NÃO começam com "demo_" (convenção: 32 hex chars).
  *
- * Plano mestre: docs/planos/2026-05-23-pmoc-v1.9-arquitetura.md §2.4
- * Plano da onda: docs/planos/2026-05-23-pmoc-onda-B-portal-publico.md §3.2 / §3.4
+ * Schema:
+ *  - docs/planos/2026-05-23-pmoc-v1.9-arquitetura.md §2.4
+ *  - Redesign 2026-05-24 — payload_version 1.3.0.
  */
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -29,9 +26,7 @@ const USE_MOCK_ENV =
 
 function shouldUseMock(token: string): boolean {
   if (USE_MOCK_ENV) return true;
-  // Token de demonstração — útil em links de doc/preview antes do Database deployar.
   if (token.startsWith('demo_') || token === 'demo') return true;
-  // Sem env do Supabase configurada → cai em mock pra não quebrar dev local.
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return true;
   return false;
 }
@@ -82,94 +77,169 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
 // Não vaza pra produção: tokens reais não começam com "demo_".
 // ---------------------------------------------------------------------------
 
-function buildMockPayload(token: string): PortalPayload {
+function buildMockPayload(_token: string): PortalPayload {
+  // Datas relativas pra mock parecer "vivo" — base = hoje.
+  const today = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const offset = (days: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + days);
+    return iso(d);
+  };
+
   return {
+    generated_at: new Date().toISOString(),
+    payload_version: '1.3.0',
     unit: {
-      name: 'Unidade Centro — Filial 1',
-      address: 'Av. Paulista, 1000 — Bela Vista, São Paulo/SP',
-      customer_name: 'Restaurante Bom Sabor Ltda',
+      name: 'Restaurante Bom Sabor Ltda',
+      address: 'Av. Paulista, 1000 - Bela Vista',
+      city: 'São Paulo',
+      state: 'SP',
     },
     contract: {
-      name: 'PMOC — Unidade Centro',
+      name: 'PMOC - Unidade Centro',
       start_date: '2026-01-15',
       frequency_label: 'Mensal',
-      next_pmoc_generation_date: '2026-06-15',
+      next_pmoc_generation_date: offset(15),
+      next_maintenance_date: offset(15),
       compliance_text: 'Conforme Lei Federal 13.589/2018',
+      status_label: 'Ativo',
       health_status: 'em_dia',
+      overdue_count: 0,
+    },
+    health: {
+      status: 'em_dia',
       overdue_count: 0,
     },
     responsible_technician: {
       full_name: 'João da Silva Pereira',
       cft_crea: 'CREA-SP 1234567',
       modality: 'Engenheiro Mecânico',
+      registry_number: null,
     },
     tenant: {
       name: 'Refrigeração Exemplo Ltda',
       logo_url: null,
       primary_color: '#5555FF',
+      address: 'Rua dos Bobos, 0',
+      city: 'São Paulo',
+      state: 'SP',
+      // Flip pra `true` em dev pra testar modo white-label.
+      white_label_enabled: false,
     },
+    // Onda redesign — OSs futuras (cronograma).
+    schedule: [
+      {
+        number: 1310,
+        scheduled_date: offset(15),
+        completed_at: null,
+        status: 'agendada',
+        status_label: 'Agendada',
+        service_type_label: 'Manutenção Preventiva',
+        public_description:
+          'Limpeza de filtros, checagem de pressão de gás e medição de temperatura de insuflamento.',
+        technician_first_name: null,
+        public_photos: [],
+        rating: null,
+        rating_comment: null,
+      },
+      {
+        number: 1311,
+        scheduled_date: offset(45),
+        completed_at: null,
+        status: 'agendada',
+        status_label: 'Agendada',
+        service_type_label: 'Manutenção Preventiva',
+        public_description: 'Inspeção visual, limpeza geral e troca de filtros.',
+        technician_first_name: null,
+        public_photos: [],
+        rating: null,
+        rating_comment: null,
+      },
+      {
+        number: 1312,
+        scheduled_date: offset(75),
+        completed_at: null,
+        status: 'pendente',
+        status_label: 'Pendente',
+        service_type_label: 'Manutenção Preventiva',
+        public_description: 'Manutenção periódica conforme cronograma.',
+        technician_first_name: null,
+        public_photos: [],
+        rating: null,
+        rating_comment: null,
+      },
+    ],
     history: [
       {
-        os_number: 1284,
-        scheduled_date: '2026-05-15',
-        completed_date: '2026-05-15',
+        number: 1284,
+        scheduled_date: offset(-9),
+        completed_at: offset(-9),
         status: 'concluida',
+        status_label: 'Concluída',
         service_type_label: 'Manutenção Preventiva',
-        description:
+        public_description:
           'Limpeza de filtros, checagem de pressão de gás e medição de temperatura de insuflamento.',
         technician_first_name: 'Carlos',
         public_photos: [],
         rating: 5,
+        rating_comment: 'Atendimento muito bom, equipe pontual.',
       },
       {
-        os_number: 1252,
-        scheduled_date: '2026-04-15',
-        completed_date: '2026-04-15',
+        number: 1252,
+        scheduled_date: offset(-39),
+        completed_at: offset(-39),
         status: 'concluida',
+        status_label: 'Concluída',
         service_type_label: 'Manutenção Preventiva',
-        description: 'Inspeção visual, limpeza geral e troca de filtros.',
+        public_description: 'Inspeção visual, limpeza geral e troca de filtros.',
         technician_first_name: 'Carlos',
         public_photos: [],
         rating: 5,
+        rating_comment: null,
       },
       {
-        os_number: 1228,
-        scheduled_date: '2026-03-15',
-        completed_date: '2026-03-15',
+        number: 1228,
+        scheduled_date: offset(-69),
+        completed_at: offset(-69),
         status: 'concluida',
+        status_label: 'Concluída',
         service_type_label: 'Manutenção Preventiva',
-        description: 'Limpeza de evaporadora e checagem de carga de gás.',
+        public_description: 'Limpeza de evaporadora e checagem de carga de gás.',
         technician_first_name: 'Rafael',
         public_photos: [],
         rating: 4,
+        rating_comment: null,
       },
     ],
-    documents_placeholder: [
-      { type: 'pmoc_formal', label: 'PMOC Formal', available: false },
-      { type: 'termo_rt', label: 'Termo do Responsável Técnico', available: false },
-      { type: 'cronograma', label: 'Cronograma de Manutenções', available: false },
-      { type: 'certificado', label: 'Certificado de Conformidade', available: false },
-    ],
-    // Onda C/E — mock dos documentos reais (até a edge function deployar).
-    // Em mock dev, marcamos como `available: false` pra mostrar o card real
-    // com fallback "Disponível em breve" + permitir testes visuais.
-    documents_real: [
+    // Onda C/E — documentos reais.
+    // Em mock dev marcamos como `available: false` pra mostrar fallback.
+    documents: [
       {
         type: 'termo_rt',
-        label: 'Termo de Responsabilidade Técnica',
+        label: 'Termo de Responsabilidade Técnica (TRT)',
         available: false,
+        version: null,
+        generated_at: null,
+        pdf_url: null,
         signature_status: 'pending',
       },
       {
         type: 'dossie_pmoc',
         label: 'Dossiê PMOC (Capa + Termo + Certificado)',
         available: false,
+        version: null,
+        generated_at: null,
+        pdf_url: null,
         signature_status: 'pending',
       },
       {
         type: 'cronograma_anual',
         label: 'Cronograma 12 meses',
         available: false,
+        version: null,
+        generated_at: null,
+        pdf_url: null,
         signature_status: null,
       },
     ],

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ShieldCheck,
   MapPin,
@@ -11,7 +12,9 @@ import {
   AlertCircle,
   Wrench,
   Award,
-  Image as ImageIcon,
+  House,
+  Download,
+  Building2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,7 +24,8 @@ import {
   PmocCronogramaCalendar,
   type PmocCronogramaCalendarOrder,
 } from '@/components/pmoc/PmocCronogramaCalendar';
-import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { OsDetailPortalModal } from '@/components/pmoc/OsDetailPortalModal';
+import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { cn } from '@/lib/utils';
 import {
   fetchPmocPortal,
@@ -31,52 +35,36 @@ import type {
   PortalHealthStatus,
   PortalOsStatus,
   PortalPayload,
-  PortalHistoryEntry,
+  PortalOsEntry,
   PortalRealDocument,
+  PortalTenant,
 } from '@/types/pmocPortal';
 import type { OsStatus, OsType } from '@/types/database';
-import { Download } from 'lucide-react';
+import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
 /**
- * Portal PMOC Público (Onda B — v1.9.1).
+ * Portal PMOC Público — redesign 2026-05-24.
  *
  * Rota: `/pmoc/unidade/:token` (fora do auth wall — ver App.tsx).
  *
- * Layout mobile-first (375px é a régua). Desktop adapta com max-width central.
- * Lê dados via `fetchPmocPortal` (mock por enquanto; vira fetch real quando
- * a edge function `pmoc-portal-share` for deployada pelo dev-database).
+ * Layout:
+ *  - Header hero (identidade do tenant) sempre visível no topo.
+ *  - 4 abas: Visão Geral, Cronograma, Documentos, Histórico.
+ *  - Mobile: pills horizontais (via SettingsSidebarLayout).
+ *  - Desktop: sidebar fixa esquerda.
+ *  - Rodapé com info do tenant + bloco Dominex (se NÃO white-label).
  *
- * Plano: docs/planos/2026-05-23-pmoc-onda-B-portal-publico.md §3.4b
+ * Plano: docs/planos/2026-05-24-pmoc-portal-publico-redesign.md
  */
 
 const HEALTH_CONFIG: Record<PortalHealthStatus, {
   label: string;
   tone: 'success' | 'warning' | 'destructive';
-  bgClass: string;
-  textClass: string;
   ringClass: string;
 }> = {
-  em_dia: {
-    label: 'Em dia',
-    tone: 'success',
-    bgClass: 'bg-success/15',
-    textClass: 'text-success',
-    ringClass: 'ring-success/30',
-  },
-  manutencao_pendente: {
-    label: 'Manutenção pendente',
-    tone: 'warning',
-    bgClass: 'bg-warning/15',
-    textClass: 'text-warning',
-    ringClass: 'ring-warning/30',
-  },
-  necessita_atencao: {
-    label: 'Necessita atenção',
-    tone: 'destructive',
-    bgClass: 'bg-destructive/15',
-    textClass: 'text-destructive',
-    ringClass: 'ring-destructive/30',
-  },
+  em_dia: { label: 'Em dia', tone: 'success', ringClass: 'ring-success/30' },
+  manutencao_pendente: { label: 'Manutenção pendente', tone: 'warning', ringClass: 'ring-warning/30' },
+  necessita_atencao: { label: 'Necessita atenção', tone: 'destructive', ringClass: 'ring-destructive/30' },
 };
 
 const OS_STATUS_CONFIG: Record<PortalOsStatus, { label: string; className: string }> = {
@@ -89,8 +77,12 @@ const OS_STATUS_CONFIG: Record<PortalOsStatus, { label: string; className: strin
   cancelada: { label: 'Cancelada', className: 'bg-destructive/10 text-destructive' },
 };
 
-const INITIAL_HISTORY_COUNT = 5;
-const MORE_HISTORY_STEP = 10;
+const TABS: SettingsTab[] = [
+  { value: 'visao-geral', label: 'Visão Geral', icon: House },
+  { value: 'cronograma', label: 'Cronograma', icon: CalendarClock },
+  { value: 'documentos', label: 'Documentos', icon: FileText },
+  { value: 'historico', label: 'Histórico', icon: Wrench },
+];
 
 function parseLocal(date: string | null): Date | null {
   if (!date) return null;
@@ -103,7 +95,7 @@ function parseLocal(date: string | null): Date | null {
 
 function formatLocal(date: string | null, fmt = 'dd/MM/yyyy'): string {
   const d = parseLocal(date);
-  if (!d) return '-';
+  if (!d) return '—';
   return format(d, fmt, { locale: ptBR });
 }
 
@@ -132,12 +124,21 @@ function setJsonLd(id: string, json: Record<string, unknown>) {
   el.textContent = JSON.stringify(json);
 }
 
+const DEFAULT_THEME_COLOR = '#5555FF';
+
+function setThemeColor(color: string) {
+  if (typeof document === 'undefined') return;
+  const el = document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (el) el.setAttribute('content', color);
+}
+
 function usePortalSeo(payload: PortalPayload | undefined, token: string | undefined) {
   useEffect(() => {
     if (!payload || !token) return;
 
-    const title = `PMOC — ${payload.unit.name} | ${payload.tenant.name}`;
-    const description = `Plano de Manutenção, Operação e Controle conforme Lei Federal 13.589/2018. Histórico, documentos e status sanitário da unidade ${payload.unit.name}.`;
+    const unitName = payload.unit.name ?? 'Unidade';
+    const title = `PMOC — ${unitName} | ${payload.tenant.name}`;
+    const description = `Plano de Manutenção, Operação e Controle conforme Lei Federal 13.589/2018. Histórico, documentos e status sanitário da unidade ${unitName}.`;
     const url = buildPmocPortalUrl(token);
 
     document.title = title;
@@ -157,15 +158,15 @@ function usePortalSeo(payload: PortalPayload | undefined, token: string | undefi
     setMeta('name', 'twitter:title', title);
     setMeta('name', 'twitter:description', description);
 
+    // Cor da status bar do navegador casa com o tenant — feel app nativo no iOS Safari.
+    setThemeColor(payload.tenant.primary_color || DEFAULT_THEME_COLOR);
+
     setJsonLd('pmoc-portal', {
       '@context': 'https://schema.org',
       '@type': 'Service',
-      name: `PMOC — ${payload.unit.name}`,
+      name: `PMOC — ${unitName}`,
       description,
-      provider: {
-        '@type': 'Organization',
-        name: payload.tenant.name,
-      },
+      provider: { '@type': 'Organization', name: payload.tenant.name },
       areaServed: payload.unit.address ?? undefined,
       url,
       additionalType: 'https://en.wikipedia.org/wiki/HVAC',
@@ -174,6 +175,7 @@ function usePortalSeo(payload: PortalPayload | undefined, token: string | undefi
 
     return () => {
       document.title = 'Dominex — Gestão de Equipes de Campo e Ordens de Serviço';
+      setThemeColor(DEFAULT_THEME_COLOR);
     };
   }, [payload, token]);
 }
@@ -215,18 +217,49 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     contract,
     responsible_technician,
     tenant,
+    schedule,
     history,
-    documents_placeholder,
-    documents_real,
+    documents,
   } = payload;
 
-  // Onda C — converte entradas do histórico em pseudo-ServiceOrders pro
-  // calendar reaproveitado de /agenda renderizar OSs no portal público.
-  // É readOnly — nenhum mutator é exposto, garantindo nenhuma escrita.
+  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState('visao-geral');
+  const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
+
+  // Sticky bar com blur no mobile: aparece quando o hero "saiu" do viewport.
+  // Mantém o nome da unidade visível no topo, sensação de navigation bar nativa.
+  const heroSentinelRef = useRef<HTMLDivElement | null>(null);
+  const [heroOffscreen, setHeroOffscreen] = useState(false);
+  useEffect(() => {
+    if (!isMobile) {
+      setHeroOffscreen(false);
+      return;
+    }
+    const sentinel = heroSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setHeroOffscreen(!entry.isIntersecting),
+      { rootMargin: '0px', threshold: 0 },
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [isMobile]);
+
+  // Mescla schedule + history pro calendário (readOnly). Cada OS é convertida
+  // em pseudo-ServiceOrder pra reaproveitar o componente da agenda.
   const calendarOrders = useMemo<PmocCronogramaCalendarOrder[]>(
-    () => historyToCalendarOrders(history, unit.customer_name),
-    [history, unit.customer_name],
+    () => osEntriesToCalendarOrders([...schedule, ...history], unit.name ?? 'Unidade'),
+    [schedule, history, unit.name],
   );
+
+  // Map de id (pseudo) -> entrada original, pro click no calendário abrir o modal.
+  const osById = useMemo(() => {
+    const map = new Map<string, PortalOsEntry>();
+    for (const os of [...schedule, ...history]) {
+      if (os.number != null) map.set(`portal-${os.number}`, os);
+    }
+    return map;
+  }, [schedule, history]);
 
   const primaryColor = tenant.primary_color || '#5555FF';
   const heroStyle = useMemo(
@@ -236,28 +269,79 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     [primaryColor],
   );
 
-  const lastUpdate = useMemo(() => format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), []);
+  const lastUpdate = useMemo(
+    () => format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }),
+    [],
+  );
 
   const portalUrl = buildPmocPortalUrl(token);
 
+  const handleCalendarClick = (order: PmocCronogramaCalendarOrder) => {
+    const original = osById.get(order.id);
+    if (original) setSelectedOS(original);
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-16 text-foreground">
-      {/* Seção 1 — Hero */}
-      <header
-        className="relative px-4 pb-8 pt-6 text-white sm:px-6 sm:pt-8"
-        style={heroStyle}
+    <div className="min-h-[100dvh] bg-background text-foreground">
+      {/* Sticky bar mobile com blur — aparece quando o hero sai do viewport.
+          Mantém o nome da unidade visível como navigation bar de app nativo. */}
+      <div
+        aria-hidden={!heroOffscreen}
+        className={cn(
+          'fixed inset-x-0 top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md lg:hidden',
+          'transition-all duration-200 ease-out',
+          heroOffscreen ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0',
+        )}
+        style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+        <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-4 pb-2 pt-1">
+          {tenant.logo_url ? (
+            <img
+              src={tenant.logo_url}
+              alt=""
+              className="h-6 w-6 shrink-0 rounded-md bg-muted object-contain p-0.5"
+              aria-hidden="true"
+            />
+          ) : (
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
+              <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            </div>
+          )}
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold">
+            {unit.name ?? 'Unidade'}
+          </p>
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+              contract.health_status === 'em_dia' && 'bg-success/15 text-success',
+              contract.health_status === 'manutencao_pendente' && 'bg-warning/15 text-warning',
+              contract.health_status === 'necessita_atencao' && 'bg-destructive/10 text-destructive',
+            )}
+          >
+            {HEALTH_CONFIG[contract.health_status]?.label ?? '—'}
+          </span>
+        </div>
+      </div>
+
+      {/* Seção 1 — Hero (com safe-area-top pra respeitar notch) */}
+      <header
+        className="relative px-4 pb-8 text-white sm:px-6"
+        style={{
+          ...heroStyle,
+          paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        }}
+      >
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               {tenant.logo_url ? (
                 <img
                   src={tenant.logo_url}
                   alt={tenant.name}
-                  className="h-10 w-10 shrink-0 rounded-lg bg-white/95 object-contain p-1 sm:h-12 sm:w-12"
+                  className="h-10 w-10 shrink-0 rounded-xl bg-white/95 object-contain p-1 sm:h-12 sm:w-12"
                 />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 sm:h-12 sm:w-12">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 sm:h-12 sm:w-12">
                   <ShieldCheck className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
               )}
@@ -272,19 +356,20 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
           </div>
 
           <div className="space-y-2">
-            <h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl">
-              {unit.name}
+            <h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl sm:leading-snug">
+              {unit.name ?? 'Unidade'}
             </h1>
-            <p className="text-sm opacity-90">{unit.customer_name}</p>
             {unit.address && (
-              <p className="flex items-start gap-1.5 text-sm opacity-90">
+              <p className="flex items-start gap-1.5 text-sm leading-relaxed opacity-90">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="break-words">{unit.address}</span>
+                <span className="break-words">
+                  {[unit.address, unit.city, unit.state].filter(Boolean).join(' — ')}
+                </span>
               </p>
             )}
           </div>
 
-          <div className="rounded-lg bg-white/15 backdrop-blur-sm">
+          <div className="rounded-xl bg-white/15 backdrop-blur-sm">
             <PmocComplianceBadge
               variant="ribbon"
               className="border-white/30 bg-transparent text-white [&_p]:text-white [&_span]:bg-white/20"
@@ -293,105 +378,225 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         </div>
       </header>
 
-      {/* Conteúdo principal */}
-      <main className="mx-auto w-full max-w-3xl space-y-6 px-4 pt-6 sm:px-6">
-        {/* Seção 2 — Responsável Técnico */}
-        {responsible_technician && (
-          <Section title="Responsável Técnico" icon={Award}>
-            <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
-                <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="break-words text-base font-semibold">
-                  {responsible_technician.full_name}
-                </p>
-                {responsible_technician.cft_crea && (
-                  <p className="break-words text-xs text-muted-foreground">
-                    {responsible_technician.cft_crea}
-                  </p>
-                )}
-                {responsible_technician.modality && (
-                  <p className="break-words text-xs text-muted-foreground">
-                    {responsible_technician.modality}
-                  </p>
-                )}
-              </div>
-            </div>
-          </Section>
-        )}
+      {/* Sentinel pra detectar quando o hero sai do viewport (sticky bar aparece). */}
+      <div ref={heroSentinelRef} aria-hidden="true" className="h-px w-full" />
 
-        {/* Seção 3 — Cronograma */}
-        <Section title="Cronograma" icon={CalendarClock}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <InfoCard
-              label="Próxima manutenção"
-              value={contract.next_pmoc_generation_date
-                ? formatLocal(contract.next_pmoc_generation_date)
-                : 'A definir'}
-            />
-            <InfoCard label="Frequência" value={contract.frequency_label} />
-            <InfoCard label="Início do contrato" value={formatLocal(contract.start_date)} />
-            <InfoCard
-              label="Conformidade"
-              value={contract.compliance_text}
-              valueClassName="text-info"
-            />
+      {/* Abas + conteúdo */}
+      <main className="mx-auto w-full max-w-5xl px-4 pb-8 pt-6 sm:px-6">
+        <SettingsSidebarLayout
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        >
+          {/* key força remount + animação suave a cada troca de aba — feel de app nativo. */}
+          <div key={activeTab} className="animate-in fade-in duration-150">
+            {activeTab === 'visao-geral' && (
+              <TabOverview
+                contract={contract}
+                responsibleTechnician={responsible_technician}
+              />
+            )}
+            {activeTab === 'cronograma' && (
+              <TabSchedule
+                orders={calendarOrders}
+                onOsClick={handleCalendarClick}
+              />
+            )}
+            {activeTab === 'documentos' && (
+              <TabDocuments documents={documents} />
+            )}
+            {activeTab === 'historico' && (
+              <TabHistory history={history} onOsClick={setSelectedOS} />
+            )}
           </div>
-        </Section>
-
-        {/* Seção 4 — Cronograma (Onda C — calendar readOnly) */}
-        <Section title="Cronograma de manutenções" icon={CalendarClock}>
-          <PmocCronogramaCalendar
-            serviceOrders={calendarOrders}
-            view="month"
-            readOnly
-            showControls
-          />
-          {calendarOrders.length === 0 && (
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              Ainda não há manutenções registradas para esta unidade.
-            </p>
-          )}
-        </Section>
-
-        {/* Seção 5 — Histórico */}
-        <Section title="Histórico de manutenções" icon={Wrench}>
-          <HistoryList items={history} />
-        </Section>
-
-        {/* Seção 6 — Documentos (Onda C — substitui placeholders por PDFs reais) */}
-        <Section title="Documentos" icon={FileText}>
-          <PortalDocumentsBlock
-            real={documents_real}
-            fallback={documents_placeholder}
-          />
-        </Section>
-
+        </SettingsSidebarLayout>
       </main>
 
-      {/* Seção 7 — Rodapé */}
-      <footer className="mx-auto mt-10 w-full max-w-3xl space-y-3 px-4 pt-8 sm:px-6">
-        <PmocComplianceBadge variant="footer" />
-        <p className="text-center text-[11px] text-muted-foreground">
-          Portal atualizado em {lastUpdate}
-        </p>
-        <p className="break-all text-center text-[11px] text-muted-foreground">
-          {portalUrl}
-        </p>
-        <p className="text-center text-xs text-muted-foreground">
-          Powered by{' '}
-          <a
-            href="https://dominex.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-primary hover:underline"
-          >
-            Dominex
-          </a>
-        </p>
-      </footer>
+      {/* Rodapé */}
+      <PortalFooter
+        tenant={tenant}
+        portalUrl={portalUrl}
+        lastUpdate={lastUpdate}
+      />
+
+      {/* Modal global de detalhe de OS */}
+      <OsDetailPortalModal
+        os={selectedOS}
+        open={!!selectedOS}
+        onOpenChange={(open) => {
+          if (!open) setSelectedOS(null);
+        }}
+      />
     </div>
+  );
+}
+
+// ----- Abas -------------------------------------------------------------------
+
+function TabOverview({
+  contract,
+  responsibleTechnician,
+}: {
+  contract: PortalPayload['contract'];
+  responsibleTechnician: PortalPayload['responsible_technician'];
+}) {
+  return (
+    <div className="space-y-6">
+      <Section title="Contrato" icon={CalendarClock}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <InfoCard label="Plano" value={contract.name ?? '—'} />
+          <InfoCard label="Frequência" value={contract.frequency_label} />
+          <InfoCard
+            label="Próxima manutenção"
+            value={contract.next_pmoc_generation_date
+              ? formatLocal(contract.next_pmoc_generation_date)
+              : 'A definir'}
+          />
+          <InfoCard label="Início do contrato" value={formatLocal(contract.start_date)} />
+          <InfoCard
+            label="Conformidade"
+            value={contract.compliance_text}
+            valueClassName="text-info"
+          />
+          <InfoCard label="Status" value={contract.status_label} />
+        </div>
+      </Section>
+
+      {responsibleTechnician && (
+        <Section title="Responsável Técnico" icon={Award}>
+          <div
+            className={cn(
+              'flex items-start gap-3 rounded-2xl border border-border bg-card p-4',
+              'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+            )}
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
+              <ShieldCheck className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-base font-semibold">
+                {responsibleTechnician.full_name ?? '—'}
+              </p>
+              {responsibleTechnician.cft_crea && (
+                <p className="break-words text-xs text-muted-foreground">
+                  {responsibleTechnician.cft_crea}
+                </p>
+              )}
+              {responsibleTechnician.modality && (
+                <p className="break-words text-xs text-muted-foreground">
+                  {responsibleTechnician.modality}
+                </p>
+              )}
+              {responsibleTechnician.registry_number && (
+                <p className="break-words text-xs text-muted-foreground">
+                  Registro: {responsibleTechnician.registry_number}
+                </p>
+              )}
+            </div>
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function TabSchedule({
+  orders,
+  onOsClick,
+}: {
+  orders: PmocCronogramaCalendarOrder[];
+  onOsClick: (order: PmocCronogramaCalendarOrder) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <PmocCronogramaCalendar
+        serviceOrders={orders}
+        view="month"
+        readOnly
+        showControls
+        onOSClick={onOsClick}
+      />
+      {orders.length === 0 && (
+        <p className="text-center text-xs text-muted-foreground">
+          Ainda não há manutenções registradas para esta unidade.
+        </p>
+      )}
+      <p className="text-center text-[11px] text-muted-foreground">
+        Toque em uma manutenção do calendário para ver detalhes.
+      </p>
+    </div>
+  );
+}
+
+function TabDocuments({ documents }: { documents: PortalRealDocument[] }) {
+  const available = documents.filter((d) => d.available);
+  const unavailable = documents.filter((d) => !d.available);
+
+  return (
+    <div className="space-y-4">
+      {available.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {available.map((doc) => (
+            <RealDocumentCard key={doc.type} doc={doc} />
+          ))}
+        </div>
+      )}
+      {unavailable.length > 0 && (
+        <>
+          {available.length > 0 && (
+            <h3 className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Em breve
+            </h3>
+          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {unavailable.map((doc) => (
+              <RealDocumentCard key={doc.type} doc={doc} />
+            ))}
+          </div>
+        </>
+      )}
+      {documents.length === 0 && (
+        <p className="text-center text-xs text-muted-foreground">
+          Os documentos serão disponibilizados em breve.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TabHistory({
+  history,
+  onOsClick,
+}: {
+  history: PortalOsEntry[];
+  onOsClick: (os: PortalOsEntry) => void;
+}) {
+  if (history.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Nenhuma manutenção concluída ainda.
+        </p>
+      </div>
+    );
+  }
+
+  const sorted = [...history].sort((a, b) => {
+    const da = parseLocal(a.completed_at || a.scheduled_date)?.getTime() ?? 0;
+    const db = parseLocal(b.completed_at || b.scheduled_date)?.getTime() ?? 0;
+    return db - da;
+  });
+
+  return (
+    <ol className="space-y-3">
+      {sorted.map((entry) => (
+        <HistoryItem
+          key={`${entry.number}-${entry.completed_at ?? entry.scheduled_date}`}
+          entry={entry}
+          onClick={() => onOsClick(entry)}
+        />
+      ))}
+    </ol>
   );
 }
 
@@ -428,7 +633,7 @@ function HealthBadge({
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-col items-end gap-0.5 rounded-lg bg-white/15 px-3 py-2',
+        'flex shrink-0 flex-col items-end gap-0.5 rounded-xl bg-white/15 px-3 py-2',
         'backdrop-blur-sm',
       )}
       aria-label={`Status sanitário: ${cfg.label}`}
@@ -459,90 +664,19 @@ function InfoCard({
   valueClassName?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-card p-3">
+    <div
+      className={cn(
+        'min-w-0 rounded-2xl border border-border bg-card p-3.5',
+        'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+      )}
+    >
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </p>
-      <p className={cn('mt-1 break-words text-sm font-medium', valueClassName)}>
+      <p className={cn('mt-1 break-words text-sm font-medium leading-relaxed', valueClassName)}>
         {value}
       </p>
     </div>
-  );
-}
-
-function DocumentPlaceholderCard({ label, available }: { label: string; available: boolean }) {
-  return (
-    <div
-      className={cn(
-        'flex min-h-[80px] items-start gap-3 rounded-lg border p-4 transition-colors',
-        available
-          ? 'border-border bg-card hover:bg-accent/40'
-          : 'border-dashed border-border bg-muted/30',
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
-          available ? 'bg-info/10 text-info' : 'bg-muted text-muted-foreground',
-        )}
-      >
-        <FileText className="h-5 w-5" aria-hidden="true" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="break-words text-sm font-medium">{label}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {available ? 'Disponível para download' : 'Disponível em breve'}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Onda C — Bloco de documentos do portal público.
- *
- * Prefere `documents_real` (PDFs reais com signed URL TTL 24h). Quando
- * indisponível, usa `documents_placeholder` da Onda B como fallback.
- */
-function PortalDocumentsBlock({
-  real,
-  fallback,
-}: {
-  real?: PortalRealDocument[];
-  fallback?: { type: string; label: string; available: boolean }[];
-}) {
-  if (real && real.length > 0) {
-    return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {real.map(doc => (
-          <RealDocumentCard key={doc.type} doc={doc} />
-        ))}
-      </div>
-    );
-  }
-  // Fallback Onda B
-  if (fallback && fallback.length > 0) {
-    return (
-      <>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {fallback.map(doc => (
-            <DocumentPlaceholderCard
-              key={doc.type}
-              label={doc.label}
-              available={doc.available}
-            />
-          ))}
-        </div>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Os documentos serão disponibilizados em breve.
-        </p>
-      </>
-    );
-  }
-  return (
-    <p className="text-center text-xs text-muted-foreground">
-      Os documentos serão disponibilizados em breve.
-    </p>
   );
 }
 
@@ -552,30 +686,28 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
     ? `Atualizado em ${formatLocal(doc.generated_at)}${doc.version ? ` — v${doc.version}` : ''}`
     : 'Disponível em breve';
 
-  // Onda E — só mostra badge "Assinatura pendente" quando faz sentido.
-  // `cronograma_anual` envia `null` → sem badge. `signed` → sem badge sutil
-  // (a assinatura embarcada é o estado feliz, não precisa chamar atenção).
   const showPendingSignature = available && doc.signature_status === 'pending';
 
   return (
     <div
       className={cn(
-        'flex min-h-[96px] flex-col gap-2 rounded-lg border p-4 transition-colors',
+        'flex min-h-[96px] flex-col gap-2 rounded-2xl border p-4 transition-colors',
+        'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
         available ? 'border-border bg-card' : 'border-dashed border-border bg-muted/30',
       )}
     >
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
             available ? 'bg-info/10 text-info' : 'bg-muted text-muted-foreground',
           )}
         >
           <FileText className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm font-medium">{doc.label}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
+          <p className="break-words text-sm font-medium leading-snug">{doc.label}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{sub}</p>
           {showPendingSignature && (
             <span
               className={cn(
@@ -597,9 +729,9 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            'mt-1 inline-flex min-h-[40px] items-center justify-center gap-2 rounded-md',
-            'bg-primary px-3 text-sm font-semibold text-primary-foreground',
-            'transition-colors hover:bg-primary/90',
+            'mt-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl',
+            'bg-primary px-4 text-sm font-semibold text-primary-foreground',
+            'transition-all duration-100 hover:bg-primary/90 active:scale-[0.98]',
           )}
         >
           <Download className="h-4 w-4" aria-hidden="true" />
@@ -610,197 +742,196 @@ function RealDocumentCard({ doc }: { doc: PortalRealDocument }) {
   );
 }
 
+function HistoryItem({
+  entry,
+  onClick,
+}: {
+  entry: PortalOsEntry;
+  onClick: () => void;
+}) {
+  const statusCfg = OS_STATUS_CONFIG[entry.status] ?? OS_STATUS_CONFIG.agendada;
+  const displayDate = entry.completed_at || entry.scheduled_date;
+  const photos = entry.public_photos ?? [];
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          'block w-full min-h-11 rounded-2xl border border-border bg-card p-3.5 text-left',
+          'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+          'transition-all duration-100 hover:bg-accent/30 active:scale-[0.98] active:bg-accent/40 sm:p-4',
+        )}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-mono text-xs text-muted-foreground">
+                OS #{entry.number}
+              </span>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                  statusCfg.className,
+                )}
+              >
+                {entry.status_label || statusCfg.label}
+              </span>
+              {entry.rating != null && entry.rating > 0 && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
+                  <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                  {entry.rating}
+                </span>
+              )}
+            </div>
+            <p className="text-sm font-medium leading-relaxed">{formatLocal(displayDate)}</p>
+            {entry.service_type_label && (
+              <p className="text-xs leading-relaxed text-muted-foreground">{entry.service_type_label}</p>
+            )}
+          </div>
+        </div>
+
+        {entry.public_description && (
+          <p className="mt-2 line-clamp-2 break-words text-sm leading-relaxed text-foreground/90">
+            {entry.public_description}
+          </p>
+        )}
+
+        {entry.technician_first_name && (
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Executado por <span className="font-medium">{entry.technician_first_name}</span>
+          </p>
+        )}
+
+        {photos.length > 0 && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {photos.length} {photos.length === 1 ? 'foto anexada' : 'fotos anexadas'} — toque para ver
+          </p>
+        )}
+      </button>
+    </li>
+  );
+}
+
+// ----- Rodapé -----------------------------------------------------------------
+
+function PortalFooter({
+  tenant,
+  portalUrl,
+  lastUpdate,
+}: {
+  tenant: PortalTenant;
+  portalUrl: string;
+  lastUpdate: string;
+}) {
+  const tenantLocation = [tenant.city, tenant.state].filter(Boolean).join(' / ');
+  const hasContactBlock = !!(tenant.address || tenantLocation);
+
+  return (
+    <footer
+      className="mx-auto mt-10 w-full max-w-5xl space-y-6 px-4 pt-8 sm:px-6"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      <PmocComplianceBadge variant="footer" />
+
+      {/* Bloco do tenant (sempre que houver endereço/cidade) */}
+      {hasContactBlock && (
+        <div
+          className={cn(
+            'rounded-2xl border border-border bg-card p-4',
+            'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+          )}
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <Building2 className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-sm font-semibold leading-snug">{tenant.name}</p>
+              {tenant.address && (
+                <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
+                  {tenant.address}
+                </p>
+              )}
+              {tenantLocation && (
+                <p className="break-words text-xs leading-relaxed text-muted-foreground">
+                  {tenantLocation}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-1 text-center">
+        <p className="text-[11px] text-muted-foreground">
+          Portal atualizado em {lastUpdate}
+        </p>
+        <p className="break-all text-[11px] text-muted-foreground">{portalUrl}</p>
+      </div>
+
+      {/* Bloco Dominex — só aparece pra tenants NÃO white-label */}
+      {!tenant.white_label_enabled && (
+        <div className="flex flex-col items-center gap-1 pb-2 pt-2">
+          <img
+            src={dominexLogoWhite}
+            alt="Dominex"
+            className="h-5 object-contain invert dark:invert-0"
+          />
+          <span className="text-[10px] tracking-wide text-muted-foreground/80">
+            www.dominex.app
+          </span>
+        </div>
+      )}
+    </footer>
+  );
+}
+
+// ----- Conversão pro calendar -------------------------------------------------
+
 /**
- * Converte entradas do histórico do portal em pseudo-ServiceOrders pro
+ * Converte entradas do portal (schedule + history) em pseudo-ServiceOrders pro
  * componente de calendar reaproveitar a renderização.
  *
  * - Só campos que o calendar consome (id, order_number, status, date, customer).
- * - Status do portal mapeia 1:1 pro tipo `OsStatus` (já compartilham strings).
+ * - Status do portal mapeia 1:1 pro tipo `OsStatus` (compartilham strings).
  */
-function historyToCalendarOrders(
-  history: PortalHistoryEntry[],
+function osEntriesToCalendarOrders(
+  entries: PortalOsEntry[],
   customerName: string,
 ): PmocCronogramaCalendarOrder[] {
-  return history.map(h => ({
-    id: `portal-${h.os_number}`,
-    order_number: h.os_number,
-    customer_id: 'portal-customer',
-    os_type: 'manutencao_preventiva' as OsType,
-    status: (h.status as OsStatus) ?? 'agendada',
-    scheduled_date: h.scheduled_date,
-    scheduled_time: undefined,
-    description: h.description ?? undefined,
-    created_at: h.scheduled_date,
-    updated_at: h.completed_date ?? h.scheduled_date,
-    contract_id: undefined,
-    customer: { id: 'portal-customer', name: customerName },
-    equipment: null,
-  })) as unknown as PmocCronogramaCalendarOrder[];
-}
-
-function HistoryList({ items }: { items: PortalHistoryEntry[] }) {
-  const [visibleCount, setVisibleCount] = useState(INITIAL_HISTORY_COUNT);
-  const [preview, setPreview] = useState<{ images: string[]; index: number } | null>(null);
-
-  if (items.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center">
-        <p className="text-sm text-muted-foreground">
-          Nenhuma manutenção registrada ainda.
-        </p>
-      </div>
-    );
-  }
-
-  const sorted = [...items].sort((a, b) => {
-    const da = parseLocal(a.completed_date || a.scheduled_date)?.getTime() ?? 0;
-    const db = parseLocal(b.completed_date || b.scheduled_date)?.getTime() ?? 0;
-    return db - da;
-  });
-
-  const visible = sorted.slice(0, visibleCount);
-  const hasMore = visibleCount < sorted.length;
-
-  return (
-    <>
-      <ol className="space-y-3">
-        {visible.map(entry => (
-          <HistoryItem
-            key={entry.os_number}
-            entry={entry}
-            onOpenPhoto={(images, index) => setPreview({ images, index })}
-          />
-        ))}
-      </ol>
-
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setVisibleCount(c => c + MORE_HISTORY_STEP)}
-          className={cn(
-            'mt-4 flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg border border-border',
-            'bg-card text-sm font-semibold transition-colors hover:bg-accent',
-          )}
-        >
-          Ver mais ({sorted.length - visibleCount} restantes)
-        </button>
-      )}
-
-      {preview && (
-        <ImagePreviewModal
-          open={!!preview}
-          src={preview.images[preview.index]}
-          images={preview.images}
-          currentIndex={preview.index}
-          onNavigate={i => setPreview(p => (p ? { ...p, index: i } : p))}
-          onClose={() => setPreview(null)}
-        />
-      )}
-    </>
-  );
-}
-
-function HistoryItem({
-  entry,
-  onOpenPhoto,
-}: {
-  entry: PortalHistoryEntry;
-  onOpenPhoto: (images: string[], index: number) => void;
-}) {
-  const statusCfg = OS_STATUS_CONFIG[entry.status] ?? OS_STATUS_CONFIG.agendada;
-  const displayDate = entry.completed_date || entry.scheduled_date;
-  const photos = entry.public_photos ?? [];
-  const photoUrls = photos.map(p => p.url);
-
-  return (
-    <li className="rounded-lg border border-border bg-card p-3 sm:p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-mono text-xs text-muted-foreground">
-              OS #{entry.os_number}
-            </span>
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                statusCfg.className,
-              )}
-            >
-              {statusCfg.label}
-            </span>
-            {entry.rating != null && entry.rating > 0 && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
-                <Star className="h-3 w-3 fill-current" aria-hidden="true" />
-                {entry.rating}
-              </span>
-            )}
-          </div>
-          <p className="text-sm font-medium">{formatLocal(displayDate)}</p>
-          {entry.service_type_label && (
-            <p className="text-xs text-muted-foreground">{entry.service_type_label}</p>
-          )}
-        </div>
-      </div>
-
-      {entry.description && (
-        <p className="mt-2 break-words text-sm text-foreground/90">
-          {entry.description}
-        </p>
-      )}
-
-      {entry.technician_first_name && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Executado por <span className="font-medium">{entry.technician_first_name}</span>
-        </p>
-      )}
-
-      {photos.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {photos.slice(0, 4).map((photo, i) => (
-            <button
-              key={`${photo.url}-${i}`}
-              type="button"
-              onClick={() => onOpenPhoto(photoUrls, i)}
-              className={cn(
-                'group relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border',
-                'sm:h-20 sm:w-20',
-              )}
-              aria-label={photo.caption ?? `Foto ${i + 1}`}
-            >
-              <img
-                src={photo.url}
-                alt={photo.caption ?? ''}
-                loading="lazy"
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
-              />
-              {photos.length > 4 && i === 3 && (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm font-semibold text-white">
-                  +{photos.length - 4}
-                </span>
-              )}
-            </button>
-          ))}
-          {photos.length === 0 && (
-            <div className="flex h-16 items-center gap-1 text-xs text-muted-foreground">
-              <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
-              Sem fotos
-            </div>
-          )}
-        </div>
-      )}
-    </li>
-  );
+  return entries
+    .filter((h) => h.number != null)
+    .map((h) => ({
+      id: `portal-${h.number}`,
+      order_number: h.number,
+      customer_id: 'portal-customer',
+      os_type: 'manutencao_preventiva' as OsType,
+      status: (h.status as OsStatus) ?? 'agendada',
+      scheduled_date: h.scheduled_date,
+      scheduled_time: undefined,
+      description: h.public_description ?? undefined,
+      created_at: h.scheduled_date,
+      updated_at: h.completed_at ?? h.scheduled_date,
+      contract_id: undefined,
+      customer: { id: 'portal-customer', name: customerName },
+      equipment: null,
+    })) as unknown as PmocCronogramaCalendarOrder[];
 }
 
 // ----- Estados de loading/erro ------------------------------------------------
 
 function PortalSkeleton() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="bg-muted px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl space-y-4">
+    <div className="min-h-[100dvh] bg-background">
+      <div
+        className="bg-muted px-4 pb-8 sm:px-6"
+        style={{ paddingTop: 'max(2rem, env(safe-area-inset-top))' }}
+      >
+        <div className="mx-auto w-full max-w-5xl space-y-4">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 animate-pulse rounded-lg bg-muted-foreground/20" />
+            <div className="h-12 w-12 animate-pulse rounded-xl bg-muted-foreground/20" />
             <div className="flex-1 space-y-2">
               <div className="h-3 w-24 animate-pulse rounded bg-muted-foreground/20" />
               <div className="h-3 w-16 animate-pulse rounded bg-muted-foreground/20" />
@@ -811,11 +942,11 @@ function PortalSkeleton() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6">
-        {[0, 1, 2, 3].map(i => (
+      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6">
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className="space-y-2">
             <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-            <div className="h-24 animate-pulse rounded-lg bg-muted" />
+            <div className="h-24 animate-pulse rounded-2xl bg-muted" />
           </div>
         ))}
       </div>
@@ -825,20 +956,27 @@ function PortalSkeleton() {
 
 function PortalNotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
+    <div
+      className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6 text-center"
+      style={{
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+      }}
+    >
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
         <AlertCircle className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
       </div>
-      <h1 className="mt-6 text-xl font-bold">Portal não encontrado</h1>
-      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+      <h1 className="mt-6 text-xl font-bold leading-tight">Portal não encontrado</h1>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
         Este link de QR Code não está mais ativo ou pode ter sido renovado.
         Procure a empresa responsável pela manutenção para obter o link atualizado.
       </p>
       <a
         href="https://dominex.app"
         className={cn(
-          'mt-6 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-6',
-          'text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90',
+          'mt-6 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-primary px-6',
+          'text-sm font-semibold text-primary-foreground',
+          'transition-all duration-100 hover:bg-primary/90 active:scale-[0.98]',
         )}
       >
         Ir para o Dominex
@@ -849,12 +987,18 @@ function PortalNotFound() {
 
 function PortalNetworkError({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
+    <div
+      className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6 text-center"
+      style={{
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+      }}
+    >
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-warning/10">
         <AlertCircle className="h-8 w-8 text-warning" aria-hidden="true" />
       </div>
-      <h1 className="mt-6 text-xl font-bold">Não foi possível carregar</h1>
-      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+      <h1 className="mt-6 text-xl font-bold leading-tight">Não foi possível carregar</h1>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
         Verifique sua conexão e tente novamente.
       </p>
       <button
@@ -862,9 +1006,10 @@ function PortalNetworkError({ onRetry, retrying }: { onRetry: () => void; retryi
         onClick={onRetry}
         disabled={retrying}
         className={cn(
-          'mt-6 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-6',
-          'text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90',
-          'disabled:opacity-60',
+          'mt-6 inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl bg-primary px-6',
+          'text-sm font-semibold text-primary-foreground',
+          'transition-all duration-100 hover:bg-primary/90 active:scale-[0.98]',
+          'disabled:opacity-60 disabled:active:scale-100',
         )}
       >
         {retrying && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

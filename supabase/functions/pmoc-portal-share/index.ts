@@ -25,16 +25,27 @@ const corsHeaders = {
 
 const TOKEN_REGEX = /^[0-9a-f]{32}$/;
 const HISTORY_LIMIT = 20;
+const SCHEDULE_LIMIT = 50;
 const DESCRIPTION_MAX = 200;
 
-// Status públicos das OSs (tudo exceto 'cancelada').
-const PUBLIC_OS_STATUS = [
+// Status públicos do HISTÓRICO (concluídas).
+const HISTORY_OS_STATUS = ["concluida"];
+
+// Status públicos do CRONOGRAMA (futuras + ativas — ainda não concluídas).
+// Onda redesign 2026-05-24: passou a ser uma query separada do `history`.
+const SCHEDULE_OS_STATUS = [
   "pendente",
   "agendada",
   "a_caminho",
   "em_andamento",
   "pausada",
-  "concluida",
+];
+
+// Status públicos das OSs (tudo exceto 'cancelada'). Mantido pra
+// compatibilidade de leitura semântica — não usado nas queries novas.
+const PUBLIC_OS_STATUS = [
+  ...SCHEDULE_OS_STATUS,
+  ...HISTORY_OS_STATUS,
 ];
 
 // -----------------------------------------------------------------------------
@@ -278,31 +289,49 @@ Deno.serve(async (req) => {
       : null;
 
     // -------------------------------------------------------------------------
-    // 3) History — últimas N OSs do contrato, filtradas e projetadas.
+    // 3) History + Schedule — OSs do contrato, em duas queries separadas.
     //    NÃO expor: diagnosis, solution, notes, parts_used, labor_value,
     //    parts_value, total_value, client_signature, check_in/out_location,
     //    snapshot_data.
+    //
+    //    - HISTORY: concluídas, ordem completed_at DESC, limit 20.
+    //    - SCHEDULE: futuras + em andamento (incluindo 7 dias atrasadas),
+    //      ordem scheduled_date ASC, limit 50.
     // -------------------------------------------------------------------------
-    const { data: orders } = await supabase
-      .from("service_orders")
-      .select(
-        [
-          "id",
-          "order_number",
-          "scheduled_date",
-          "completed_at",
-          "status",
-          "description",
-          "service_type_id",
-          "technician_id",
-        ].join(","),
-      )
-      .eq("contract_id", contract.id)
-      .in("status", PUBLIC_OS_STATUS)
-      .order("scheduled_date", { ascending: false, nullsFirst: false })
-      .limit(HISTORY_LIMIT);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+    const scheduleFloorDate = sevenDaysAgo.toISOString().slice(0, 10); // YYYY-MM-DD
 
-    const osList = (orders ?? []) as Array<{
+    const osSelectCols = [
+      "id",
+      "order_number",
+      "scheduled_date",
+      "completed_at",
+      "status",
+      "description",
+      "service_type_id",
+      "technician_id",
+    ].join(",");
+
+    const [{ data: historyOrders }, { data: scheduleOrders }] = await Promise.all([
+      supabase
+        .from("service_orders")
+        .select(osSelectCols)
+        .eq("contract_id", contract.id)
+        .in("status", HISTORY_OS_STATUS)
+        .order("completed_at", { ascending: false, nullsFirst: false })
+        .limit(HISTORY_LIMIT),
+      supabase
+        .from("service_orders")
+        .select(osSelectCols)
+        .eq("contract_id", contract.id)
+        .in("status", SCHEDULE_OS_STATUS)
+        .gte("scheduled_date", scheduleFloorDate)
+        .order("scheduled_date", { ascending: true, nullsFirst: false })
+        .limit(SCHEDULE_LIMIT),
+    ]);
+
+    type OsRow = {
       id: string;
       order_number: number | null;
       scheduled_date: string | null;
@@ -311,7 +340,14 @@ Deno.serve(async (req) => {
       description: string | null;
       service_type_id: string | null;
       technician_id: string | null;
-    }>;
+    };
+
+    const historyList = (historyOrders ?? []) as OsRow[];
+    const scheduleList = (scheduleOrders ?? []) as OsRow[];
+
+    // Mantém um array combinado pros lookups subsequentes (service_types,
+    // assignees, photos, ratings) — depois separamos de volta na projeção.
+    const osList: OsRow[] = [...historyList, ...scheduleList];
 
     // ---- Lookup adicionais (service_types, technician name, photos, ratings) --
     const serviceTypeIds = Array.from(
@@ -423,7 +459,7 @@ Deno.serve(async (req) => {
       return t.split(/\s+/)[0];
     };
 
-    const history = osList.map((os) => {
+    const projectOs = (os: OsRow) => {
       // Prioridade pra "primeiro técnico": assignee principal, fallback technician_id.
       const assigneeIds = assigneesByOs.get(os.id) ?? [];
       const primaryUserId = assigneeIds[0] ?? os.technician_id ?? null;
@@ -433,6 +469,9 @@ Deno.serve(async (req) => {
         number: os.order_number,
         scheduled_date: os.scheduled_date,
         completed_at: os.completed_at,
+        // `status` (raw) é usado pela UI pra mapear cor do badge.
+        // `status_label` continua sendo o texto exibível (PT-BR).
+        status: os.status,
         status_label: STATUS_OS_LABEL[os.status] ?? "—",
         service_type_label: os.service_type_id
           ? serviceTypeMap.get(os.service_type_id) ?? null
@@ -446,7 +485,10 @@ Deno.serve(async (req) => {
         rating: r?.rating ?? null,
         rating_comment: r?.comment ?? null,
       };
-    });
+    };
+
+    const history = historyList.map(projectOs);
+    const schedule = scheduleList.map(projectOs);
 
     // -------------------------------------------------------------------------
     // 3.5) Documents reais (Onda C + Onda E) — última versão por doc_type,
@@ -541,7 +583,7 @@ Deno.serve(async (req) => {
     // -------------------------------------------------------------------------
     const payload = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.2.0", // 1.2.0 — Onda E: termo_rt standalone + signature_status
+      payload_version: "1.3.0", // 1.3.0 — Redesign portal: schedule + white_label_enabled + status raw
       unit: {
         name: customer?.name ?? null,
         address: customer?.address ?? null,
@@ -582,8 +624,12 @@ Deno.serve(async (req) => {
         address: companySettings?.address ?? null,
         city: companySettings?.city ?? null,
         state: companySettings?.state ?? null,
+        // Onda redesign 2026-05-24: o portal usa esse flag pra decidir se mostra
+        // o rodapé "Powered by Dominex". White-label ativo → esconde a marca.
+        white_label_enabled: useWhiteLabel,
         // NOTA: telefone/email do tenant intencionalmente NÃO expostos (decisão CEO).
       },
+      schedule,
       history,
       documents,
     };
