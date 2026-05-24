@@ -506,11 +506,19 @@ export default function Contracts() {
                     onClick={() => navigate(`/contratos/${contract.id}`)}
                     actions={itemActions}
                     leading={
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-white"
-                        style={{ backgroundColor: accent }}
-                      >
-                        <ScrollText className="h-5 w-5" />
+                      <div className="flex flex-col items-center gap-1 w-12 shrink-0">
+                        <div
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+                          style={{ backgroundColor: accent }}
+                        >
+                          <ScrollText className="h-5 w-5" />
+                        </div>
+                        <span
+                          className="text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap leading-none"
+                          style={{ color: accent }}
+                        >
+                          {statusCfg.label}
+                        </span>
                       </div>
                     }
                     title={
@@ -529,19 +537,14 @@ export default function Contracts() {
                       </div>
                     }
                     subtitle={
-                      <span className="truncate text-muted-foreground">
-                        {contract.customers?.name ? `${contract.customers.name} • ` : ''}
-                        {subtitleParts.join(' • ')}
-                      </span>
-                    }
-                    trailing={
-                      <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[120px]">
-                        <Badge variant={statusCfg.variant} className="text-[10px] px-2 py-0.5 whitespace-nowrap">
-                          {statusCfg.label}
-                        </Badge>
+                      <div className="flex flex-col gap-1.5 [white-space:normal]">
+                        <span className="truncate">
+                          {contract.customers?.name ? `${contract.customers.name} • ` : ''}
+                          {subtitleParts.join(' • ')}
+                        </span>
                         <Badge
                           variant={healthCfg.variant}
-                          className="text-[10px] px-2 py-0.5 whitespace-nowrap"
+                          className="self-start text-[10px] px-2 py-0.5 whitespace-nowrap"
                           title={healthTooltip}
                         >
                           {healthCfg.shortLabel}
