@@ -29,6 +29,7 @@ import { drawCertificadoPage } from "../_shared/pmoc-templates/certificado.ts";
 import {
   TemplateContext,
   dateToExtenso,
+  extractContractCreatedParts,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
 import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
@@ -213,6 +214,8 @@ Deno.serve(async (req) => {
           "start_date",
           "frequency_type",
           "frequency_value",
+          // Onda H+ — usado pra `contrato.criado_{dia,mes,ano}` no termo/cert.
+          "created_at",
         ].join(","),
       )
       .eq("id", contractId)
@@ -470,6 +473,12 @@ Deno.serve(async (req) => {
       .filter((s) => s.length > 0)
       .join(", ");
 
+    // Onda H+ — partes de `contracts.created_at` pras 3 variáveis novas
+    //          usadas na assinatura "Cidade, DD de mês de AAAA." do termo RT.
+    const createdParts = extractContractCreatedParts(
+      (contract as { created_at?: string | null }).created_at ?? null,
+    );
+
     const variableContext: PmocVariableContext = {
       "empresa.nome": tenantName,
       "empresa.razao_social": tenantName,
@@ -492,6 +501,9 @@ Deno.serve(async (req) => {
         (contract.frequency_value ?? null) as number | null,
         (contract.frequency_type ?? null) as string | null,
       ),
+      "contrato.criado_dia": createdParts.dia,
+      "contrato.criado_mes": createdParts.mes,
+      "contrato.criado_ano": createdParts.ano,
       "data.hoje_extenso": dateToExtenso(new Date()),
     };
 
@@ -499,8 +511,10 @@ Deno.serve(async (req) => {
     //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
     //    Onda H: bump pra dossie_v3 (variableContext entra — campos novos do
     //    company_settings/RT invalidam cache certinho).
+    //    Onda H+ (v1.9.x): bump pra dossie_v4 — 3 chaves novas
+    //    `contrato.criado_{dia,mes,ano}` entraram no variableContext.
     const hashInput = JSON.stringify({
-      v: "dossie_v3",
+      v: "dossie_v4",
       tenant: { name: tenantName, cnpj, city: cidade, logo: !!logoBytes },
       rt: {
         nome: ctx.rt.nome,

@@ -75,6 +75,30 @@ export function dateToExtenso(input: Date | string | null): string {
   return `${dia} de ${mes} de ${ano}`;
 }
 
+/**
+ * Quebra um ISO de data em partes PT-BR pras variáveis
+ * `contrato.criado_{dia,mes,ano}` do PmocVariableContext.
+ *
+ * Retorna strings vazias quando a data é inválida — substituidor de variáveis
+ * trata vazio como linha pontilhada (`____________________`) no PDF final.
+ *
+ * UTC para casar EXATAMENTE com o `dateToExtenso` e com o helper espelhado no
+ * frontend (`partsFromIso` em PmocContractDocsTab.tsx), evitando off-by-one
+ * quando o navegador do gestor está em fuso diferente de UTC.
+ */
+export function extractContractCreatedParts(
+  input: Date | string | null,
+): { dia: string; mes: string; ano: string } {
+  if (!input) return { dia: "", mes: "", ano: "" };
+  const d = input instanceof Date ? input : new Date(input);
+  if (isNaN(d.getTime())) return { dia: "", mes: "", ano: "" };
+  return {
+    dia: String(d.getUTCDate()).padStart(2, "0"),
+    mes: MESES_PT[d.getUTCMonth()] ?? "",
+    ano: String(d.getUTCFullYear()),
+  };
+}
+
 export function frequencyLabelFrom(value: number | null, type: string | null): string {
   if (!value || !type) return "—";
   const v = Math.max(1, Math.round(value));

@@ -66,7 +66,7 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p>A documentação referente ao PMOC ficará disponível na unidade para apresentação aos órgãos fiscalizadores competentes.</p>
 
-<p><span data-pmoc-var="empresa.cidade"></span>, ____ de ___________________ de 20____.</p>
+<p><span data-pmoc-var="empresa.cidade"></span>, <span data-pmoc-var="contrato.criado_dia"></span> de <span data-pmoc-var="contrato.criado_mes"></span> de <span data-pmoc-var="contrato.criado_ano"></span>.</p>
 
 <p><strong>CONTRATANTE:</strong></p>
 

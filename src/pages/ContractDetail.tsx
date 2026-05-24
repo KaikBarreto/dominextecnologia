@@ -392,10 +392,24 @@ export default function ContractDetail() {
   // existindo no banco. Fix: usar plural (alias real do PostgREST).
   const contractRt = (contract as unknown as { responsible_technicians?: RtRelation }).responsible_technicians;
   const customerExtra = (contract.customers ?? {}) as unknown as CustomerExtra & { name?: string };
+  // Onda H+ — endereço completo da empresa em uma string única (espelha o
+  // empresaEnderecoFull montado nas edge functions de PDF, pra que o badge
+  // [Endereço da Empresa] no editor mostre EXATAMENTE o que sai no PDF).
+  const empresaEnderecoFull = [
+    companySettings?.address,
+    companySettings?.address_number,
+    companySettings?.neighborhood,
+    companySettings?.complement,
+  ]
+    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+    .filter((s) => s.length > 0)
+    .join(', ');
+
   const pmocTemplateContext = isPmoc
     ? {
         empresa_razao_social: companySettings?.name ?? '',
         empresa_cnpj: companySettings?.document ?? '',
+        empresa_endereco: empresaEnderecoFull,
         rt_nome: contractRt?.full_name ?? '',
         rt_modalidade: contractRt?.modality ?? '',
         rt_cft_crea: contractRt?.cft_crea ?? '',
@@ -406,6 +420,11 @@ export default function ContractDetail() {
           .join(', '),
         contract_frequency_label: getFrequencyLabel(contract.frequency_type, contract.frequency_value),
         contract_start_date_extenso: format(parseLocalDate(contract.start_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+        // ISO bruto de contracts.created_at — o PmocContractDocsTab deriva
+        // dia/mês/ano em PT-BR pras variáveis contrato.criado_{dia,mes,ano}.
+        // Cai em string vazia quando o contrato é novo / created_at ausente,
+        // o que vira badge vermelho no editor (sinal de "cadastre antes de gerar").
+        contract_created_at_iso: (contract as { created_at?: string }).created_at ?? '',
         generated_at_extenso: format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
       }
     : undefined;

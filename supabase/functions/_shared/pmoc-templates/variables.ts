@@ -142,6 +142,21 @@ export const PMOC_VARIABLES = {
     source: "getFrequencyLabel(frequency_type, frequency_value)",
     category: "contrato",
   },
+  "contrato.criado_dia": {
+    label: "Dia da Criação do Contrato",
+    source: "contracts.created_at — dia (2 dígitos)",
+    category: "contrato",
+  },
+  "contrato.criado_mes": {
+    label: "Mês da Criação do Contrato",
+    source: "contracts.created_at — mês por extenso PT-BR (janeiro, fevereiro, …)",
+    category: "contrato",
+  },
+  "contrato.criado_ano": {
+    label: "Ano da Criação do Contrato",
+    source: "contracts.created_at — ano (4 dígitos)",
+    category: "contrato",
+  },
 
   // ───── Data ─────
   "data.hoje_extenso": {

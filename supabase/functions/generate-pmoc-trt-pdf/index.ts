@@ -16,6 +16,7 @@ import { drawTermoRtPage } from "../_shared/pmoc-templates/termo-rt.ts";
 import {
   TemplateContext,
   dateToExtenso,
+  extractContractCreatedParts,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
 import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
@@ -202,6 +203,8 @@ Deno.serve(async (req) => {
           "start_date",
           "frequency_type",
           "frequency_value",
+          // Onda H+ — usado pra `contrato.criado_{dia,mes,ano}` no termo RT.
+          "created_at",
         ].join(","),
       )
       .eq("id", contractId)
@@ -433,6 +436,13 @@ Deno.serve(async (req) => {
       .filter((s) => s.length > 0)
       .join(", ");
 
+    // Onda H+ — extrai dia/mês/ano por extenso de `contracts.created_at`
+    //          pras variáveis `contrato.criado_{dia,mes,ano}` usadas na
+    //          assinatura "Cidade, DD de mês de AAAA." do termo RT.
+    const createdParts = extractContractCreatedParts(
+      (contract as { created_at?: string | null }).created_at ?? null,
+    );
+
     const variableContext: PmocVariableContext = {
       "empresa.nome": tenantName,
       "empresa.razao_social": tenantName,
@@ -455,6 +465,9 @@ Deno.serve(async (req) => {
         (contract.frequency_value ?? null) as number | null,
         (contract.frequency_type ?? null) as string | null,
       ),
+      "contrato.criado_dia": createdParts.dia,
+      "contrato.criado_mes": createdParts.mes,
+      "contrato.criado_ano": createdParts.ano,
       "data.hoje_extenso": dateToExtenso(new Date()),
     };
 
@@ -462,8 +475,11 @@ Deno.serve(async (req) => {
     //         RT atualiza assinatura → hash muda → cache miss → nova versão).
     //         Onda H: bump pra trt_v2 (variableContext entra no hash —
     //         mudança em campo de variável invalida cache certinho).
+    //         Onda H+ (v1.9.x): bump pra trt_v3 — entraram 3 chaves novas
+    //         `contrato.criado_{dia,mes,ano}`. Sem bump, tenants antigos
+    //         continuariam recebendo PDF cacheado SEM as datas substituídas.
     const hashInput = JSON.stringify({
-      v: "trt_v2",
+      v: "trt_v3",
       tenant: { name: tenantName, cnpj, city: cidade },
       rt: {
         nome: ctx.rt.nome,

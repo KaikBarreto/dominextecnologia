@@ -30,6 +30,7 @@ import type { PmocVariableKey } from './pmocVariables';
 export interface PmocTemplateContext {
   empresa_razao_social: string;
   empresa_cnpj: string;
+  empresa_endereco: string;
   rt_nome: string;
   rt_modalidade: string;
   rt_cft_crea: string;
@@ -38,6 +39,8 @@ export interface PmocTemplateContext {
   customer_address: string;
   contract_frequency_label: string;
   contract_start_date_extenso: string;
+  /** ISO date do contracts.created_at — usado pra derivar dia/mês/ano de criação no editor. */
+  contract_created_at_iso: string;
   generated_at_extenso: string;
 }
 
@@ -76,7 +79,7 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p>A documentação referente ao PMOC ficará disponível na unidade para apresentação aos órgãos fiscalizadores competentes.</p>
 
-<p>${v('empresa.cidade')}, ____ de ___________________ de 20____.</p>
+<p>${v('empresa.cidade')}, ${v('contrato.criado_dia')} de ${v('contrato.criado_mes')} de ${v('contrato.criado_ano')}.</p>
 
 <p><strong>CONTRATANTE:</strong></p>
 

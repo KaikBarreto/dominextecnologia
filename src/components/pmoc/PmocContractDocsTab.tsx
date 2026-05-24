@@ -62,11 +62,45 @@ import type { PmocVariableContext } from '@/utils/pmocVariables';
  * `contrato.nome`). Pra essas, fica `undefined` → badge vermelho até alguém
  * estender a montagem do contexto em ContractDetail.
  */
+/** Meses PT-BR lowercase pra `contrato.criado_mes` — espelha edge function. */
+const MESES_PT_BR = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+] as const;
+
+/**
+ * Deriva dia/mês/ano em PT-BR a partir do ISO de `contracts.created_at`.
+ * Usa UTC pra casar EXATAMENTE com a edge function (dateToExtenso usa UTC),
+ * evitando off-by-one quando timezone do navegador difere de UTC.
+ */
+function partsFromIso(iso: string | undefined): { dia: string; mes: string; ano: string } {
+  if (!iso) return { dia: '', mes: '', ano: '' };
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { dia: '', mes: '', ano: '' };
+  return {
+    dia: String(d.getUTCDate()).padStart(2, '0'),
+    mes: MESES_PT_BR[d.getUTCMonth()] ?? '',
+    ano: String(d.getUTCFullYear()),
+  };
+}
+
 function toVariableContext(ctx: Partial<PmocTemplateContext> | undefined): PmocVariableContext {
   if (!ctx) return {};
+  const created = partsFromIso(ctx.contract_created_at_iso);
   return {
     'empresa.razao_social': ctx.empresa_razao_social,
     'empresa.cnpj': ctx.empresa_cnpj,
+    'empresa.endereco': ctx.empresa_endereco,
     'empresa.cidade': ctx.cidade,
     'rt.nome': ctx.rt_nome,
     'rt.modalidade': ctx.rt_modalidade,
@@ -75,6 +109,9 @@ function toVariableContext(ctx: Partial<PmocTemplateContext> | undefined): PmocV
     'cliente.endereco': ctx.customer_address,
     'contrato.frequencia': ctx.contract_frequency_label,
     'contrato.vigencia_inicio': ctx.contract_start_date_extenso,
+    'contrato.criado_dia': created.dia,
+    'contrato.criado_mes': created.mes,
+    'contrato.criado_ano': created.ano,
     'data.hoje_extenso': ctx.generated_at_extenso,
   };
 }
