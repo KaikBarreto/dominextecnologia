@@ -227,13 +227,13 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
   };
 
   return (
-    <div className="flex h-[100dvh] w-full max-w-full flex-col">
+    <div className="flex h-[100dvh] w-full max-w-full flex-col bg-background">
       <MobileTabletHeader isAdminUser={isAdminUser} />
       <MobilePullToRefresh
         onRefresh={handleRefresh}
-        className="flex-1 overflow-x-hidden min-w-0 max-w-full"
+        className="flex-1 overflow-x-hidden min-w-0 max-w-full bg-background"
       >
-        <main className="p-4 pb-28">
+        <main className="p-4 pb-28 bg-background">
           <RouteTransition>
             <Outlet />
           </RouteTransition>
@@ -271,8 +271,8 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
   // (lg breakpoint do tailwind = 1024px, mesmo do MOBILE_BREAKPOINT.)
   return (
     <header
-      className="sticky top-0 z-10 flex min-h-16 items-center justify-between border-b bg-background px-4"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3"
+      style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       {/* Lado esquerdo: back arrow no mobile, Menu hamburger no tablet+ */}
       <div className="flex items-center gap-2 min-w-10">
