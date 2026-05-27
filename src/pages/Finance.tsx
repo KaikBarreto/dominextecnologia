@@ -313,6 +313,7 @@ export default function Finance() {
               transactions={contasTransactions}
               isLoading={isLoading}
               onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
+              dateRange={range}
             />
           )}
 

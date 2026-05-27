@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.24',
+    date: '27 de maio de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Faturas de cartão agora respeitam o filtro de período',
+        description: 'Em Contas a Pagar, ao selecionar "Este mês" (por exemplo, maio), antes apareciam faturas de TODOS os meses (maio, junho, julho...). Agora só aparecem as faturas cujo vencimento cai dentro do período selecionado. Os cards de resumo no topo (Pendente, Vencido, Próximos 7 dias, Pago) também foram corrigidos pra respeitar o mesmo filtro.',
+        category: 'correcao',
+      },
+      {
+        title: 'Filtro por categoria em Contas a Pagar/Receber',
+        description: 'Agora tem um seletor de categoria acima da lista de transações. Escolha uma categoria (ex: "Funcionários") e a lista filtra na hora, mostrando um resumo com o total pago e a quantidade de lançamentos daquela categoria. Útil pra conferir rapidinho "quanto gastei com funcionários esse mês". Ao selecionar uma categoria, as faturas de cartão ficam ocultas (porque cada fatura agrupa várias categorias — filtra só as transações individuais).',
+        category: 'recurso',
+      },
+      {
+        title: 'Vendedores Auctus agora veem a aba Atividade das empresas',
+        description: 'No painel administrativo, ao abrir uma empresa e ir na aba "Atividade", vendedores (que não são super admin) agora conseguem ver os dados de atividade normalmente. Antes aparecia tudo zerado porque a permissão de leitura dos eventos de uso estava restrita a super admins.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.23',
     date: '24 de maio de 2026',
     type: 'minor',

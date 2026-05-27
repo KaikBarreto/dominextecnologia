@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Filter, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -64,11 +64,13 @@ interface FinanceContasProps {
   transactions: PayrollTxn[];
   isLoading: boolean;
   onMarkAsPaid: (params: any) => Promise<any>;
+  dateRange?: { from?: Date; to?: Date };
 }
 
-export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: FinanceContasProps) {
+export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange }: FinanceContasProps) {
   const [subTab, setSubTab] = useState<SubTab>('pagar');
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -188,7 +190,17 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
       return hasContent;
     });
-    return eligible.filter((b) => {
+    // Filtra faturas pelo periodo selecionado (comparando due_date da fatura
+    // contra o range do DateRangeFilter do parent). Sem isso, todas as faturas
+    // de todos os meses apareciam — CEO reportou como bug.
+    const inRange = eligible.filter((b) => {
+      if (!dateRange?.from && !dateRange?.to) return true;
+      const dueDate = parseLocalDate(b.due_date);
+      if (dateRange.from && dueDate < dateRange.from) return false;
+      if (dateRange.to && dueDate > dateRange.to) return false;
+      return true;
+    });
+    return inRange.filter((b) => {
       if (filter === 'todas') return true;
       if (filter === 'pagas') return b.status === 'paid';
       if (filter === 'pendentes') return b.status !== 'paid';
@@ -197,19 +209,23 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       }
       return true;
     });
-  }, [allBills, cardAccountMap, subTab, filter, today]);
+  }, [allBills, cardAccountMap, subTab, filter, today, dateRange]);
 
   const filtered = useMemo(() => {
     return baseFiltered.filter((t) => {
-      if (filter === 'todas') return true;
-      if (filter === 'pagas') return t.is_paid;
-      if (filter === 'pendentes') return !t.is_paid;
-      if (filter === 'vencidas') {
-        return !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
+      if (filter === 'todas') { /* pass */ }
+      else if (filter === 'pagas') { if (!t.is_paid) return false; }
+      else if (filter === 'pendentes') { if (t.is_paid) return false; }
+      else if (filter === 'vencidas') {
+        if (t.is_paid || !t.due_date || !isBefore(parseLocalDate(t.due_date), today)) return false;
+      }
+      // Filtro de categoria
+      if (categoryFilter !== 'all') {
+        if ((t.category ?? '') !== categoryFilter) return false;
       }
       return true;
     });
-  }, [baseFiltered, filter, today]);
+  }, [baseFiltered, filter, today, categoryFilter]);
 
   // Summary: somar TODAS as fontes (txns + faturas) pra refletir "movimento total"
   // — pendente/vencido/7dias/pago. Caso contrário o card "Pago" zeraria pra clientes
@@ -222,11 +238,19 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       && !(subTab === 'pagar' && t.credit_card_bill_date)
     );
 
-    // Bills elegíveis (com conteúdo) — independente do filtro de status.
+    // Bills elegíveis (com conteúdo + dentro do período) — independente do filtro de status.
     const billUniverse = subTab === 'pagar'
       ? allBills.filter((b) => {
           if (!cardAccountMap[b.account_id]) return false;
-          return (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
+          const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
+          if (!hasContent) return false;
+          // Respeita o filtro de período (mesma lógica de cardInvoices)
+          if (dateRange?.from || dateRange?.to) {
+            const dueDate = parseLocalDate(b.due_date);
+            if (dateRange.from && dueDate < dateRange.from) return false;
+            if (dateRange.to && dueDate > dateRange.to) return false;
+          }
+          return true;
         })
       : [];
 
@@ -259,7 +283,34 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
       prox7: prox7Txn + prox7Bill,
       pago: pagoTxn + pagoBill,
     };
-  }, [transactions, allBills, cardAccountMap, subTab, today, next7Days]);
+  }, [transactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange]);
+
+  // Lista de categorias presentes nas transações atuais (baseFiltered, antes do
+  // filtro de categoria) pra popular o <Select> de filtro. Ordena alfabeticamente.
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    // Usa baseFiltered (sem filtro de status nem categoria) pra que a lista
+    // de opcões não encolha ao filtrar. Filtra pelo status corrente pra
+    // mostrar só categorias relevantes ao status ativo.
+    const pool = baseFiltered.filter((t) => {
+      if (filter === 'todas') return true;
+      if (filter === 'pagas') return t.is_paid;
+      if (filter === 'pendentes') return !t.is_paid;
+      if (filter === 'vencidas') return !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
+      return true;
+    });
+    for (const t of pool) {
+      if (t.category) set.add(t.category);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [baseFiltered, filter, today]);
+
+  // Resumo da categoria ativa: total + quantidade de lancamentos.
+  const categorySummary = useMemo(() => {
+    if (categoryFilter === 'all') return null;
+    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
+    return { total, count: filtered.length };
+  }, [filtered, categoryFilter]);
 
   // Pré-calcula campos derivados pra ordenação na table desktop. O hook
   // useTableSort entende números (amount, due_date_ts) e strings (status).
@@ -338,20 +389,20 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
             { value: 'receber', label: 'A Receber', icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
           ]}
           activeTab={subTab}
-          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); }}
+          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter('all'); }}
         />
       ) : (
         <div className="flex gap-2">
           <Button
             variant={subTab === 'pagar' ? 'default' : 'outline'}
-            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); }}
+            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter('all'); }}
             className={cn('min-h-11 rounded-xl', subTab === 'pagar' && 'bg-destructive hover:bg-destructive/90 text-white')}
           >
             A Pagar
           </Button>
           <Button
             variant={subTab === 'receber' ? 'default' : 'outline'}
-            onClick={() => { setSubTab('receber'); setFilter('pendentes'); }}
+            onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter('all'); }}
             className={cn('min-h-11 rounded-xl', subTab === 'receber' && 'bg-success hover:bg-success/90 text-white')}
           >
             A Receber
@@ -478,11 +529,55 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         </div>
       )}
 
+      {/* Filtro de categoria — aparece quando há categorias disponíveis */}
+      {availableCategories.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-9 w-full sm:w-[220px] rounded-xl text-sm">
+                <SelectValue placeholder="Todas as categorias" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as categorias</SelectItem>
+                {availableCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {categoryFilter !== 'all' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 rounded-xl"
+                onClick={() => setCategoryFilter('all')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Resumo da categoria ativa */}
+          {categorySummary && (
+            <div className="flex items-center gap-3 rounded-lg bg-muted p-3 text-sm">
+              <Badge variant="outline" className="shrink-0">{categoryFilter}</Badge>
+              <span className="text-muted-foreground">
+                Total: <span className="font-semibold text-foreground tabular-nums">{formatCurrency(categorySummary.total)}</span>
+              </span>
+              <span className="text-muted-foreground">
+                {categorySummary.count} {categorySummary.count === 1 ? 'lançamento' : 'lançamentos'}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Bloco "Faturas de Cartão" — só aparece em subTab='pagar' quando há faturas
-          elegíveis. Cada linha é destacada (border colorido + ícone cartão + badge
+          elegíveis e sem filtro de categoria ativo (faturas agregam múltiplas categorias).
+          Cada linha é destacada (border colorido + ícone cartão + badge
           de quantidade de despesas). Click abre detalhe, "Pagar Fatura" abre modal
           (bloqueado até o fechamento). v1.9.15. */}
-      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && (
+      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && categoryFilter === 'all' && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
@@ -515,14 +610,14 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid }: Finance
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
         </div>
-      ) : filtered.length === 0 && cardInvoices.length === 0 ? (
+      ) : filtered.length === 0 && (cardInvoices.length === 0 || categoryFilter !== 'all') ? (
         <EmptyState
           icon={<DollarSign className="h-12 w-12" />}
           title="Nenhuma conta encontrada"
-          description="Nenhum registro para o filtro selecionado"
+          description={categoryFilter !== 'all' ? `Nenhum registro na categoria "${categoryFilter}"` : 'Nenhum registro para o filtro selecionado'}
         />
       ) : filtered.length === 0 ? (
-        // Só faturas — não mostra empty state nem a tabela vazia abaixo.
+        // Só faturas (visíveis) — não mostra empty state nem a tabela vazia abaixo.
         null
       ) : isMobile ? (
         <div className="space-y-3">
