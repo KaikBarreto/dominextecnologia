@@ -12,6 +12,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { FABButton } from '@/components/mobile/FABButton';
 import { useCustomers } from '@/hooks/useCustomers';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -206,10 +207,10 @@ export default function CustomerDetail() {
               Gerar Portal
             </Button>
           ))}
-          <Button variant="edit-ghost" size="sm" onClick={() => setEditCustomerOpen(true)}>
+          <Button variant="edit-ghost" size="sm" className="min-h-[44px]" onClick={() => setEditCustomerOpen(true)}>
             <Edit className="h-4 w-4 mr-1" /> Editar
           </Button>
-          <Button variant="destructive-ghost" size="sm" onClick={() => setDeleteConfirmOpen(true)}>
+          <Button variant="destructive-ghost" size="sm" className="min-h-[44px]" onClick={() => setDeleteConfirmOpen(true)}>
             <Trash2 className="h-4 w-4 mr-1" /> Excluir
           </Button>
         </div>
@@ -241,7 +242,7 @@ export default function CustomerDetail() {
       {activeTab === 'geral' && (
         <div className="grid gap-4 sm:grid-cols-2">
           {customer.photo_url && (
-            <Card className="sm:col-span-2"><CardContent className="p-4 flex justify-center">
+            <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 flex justify-center">
               <img src={customer.photo_url} alt={customer.name} className="h-32 w-32 rounded-full object-cover border" />
             </CardContent></Card>
           )}
@@ -249,7 +250,7 @@ export default function CustomerDetail() {
             const originData = activeOrigins.find(o => o.name === (customer as any).origin);
             const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
             return (
-              <Card><CardContent className="p-4">
+              <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Origem</p>
                 <div className="flex items-center gap-2 mt-1">
                   {LucideIcon && originData && (
@@ -257,33 +258,33 @@ export default function CustomerDetail() {
                       <LucideIcon className="h-3 w-3 text-white" />
                     </div>
                   )}
-                  <p className="text-sm font-medium">{(customer as any).origin}</p>
+                  <p className="text-sm font-medium leading-tight">{(customer as any).origin}</p>
                 </div>
               </CardContent></Card>
             );
           })()}
           {customer.document && (
-            <Card><CardContent className="p-4">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">CPF/CNPJ</p>
-              <p className="text-sm font-medium mt-1">{customer.document}</p>
+              <p className="text-sm font-medium mt-1 leading-tight">{customer.document}</p>
             </CardContent></Card>
           )}
           {customer.email && (
-            <Card><CardContent className="p-4">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Email</p>
-              <p className="text-sm font-medium mt-1 flex items-center gap-1"><Mail className="h-3 w-3" />{customer.email}</p>
+              <p className="text-sm font-medium mt-1 flex items-center gap-1 leading-tight"><Mail className="h-3 w-3" />{customer.email}</p>
             </CardContent></Card>
           )}
           {customer.phone && (
-            <Card><CardContent className="p-4">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</p>
-              <p className="text-sm font-medium mt-1 flex items-center gap-1"><Phone className="h-3 w-3" />{customer.phone}</p>
+              <p className="text-sm font-medium mt-1 flex items-center gap-1 leading-tight"><Phone className="h-3 w-3" />{customer.phone}</p>
             </CardContent></Card>
           )}
           {customer.birth_date && (
-            <Card><CardContent className="p-4">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Data de Nascimento</p>
-              <p className="text-sm font-medium mt-1 flex items-center gap-1">
+              <p className="text-sm font-medium mt-1 flex items-center gap-1 leading-tight">
                 <Calendar className="h-3 w-3" />
                 {format(new Date(customer.birth_date), 'dd/MM/yyyy', { locale: ptBR })}
               </p>
@@ -303,7 +304,7 @@ export default function CustomerDetail() {
             const embedUrl = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
             return (
-              <Card className="sm:col-span-2"><CardContent className="p-4 space-y-3">
+              <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Endereço</p>
                 <p className="text-sm font-medium flex items-center gap-1">
                   <MapPin className="h-3 w-3 shrink-0" />
@@ -326,7 +327,7 @@ export default function CustomerDetail() {
                     href={googleMapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent"
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 min-h-[44px] text-xs font-medium transition-all hover:bg-accent active:scale-[0.98]"
                   >
                     <img src="/icons/google-maps.png" alt="Google Maps" className="h-5 w-5 object-contain" />
                     Abrir no Google Maps
@@ -335,7 +336,7 @@ export default function CustomerDetail() {
                     href={wazeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent"
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 min-h-[44px] text-xs font-medium transition-all hover:bg-accent active:scale-[0.98]"
                   >
                     <img src="/icons/waze.png" alt="Waze" className="h-5 w-5 object-contain" />
                     Abrir no Waze
@@ -345,7 +346,7 @@ export default function CustomerDetail() {
             );
           })()}
           {/* Responsável no Local */}
-          <Card className="sm:col-span-2"><CardContent className="p-4 space-y-3">
+          <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                 <UserCircle className="h-3.5 w-3.5" />
@@ -354,6 +355,7 @@ export default function CustomerDetail() {
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-[44px]"
                 onClick={() => { setEditingContact(null); setContactFormOpen(true); }}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
@@ -367,7 +369,7 @@ export default function CustomerDetail() {
                   const whatsappNumber = c.phone?.replace(/\D/g, '');
                   const whatsappUrl = whatsappNumber ? `https://wa.me/55${whatsappNumber}` : null;
                   return (
-                    <div key={c.id} className="flex items-start justify-between gap-3 rounded-lg border p-3 bg-muted/30">
+                    <div key={c.id} className={cn('flex items-start justify-between gap-3 rounded-lg border p-3 bg-muted/30', isMobile && 'rounded-2xl active:scale-[0.98] transition-transform duration-100')}>
                       <div className="space-y-1 min-w-0 flex-1">
                         <p className="text-sm font-medium">{c.name}</p>
                         {c.position && (
@@ -417,9 +419,9 @@ export default function CustomerDetail() {
           </CardContent></Card>
 
           {customer.notes && (
-            <Card className="sm:col-span-2"><CardContent className="p-4">
+            <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
-              <p className="text-sm mt-1">{customer.notes}</p>
+              <p className="text-sm mt-1 leading-relaxed">{customer.notes}</p>
             </CardContent></Card>
           )}
         </div>
@@ -431,22 +433,30 @@ export default function CustomerDetail() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               Equipamentos do Cliente
             </h2>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setEquipFormOpen(true)}>
+            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setEquipFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Equipamento
             </Button>
           </div>
           {customerEquipment.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <Package className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente</p>
+            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Package className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-base font-medium leading-tight">Nenhum equipamento</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Cadastre o primeiro equipamento deste cliente</p>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {customerEquipment.map((eq) => (
                 <Card
                   key={eq.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+                  className={cn(
+                    'cursor-pointer overflow-hidden transition-all',
+                    isMobile
+                      ? 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform duration-100'
+                      : 'hover:shadow-md'
+                  )}
                   onClick={() => navigate(`/equipamentos/${eq.id}`, { state: { from: 'customer', customerId: id } })}
                 >
                   {eq.photo_url && (
@@ -460,14 +470,14 @@ export default function CustomerDetail() {
                     </div>
                   )}
                   <CardContent className="p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium truncate">{eq.name}</p>
+                    <div className="flex items-center justify-between min-h-[44px]">
+                      <p className="font-medium truncate leading-tight">{eq.name}</p>
                       <Badge variant={eq.status === 'active' ? 'default' : 'secondary'} className="text-xs shrink-0">
                         {eq.status === 'active' ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </div>
                     {(eq.brand || eq.model) && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
                         {[eq.brand, eq.model].filter(Boolean).join(' - ')}
                       </p>
                     )}
@@ -484,6 +494,13 @@ export default function CustomerDetail() {
               ))}
             </div>
           )}
+          {isMobile && (
+            <FABButton
+              icon={<Plus className="h-5 w-5" />}
+              label="Equipamento"
+              onClick={() => setEquipFormOpen(true)}
+            />
+          )}
         </div>
       )}
 
@@ -491,18 +508,21 @@ export default function CustomerDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Histórico de OS</h2>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOsFormOpen(true)}>
+            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOsFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Nova OS
             </Button>
           </div>
           {customerOrders.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <ClipboardList className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhuma OS registrada para este cliente</p>
+            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <ClipboardList className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-base font-medium leading-tight">Nenhuma OS registrada</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Crie a primeira ordem de serviço deste cliente</p>
             </div>
           ) : (
-            <Card><CardContent className="p-0">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -515,14 +535,14 @@ export default function CustomerDetail() {
                   </TableHeader>
                   <TableBody>
                     {ordersPagination.paginatedItems.map((os) => (
-                      <TableRow key={os.id}>
+                      <TableRow key={os.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors min-h-[44px]')}>
                          <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(6, '0')}</span></TableCell>
                         <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {os.scheduled_date ? format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
+                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
                             <ExternalLink className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -534,6 +554,13 @@ export default function CustomerDetail() {
               <DataTablePagination page={ordersPagination.page} totalPages={ordersPagination.totalPages} totalItems={ordersPagination.totalItems} from={ordersPagination.from} to={ordersPagination.to} pageSize={ordersPagination.pageSize} onPageChange={ordersPagination.setPage} onPageSizeChange={ordersPagination.setPageSize} />
             </CardContent></Card>
           )}
+          {isMobile && (
+            <FABButton
+              icon={<Plus className="h-5 w-5" />}
+              label="OS"
+              onClick={() => setOsFormOpen(true)}
+            />
+          )}
         </div>
       )}
 
@@ -541,18 +568,21 @@ export default function CustomerDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Tarefas do Cliente</h2>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setTaskFormOpen(true)}>
+            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setTaskFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Nova Tarefa
             </Button>
           </div>
           {customerTasks.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <CheckSquare className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhuma tarefa registrada para este cliente</p>
+            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <CheckSquare className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-base font-medium leading-tight">Nenhuma tarefa</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Crie a primeira tarefa deste cliente</p>
             </div>
           ) : (
-            <Card><CardContent className="p-0">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -567,11 +597,11 @@ export default function CustomerDetail() {
                     {tasksPagination.paginatedItems.map((task: any) => {
                       const isDone = task.status === 'finalizado' || task.status === 'concluido';
                       return (
-                        <TableRow key={task.id} className={isDone ? 'opacity-60' : ''}>
+                        <TableRow key={task.id} className={cn(isDone ? 'opacity-60' : '', isMobile && 'active:bg-muted/50 transition-colors min-h-[44px]')}>
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-h-[44px]">
                               {isDone && <CheckCircle2 className="h-4 w-4 text-success shrink-0" />}
-                              <span className={cn('font-medium', isDone && 'line-through')}>{task.task_title || task.description || '-'}</span>
+                              <span className={cn('font-medium leading-tight', isDone && 'line-through')}>{task.task_title || task.description || '-'}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -594,6 +624,13 @@ export default function CustomerDetail() {
               <DataTablePagination page={tasksPagination.page} totalPages={tasksPagination.totalPages} totalItems={tasksPagination.totalItems} from={tasksPagination.from} to={tasksPagination.to} pageSize={tasksPagination.pageSize} onPageChange={tasksPagination.setPage} onPageSizeChange={tasksPagination.setPageSize} />
             </CardContent></Card>
           )}
+          {isMobile && (
+            <FABButton
+              icon={<Plus className="h-5 w-5" />}
+              label="Tarefa"
+              onClick={() => setTaskFormOpen(true)}
+            />
+          )}
         </div>
       )}
 
@@ -603,15 +640,17 @@ export default function CustomerDetail() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Chamados do Portal</h2>
           </div>
           {portalTickets.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <Megaphone className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhum chamado aberto pelo portal do cliente</p>
-              {!portalLink && (
-                <p className="text-xs text-muted-foreground mt-1">Gere o link do portal para o cliente abrir chamados</p>
-              )}
+            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Megaphone className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-base font-medium leading-tight">Nenhum chamado</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                {!portalLink ? 'Gere o link do portal para o cliente abrir chamados' : 'Nenhum chamado aberto pelo portal do cliente'}
+              </p>
             </div>
           ) : (
-            <Card><CardContent className="p-0">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -625,15 +664,15 @@ export default function CustomerDetail() {
                   </TableHeader>
                   <TableBody>
                     {ticketsPagination.paginatedItems.map((os) => (
-                      <TableRow key={os.id}>
+                      <TableRow key={os.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
                         <TableCell><span className="font-mono font-medium">#{String(os.order_number).padStart(6, '0')}</span></TableCell>
-                        <TableCell><p className="text-sm truncate max-w-[200px]">{os.description || '-'}</p></TableCell>
+                        <TableCell><p className="text-sm truncate max-w-[200px] leading-relaxed">{os.description || '-'}</p></TableCell>
                         <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {format(new Date(os.created_at), 'dd/MM/yyyy', { locale: ptBR })}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
+                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
                             <ExternalLink className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -652,18 +691,21 @@ export default function CustomerDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Contratos</h2>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setContractFormOpen(true)}>
+            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setContractFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Contrato
             </Button>
           </div>
           {customerContracts.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <FileText className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhum contrato vinculado a este cliente</p>
+            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-base font-medium leading-tight">Nenhum contrato</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Vincule o primeiro contrato a este cliente</p>
             </div>
           ) : (
-            <Card><CardContent className="p-0">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -677,8 +719,8 @@ export default function CustomerDetail() {
                   </TableHeader>
                   <TableBody>
                     {contractsPagination.paginatedItems.map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell><p className="font-medium truncate max-w-[200px]">{c.name}</p></TableCell>
+                      <TableRow key={c.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
+                        <TableCell><p className="font-medium truncate max-w-[200px] leading-tight">{c.name}</p></TableCell>
                         <TableCell>
                           <Badge variant={c.status === 'active' ? 'default' : 'secondary'}>
                             {c.status === 'active' ? 'Ativo' : c.status === 'paused' ? 'Pausado' : 'Encerrado'}
@@ -691,7 +733,7 @@ export default function CustomerDetail() {
                           {format(new Date(c.start_date), 'dd/MM/yyyy', { locale: ptBR })}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => navigate(`/contratos/${c.id}`)}>
+                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => navigate(`/contratos/${c.id}`)}>
                             <ExternalLink className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -703,6 +745,13 @@ export default function CustomerDetail() {
               <DataTablePagination page={contractsPagination.page} totalPages={contractsPagination.totalPages} totalItems={contractsPagination.totalItems} from={contractsPagination.from} to={contractsPagination.to} pageSize={contractsPagination.pageSize} onPageChange={contractsPagination.setPage} onPageSizeChange={contractsPagination.setPageSize} />
             </CardContent></Card>
           )}
+          {isMobile && (
+            <FABButton
+              icon={<Plus className="h-5 w-5" />}
+              label="Contrato"
+              onClick={() => setContractFormOpen(true)}
+            />
+          )}
         </div>
       )}
 
@@ -710,12 +759,15 @@ export default function CustomerDetail() {
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">Transações do Cliente</h2>
           {customerTransactions.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <DollarSign className="mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhuma transação registrada para este cliente</p>
+            <div className="flex flex-col items-center justify-center text-center px-4 py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <DollarSign className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-base font-medium leading-tight">Nenhuma transação</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Nenhuma transação registrada para este cliente</p>
             </div>
           ) : (
-            <Card><CardContent className="p-0">
+            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -728,8 +780,8 @@ export default function CustomerDetail() {
                   </TableHeader>
                   <TableBody>
                     {transactionsPagination.paginatedItems.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell><p className="font-medium">{t.description}</p></TableCell>
+                      <TableRow key={t.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
+                        <TableCell><p className="font-medium leading-tight">{t.description}</p></TableCell>
                         <TableCell>
                           <span className={t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}>
                             {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
