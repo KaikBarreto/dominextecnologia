@@ -290,10 +290,7 @@ export default function Dashboard() {
   const firstName = profile?.full_name?.split(' ')[0] || 'Usuário';
 
   return (
-    <div
-      className="min-h-[100dvh] space-y-5 lg:space-y-6"
-      style={{ paddingTop: 'max(0px, env(safe-area-inset-top))' }}
-    >
+    <div className="min-h-[100dvh] space-y-5 lg:space-y-6">
       <MobilePageHeader
         title={`Olá, ${firstName}! 👋`}
         subtitle={getGreeting()}

@@ -405,10 +405,7 @@ export default function ServiceOrders() {
   );
 
   return (
-    <div
-      className={cn('space-y-6', isMobile && 'min-h-[100dvh] pb-24')}
-      style={isMobile ? { paddingTop: 'env(safe-area-inset-top)' } : undefined}
-    >
+    <div className={cn('space-y-6', isMobile && 'min-h-[100dvh] pb-24')}>
       <MobilePageHeader
         title="Ordens de Serviço"
         subtitle="Gerencie suas ordens de serviço"
