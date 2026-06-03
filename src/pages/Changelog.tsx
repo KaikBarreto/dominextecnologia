@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.25',
+    date: '02 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Usuário Master volta a conseguir cadastrar em todas as telas',
+        description: 'Bug crítico corrigido: ao tentar cadastrar um item de estoque (ou cliente, equipamento, ordem de serviço, funcionário, etc.), o usuário Master (admin da empresa) tomava o erro "Você não tem permissão para realizar esta ação", mesmo tendo todas as permissões. O problema acontecia porque o sistema esquecia de mandar uma etiqueta interna que identifica de qual empresa o cadastro pertence — e a regra de segurança do banco bloqueava por precaução. Aplicamos uma rede de segurança no banco que preenche essa etiqueta automaticamente em TODAS as operações de cadastro (43 tabelas cobertas de uma vez). Previne qualquer erro deste tipo no futuro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.24',
     date: '27 de maio de 2026',
     type: 'minor',
