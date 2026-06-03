@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useProfiles } from '@/hooks/useProfiles';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
@@ -385,7 +386,7 @@ export function ServiceOrderFormDialog({
 
       const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
       if (error) {
-        editToast({ variant: 'destructive', title: 'Erro ao criar OSs recorrentes', description: error.message });
+        editToast({ variant: 'destructive', title: 'Erro ao criar OSs recorrentes', description: getErrorMessage(error) });
         return;
       }
 
@@ -548,7 +549,7 @@ export function ServiceOrderFormDialog({
           }
         }
       } catch (err: any) {
-        editToast({ variant: 'destructive', title: 'Erro ao ajustar datas futuras', description: err.message });
+        editToast({ variant: 'destructive', title: 'Erro ao ajustar datas futuras', description: getErrorMessage(err) });
       }
     }
 
@@ -603,7 +604,7 @@ export function ServiceOrderFormDialog({
           editToast({ title: `${groupOrders.length + 1} OS(s) da recorrência atualizadas!` });
         }
       } catch (err: any) {
-        editToast({ variant: 'destructive', title: 'Erro ao atualizar recorrência', description: err.message });
+        editToast({ variant: 'destructive', title: 'Erro ao atualizar recorrência', description: getErrorMessage(err) });
       }
     }
 

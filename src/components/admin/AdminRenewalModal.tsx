@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 const schema = z.object({
   subscription_expires_at: z.date({ required_error: 'Data obrigatória' }),
@@ -71,7 +72,7 @@ export function AdminRenewalModal({ company, open, onOpenChange, onSuccess }: Ad
       queryClient.invalidateQueries({ queryKey: ['admin-financial-transactions'] });
       form.reset(); setIsSubmitting(false); onSuccess();
     },
-    onError: (error: any) => { toast({ title: 'Erro ao renovar', description: error.message, variant: 'destructive' }); setIsSubmitting(false); },
+    onError: (error: any) => { toast({ title: 'Erro ao renovar', description: getErrorMessage(error), variant: 'destructive' }); setIsSubmitting(false); },
   });
 
   return (

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { usePublicRating } from '@/hooks/useServiceRatings';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 const npsEmojis = [
   { min: 0, max: 3, icon: Frown, label: 'Insatisfeito', color: 'text-destructive' },
@@ -75,7 +76,7 @@ export default function ServiceRating() {
       });
       setSubmitted(true);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar avaliação', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao enviar avaliação', description: getErrorMessage(err) });
     } finally {
       setSubmitting(false);
     }

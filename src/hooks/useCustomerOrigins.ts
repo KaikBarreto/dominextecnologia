@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface CustomerOrigin {
   id: string;
@@ -41,7 +42,7 @@ export function useCustomerOrigins() {
       queryClient.invalidateQueries({ queryKey: ['customer-origins'] });
       toast({ title: 'Origem criada!' });
     },
-    onError: (err: any) => toast({ variant: 'destructive', title: 'Erro', description: err.message }),
+    onError: (err) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) }),
   });
 
   const updateOrigin = useMutation({
@@ -56,7 +57,7 @@ export function useCustomerOrigins() {
       queryClient.invalidateQueries({ queryKey: ['customer-origins'] });
       toast({ title: 'Origem atualizada!' });
     },
-    onError: (err: any) => toast({ variant: 'destructive', title: 'Erro', description: err.message }),
+    onError: (err) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) }),
   });
 
   const deleteOrigin = useMutation({
@@ -71,7 +72,7 @@ export function useCustomerOrigins() {
       queryClient.invalidateQueries({ queryKey: ['customer-origins'] });
       toast({ title: 'Origem removida!' });
     },
-    onError: (err: any) => toast({ variant: 'destructive', title: 'Erro', description: err.message }),
+    onError: (err) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) }),
   });
 
   const activeOrigins = (originsQuery.data || []).filter(o => o.is_active);

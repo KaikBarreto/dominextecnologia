@@ -11,6 +11,7 @@ import { uploadResponsibleTechnicianMedia } from '@/hooks/useResponsibleTechnici
 import { supabase } from '@/integrations/supabase/client';
 import { PmocSignatureCanvas, dataUrlToFile } from '@/components/pmoc/PmocSignatureCanvas';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 /**
  * Dialog rápido pra cadastrar/atualizar a assinatura do RT direto da aba
@@ -158,7 +159,7 @@ export function RtSignatureQuickDialog({
       toast({
         variant: 'destructive',
         title: 'Erro ao salvar assinatura',
-        description: err instanceof Error ? err.message : 'Tente novamente.',
+        description: getErrorMessage(err, 'Tente novamente.'),
       });
     } finally {
       setSaving(false);

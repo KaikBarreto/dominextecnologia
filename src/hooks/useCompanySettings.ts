@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface CompanySettings {
   id: string;
@@ -146,11 +147,11 @@ export function useCompanySettings() {
         queryClient.setQueryData<CompanySettings>(['company-settings'], row);
       }
     },
-    onError: (error: Error, _input, context) => {
+    onError: (error, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['company-settings'], context.previous);
       }
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao salvar', description: getErrorMessage(error) });
     },
   });
 

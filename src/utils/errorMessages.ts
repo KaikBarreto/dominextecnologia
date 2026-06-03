@@ -7,6 +7,47 @@ type ErrorLike = {
   message?: string;
 };
 
+/**
+ * Mapeamento por código SQLSTATE / código PostgREST.
+ *
+ * Match por código é mais confiável que substring porque:
+ * 1) Não depende de localização da mensagem do Postgres.
+ * 2) Não quebra quando o texto da mensagem muda entre versões.
+ * 3) Pega categorias inteiras de uma vez (todo 23502, todo 42P10, etc.).
+ *
+ * Aplicado ANTES do substring match — substring permanece como fallback
+ * para mensagens específicas (ex: FK constraint específica) que precisam
+ * de texto direcionado.
+ */
+const SQLSTATE_MESSAGES: Record<string, string> = {
+  // ── Constraint violations (class 23) ──
+  '23502': 'Algum campo obrigatório não foi preenchido.',
+  '23503': 'Não é possível concluir porque há referências relacionadas. Remova-as primeiro.',
+  '23505': 'Já existe um registro com esses dados.',
+  '23514': 'Algum valor está fora do permitido (verifique limites e restrições).',
+
+  // ── Data exception (class 22) ──
+  '22P02': 'Algum valor está em formato inválido.',
+  '22001': 'Algum texto é muito longo para o campo.',
+  '22003': 'Algum número está fora do intervalo permitido.',
+
+  // ── Syntax error or access rule (class 42) ──
+  '42P01': 'Não foi possível acessar este recurso. Atualize a página e tente novamente.',
+  '42P10': 'Não foi possível salvar agora. Entre em contato com o suporte se persistir.',
+  '42703': 'Não foi possível processar a operação. Atualize a página e tente novamente.',
+  '42501': 'Você não tem permissão para realizar esta ação.',
+
+  // ── Operator intervention / connection (classes 57, 08) ──
+  '57014': 'Operação demorou demais e foi cancelada. Tente novamente.',
+  '08000': 'Sem conexão com o servidor. Verifique sua internet e tente novamente.',
+  '08006': 'Sem conexão com o servidor. Verifique sua internet e tente novamente.',
+
+  // ── PostgREST-specific ──
+  PGRST116: 'Registro não encontrado.',
+  PGRST200: 'Não foi possível encontrar o relacionamento solicitado.',
+  PGRST301: 'Sessão expirou. Faça login novamente.',
+};
+
 const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: string }> = [
   // ── FK: Service Types ──
   {
@@ -188,6 +229,16 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
 ];
 
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
+  // 1) SQLSTATE / PostgREST code primeiro — mais confiável que substring.
+  //    Erros do Supabase tipicamente vêm como { code, message, details, hint }.
+  if (error && typeof error === 'object') {
+    const code = (error as ErrorLike).code;
+    if (typeof code === 'string' && code in SQLSTATE_MESSAGES) {
+      return SQLSTATE_MESSAGES[code];
+    }
+  }
+
+  // 2) Extrai texto cru pra substring match (cobertura legada).
   let raw = '';
 
   if (error instanceof Error) {
@@ -203,5 +254,36 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
 
   const message = raw.toLowerCase();
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
-  return mapped?.text || raw || fallback;
+  if (mapped) return mapped.text;
+
+  // 3) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
+  //    Heurística simples: contém termos sentinela de erro técnico não mapeado.
+  if (raw && looksTechnicalEnglish(raw)) {
+    return fallback;
+  }
+
+  return raw || fallback;
+}
+
+/**
+ * Detecta texto cru claramente técnico em inglês que não passou por nenhum
+ * mapeamento. Quando bate, devolvemos o fallback PT-BR genérico em vez de
+ * vazar inglês pro cliente final.
+ *
+ * Lista deliberadamente curta — só termos que são sinal claro de erro de
+ * banco/HTTP cru, não palavras comuns que podem aparecer em mensagem PT-BR.
+ */
+function looksTechnicalEnglish(raw: string): boolean {
+  const m = raw.toLowerCase();
+  return (
+    m.includes('syntax error') ||
+    m.includes('relation') && m.includes('does not exist') ||
+    m.includes('column') && m.includes('does not exist') ||
+    m.includes('permission denied') ||
+    m.includes('violates') ||
+    m.includes('invalid input syntax') ||
+    m.includes('constraint') && (m.includes('failed') || m.includes('violation')) ||
+    /^pgrst\d+/i.test(raw) ||
+    /^\d{2}[a-z0-9]{3}\s/i.test(raw) // ex: "42P10 ..."
+  );
 }

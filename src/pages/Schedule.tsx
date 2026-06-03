@@ -23,6 +23,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
@@ -400,7 +401,7 @@ export default function Schedule() {
 
       const { error } = await supabase.from('service_orders').update(updatePayload).eq('id', editingTask.id);
       if (error) {
-        toast({ variant: 'destructive', title: 'Erro ao atualizar tarefa', description: error.message });
+        toast({ variant: 'destructive', title: 'Erro ao atualizar tarefa', description: getErrorMessage(error) });
       } else {
         // Update assignees
         await supabase.from('service_order_assignees').delete().eq('service_order_id', editingTask.id);
@@ -473,7 +474,7 @@ export default function Schedule() {
 
     const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
     if (error) {
-      toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: getErrorMessage(error) });
     } else {
       if (created && data.assignee_user_ids && data.assignee_user_ids.length > 0) {
         const assigneeRows = created.flatMap((row: any) =>

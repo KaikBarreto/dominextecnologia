@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface ServiceRating {
   id: string;
@@ -87,8 +88,8 @@ export function useServiceRatings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar avaliação', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro ao criar avaliação', description: getErrorMessage(error) });
     },
   });
 

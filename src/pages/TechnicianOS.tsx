@@ -48,6 +48,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 interface OSPhoto {
   id: string;
@@ -258,7 +259,7 @@ export default function TechnicianOS() {
       toast({
         variant: 'destructive',
         title: 'Erro ao carregar OS',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setLoading(false);
@@ -410,7 +411,7 @@ export default function TechnicianOS() {
       toast({
         variant: 'destructive',
         title: 'Erro no check-in',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     }
   };
@@ -511,7 +512,7 @@ export default function TechnicianOS() {
       toast({
         variant: 'destructive',
         title: 'Erro ao finalizar OS',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setFinishing(false);
@@ -1173,7 +1174,7 @@ export default function TechnicianOS() {
       toast({
         variant: 'destructive',
         title: 'Erro ao atualizar status',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     }
   };
@@ -1278,7 +1279,7 @@ export default function TechnicianOS() {
                   setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
                   toast({ title: 'OS retomada com sucesso!' });
                 } catch (error: any) {
-                  toast({ variant: 'destructive', title: 'Erro ao retomar OS', description: error.message });
+                  toast({ variant: 'destructive', title: 'Erro ao retomar OS', description: getErrorMessage(error) });
                 }
               }}>
                 <Play className="h-4 w-4 mr-2" />
@@ -1631,7 +1632,7 @@ export default function TechnicianOS() {
                   setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
                   toast({ title: 'OS pausada com sucesso!' });
                 } catch (error: any) {
-                  toast({ variant: 'destructive', title: 'Erro ao pausar OS', description: error.message });
+                  toast({ variant: 'destructive', title: 'Erro ao pausar OS', description: getErrorMessage(error) });
                 }
               }}
             >

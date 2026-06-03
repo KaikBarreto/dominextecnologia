@@ -13,6 +13,7 @@ import { useSaveSalesperson, type Salesperson } from '@/hooks/useSalespersonData
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 interface Props {
   open: boolean;
@@ -222,9 +223,9 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
       if (!editingSalesperson && pendingFileRef.current && (saved as any)?.id) {
         try {
           await uploadAndSavePhoto(pendingFileRef.current, (saved as any).id, null);
-        } catch (uploadErr: any) {
+        } catch (uploadErr) {
           // Vendedor já foi criado — avisa do erro de foto sem reverter o registro.
-          toast.error(uploadErr?.message || 'Vendedor criado, mas houve erro ao enviar a foto');
+          toast.error(getErrorMessage(uploadErr, 'Vendedor criado, mas houve erro ao enviar a foto'));
         }
         pendingFileRef.current = null;
       }
@@ -232,7 +233,13 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
       queryClient.invalidateQueries({ queryKey: ['salespeople'] });
       onOpenChange(false);
     } catch (err: any) {
-      if (err?.code === '23505') toast.error('Já existe um vendedor com este email ou usuário vinculado');
+      // 23505 tem mensagem específica de UX (email duplicado) — preserva.
+      // Demais erros caem no helper PT-BR.
+      if (err?.code === '23505') {
+        toast.error('Já existe um vendedor com este email ou usuário vinculado');
+      } else {
+        toast.error(getErrorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }

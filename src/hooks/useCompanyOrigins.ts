@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface CompanyOrigin {
   id: string;
@@ -40,12 +41,12 @@ export function useCompanyOrigins() {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-origins'] }); toast({ title: 'Origem criada!' }); },
-    onError: (e: any) => {
+    onError: (e) => {
       if (isDuplicateOriginError(e)) {
         toast({ variant: 'destructive', title: 'Nome já utilizado', description: 'Já existe uma origem com esse nome. Escolha outro nome.' });
         return;
       }
-      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) });
     },
   });
 
@@ -55,12 +56,12 @@ export function useCompanyOrigins() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-origins'] }); toast({ title: 'Origem atualizada!' }); },
-    onError: (e: any) => {
+    onError: (e) => {
       if (isDuplicateOriginError(e)) {
         toast({ variant: 'destructive', title: 'Nome já utilizado', description: 'Já existe uma origem com esse nome. Escolha outro nome.' });
         return;
       }
-      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) });
     },
   });
 
@@ -70,7 +71,7 @@ export function useCompanyOrigins() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-origins'] }); toast({ title: 'Origem removida!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   return { origins: query.data || [], isLoading: query.isLoading, createOrigin, updateOrigin, deleteOrigin };

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignaturePad } from '@/components/SignaturePad';
 import { Button } from '@/components/ui/button';
@@ -185,7 +186,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       toast({
         variant: 'destructive',
         title: 'Erro ao salvar resposta',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setSaving(null);
@@ -228,7 +229,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       toast({
         variant: 'destructive',
         title: 'Erro ao enviar foto',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setUploadingPhotos(prev => { const next = new Set(prev); next.delete(questionId); return next; });

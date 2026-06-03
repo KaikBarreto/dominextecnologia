@@ -23,6 +23,7 @@ import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import type { Customer, CustomerType } from '@/types/database';
@@ -145,8 +146,8 @@ export function CustomerFormDialog({
       form.reset();
       setStep(0);
       onOpenChange(false);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     } finally {
       setUploadingPhoto(false);
     }

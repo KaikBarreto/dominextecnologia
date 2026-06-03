@@ -18,6 +18,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
 import { useTeams } from '@/hooks/useTeams';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
@@ -322,7 +323,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         if (onCreated && result) onCreated((result as any).id);
       }
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
     } finally {
       setSubmitting(false);
     }

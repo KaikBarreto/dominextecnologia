@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface EquipmentTask {
   id: string;
@@ -43,8 +44,8 @@ export function useEquipmentTasks(equipmentId?: string) {
       queryClient.invalidateQueries({ queryKey: ['equipment-tasks', equipmentId] });
       toast({ title: 'Tarefa criada!' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: getErrorMessage(error) });
     },
   });
 

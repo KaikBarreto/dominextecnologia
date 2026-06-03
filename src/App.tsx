@@ -9,6 +9,7 @@ import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
+import { getErrorMessage } from "@/utils/errorMessages";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -32,7 +33,7 @@ class ErrorBoundary extends React.Component<
         <div className="flex min-h-screen items-center justify-center bg-background p-6">
           <div className="text-center max-w-md space-y-4">
             <h1 className="text-2xl font-bold">Algo deu errado</h1>
-            <p className="text-muted-foreground text-sm">{this.state.error?.message}</p>
+            <p className="text-muted-foreground text-sm">{getErrorMessage(this.state.error)}</p>
             <button
               onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"

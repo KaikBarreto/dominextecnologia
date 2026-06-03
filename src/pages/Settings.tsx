@@ -17,6 +17,7 @@ import { applyWhiteLabelTheme } from '@/hooks/useWhiteLabel';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { SettingsAppearanceContent } from '@/components/settings/SettingsAppearanceContent';
 import { SettingsShortcutsContent } from '@/components/settings/SettingsShortcutsContent';
@@ -268,7 +269,7 @@ export default function Settings() {
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ logo_url: publicUrl });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: getErrorMessage(err) });
     } finally {
       setUploading(false);
     }
@@ -311,7 +312,7 @@ export default function Settings() {
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ white_label_logo_url: publicUrl });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: getErrorMessage(err) });
     } finally {
       setWlUploading(false);
     }
@@ -348,7 +349,7 @@ export default function Settings() {
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ white_label_icon_url: publicUrl });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar ícone', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao enviar ícone', description: getErrorMessage(err) });
     } finally {
       setWlIconUploading(false);
     }

@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 interface PortalData {
   id: string;
@@ -195,7 +196,7 @@ export default function CustomerPortal() {
       setTicketEquipmentId('');
       await loadServiceOrders(customer.id);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao abrir chamado', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao abrir chamado', description: getErrorMessage(err) });
     } finally {
       setTicketSubmitting(false);
     }

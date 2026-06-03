@@ -13,6 +13,7 @@ import { CalendarIcon, TrendingUp, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 
 import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
@@ -49,7 +50,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-financial-transactions'] }); toast({ title: 'Movimentação criada!' }); onOpenChange(false); },
-    onError: (error: any) => { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); },
+    onError: (error: any) => { toast({ title: 'Erro', description: getErrorMessage(error), variant: 'destructive' }); },
   });
 
   return (

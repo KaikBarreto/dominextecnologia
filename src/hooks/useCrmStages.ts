@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface CrmStage {
   id: string;
@@ -87,10 +88,10 @@ export function useCrmStages() {
       toast({ title: 'Estágio criado com sucesso!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao criar estágio', 
-        description: error.message,
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao criar estágio',
+        description: getErrorMessage(error),
+        variant: 'destructive'
       });
     },
   });
@@ -112,10 +113,10 @@ export function useCrmStages() {
       toast({ title: 'Estágio atualizado!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao atualizar estágio', 
-        description: error.message,
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao atualizar estágio',
+        description: getErrorMessage(error),
+        variant: 'destructive'
       });
     },
   });
@@ -134,10 +135,10 @@ export function useCrmStages() {
       toast({ title: 'Estágio removido!' });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao remover estágio', 
-        description: error.message,
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao remover estágio',
+        description: getErrorMessage(error),
+        variant: 'destructive'
       });
     },
   });
@@ -154,10 +155,10 @@ export function useCrmStages() {
       queryClient.invalidateQueries({ queryKey: ['crm_stages'] });
     },
     onError: (error) => {
-      toast({ 
-        title: 'Erro ao reordenar estágios', 
-        description: error.message,
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao reordenar estágios',
+        description: getErrorMessage(error),
+        variant: 'destructive'
       });
     },
   });

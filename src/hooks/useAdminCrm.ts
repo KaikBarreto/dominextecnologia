@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface AdminCrmStage {
   id: string;
@@ -90,7 +91,7 @@ export function useAdminCrmStages() {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-crm-stages'] }); toast({ title: 'Etapa criada!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   const updateStage = useMutation({
@@ -99,7 +100,7 @@ export function useAdminCrmStages() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-crm-stages'] }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   const deleteStage = useMutation({
@@ -108,7 +109,7 @@ export function useAdminCrmStages() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-crm-stages'] }); toast({ title: 'Etapa removida!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   const stages = query.data || [];
@@ -140,7 +141,7 @@ export function useAdminLeads() {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead criado!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   const updateLead = useMutation({
@@ -149,7 +150,7 @@ export function useAdminLeads() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead atualizado!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   const deleteLead = useMutation({
@@ -158,7 +159,7 @@ export function useAdminLeads() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead removido!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   const leads = query.data || [];
@@ -196,7 +197,7 @@ export function useAdminLeadInteractions(leadId?: string) {
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-lead-interactions', leadId] }); toast({ title: 'Interação registrada!' }); },
-    onError: (e: any) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   return { interactions: query.data || [], isLoading: query.isLoading, createInteraction };

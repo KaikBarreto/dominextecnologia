@@ -23,6 +23,7 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
 import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
@@ -94,7 +95,7 @@ export function EquipmentPanel() {
     if (editingEquipment) {
       const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
       if (error) {
-        toast({ variant: 'destructive', title: 'Erro ao atualizar', description: error.message });
+        toast({ variant: 'destructive', title: 'Erro ao atualizar', description: getErrorMessage(error) });
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
@@ -109,7 +110,7 @@ export function EquipmentPanel() {
     if (equipmentToDelete) {
       const { error } = await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
       if (error) {
-        toast({ variant: 'destructive', title: 'Erro ao excluir', description: error.message });
+        toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(error) });
       } else {
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
         toast({ title: 'Equipamento excluído!' });

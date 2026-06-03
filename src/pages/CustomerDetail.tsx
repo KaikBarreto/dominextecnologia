@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useFinancial } from '@/hooks/useFinancial';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { useContracts } from '@/hooks/useContracts';
@@ -151,7 +152,7 @@ export default function CustomerDetail() {
       navigator.clipboard.writeText(link);
       toast({ title: 'Link do portal gerado e copiado!' });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
     } finally {
       setGeneratingPortal(false);
     }
@@ -871,7 +872,7 @@ export default function CustomerDetail() {
             toast({ title: 'Tarefa criada com sucesso!' });
             queryClient.invalidateQueries({ queryKey: ['service-orders'] });
           } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: err.message });
+            toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: getErrorMessage(err) });
           } finally {
             setCreatingTask(false);
           }

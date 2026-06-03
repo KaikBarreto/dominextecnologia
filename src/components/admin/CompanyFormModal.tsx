@@ -13,6 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
+import { getErrorMessage } from '@/utils/errorMessages';
 import {
   Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check,
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
@@ -295,7 +296,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
       onSuccess();
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   // ========== Validation by tab ==========

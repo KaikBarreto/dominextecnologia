@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 /**
  * Hooks de gerenciamento do token público do portal PMOC (Onda B — v1.9.1).
@@ -53,11 +54,11 @@ export function useRegeneratePmocToken() {
         description: 'O QR Code antigo foi invalidado. Reimprima e cole no quadro.',
       });
     },
-    onError: (err: Error) => {
+    onError: (err) => {
       toast({
         variant: 'destructive',
         title: 'Não foi possível regenerar',
-        description: err.message,
+        description: getErrorMessage(err),
       });
     },
   });

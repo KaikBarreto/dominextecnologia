@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Contract } from './useContracts';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export function useContractDetail(contractId: string | undefined) {
   const { toast } = useToast();
@@ -56,7 +57,7 @@ export function useContractDetail(contractId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       toast({ title: 'Ocorrência atualizada!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: e.message }),
+    onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
   // Computed stats

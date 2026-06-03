@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 import { Employee, PaymentFrequency, PaymentDayType } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
@@ -132,7 +133,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       const { data: { publicUrl } } = supabase.storage.from('employee-photos').getPublicUrl(path);
       setPhotoUrl(publicUrl);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar foto', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao enviar foto', description: getErrorMessage(err) });
     } finally {
       setUploading(false);
     }

@@ -13,6 +13,7 @@ import { SignedLink } from '@/components/ui/SignedLink';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { Label } from '@/components/ui/label';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { formatBRL } from '@/utils/currency';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
@@ -211,7 +212,7 @@ export function TransactionListPanel({
       toast({ title: deleteAllRelated ? 'Lançamentos excluídos!' : 'Lançamento excluído!' });
       setPendingDelete(null);
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Erro ao excluir', description: e.message });
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(e) });
     } finally {
       setIsDeleting(false);
     }

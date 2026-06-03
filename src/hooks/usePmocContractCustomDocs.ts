@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 /**
  * Leitura/edição dos textos rich-text dos documentos PMOC do contrato (Onda C).
@@ -102,8 +103,8 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
       queryClient.invalidateQueries({ queryKey: ['pmoc-contract-custom-docs', contractId] });
       toast({ title: 'Termo de Responsabilidade Técnica salvo!' });
     },
-    onError: (err: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: err.message });
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao salvar', description: getErrorMessage(err) });
     },
   });
 
@@ -113,8 +114,8 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
       queryClient.invalidateQueries({ queryKey: ['pmoc-contract-custom-docs', contractId] });
       toast({ title: 'Certificado de Conformidade salvo!' });
     },
-    onError: (err: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: err.message });
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao salvar', description: getErrorMessage(err) });
     },
   });
 
@@ -124,8 +125,8 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
       queryClient.invalidateQueries({ queryKey: ['pmoc-contract-custom-docs', contractId] });
       toast({ title: 'Termo restaurado ao texto padrão' });
     },
-    onError: (err: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao restaurar', description: err.message });
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao restaurar', description: getErrorMessage(err) });
     },
   });
 
@@ -135,8 +136,8 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
       queryClient.invalidateQueries({ queryKey: ['pmoc-contract-custom-docs', contractId] });
       toast({ title: 'Certificado restaurado ao texto padrão' });
     },
-    onError: (err: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao restaurar', description: err.message });
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao restaurar', description: getErrorMessage(err) });
     },
   });
 

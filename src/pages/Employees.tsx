@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
@@ -190,7 +191,7 @@ export default function Employees() {
                 toast({
                   variant: 'destructive',
                   title: 'Funcionário atualizado, mas erro ao criar acesso',
-                  description: err.message,
+                  description: getErrorMessage(err),
                 });
               }
             }
@@ -234,7 +235,7 @@ export default function Employees() {
               toast({
                 variant: 'destructive',
                 title: 'Funcionário criado, mas erro ao criar acesso',
-                description: err.message,
+                description: getErrorMessage(err),
               });
             }
           }
@@ -277,7 +278,7 @@ export default function Employees() {
         toast({
           variant: 'destructive',
           title: 'Erro ao registrar despesa',
-          description: error.message,
+          description: getErrorMessage(error),
         });
         throw error;
       }
@@ -293,7 +294,7 @@ export default function Employees() {
         toast({
           variant: 'destructive',
           title: 'Erro ao registrar despesa',
-          description: err?.message ?? 'Erro desconhecido. Tente novamente.',
+          description: getErrorMessage(err, 'Erro desconhecido. Tente novamente.'),
         });
       }
       throw err;
@@ -495,7 +496,7 @@ export default function Employees() {
         const fnData = response.data;
         if (fnData?.error) throw new Error(fnData.error);
       } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Erro ao excluir usuário', description: err.message });
+        toast({ variant: 'destructive', title: 'Erro ao excluir usuário', description: getErrorMessage(err) });
       }
     }
     deleteEmployee.mutate(employee.id);

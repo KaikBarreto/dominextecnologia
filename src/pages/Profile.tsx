@@ -17,6 +17,7 @@ import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export default function Profile() {
   const { user, profile } = useAuth();
@@ -56,7 +57,7 @@ export default function Profile() {
       toast({ title: 'Perfil atualizado com sucesso!' });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao salvar', description: getErrorMessage(err) });
     } finally {
       setSaving(false);
     }
@@ -80,7 +81,7 @@ export default function Profile() {
       toast({ title: 'Foto atualizada!' });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar foto', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao enviar foto', description: getErrorMessage(err) });
     } finally {
       setUploading(false);
     }

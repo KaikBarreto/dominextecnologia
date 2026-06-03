@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { buildStorageFilePath } from '@/utils/storagePath';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface EquipmentAttachment {
   id: string;
@@ -60,8 +61,8 @@ export function useEquipmentAttachments(equipmentId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment-attachments', equipmentId] });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: getErrorMessage(error) });
     },
   });
 

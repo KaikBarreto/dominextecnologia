@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.28',
+    date: '03 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Bug do BDI / Precificação corrigido',
+        description: 'Ao salvar as taxas do BDI em Orçamentos → Precificação, alguns clientes recebiam um erro técnico em inglês ("ON CONFLICT specification") e as alterações não eram salvas. Corrigimos o problema na estrutura do banco que causava isso. Agora salvar funciona normalmente em qualquer empresa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Erros do sistema agora aparecem sempre em português',
+        description: 'Antes, alguns erros do banco (problemas de permissão, valores duplicados, conexão perdida, etc.) vazavam pra tela como texto técnico em inglês — "row-level security violation", "duplicate key value", "PGRST116", coisas assim. Confuso pra qualquer um. Agora um interpretador interno reconhece esses códigos e devolve mensagens claras em PT-BR ("Você não tem permissão para realizar esta ação", "Já existe um registro com esses dados", "Sessão expirou — faça login novamente", etc.). Cobre 17 categorias de erro do banco mais um detector de "isso parece inglês técnico" que captura qualquer caso não previsto e devolve uma mensagem genérica amigável. Revisamos 39 telas e hooks, com atenção especial pros fluxos mais sensíveis: reset de senha, OS no campo (técnico mobile), pagamento de folha, criação de orçamento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.27',
     date: '03 de junho de 2026',
     type: 'minor',

@@ -23,6 +23,7 @@ import { UserListMobile } from '@/components/users/UserListMobile';
 import { PresetListMobile } from '@/components/users/PresetListMobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export default function Users() {
   const isMobile = useIsMobile();
@@ -121,7 +122,7 @@ export default function Users() {
       const msg = (e.message || '').toLowerCase();
       const friendlyMsg = msg.includes('already') || msg.includes('duplicate') || msg.includes('already been registered')
         ? 'Este e-mail já está cadastrado no sistema.'
-        : e.message;
+        : getErrorMessage(e);
       toast({ title: 'Erro ao criar usuário', description: friendlyMsg, variant: 'destructive' });
       throw e;
     }
@@ -190,7 +191,7 @@ export default function Users() {
       toast({ title: 'Usuário atualizado!' });
       window.location.reload();
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erro', description: getErrorMessage(e), variant: 'destructive' });
       throw e;
     }
   };
@@ -217,7 +218,7 @@ export default function Users() {
       setDeletingUser(null);
       window.location.reload();
     } catch (e: any) {
-      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir', description: getErrorMessage(e), variant: 'destructive' });
     } finally {
       setDeleteLoading(false);
     }
@@ -280,8 +281,7 @@ export default function Users() {
       });
       toast({ title: 'Cargo duplicado!' });
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Erro inesperado';
-      toast({ title: 'Erro ao duplicar', description: message, variant: 'destructive' });
+      toast({ title: 'Erro ao duplicar', description: getErrorMessage(e, 'Erro inesperado'), variant: 'destructive' });
     }
   };
 
@@ -292,8 +292,7 @@ export default function Users() {
       toast({ title: 'Cargo excluído!' });
       setDeletingPreset(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Erro inesperado';
-      toast({ title: 'Erro ao excluir', description: message, variant: 'destructive' });
+      toast({ title: 'Erro ao excluir', description: getErrorMessage(e, 'Erro inesperado'), variant: 'destructive' });
     }
   };
 

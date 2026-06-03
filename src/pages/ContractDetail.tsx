@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -179,7 +180,7 @@ export default function ContractDetail() {
       toast({
         variant: 'destructive',
         title: 'Erro ao gerar QR Code',
-        description: err.message,
+        description: getErrorMessage(err),
       });
     } finally {
       setDownloadingQr(false);
@@ -249,7 +250,7 @@ export default function ContractDetail() {
       setShowBulkEditPrompt(false);
       toast({ title: applyToAll ? 'Todas as contas atualizadas!' : 'Conta atualizada!' });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
     } finally { setEditRecSaving(false); }
   };
 
@@ -260,7 +261,7 @@ export default function ContractDetail() {
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       setDeletingRecId(null);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
     }
   };
 
@@ -311,7 +312,7 @@ export default function ContractDetail() {
       queryClient.invalidateQueries({ queryKey: ['contracts-billing-hidden'] });
       toast({ title: newValue ? 'Cobranças visíveis na agenda' : 'Cobranças ocultas da agenda' });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
     }
   };
 
@@ -359,7 +360,7 @@ export default function ContractDetail() {
       toast({ title: 'Contrato renovado com sucesso!' });
       if (result) navigate(`/contratos/${(result as any).id}`);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao renovar', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro ao renovar', description: getErrorMessage(err) });
     } finally {
       setIsRenewing(false);
       setShowRenewDialog(false);

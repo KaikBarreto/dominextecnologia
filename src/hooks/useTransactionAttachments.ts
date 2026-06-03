@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface TransactionAttachment {
   id: string;
@@ -96,8 +97,8 @@ export function useUploadTransactionAttachment() {
       queryClient.invalidateQueries({ queryKey: ['transaction-attachments', data.transaction_id] });
       queryClient.invalidateQueries({ queryKey: ['transaction-attachments-counts'] });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: getErrorMessage(error) });
     },
   });
 }
@@ -165,8 +166,8 @@ export function useUploadTransactionAttachmentShared() {
       });
       queryClient.invalidateQueries({ queryKey: ['transaction-attachments-counts'] });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro ao enviar anexo', description: getErrorMessage(error) });
     },
   });
 }
@@ -206,8 +207,8 @@ export function useRemoveTransactionAttachment() {
       queryClient.invalidateQueries({ queryKey: ['transaction-attachments-counts'] });
       toast({ title: 'Anexo removido' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover anexo', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro ao remover anexo', description: getErrorMessage(error) });
     },
   });
 }

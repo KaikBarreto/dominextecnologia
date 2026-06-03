@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import type { FinancialTransaction } from '@/types/database';
@@ -135,7 +136,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
     });
 
     if (error) {
-      toast({ variant: 'destructive', title: 'Erro ao pagar folha', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro ao pagar folha', description: getErrorMessage(error) });
       return;
     }
 

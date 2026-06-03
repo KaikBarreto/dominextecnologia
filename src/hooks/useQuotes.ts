@@ -341,8 +341,8 @@ export function useQuotes() {
     onSuccess: () => {
       toast({ title: 'Conta a receber gerada!' });
     },
-    onError: (err: any) => {
-      toast({ title: 'Erro ao gerar financeiro', description: err.message, variant: 'destructive' });
+    onError: (err) => {
+      toast({ title: 'Erro ao gerar financeiro', description: getErrorMessage(err), variant: 'destructive' });
     },
   });
 

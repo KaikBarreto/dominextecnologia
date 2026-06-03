@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface OsStatusRecord {
   id: string;
@@ -46,8 +47,8 @@ export function useOsStatuses() {
       queryClient.invalidateQueries({ queryKey: ['os_statuses'] });
       toast({ title: 'Status criado!' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     },
   });
 
@@ -61,8 +62,8 @@ export function useOsStatuses() {
       queryClient.invalidateQueries({ queryKey: ['os_statuses'] });
       toast({ title: 'Status atualizado!' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     },
   });
 
@@ -75,8 +76,8 @@ export function useOsStatuses() {
       queryClient.invalidateQueries({ queryKey: ['os_statuses'] });
       toast({ title: 'Status excluído!' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     },
   });
 
@@ -92,8 +93,8 @@ export function useOsStatuses() {
       queryClient.invalidateQueries({ queryKey: ['os_statuses'] });
       toast({ title: 'Ordem dos status atualizada!' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(error) });
     },
   });
 

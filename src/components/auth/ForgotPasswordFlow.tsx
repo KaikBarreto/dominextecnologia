@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 type Step = 'email' | 'code' | 'password' | 'done';
 
@@ -68,7 +69,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
       setCode(Array(CODE_LENGTH).fill(''));
       toast({ title: 'Código enviado', description: 'Verifique seu email — pode levar até 1 minuto.' });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err?.message || 'Não foi possível enviar o código' });
+      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err, 'Não foi possível enviar o código') });
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +114,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
       setStep('password');
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Código inválido', description: err?.message || 'Verifique e tente novamente' });
+      toast({ variant: 'destructive', title: 'Código inválido', description: getErrorMessage(err, 'Verifique e tente novamente') });
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +143,7 @@ export function ForgotPasswordFlow({ initialEmail, onBack }: ForgotPasswordFlowP
       // Sessao criada — o AuthContext detecta e redireciona automaticamente
       setStep('done');
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro ao redefinir senha', description: err?.message || 'Tente novamente' });
+      toast({ variant: 'destructive', title: 'Erro ao redefinir senha', description: getErrorMessage(err, 'Tente novamente') });
     } finally {
       setIsLoading(false);
     }
