@@ -19,6 +19,7 @@ import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { trackUsage } from '@/lib/trackUsage';
 import { generateSessionToken, getDeviceInfo } from '@/lib/sessionUtils';
 import {
@@ -228,7 +229,7 @@ export default function Auth() {
         } else if (error.message.includes('Email not confirmed')) {
           setAuthError('Email não confirmado. Verifique sua caixa de entrada.');
         } else {
-          setAuthError(error.message);
+          setAuthError(getErrorMessage(error));
         }
         return;
       }

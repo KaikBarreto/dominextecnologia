@@ -15,6 +15,7 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { getFriendlyPasswordError } from '@/utils/passwordHelpers';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 const schema = z.object({
   password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').refine(isPasswordStrong, 'Senha não atende aos requisitos mínimos'),
@@ -59,14 +60,16 @@ export default function ResetPassword() {
         });
         if (cancelled) return;
         if (error || (data as any)?.error) {
-          setErrorMessage((data as any)?.error || error?.message || 'Código inválido ou expirado');
+          // Edge function pode retornar erro em PT-BR via (data as any)?.error;
+          // se vier só o error genérico do Supabase, normaliza via getErrorMessage.
+          setErrorMessage((data as any)?.error || getErrorMessage(error, 'Código inválido ou expirado'));
           setStatus('invalid');
           return;
         }
         setStatus('ready');
       } catch (err: any) {
         if (cancelled) return;
-        setErrorMessage(err?.message || 'Falha ao validar código');
+        setErrorMessage(getErrorMessage(err, 'Falha ao validar código'));
         setStatus('invalid');
       }
     }

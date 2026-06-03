@@ -76,7 +76,7 @@ export const StateCitySelector = ({
         const response = await fetch(
           `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios?orderBy=nome`
         );
-        if (!response.ok) throw new Error('Failed');
+        if (!response.ok) throw new Error('Falha ao carregar lista de cidades');
         const data: IBGECity[] = await response.json();
         const mapped = data.map((c) => ({ name: c.nome, id: c.id.toString() }));
         citiesCache[selectedState] = mapped;
