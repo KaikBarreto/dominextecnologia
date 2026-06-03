@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.29',
+    date: '03 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Hotfix: fotos da OS voltam a aparecer no link público do cliente',
+        description: 'Em v1.9.27 fechamos pelo lado da segurança o armazenamento das fotos enviadas pelo técnico em respostas de OS. Mas o portal público de OS (link que o cliente acessa sem login pra acompanhar o serviço) precisa exibir essas fotos sem autenticação — viraram "Erro" nas miniaturas pra todos os clientes. Reabrimos o armazenamento dessas fotos pra recuperar a visualização. Vamos voltar a fechar esse armazenamento via edge function autenticada por token de OS numa próxima release com cuidado pra não quebrar mais nada.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.28',
     date: '03 de junho de 2026',
     type: 'minor',

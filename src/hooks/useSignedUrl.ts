@@ -5,11 +5,12 @@ const PRIVATE_BUCKETS = [
   'employee-photos',
   'time-photos',
   'financial-receipts',
-  // v1.9.27 frente 3 (Caminho A): fechados pra acesso autenticado.
-  // Os demais buckets tenant ficam públicos por design (OSReport portal cliente,
-  // PDF orçamento, dreHtmlGenerator dependem deles públicos).
+  // v1.9.27 frente 3 (Caminho A): team-photos fechado pra acesso autenticado.
+  // Os demais buckets tenant ficam públicos por design.
+  // v1.9.29 hotfix: os-photos REABERTO (foi fechado em v1.9.27 mas portal
+  // público de OS / modo=cliente em TechnicianOS.tsx renderiza fotos de
+  // form_responses sem auth → quebrava com "Erro" na miniatura pro cliente).
   'team-photos',
-  'os-photos',
 ] as const;
 const SIGNED_TTL_SECONDS = 3600; // 1 hora
 
