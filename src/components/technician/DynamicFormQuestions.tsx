@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
+import { SignedImg } from '@/components/ui/SignedImg';
 import { useToast } from '@/hooks/use-toast';
 import type { FormQuestion } from '@/types/database';
 
@@ -432,7 +433,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               <div className="grid grid-cols-2 gap-2">
                 {photoUrls.map((url, idx) => (
                   <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                    <img src={url} alt={`Resposta ${idx + 1}`} className="w-full h-full object-cover" />
+                    <SignedImg src={url} alt={`Resposta ${idx + 1}`} className="w-full h-full object-cover" />
                     <button
                       type="button"
                       className="absolute top-1 right-1 p-1.5 rounded-full bg-destructive/90 text-destructive-foreground shadow-sm"

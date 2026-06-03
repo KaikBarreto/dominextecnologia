@@ -4,6 +4,7 @@ import { useTimeRecordsForDay, calculateWorkedMinutes, formatMinutes } from '@/h
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SignedImg } from '@/components/ui/SignedImg';
 
 const TYPE_LABELS: Record<string, string> = {
   clock_in: 'Entrada',
@@ -57,7 +58,7 @@ export function TimeDayDetailModal({ open, onOpenChange, employeeId, employeeNam
                     </div>
                   )}
                   {rec.photo_url && (
-                    <img src={rec.photo_url} alt="Selfie" className="mt-1 h-12 w-12 rounded object-cover border" />
+                    <SignedImg src={rec.photo_url} alt="Selfie" className="mt-1 h-12 w-12 rounded object-cover border" />
                   )}
                   {rec.notes && <p className="text-xs text-muted-foreground mt-0.5 italic">{rec.notes}</p>}
                 </div>

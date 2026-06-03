@@ -19,6 +19,7 @@ import { ptBR } from 'date-fns/locale';
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { useServiceRatings } from '@/hooks/useServiceRatings';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { SignedImg } from '@/components/ui/SignedImg';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 
@@ -273,7 +274,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                     onClick={() => openPreview(urls, idx)}
                     className="relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <img src={photo.photo_url} alt={photo.photo_type} className="w-full h-full object-cover" />
+                    <SignedImg src={photo.photo_url} alt={photo.photo_type} className="w-full h-full object-cover" />
                     <Badge variant="secondary" className="absolute bottom-1 left-1 text-[10px] capitalize">{photo.photo_type}</Badge>
                   </button>
                 );
@@ -314,7 +315,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                             onClick={() => openPreview(urls, i)}
                             className="rounded-lg overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:opacity-80 transition-opacity"
                           >
-                            <img src={url} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
+                            <SignedImg src={url} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
                           </button>
                         ))}
                       </div>

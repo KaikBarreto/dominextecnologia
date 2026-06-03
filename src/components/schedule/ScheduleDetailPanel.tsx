@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { EventCard, getStatusBadgeClass } from './EventCard';
 import { OrderTimeline } from './OrderTimeline';
 import { cn } from '@/lib/utils';
@@ -250,7 +251,7 @@ function OrderDetail({
                       <div className="flex items-center gap-1.5">
                         {teamInfo.photo_url ? (
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={teamInfo.photo_url} />
+                            <SignedAvatarImage src={teamInfo.photo_url} />
                             <AvatarFallback style={{ backgroundColor: teamInfo.color }} className="text-[9px] text-white">
                               <IconComp className="h-3.5 w-3.5" />
                             </AvatarFallback>

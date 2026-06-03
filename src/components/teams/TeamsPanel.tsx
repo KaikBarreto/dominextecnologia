@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTeams, type TeamWithMembers } from '@/hooks/useTeams';
 import { useTechnicians } from '@/hooks/useProfiles';
 import { TeamFormDialog } from '@/components/teams/TeamFormDialog';
+import { SignedImg } from '@/components/ui/SignedImg';
 
 const ICON_MAP: Record<string, any> = {
   UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings,
@@ -97,7 +98,7 @@ export function TeamsPanel() {
                         style={{ backgroundColor: teamPhotoUrl ? undefined : team.color }}
                       >
                         {teamPhotoUrl ? (
-                          <img src={teamPhotoUrl} alt={team.name} className="h-full w-full object-cover" />
+                          <SignedImg src={teamPhotoUrl} alt={team.name} className="h-full w-full object-cover" />
                         ) : (
                           <TeamIcon className="h-5 w-5 text-white" />
                         )}

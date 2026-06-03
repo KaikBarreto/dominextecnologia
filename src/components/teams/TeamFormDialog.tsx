@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Upload, X, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { buildStorageFilePath } from '@/utils/storagePath';
+import { SignedImg } from '@/components/ui/SignedImg';
 import type { TeamWithMembers, TeamInput } from '@/hooks/useTeams';
 
 const ICON_OPTIONS = [
@@ -147,7 +148,7 @@ export function TeamFormDialog({ open, onOpenChange, team, onSubmit, isLoading, 
               style={{ backgroundColor: currentPhotoSrc ? undefined : color }}
             >
               {currentPhotoSrc ? (
-                <img src={currentPhotoSrc} alt="Equipe" className="h-full w-full object-cover" />
+                <SignedImg src={currentPhotoSrc} alt="Equipe" className="h-full w-full object-cover" />
               ) : (
                 <SelectedIcon className="h-8 w-8 text-white" />
               )}

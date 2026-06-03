@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.27',
+    date: '03 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Fotos de equipe e de OS exigem login pra acessar',
+        description: 'Auditoria de segurança identificou que algumas fotos do sistema (foto da equipe, fotos enviadas pelo técnico em respostas de OS) ficavam disponíveis via URL pública — em teoria, qualquer pessoa com o link acessava sem estar logado. Agora essas fotos só carregam pra quem está autenticado no sistema. Imagens são geradas com link temporário que expira automaticamente. Fotos de equipamento, foto do cliente e logo da empresa continuam públicas por design (precisam aparecer em portais públicos de OS e PDFs de orçamento, onde o cliente final acessa sem login).',
+        category: 'seguranca',
+      },
+      {
+        title: 'Selfie do Ponto Eletrônico volta a aparecer no detalhe do dia',
+        description: 'Bug silencioso descoberto durante a auditoria: a foto do colaborador batendo ponto não aparecia mais no modal de detalhe do dia desde quando esse bucket virou privado. A miniatura ficava como um quadradinho quebrado. Agora renderiza normalmente via link temporário autenticado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.26',
     date: '03 de junho de 2026',
     type: 'minor',

@@ -1,6 +1,7 @@
 import { MapPin, User, UsersRound, Wrench, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckSquare, CheckCircle2, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder, OsType, OsStatus } from '@/types/database';
@@ -84,7 +85,7 @@ function TeamAvatar({ team, light }: { team: TeamBadgeInfo; light?: boolean }) {
       <TooltipTrigger asChild>
         {team.photo_url ? (
           <Avatar className={cn('h-5 w-5 border', light ? 'border-white/50' : 'border-background')}>
-            <AvatarImage src={team.photo_url} />
+            <SignedAvatarImage src={team.photo_url} />
             <AvatarFallback style={{ backgroundColor: team.color }} className="text-[8px] text-white">
               <IconComp className="h-3 w-3" />
             </AvatarFallback>

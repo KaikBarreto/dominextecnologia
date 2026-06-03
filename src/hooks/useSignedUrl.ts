@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const PRIVATE_BUCKETS = ['employee-photos', 'time-photos', 'financial-receipts'] as const;
+const PRIVATE_BUCKETS = [
+  'employee-photos',
+  'time-photos',
+  'financial-receipts',
+  // v1.9.27 frente 3 (Caminho A): fechados pra acesso autenticado.
+  // Os demais buckets tenant ficam públicos por design (OSReport portal cliente,
+  // PDF orçamento, dreHtmlGenerator dependem deles públicos).
+  'team-photos',
+  'os-photos',
+] as const;
 const SIGNED_TTL_SECONDS = 3600; // 1 hora
 
 const cache = new Map<string, { url: string; expiresAt: number }>();

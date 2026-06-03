@@ -1,5 +1,6 @@
 import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useCallback } from 'react';
+import { useSignedUrl, resolveStorageUrl } from '@/hooks/useSignedUrl';
 
 interface ImagePreviewModalProps {
   src: string;
@@ -16,6 +17,9 @@ interface ImagePreviewModalProps {
 
 export function ImagePreviewModal({ src, alt, open, onClose, images, currentIndex, onNavigate }: ImagePreviewModalProps) {
   const hasGallery = images && images.length > 1 && currentIndex !== undefined && onNavigate;
+  // Resolve signed URL pra buckets privados (os-photos, team-photos, etc).
+  // Pra URLs públicas ou blob:, devolve o próprio src.
+  const resolvedSrc = useSignedUrl(src) ?? src;
 
   const handlePrev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -42,7 +46,8 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const response = await fetch(src);
+      const downloadSrc = (await resolveStorageUrl(src)) ?? src;
+      const response = await fetch(downloadSrc);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -53,7 +58,7 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      window.open(src, '_blank');
+      window.open(resolvedSrc, '_blank');
     }
   };
 
@@ -104,7 +109,7 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
       )}
 
       <img
-        src={src}
+        src={resolvedSrc}
         alt={alt || 'Preview'}
         className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
         onClick={(e) => e.stopPropagation()}
