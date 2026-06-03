@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useUserCompany } from '@/hooks/useUserCompany';
 import type { OSRMRoute } from '@/utils/geolocation';
 import 'leaflet/dist/leaflet.css';
 
@@ -117,6 +118,7 @@ export default function LiveMap() {
   const darkMode = resolvedTheme === 'dark';
   const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
+  const { companyId } = useUserCompany();
   const [companyCoords, setCompanyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const fetchRoutesForTechs = useCallback(async (techs: TechMarker[]) => {
@@ -451,19 +453,27 @@ export default function LiveMap() {
     updateMarkers();
   }, [technicians, trails, routes, companyCoords, companySettings]);
 
-  // Realtime subscription
+  // Realtime subscription — filtro de tenant (v1.9.26 fix de auditoria)
+  // RLS protege o fetch, mas o filtro server-side no canal evita receber
+  // inserts de technician_locations de outras companies.
   useEffect(() => {
+    if (!companyId) return;
     const channel = supabase
-      .channel('live-map-locations')
+      .channel(`live-map-locations-${companyId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'technician_locations' },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'technician_locations',
+          filter: `company_id=eq.${companyId}`,
+        },
         () => fetchLatestLocations()
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [fetchLatestLocations]);
+  }, [fetchLatestLocations, companyId]);
 
   return (
     <div className="space-y-4">

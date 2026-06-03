@@ -228,20 +228,27 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
     drawRoute();
   }, [routeInfo]);
 
-  // Realtime updates
+  // Realtime updates — filtro por service_order_id (v1.9.26 auditoria)
+  // Página PÚBLICA de tracking (cliente final, sem auth): não há company_id
+  // disponível no client. O isolamento é feito pelo filtro server-side em
+  // service_order_id (a OS é única por tenant, então só inserts dessa OS
+  // chegam pelo canal — não vaza tráfego de outras companies).
   useEffect(() => {
     const channel = supabase
       .channel(`public-tracking-${serviceOrderId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'technician_locations' },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'technician_locations',
+          filter: `service_order_id=eq.${serviceOrderId}`,
+        },
         (payload: any) => {
-          if (payload.new?.service_order_id === serviceOrderId) {
-            const newLoc = { lat: payload.new.lat, lng: payload.new.lng };
-            const enRoute = payload.new.event_type === 'en_route' || payload.new.event_type === 'tracking';
-            setLatestLoc(newLoc);
-            setIsEnRoute(enRoute);
-          }
+          const newLoc = { lat: payload.new.lat, lng: payload.new.lng };
+          const enRoute = payload.new.event_type === 'en_route' || payload.new.event_type === 'tracking';
+          setLatestLoc(newLoc);
+          setIsEnRoute(enRoute);
         }
       )
       .subscribe();

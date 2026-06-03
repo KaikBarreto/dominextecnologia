@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.26',
+    date: '03 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Notificações em tempo real isoladas por empresa',
+        description: 'Auditoria de segurança identificou que algumas notificações em tempo real (Ponto Eletrônico administrativo, Mapa ao Vivo dos técnicos e rastreamento público da OS) chegavam ao navegador sem filtro de empresa — em teoria, um usuário mal-intencionado poderia abusar pra ver eventos de outras empresas. Aplicamos filtro no servidor que garante que cada empresa só recebe os eventos dela. Mais leve no tráfego, mais seguro na privacidade.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Tabelas do painel master com regras de acesso reforçadas',
+        description: 'No painel administrativo do Auctus, as tabelas internas (CRM master, financeiro interno do Auctus, etapas de CRM) tinham brechas onde algumas operações exigiam ser super admin mesmo pra usuários autorizados no painel. Reapertamos: agora qualquer operação nessas tabelas exige super admin OU usuário com permissão explícita no painel (admin_permissions). Impossível usuário tenant comum ler/escrever lá.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.9.25',
     date: '02 de junho de 2026',
     type: 'minor',

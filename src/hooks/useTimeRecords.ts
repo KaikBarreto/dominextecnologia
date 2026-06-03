@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserCompany } from '@/hooks/useUserCompany';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -341,6 +342,7 @@ export function useTimeRecord(userId: string | undefined) {
 // ─── useAdminTimeSheet (for admin dashboard — uses employees) ───
 export function useAdminTimeSheet() {
   const { user } = useAuth();
+  const { companyId } = useUserCompany();
   const today = format(new Date(), 'yyyy-MM-dd');
   const queryClient = useQueryClient();
 
@@ -386,17 +388,29 @@ export function useAdminTimeSheet() {
     refetchInterval: 60000,
   });
 
-  // Realtime subscription
+  // Realtime subscription — filtro de tenant (v1.9.26 fix de auditoria)
+  // RLS já impede leitura cross-tenant, mas o filtro server-side no canal
+  // evita receber eventos de outras companies que seriam descartados depois.
   useEffect(() => {
+    if (!companyId) return;
     const channel = supabase
-      .channel('admin-time-records')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_records' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['adminTimeRecords'] });
-        queryClient.invalidateQueries({ queryKey: ['adminTimeSheets'] });
-      })
+      .channel(`admin-time-records-${companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_records',
+          filter: `company_id=eq.${companyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['adminTimeRecords'] });
+          queryClient.invalidateQueries({ queryKey: ['adminTimeSheets'] });
+        },
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+  }, [queryClient, companyId]);
 
   const getRecordsForEmployee = useCallback((employeeId: string) =>
     todayRecords.filter(r => r.employee_id === employeeId), [todayRecords]);
