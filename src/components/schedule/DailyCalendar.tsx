@@ -22,8 +22,7 @@ interface DailyCalendarProps {
 }
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
-const SLOT_HEIGHT = 56; // px per hour
-const CASCADE_OFFSET = 48; // px offset for each overlapping card in cascade mode
+const SLOT_HEIGHT = 56; // px por hora
 
 type PositionedOrder = {
   order: (ServiceOrder & { customer: any; equipment: any });
@@ -101,7 +100,9 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
     return orders.filter(o => o.scheduled_date === dateKey && o.scheduled_time);
   }, [orders, dateKey]);
 
-  const positionedOrders = useMemo(() => layoutOverlapping(dayOrders, isMobile), [dayOrders, isMobile]);
+  // Mobile e desktop usam o mesmo layout side-by-side (colunas estreitas).
+  // Cascade vertical foi removido — causava overlap visual e horários ilegíveis quando 3+ eventos no mesmo slot.
+  const positionedOrders = useMemo(() => layoutOverlapping(dayOrders, false), [dayOrders]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -200,15 +201,20 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               const minute = startMin % 60;
               const duration = endMin - startMin;
 
+              // Layout side-by-side (mesmo padrão de calendário nativo Google/Apple).
+              // Cada coluna ocupa 100/totalCols % da largura disponível.
+              const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT;
+              const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
+              const widthPercent = 100 / totalCols;
+              const leftPercent = col * widthPercent;
+
               if (isMobile) {
-                // Cascade layout: full width, offset vertically
-                const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT + (col * CASCADE_OFFSET);
-                const height = Math.max((duration / 60) * SLOT_HEIGHT - (col * CASCADE_OFFSET), 28);
+                // Mobile: sem drag nativo, usa touch pickup. Mantém side-by-side.
                 return (
                   <div
                     key={order.id}
-                    className="absolute left-0.5 right-0.5 pointer-events-auto"
-                    style={{ top: topOffset, height, zIndex: col + 1 }}
+                    className="absolute pointer-events-auto px-0.5"
+                    style={{ top: topOffset, height, left: `${leftPercent}%`, width: `${widthPercent}%` }}
                     onDragOver={handleCardDragOver}
                     onDrop={handleCardDrop}
                   >
@@ -229,12 +235,7 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                 );
               }
 
-              // Desktop: side-by-side columns
-              const topOffset = ((hour - HOURS[0]) + minute / 60) * SLOT_HEIGHT;
-              const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
-              const widthPercent = 100 / totalCols;
-              const leftPercent = col * widthPercent;
-
+              // Desktop: side-by-side com drag nativo HTML5.
               return (
                 <div
                   key={order.id}

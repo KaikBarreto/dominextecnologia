@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.33";
+export const APP_VERSION = "1.9.34";
 
-export const VERSION_NOTES = "Agenda mobile com 3 melhorias de UX nativa: ao abrir a Agenda no celular, agora começa na visão de Dia por padrão (em vez de Mês — Mês fica de Desktop, onde tem espaço). Arrastar pro lado muda o dia (na visão Dia) ou a semana (na visão Semana). Ao clicar numa OS/tarefa, a tela rola sozinha pro painel de detalhe abaixo do calendário.";
+export const VERSION_NOTES = "Fix na visão de Dia da Agenda no mobile: quando 2+ OS/tarefas ocupavam o mesmo horário, viravam um empilhado em cascata que parecia horários diferentes e cortava os textos. Agora ficam lado a lado, igual aos apps de calendário nativos (Google Calendar, Apple Calendar) — cada um ocupa uma fatia da largura proporcional ao número de eventos sobrepostos.";

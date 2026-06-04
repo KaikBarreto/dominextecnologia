@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.34',
+    date: '03 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefas no mesmo horário ficam lado a lado na Agenda do celular',
+        description: 'Antes, na visão de Dia da Agenda no celular, quando 2 ou 3 OSs/tarefas estavam marcadas pro mesmo horário (ex: três tarefas às 08:00), elas apareciam empilhadas em cascata vertical — cada uma deslocada 48 pixels pra baixo. Resultado: parecia que estavam em horários diferentes (08:00, 08:48, 09:36 visualmente) e o texto de cada card ficava cortado. Agora ficam lado a lado, dividindo a largura igualmente — mesmo padrão do Google Calendar e Apple Calendar. Fica claro que são simultâneas e não corta texto.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.33',
     date: '03 de junho de 2026',
     type: 'patch',
