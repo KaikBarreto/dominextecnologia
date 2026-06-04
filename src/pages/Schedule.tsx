@@ -27,6 +27,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
@@ -63,7 +64,9 @@ export default function Schedule() {
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  // Mobile abre em "Dia" (padrão de app nativo de calendário); desktop continua em "Mês".
+  // Inicialização única — se o usuário trocar manualmente depois, mantém a escolha dele.
+  const [viewMode, setViewMode] = useState<ViewMode>(isMobile ? 'day' : 'month');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
@@ -236,17 +239,26 @@ export default function Schedule() {
 
   const handleToday = () => setCurrentDate(new Date());
 
+  // Swipe lateral (mobile) — varrer pra esquerda avança, pra direita volta.
+  // Só anexado nas views Dia/Semana (Mês mantém navegação só pelos botões).
+  const swipeHandlers = useSwipeGesture({
+    onSwipeLeft: handleNext,
+    onSwipeRight: handlePrev,
+  });
+
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const handleOrderSelect = useCallback((order: ServiceOrder & { customer: any; equipment: any }) => {
     setSummaryOrder(order);
-    // On mobile, scroll to the summary panel after a tick
-    if (window.innerWidth < 1024) {
+    // No mobile, o detalhe aparece abaixo do calendário — rola pra ele suavemente
+    // depois de um tick (espera o ScheduleDetailPanel renderizar com a OS selecionada).
+    // No desktop o detalhe fica lado a lado, então não precisa rolar.
+    if (isMobile) {
       setTimeout(() => {
         summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     }
-  }, []);
+  }, [isMobile]);
 
   const handleClearSummary = useCallback(() => {
     setSummaryOrder(null);
@@ -721,12 +733,14 @@ export default function Schedule() {
           </div>
         )}
 
-        {/* Calendar — Dia/Semana ganham altura limitada com scroll interno no mobile */}
+        {/* Calendar — Dia/Semana ganham altura limitada com scroll interno no mobile.
+            Swipe lateral só nas views Dia/Semana (Mês mantém só botões). */}
         <div
           className={cn(
             'rounded-xl border bg-card overflow-hidden',
             isMobile && (viewMode === 'day' || viewMode === 'week') && 'h-[60vh] max-h-[60vh] flex flex-col'
           )}
+          {...(isMobile && (viewMode === 'day' || viewMode === 'week') ? swipeHandlers : {})}
         >
           {viewMode === 'month' && (
             <MonthlyCalendar

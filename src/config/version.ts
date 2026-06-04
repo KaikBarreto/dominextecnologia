@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.32";
+export const APP_VERSION = "1.9.33";
 
-export const VERSION_NOTES = "Fechamento da padronização de abas no mobile: Mapa ao Vivo, Curadoria Domiflix (master), Ponto Eletrônico admin e Sub-abas de Custos no Orçamento agora usam pílulas roláveis no celular como o resto do app. View-mode pickers de Agenda/Cronograma, micro toggles de gráficos e abas dentro de modais ficaram como estão (são padrões UX diferentes). 100% do sistema com navegação de abas internas consistente.";
+export const VERSION_NOTES = "Agenda mobile com 3 melhorias de UX nativa: ao abrir a Agenda no celular, agora começa na visão de Dia por padrão (em vez de Mês — Mês fica de Desktop, onde tem espaço). Arrastar pro lado muda o dia (na visão Dia) ou a semana (na visão Semana). Ao clicar numa OS/tarefa, a tela rola sozinha pro painel de detalhe abaixo do calendário.";

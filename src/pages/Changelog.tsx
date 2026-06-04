@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.33',
+    date: '03 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda no celular com UX de app de calendário nativo',
+        description: 'Três melhorias na Agenda pra ficar com cara de app de calendário no celular: (1) ao abrir a Agenda no mobile, começa direto na visão de Dia (antes começava em Mês — Mês fica reservado pro desktop, onde tem espaço pra visualizar 30+ células). Se você trocar manualmente pra Semana ou Mês depois, sua escolha é respeitada. (2) Arrastar o calendário pra um lado muda o dia (na visão Dia) ou a semana (na visão Semana). Igual a app de banco e calendário. (3) Ao clicar numa OS/tarefa no calendário, a tela rola sozinha pro painel de detalhe abaixo — você não precisa rolar pra ver as informações. Desktop continua exatamente igual.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.32',
     date: '03 de junho de 2026',
     type: 'patch',
