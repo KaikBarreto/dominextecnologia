@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.35',
+    date: '03 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Toque numa OS na Agenda mobile rola pro detalhe (era ativar modo "mover")',
+        description: 'No celular, ao tocar numa OS ou tarefa no calendário, antes ativava por engano o modo "Toque no horário para mover" — bloqueando a navegação pro painel de detalhe. Agora um toque simples rola direto pro painel de detalhe abaixo do calendário, com cliente, horário, endereço e tudo. Pra reagendar a OS no celular, agora é toque longo + arrastar (mesmo padrão de apps de calendário nativos do iPhone e Android). Aplicado tanto na visão de Dia quanto de Semana.',
+        category: 'correcao',
+      },
+      {
+        title: 'Resumo do Dia não aparece mais duplicado na visão Dia',
+        description: 'Na visão de Dia da Agenda mobile, embaixo do calendário do dia aparecia um "Resumo do Dia" com as MESMAS OSs já listadas em cima — informação repetida ocupando espaço da tela. Agora esse Resumo só aparece nas visões Semana e Mês (onde ajuda a ver o que tem pro dia selecionado). E o título dele ficou mais claro: "Resumo do Dia: 03 de junho de 2026" em vez de só a data solta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.34',
     date: '03 de junho de 2026',
     type: 'patch',

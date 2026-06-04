@@ -16,7 +16,6 @@ interface WeeklyCalendarProps {
   onSlotClick: (date: string, time: string) => void;
   onDrop: (orderId: string, date: string, time: string) => void;
   movingOrderId?: string | null;
-  onTouchPickUp?: (orderId: string) => void;
   onTouchDrop?: (date: string, time: string) => void;
   holidayMap?: Record<string, Holiday[]>;
 }
@@ -60,7 +59,7 @@ function layoutCascade(
   return items;
 }
 
-export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop, holidayMap = {} }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchDrop, holidayMap = {} }: WeeklyCalendarProps) {
   const isMobile = useIsMobile();
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -217,14 +216,10 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                       <EventCard
                         order={order}
                         compact
-                        onClick={() => {
-                          if (isMobile && onTouchPickUp) {
-                            onTouchPickUp(order.id);
-                          } else {
-                            onOrderSelect(order);
-                          }
-                        }}
-                        draggable={!isMobile}
+                        // v1.9.35: tap mobile sempre rola pro detalhe (consistência com Daily).
+                        // Reagendamento via drag nativo (long-press) — mesmo padrão.
+                        onClick={() => onOrderSelect(order)}
+                        draggable
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
                         fillHeight
                         colorShift={index}

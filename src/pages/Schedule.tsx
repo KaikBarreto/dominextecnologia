@@ -761,12 +761,16 @@ export default function Schedule() {
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
               movingOrderId={touchDrag.movingOrderId}
-              onTouchPickUp={touchDrag.pickUp}
+              // v1.9.35: removido onTouchPickUp — tap rola pro detalhe igual Daily.
+              // Reagendamento via drag nativo (long-press no touch).
               onTouchDrop={touchDrag.dropOn}
               holidayMap={holidayMap}
             />
           )}
           {viewMode === 'day' && (
+            // v1.9.35: DailyCalendar mobile não usa touch pickup — tap rola
+            // pro detalhe abaixo e drag nativo move a OS. onTouchDrop é mantido
+            // pra finalizar drops vindos de outras views, mas pickUp foi removido.
             <DailyCalendar
               currentDate={currentDate}
               orders={filteredOrders}
@@ -774,7 +778,6 @@ export default function Schedule() {
               onSlotClick={handleSlotClick}
               onDrop={handleDrop}
               movingOrderId={touchDrag.movingOrderId}
-              onTouchPickUp={touchDrag.pickUp}
               onTouchDrop={touchDrag.dropOn}
               holidayMap={holidayMap}
             />
@@ -821,22 +824,29 @@ export default function Schedule() {
           )
         )}
 
-        {/* Cabeçalho do dia + lista de eventos */}
-        <div>
-          <h3 className="text-lg font-semibold capitalize">
-            {format(currentDate, "dd 'de' MMMM", { locale: ptBR })}
-          </h3>
-          <p className="text-xs text-muted-foreground capitalize">
-            {format(currentDate, 'EEEE', { locale: ptBR })}
-          </p>
-        </div>
+        {/* Resumo do Dia (v1.9.35): só aparece nas visões Semana e Mês.
+            Na visão Dia o calendário acima já lista as OSs do dia, então mostrar
+            de novo aqui era duplicação visual (feedback CEO). Em Semana/Mês continua
+            servindo pra contextualizar a data selecionada. */}
+        {viewMode !== 'day' && (
+          <>
+            <div>
+              <h3 className="text-lg font-semibold">
+                Resumo do Dia: {format(currentDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              </h3>
+              <p className="text-xs text-muted-foreground capitalize">
+                {format(currentDate, 'EEEE', { locale: ptBR })}
+              </p>
+            </div>
 
-        <MobileAgendaView
-          currentDate={currentDate}
-          orders={filteredOrders}
-          onOrderSelect={handleOrderSelect}
-          holidayMap={holidayMap}
-        />
+            <MobileAgendaView
+              currentDate={currentDate}
+              orders={filteredOrders}
+              onOrderSelect={handleOrderSelect}
+              holidayMap={holidayMap}
+            />
+          </>
+        )}
 
         {summaryOrder && (
           <div ref={summaryRef} className="min-h-[200px]">

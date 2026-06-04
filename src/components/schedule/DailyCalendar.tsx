@@ -16,7 +16,8 @@ interface DailyCalendarProps {
   onSlotClick: (date: string, time: string) => void;
   onDrop: (orderId: string, date: string, time: string) => void;
   movingOrderId?: string | null;
-  onTouchPickUp?: (orderId: string) => void;
+  // onTouchPickUp removido em v1.9.35: tap no DailyCalendar mobile agora rola
+  // pro detalhe; reagendamento mobile é só via drag nativo (long-press).
   onTouchDrop?: (date: string, time: string) => void;
   holidayMap?: Record<string, Holiday[]>;
 }
@@ -92,7 +93,7 @@ function layoutOverlapping(
   return items;
 }
 
-export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchPickUp, onTouchDrop, holidayMap = {} }: DailyCalendarProps) {
+export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick, onDrop, movingOrderId, onTouchDrop, holidayMap = {} }: DailyCalendarProps) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isMobile = useIsMobile();
 
@@ -209,7 +210,10 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               const leftPercent = col * widthPercent;
 
               if (isMobile) {
-                // Mobile: sem drag nativo, usa touch pickup. Mantém side-by-side.
+                // Mobile (v1.9.35): tap SEMPRE rola pro detalhe abaixo.
+                // Mudança de horário só por drag nativo (long-press dispara HTML5 drag em iOS/Android).
+                // CEO trocou o fluxo "touch pickup → tap no slot" porque tap interceptado quebrava
+                // o scroll-to-detail implementado em v1.9.33.
                 return (
                   <div
                     key={order.id}
@@ -220,13 +224,9 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                   >
                     <EventCard
                       order={order}
-                      onClick={() => {
-                        if (onTouchPickUp) {
-                          onTouchPickUp(order.id);
-                        } else {
-                          onOrderSelect(order);
-                        }
-                      }}
+                      onClick={() => onOrderSelect(order)}
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
                       fillHeight
                       colorShift={col}
                       isMoving={movingOrderId === order.id}
