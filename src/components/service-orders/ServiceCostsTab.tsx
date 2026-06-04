@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useServiceCosts, type ExtraCostLine, computeExtraCostsTotal } from '@/hooks/useServiceCosts';
@@ -22,8 +24,10 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 export function ServiceCostsTab() {
   const { hasModule } = useCompanyModules();
   const hasPricing = hasModule('pricing_advanced');
+  const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
   const [serviceId, setServiceId] = useState<string>('');
+  const [costsTab, setCostsTab] = useState<string>('mao_de_obra');
 
   // Auto-select first service type
   useEffect(() => {
@@ -160,13 +164,26 @@ export function ServiceCostsTab() {
               Selecione um tipo de serviço para configurar custos.
             </div>
           ) : (
-            <Tabs defaultValue="mao_de_obra" className="w-full">
-              <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
-                <TabsTrigger value="mao_de_obra">Mão de obra</TabsTrigger>
-                {hasPricing && <TabsTrigger value="recursos">Recursos</TabsTrigger>}
-                <TabsTrigger value="materiais">Materiais</TabsTrigger>
-                {hasPricing && <TabsTrigger value="resumo">Resumo</TabsTrigger>}
-              </TabsList>
+            <Tabs value={costsTab} onValueChange={setCostsTab} className="w-full">
+              {isMobile ? (
+                <MobilePillTabs
+                  tabs={[
+                    { value: 'mao_de_obra', label: 'Mão de obra' },
+                    ...(hasPricing ? [{ value: 'recursos', label: 'Recursos' }] : []),
+                    { value: 'materiais', label: 'Materiais' },
+                    ...(hasPricing ? [{ value: 'resumo', label: 'Resumo' }] : []),
+                  ]}
+                  activeTab={costsTab}
+                  onTabChange={setCostsTab}
+                />
+              ) : (
+                <TabsList className="w-full sm:w-auto flex-wrap h-auto gap-1 p-1 overflow-x-auto">
+                  <TabsTrigger value="mao_de_obra">Mão de obra</TabsTrigger>
+                  {hasPricing && <TabsTrigger value="recursos">Recursos</TabsTrigger>}
+                  <TabsTrigger value="materiais">Materiais</TabsTrigger>
+                  {hasPricing && <TabsTrigger value="resumo">Resumo</TabsTrigger>}
+                </TabsList>
+              )}
 
               <TabsContent value="mao_de_obra" className="mt-4">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

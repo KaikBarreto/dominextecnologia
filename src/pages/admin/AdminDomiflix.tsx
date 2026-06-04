@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { MobilePillTabs } from "@/components/mobile/MobilePillTabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -962,10 +963,21 @@ export default function AdminDomiflix() {
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "titles" | "sections")}>
-        <TabsList className={cn(isMobile && "w-full")}>
-          <TabsTrigger value="titles" className={cn(isMobile && "flex-1")}>Títulos</TabsTrigger>
-          <TabsTrigger value="sections" className={cn(isMobile && "flex-1")}>Seções da Home</TabsTrigger>
-        </TabsList>
+        {isMobile ? (
+          <MobilePillTabs
+            tabs={[
+              { value: "titles", label: "Títulos" },
+              { value: "sections", label: "Seções da Home" },
+            ]}
+            activeTab={activeTab}
+            onTabChange={(v) => setActiveTab(v as "titles" | "sections")}
+          />
+        ) : (
+          <TabsList>
+            <TabsTrigger value="titles">Títulos</TabsTrigger>
+            <TabsTrigger value="sections">Seções da Home</TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="titles" className="space-y-4 mt-4">
           {isMobile ? (

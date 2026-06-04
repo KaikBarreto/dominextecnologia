@@ -2,10 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { MapPin, RefreshCw, Map as MapIcon, Clock } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { TrackingHistoryTab } from '@/components/tracking/TrackingHistoryTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -116,6 +118,7 @@ export default function LiveMap() {
   const [loading, setLoading] = useState(true);
   const { resolvedTheme } = useTheme();
   const darkMode = resolvedTheme === 'dark';
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
   const { companyId } = useUserCompany();
@@ -512,29 +515,59 @@ export default function LiveMap() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <TabsList>
-            <TabsTrigger value="mapa" className="gap-1.5">
-              <MapIcon className="h-4 w-4" /> Mapa ao Vivo
-            </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-1.5">
-              <Clock className="h-4 w-4" /> Histórico
-            </TabsTrigger>
-          </TabsList>
+        {isMobile ? (
+          <div className="space-y-2">
+            <MobilePillTabs
+              tabs={[
+                { value: 'mapa', label: 'Mapa ao Vivo', icon: <MapIcon className="h-4 w-4" /> },
+                { value: 'historico', label: 'Histórico', icon: <Clock className="h-4 w-4" /> },
+              ]}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+            {activeTab === 'mapa' && (
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {technicians.length} técnico{technicians.length !== 1 ? 's' : ''} ativo{technicians.length !== 1 ? 's' : ''}
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => fetchLatestLocations()}
+                  aria-label="Atualizar"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <TabsList>
+              <TabsTrigger value="mapa" className="gap-1.5">
+                <MapIcon className="h-4 w-4" /> Mapa ao Vivo
+              </TabsTrigger>
+              <TabsTrigger value="historico" className="gap-1.5">
+                <Clock className="h-4 w-4" /> Histórico
+              </TabsTrigger>
+            </TabsList>
 
-          {activeTab === 'mapa' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                <span className="hidden sm:inline">Atualizar</span>
-              </Button>
-              <Badge variant="secondary" className="gap-1">
-                <MapPin className="h-3 w-3" />
-                {technicians.length} técnico{technicians.length !== 1 ? 's' : ''} ativo{technicians.length !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-          )}
-        </div>
+            {activeTab === 'mapa' && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => fetchLatestLocations()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  <span className="hidden sm:inline">Atualizar</span>
+                </Button>
+                <Badge variant="secondary" className="gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {technicians.length} técnico{technicians.length !== 1 ? 's' : ''} ativo{technicians.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+            )}
+          </div>
+        )}
 
         <TabsContent value="mapa" className="mt-4 space-y-3">
           {/* Legend */}

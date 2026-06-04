@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.32',
+    date: '03 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Última camada do padrão de pílulas no mobile aplicada',
+        description: 'Mais 4 áreas com navegação por abas internas migradas pro padrão de pílulas roláveis no celular: Mapa ao Vivo (Mapa / Histórico), Curadoria Domiflix do painel master, Ponto Eletrônico administrativo e Sub-abas de Custos do orçamento (Mão de obra / Recursos / Materiais / Resumo). No Mapa ao Vivo, o botão Atualizar virou ícone e a contagem de técnicos ativos vira chip abaixo das abas — fica tudo no padrão app nativo. View-mode pickers (Dia / Semana / Mês na Agenda e Cronograma do contrato), micro toggles de gráficos (Mensal / Semanal etc.) e abas dentro de modais ficaram como estão — são padrões diferentes de UX. Agora 100% das telas full-page com navegação de abas internas estão consistentes no mobile.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.31',
     date: '03 de junho de 2026',
     type: 'patch',
