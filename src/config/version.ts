@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.29";
+export const APP_VERSION = "1.9.30";
 
-export const VERSION_NOTES = "Hotfix urgente: bucket os-photos foi reaberto como público. Em v1.9.27 fechamos esse bucket por segurança, mas as fotos enviadas pelos técnicos em respostas de OS são renderizadas no portal público de OS (modo cliente) — quebraram com 'Erro' na miniatura pro cliente final acessando o link sem login. Reaberto pra não quebrar a experiência. Plano dedicado pra fechar com segurança via edge function proxy fica como release futura.";
+export const VERSION_NOTES = "Placeholder amigável quando uma imagem não carrega: em vez do antigo 'Erro' cru, agora aparece um quadradinho cinza com ícone de imagem riscada e o texto 'Imagem indisponível'. Aplicado em todas as fotos da tela de OS (do técnico e do portal do cliente) — fotos do cliente, equipamento, técnico responsável, fotos de respostas técnicas e galeria de fotos. Trata melhor casos onde a foto foi apagada do storage, link expirou ou houve falha temporária.";

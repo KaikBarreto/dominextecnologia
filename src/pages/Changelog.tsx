@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.30',
+    date: '03 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Placeholder amigável quando uma foto não carrega',
+        description: 'Antes, quando uma foto da OS não carregava (por algum motivo — link expirou, arquivo foi apagado, falha temporária de conexão), aparecia um "Erro" cru, parecendo problema do sistema. Agora aparece um quadradinho cinza com ícone de imagem riscada e o texto "Imagem indisponível", muito mais claro pro cliente entender que é só uma foto que não veio, não um problema no app. Aplicado em todas as fotos da tela de OS — do cliente, do equipamento, do técnico responsável, das respostas técnicas e da galeria de fotos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.29',
     date: '03 de junho de 2026',
     type: 'patch',

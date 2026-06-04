@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { SignedImg } from '@/components/ui/SignedImg';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -632,7 +633,7 @@ export default function TechnicianOS() {
           {technicianProfile && (serviceOrder.status === 'a_caminho' || serviceOrder.status === 'em_andamento') && (
             <div className="flex items-center gap-3 text-sm bg-muted/50 rounded-lg px-3 py-2">
               {technicianProfile.avatar_url ? (
-                <img
+                <SignedImg
                   src={technicianProfile.avatar_url}
                   alt={technicianProfile.full_name}
                   className="h-10 w-10 rounded-full object-cover border cursor-pointer"
@@ -662,7 +663,7 @@ export default function TechnicianOS() {
                   {checkInTime && (
                     <div className="flex items-start gap-3">
                       {technicianProfile?.avatar_url ? (
-                        <img
+                        <SignedImg
                           src={technicianProfile.avatar_url}
                           alt={technicianProfile.full_name}
                           className="w-10 h-10 rounded-full object-cover border shrink-0 mt-0.5 cursor-pointer hover:opacity-80 transition-opacity"
@@ -693,7 +694,7 @@ export default function TechnicianOS() {
                   {checkOutTime && (
                     <div className="flex items-start gap-3">
                       {technicianProfile?.avatar_url ? (
-                        <img
+                        <SignedImg
                           src={technicianProfile.avatar_url}
                           alt={technicianProfile.full_name}
                           className="w-10 h-10 rounded-full object-cover border shrink-0 mt-0.5 cursor-pointer hover:opacity-80 transition-opacity"
@@ -748,7 +749,7 @@ export default function TechnicianOS() {
               </div>
               <div className="flex items-start gap-3">
                 {serviceOrder.customer?.photo_url && (
-                  <img
+                  <SignedImg
                     src={serviceOrder.customer.photo_url}
                     alt={serviceOrder.customer.name}
                     className="h-12 w-12 rounded-full object-cover border cursor-pointer shrink-0"
@@ -797,7 +798,7 @@ export default function TechnicianOS() {
                             {uniqueEquipmentItems.map(item => item.equipment && (
                               <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
                                 {item.equipment.photo_url ? (
-                                  <img
+                                  <SignedImg
                                     src={item.equipment.photo_url}
                                     alt={item.equipment.name}
                                     className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
@@ -832,7 +833,7 @@ export default function TechnicianOS() {
                       {uniqueEquipmentItems.map(item => item.equipment && (
                         <div key={item.equipment_id} className="flex items-start gap-3 text-sm">
                           {item.equipment.photo_url ? (
-                            <img
+                            <SignedImg
                               src={item.equipment.photo_url}
                               alt={item.equipment.name}
                               className="h-14 w-14 rounded-lg object-cover border cursor-pointer shrink-0"
@@ -960,7 +961,7 @@ export default function TechnicianOS() {
                             <AccordionTrigger className="hover:no-underline py-3 gap-2">
                               <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                                 {group.equipment?.equipment?.photo_url ? (
-                                  <img
+                                  <SignedImg
                                     src={group.equipment.equipment.photo_url}
                                     alt={group.equipment.equipment.name}
                                     className="h-8 w-8 rounded-md object-cover shrink-0 border"
@@ -1034,7 +1035,7 @@ export default function TechnicianOS() {
                                           return (
                                             <div className="flex flex-wrap gap-2 mt-1">
                                               {urls.map((url: string, i: number) => (
-                                                <img key={i} src={url} alt="" className="rounded max-h-32 object-cover cursor-pointer" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewPhoto(url); }} />
+                                                <SignedImg key={i} src={url} alt="Foto da resposta" className="rounded h-24 w-24 sm:h-32 sm:w-32 object-cover cursor-pointer" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewPhoto(url); }} />
                                               ))}
                                             </div>
                                           );
@@ -1094,7 +1095,7 @@ export default function TechnicianOS() {
                               return (
                                 <div className="flex flex-wrap gap-2 mt-1">
                                   {urls.map((url: string, i: number) => (
-                                    <img key={i} src={url} alt="" className="rounded max-h-32 object-cover cursor-pointer" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewPhoto(url); }} />
+                                    <SignedImg key={i} src={url} alt="Foto da resposta" className="rounded h-24 w-24 sm:h-32 sm:w-32 object-cover cursor-pointer" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewPhoto(url); }} />
                                   ))}
                                 </div>
                               );
@@ -1118,7 +1119,7 @@ export default function TechnicianOS() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {photos.map(photo => (
-                    <img
+                    <SignedImg
                       key={photo.id}
                       src={photo.photo_url}
                       alt={photo.description || ''}
@@ -1402,7 +1403,7 @@ export default function TechnicianOS() {
                       <AccordionTrigger className="hover:no-underline py-3 gap-2">
                         <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
                           {item.equipment?.photo_url ? (
-                            <img
+                            <SignedImg
                               src={item.equipment.photo_url}
                               alt={item.equipment.name}
                               className="h-10 w-10 rounded-md object-cover shrink-0 cursor-pointer border"
