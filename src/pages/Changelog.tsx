@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.36',
+    date: '04 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Código do estoque agora é único por empresa (era único no sistema inteiro)',
+        description: 'Bug crítico: ao tentar cadastrar um item no estoque com o código sugerido por padrão (EST-001), aparecia "Já existe um registro com esses dados" — mesmo se sua empresa não tinha nenhum item ainda. Isso acontecia porque o código (SKU) era único no banco INTEIRO, não por empresa. Como o sistema sugere EST-001 pra toda empresa nova, a primeira empresa que cadastrava EST-001 trancava esse código pra todas as outras. Agora cada empresa tem sua própria numeração independente — sua EST-001 não conflita com a de ninguém. Também ajustamos a mesma família de bug em outras duas configurações (campos de equipamento personalizados e status de OS personalizados) que tinham o mesmo problema latente esperando acontecer.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.35',
     date: '03 de junho de 2026',
     type: 'patch',
