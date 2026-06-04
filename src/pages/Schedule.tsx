@@ -29,7 +29,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder } from '@/types/database';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -668,17 +668,17 @@ export default function Schedule() {
 
         {/* Toggle de visualização (Dia/Semana/Mês) + botão de filtros */}
         <div className="flex items-center gap-2">
-          <Tabs
-            value={viewMode}
-            onValueChange={(v) => setViewMode(v as ViewMode)}
-            className="flex-1"
-          >
-            <TabsList className="w-full grid grid-cols-3">
-              <TabsTrigger value="day">Dia</TabsTrigger>
-              <TabsTrigger value="week">Semana</TabsTrigger>
-              <TabsTrigger value="month">Mês</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex-1">
+            <MobilePillTabs
+              tabs={[
+                { value: 'day', label: 'Dia' },
+                { value: 'week', label: 'Semana' },
+                { value: 'month', label: 'Mês' },
+              ]}
+              activeTab={viewMode}
+              onTabChange={(v) => setViewMode(v as ViewMode)}
+            />
+          </div>
           <FilterSheet
             triggerLabel="Filtros"
             activeCount={activeFilterCount}

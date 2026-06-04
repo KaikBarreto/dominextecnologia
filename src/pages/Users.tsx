@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
 import { useUserPermissions, usePermissionPresets, getAllPermissionKeys, type PermissionPreset } from '@/hooks/usePermissions';
@@ -309,10 +310,14 @@ export default function Users() {
         />
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'users' | 'presets')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-10">
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="presets">Cargos</TabsTrigger>
-          </TabsList>
+          <MobilePillTabs
+            tabs={[
+              { value: 'users', label: 'Usuários' },
+              { value: 'presets', label: 'Cargos' },
+            ]}
+            activeTab={activeTab}
+            onTabChange={(v) => setActiveTab(v as 'users' | 'presets')}
+          />
 
           {/* Busca compartilhada (placeholder muda conforme tab) */}
           <div className="relative mt-3">

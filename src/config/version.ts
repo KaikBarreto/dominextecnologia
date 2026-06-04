@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.30";
+export const APP_VERSION = "1.9.31";
 
-export const VERSION_NOTES = "Placeholder amigável quando uma imagem não carrega: em vez do antigo 'Erro' cru, agora aparece um quadradinho cinza com ícone de imagem riscada e o texto 'Imagem indisponível'. Aplicado em todas as fotos da tela de OS (do técnico e do portal do cliente) — fotos do cliente, equipamento, técnico responsável, fotos de respostas técnicas e galeria de fotos. Trata melhor casos onde a foto foi apagada do storage, link expirou ou houve falha temporária.";
+export const VERSION_NOTES = "3 telas migradas pro padrão de pílulas roláveis no mobile (mesmo visual das outras telas com abas internas do app): Portal do Cliente (Minhas OS / Equipamentos), Agenda (Dia / Semana / Mês) e Gerenciamento de Usuários (Usuários / Cargos). Desktop continua igual.";

@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.31',
+    date: '03 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abas internas padronizadas no mobile em mais 3 telas',
+        description: 'O Portal do Cliente (Minhas OS / Equipamentos), a Agenda (Dia / Semana / Mês) e o Gerenciamento de Usuários (Usuários / Cargos) agora usam o mesmo formato de pílulas roláveis no celular que o resto do app já usa. Visual consistente em todas as telas com navegação interna. Desktop continua igual.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.30',
     date: '03 de junho de 2026',
     type: 'patch',

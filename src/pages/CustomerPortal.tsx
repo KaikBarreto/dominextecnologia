@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -91,7 +93,11 @@ export default function CustomerPortal() {
 
   // Selected equipment detail
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(eqParam);
-  const [defaultTab, setDefaultTab] = useState(eqParam ? 'equipamentos' : 'os');
+  // Tab controlado: inicializa pelo param `eq` (deep-link pra um equipamento).
+  // Antes era `defaultValue` (não-controlado) — virou controlado pra permitir
+  // troca via MobilePillTabs no mobile.
+  const [activeTab, setActiveTab] = useState(eqParam ? 'equipamentos' : 'os');
+  const isMobile = useIsMobile();
 
   const osPagination = useDataPagination(serviceOrders);
   const eqPagination = useDataPagination(equipment);
@@ -311,15 +317,26 @@ export default function CustomerPortal() {
           </div>
         )}
 
-        <Tabs defaultValue={defaultTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="os">
-              <ClipboardList className="h-4 w-4 mr-2" /> Minhas OS
-            </TabsTrigger>
-            <TabsTrigger value="equipamentos">
-              <Package className="h-4 w-4 mr-2" /> Equipamentos
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {isMobile ? (
+            <MobilePillTabs
+              tabs={[
+                { value: 'os', label: 'Minhas OS', icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
+                { value: 'equipamentos', label: 'Equipamentos', icon: <Package className="h-4 w-4 shrink-0" /> },
+              ]}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          ) : (
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="os">
+                <ClipboardList className="h-4 w-4 mr-2" /> Minhas OS
+              </TabsTrigger>
+              <TabsTrigger value="equipamentos">
+                <Package className="h-4 w-4 mr-2" /> Equipamentos
+              </TabsTrigger>
+            </TabsList>
+          )}
 
           {/* OS Tab */}
           <TabsContent value="os" className="space-y-4 mt-4">
