@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.37',
+    date: '05 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relógio com data e hora ao vivo no topo do sistema',
+        description: 'Adicionamos um relógio ao vivo no topo do sistema, que mostra o dia da semana, a data e a hora atualizando a cada segundo — por exemplo, "qui., 04/06 19:12:16". A hora respeita o fuso horário do estado da sua empresa, então quem está em Manaus, Cuiabá, Rio Branco ou em qualquer outro estado vê sempre o horário local correto. Aparece na versão para computador quando você usa o menu lateral.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.36',
     date: '04 de junho de 2026',
     type: 'patch',

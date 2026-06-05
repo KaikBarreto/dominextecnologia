@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePullToRefresh } from '@/components/mobile/MobilePullToRefresh';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -20,6 +21,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import { HeaderClock } from '@/components/layout/HeaderClock';
 import {
   Tooltip,
   TooltipContent,
@@ -160,6 +162,7 @@ function SidebarShell() {
 function DesktopSidebarHeader() {
   const navigate = useNavigate();
   const { user, isAdminUser, signOut } = useAuth();
+  const { settings } = useCompanySettings();
 
   if (!user) return null;
 
@@ -171,6 +174,7 @@ function DesktopSidebarHeader() {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <HeaderClock uf={settings?.state} />
           <NotificationsBell />
 
           {/* Botão de perfil removido — já existe no avatar do sidebar (dropdown).

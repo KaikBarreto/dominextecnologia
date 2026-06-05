@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.36";
+export const APP_VERSION = "1.9.37";
 
-export const VERSION_NOTES = "Bug crítico de isolamento entre empresas corrigido: o código (SKU) do estoque era único no banco INTEIRO em vez de único por empresa. Isso significava que quando uma empresa cadastrava 'EST-001' (código sugerido por padrão), nenhuma outra empresa conseguia usar o mesmo código — vinha o erro 'Já existe um registro com esses dados'. Pior: como o sistema sugere EST-001 pra toda empresa nova, todas batiam nesse bloqueio. Agora cada empresa tem sua própria numeração independente. Mesmo bug latente corrigido proativamente em outras 2 tabelas (configuração de campos de equipamento e status customizados de OS) pra prevenir o problema acontecer no futuro.";
+export const VERSION_NOTES = "Agora o topo do sistema mostra um relógio ao vivo com o dia da semana, a data e a hora, atualizando a cada segundo (ex.: 'qui., 04/06 19:12:16'). A hora respeita o fuso horário do estado da sua empresa — quem está em Manaus, Cuiabá, Rio Branco ou em qualquer outro estado vê sempre o horário local correto. Disponível na versão para computador, com o menu lateral.";
