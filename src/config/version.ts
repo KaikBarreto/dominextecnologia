@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.37";
+export const APP_VERSION = "1.9.38";
 
-export const VERSION_NOTES = "Agora o topo do sistema mostra um relógio ao vivo com o dia da semana, a data e a hora, atualizando a cada segundo (ex.: 'qui., 04/06 19:12:16'). A hora respeita o fuso horário do estado da sua empresa — quem está em Manaus, Cuiabá, Rio Branco ou em qualquer outro estado vê sempre o horário local correto. Disponível na versão para computador, com o menu lateral.";
+export const VERSION_NOTES = "No celular, ao abrir o resumo de uma ordem de serviço, as fotos agora aparecem em um carrossel deslizante: cada foto grande, uma de cada vez, e você arrasta para o lado para ver as outras (com bolinhas mostrando a posição). Tocar na foto continua abrindo ela em tela cheia. Também deixamos o aviso de conformidade PMOC, que aparece no preenchimento da OS, mais destacado.";

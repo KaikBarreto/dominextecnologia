@@ -21,6 +21,7 @@ import {
   Check,
   MapPinned,
   Wrench,
+  ShieldCheck,
   Pause,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,6 @@ import { DynamicFormQuestions, type FormValidationResult } from '@/components/te
 import { SignaturePad } from '@/components/SignaturePad';
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
-import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import type { ServiceOrder, OsStatus } from '@/types/database';
 import { PublicTrackingMap } from '@/components/schedule/PublicTrackingMap';
@@ -1539,15 +1539,18 @@ export default function TechnicianOS() {
             Só aparece quando OS pertence a contrato PMOC. Bloqueia finalizar
             se status='parcial'|'nao_conforme' sem notas. */}
         {isCheckedIn && !isPaused && isPmocOrder && (
-          <Card className="border-info/40 bg-info/5">
+          <Card className="border-info bg-info text-info-foreground">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <PmocComplianceBadge variant="chip" />
-                <CardTitle className="text-base">Classificação de Conformidade PMOC</CardTitle>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium text-info-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  PMOC
+                </span>
+                <CardTitle className="text-base text-info-foreground">Classificação de Conformidade PMOC</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-info-foreground/90">
                 Esta OS pertence a contrato PMOC. Indique a conformidade com a Lei 13.589/2018:
               </p>
               <RadioGroup
@@ -1556,7 +1559,7 @@ export default function TechnicianOS() {
               >
                 <label
                   htmlFor="conformity-conforme"
-                  className="flex items-center gap-3 rounded-md border border-success/30 bg-success/5 px-3 py-3 cursor-pointer min-h-[44px]"
+                  className="flex items-center gap-3 rounded-md border border-success/30 bg-card px-3 py-3 cursor-pointer min-h-[44px]"
                 >
                   <RadioGroupItem value="conforme" id="conformity-conforme" />
                   <span className="text-sm font-medium text-success">
@@ -1565,7 +1568,7 @@ export default function TechnicianOS() {
                 </label>
                 <label
                   htmlFor="conformity-parcial"
-                  className="flex items-center gap-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-3 cursor-pointer min-h-[44px]"
+                  className="flex items-center gap-3 rounded-md border border-warning/30 bg-card px-3 py-3 cursor-pointer min-h-[44px]"
                 >
                   <RadioGroupItem value="parcial" id="conformity-parcial" />
                   <span className="text-sm font-medium text-warning">
@@ -1574,7 +1577,7 @@ export default function TechnicianOS() {
                 </label>
                 <label
                   htmlFor="conformity-nao-conforme"
-                  className="flex items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-3 cursor-pointer min-h-[44px]"
+                  className="flex items-center gap-3 rounded-md border border-destructive/30 bg-card px-3 py-3 cursor-pointer min-h-[44px]"
                 >
                   <RadioGroupItem value="nao_conforme" id="conformity-nao-conforme" />
                   <span className="text-sm font-medium text-destructive">
@@ -1583,10 +1586,10 @@ export default function TechnicianOS() {
                 </label>
               </RadioGroup>
               <div className="space-y-1.5">
-                <Label htmlFor="conformity-notes" className="text-xs">
+                <Label htmlFor="conformity-notes" className="text-xs text-info-foreground">
                   Notas de conformidade
                   {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
-                    <span className="text-destructive ml-1">*</span>
+                    <span className="text-white ml-1">*</span>
                   )}
                 </Label>
                 <Textarea
@@ -1598,7 +1601,7 @@ export default function TechnicianOS() {
                   className="text-sm"
                 />
                 {(conformityStatus === 'parcial' || conformityStatus === 'nao_conforme') && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-info-foreground/90">
                     Obrigatório quando a classificação é parcial ou não-conforme.
                   </p>
                 )}

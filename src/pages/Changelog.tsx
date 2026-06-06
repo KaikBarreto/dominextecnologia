@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.38',
+    date: '06 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos da ordem de serviço agora em carrossel deslizante no celular',
+        description: 'No celular, ao abrir o resumo de uma ordem de serviço, as fotos não aparecem mais empilhadas em miniaturas pequenas. Agora cada foto aparece grande, uma de cada vez, e você arrasta para o lado para ver as próximas — com bolinhas indicando em qual você está. Vale tanto para as fotos gerais da OS quanto para as fotos de cada pergunta do questionário (antes, durante e depois do serviço). Tocar em qualquer foto continua abrindo ela em tela cheia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aviso de conformidade PMOC mais destacado no preenchimento da OS',
+        description: 'Quando a ordem de serviço pertence a um contrato PMOC, o bloco de classificação de conformidade que aparece no preenchimento agora tem um destaque azul mais forte, ficando mais fácil de notar que aquela OS exige a indicação de conformidade.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.37',
     date: '05 de junho de 2026',
     type: 'patch',

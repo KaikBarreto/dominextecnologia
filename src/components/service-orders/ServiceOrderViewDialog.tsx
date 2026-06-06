@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2 } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -20,8 +20,10 @@ import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { useServiceRatings } from '@/hooks/useServiceRatings';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { SignedImg } from '@/components/ui/SignedImg';
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
+import { cn } from '@/lib/utils';
 
 interface OSPhoto {
   id: string;
@@ -64,6 +66,78 @@ const statusColors: Record<OsStatus, string> = {
   concluida: 'bg-success/10 text-success border-success',
   cancelada: 'bg-destructive/10 text-destructive border-destructive',
 };
+
+/**
+ * Carrossel horizontal de fotos — uma foto grande por vez, arrasta pro lado.
+ * "Espiada" da próxima na borda deixa claro que dá pra arrastar (basis-[85%]).
+ * Toque na foto abre o visualizador em tela cheia via onOpen(index).
+ * renderOverlay opcional desenha algo sobre cada foto (ex.: Badge do tipo).
+ * Com 1 foto só, mostra a foto grande sem carrossel/dots.
+ */
+function PhotoCarousel({
+  urls,
+  onOpen,
+  renderOverlay,
+}: {
+  urls: string[];
+  onOpen: (index: number) => void;
+  renderOverlay?: (index: number) => ReactNode;
+}) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+    const onSelect = () => setCurrent(api.selectedScrollSnap());
+    api.on('select', onSelect);
+    return () => {
+      api.off('select', onSelect);
+    };
+  }, [api]);
+
+  const renderPhoto = (url: string, index: number) => (
+    <button
+      type="button"
+      onClick={() => onOpen(index)}
+      aria-label={`Ampliar foto ${index + 1} de ${urls.length}`}
+      className="relative block w-full aspect-[4/3] rounded-lg overflow-hidden bg-muted hover:opacity-90 active:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <SignedImg src={url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+      {renderOverlay?.(index)}
+    </button>
+  );
+
+  // Uma foto só: sem carrossel nem dots.
+  if (urls.length < 2) {
+    return urls.length === 1 ? renderPhoto(urls[0], 0) : null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <Carousel setApi={setApi} opts={{ align: 'start' }}>
+        <CarouselContent className="-ml-2">
+          {urls.map((url, index) => (
+            <CarouselItem key={index} className="pl-2 basis-[85%]">
+              {renderPhoto(url, index)}
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+      <div className="flex items-center justify-center gap-1.5" aria-hidden="true">
+        {urls.map((_, index) => (
+          <span
+            key={index}
+            className={cn(
+              'h-1.5 rounded-full transition-all',
+              index === current ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30',
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onEdit, onDelete, onStatusChange }: ServiceOrderViewDialogProps) {
   const navigate = useNavigate();
@@ -264,22 +338,20 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         <Card>
           <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Fotos ({photos.length})</CardTitle></CardHeader>
           <CardContent className="pt-0">
-            <div className="grid grid-cols-3 gap-2">
-              {photos.map((photo, idx) => {
-                const urls = photos.map((p) => p.photo_url);
-                return (
-                  <button
-                    key={photo.id}
-                    type="button"
-                    onClick={() => openPreview(urls, idx)}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <SignedImg src={photo.photo_url} alt={photo.photo_type} className="w-full h-full object-cover" />
-                    <Badge variant="secondary" className="absolute bottom-1 left-1 text-[10px] capitalize">{photo.photo_type}</Badge>
-                  </button>
-                );
-              })}
-            </div>
+            {(() => {
+              const urls = photos.map((p) => p.photo_url);
+              return (
+                <PhotoCarousel
+                  urls={urls}
+                  onOpen={(index) => openPreview(urls, index)}
+                  renderOverlay={(index) => (
+                    <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] capitalize">
+                      {photos[index].photo_type}
+                    </Badge>
+                  )}
+                />
+              );
+            })()}
           </CardContent>
         </Card>
       )}
@@ -307,17 +379,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                       .map((u) => u.trim())
                       .filter(Boolean);
                     return (
-                      <div className="flex flex-wrap gap-2">
-                        {urls.map((url, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => openPreview(urls, i)}
-                            className="rounded-lg overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:opacity-80 transition-opacity"
-                          >
-                            <SignedImg src={url} alt="Resposta" className="w-24 h-24 object-cover rounded-lg mt-1" />
-                          </button>
-                        ))}
+                      <div className="mt-1">
+                        <PhotoCarousel urls={urls} onOpen={(i) => openPreview(urls, i)} />
                       </div>
                     );
                   })()}

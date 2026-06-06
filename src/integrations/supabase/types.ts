@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -296,6 +295,8 @@ export type Database = {
         Row: {
           address: string | null
           address_number: string | null
+          asaas_customer_id: string | null
+          asaas_subscription_id: string | null
           billing_cycle: string | null
           city: string | null
           cnpj: string | null
@@ -310,11 +311,14 @@ export type Database = {
           extra_users: number | null
           id: string
           logo_url: string | null
+          ltv: number
           max_users: number | null
           name: string
           neighborhood: string | null
           notes: string | null
           origin: string | null
+          payment_method: string | null
+          pending_subscription_value: number | null
           phone: string | null
           salesperson_id: string | null
           segment: string | null
@@ -330,6 +334,8 @@ export type Database = {
         Insert: {
           address?: string | null
           address_number?: string | null
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           billing_cycle?: string | null
           city?: string | null
           cnpj?: string | null
@@ -344,11 +350,14 @@ export type Database = {
           extra_users?: number | null
           id?: string
           logo_url?: string | null
+          ltv?: number
           max_users?: number | null
           name: string
           neighborhood?: string | null
           notes?: string | null
           origin?: string | null
+          payment_method?: string | null
+          pending_subscription_value?: number | null
           phone?: string | null
           salesperson_id?: string | null
           segment?: string | null
@@ -364,6 +373,8 @@ export type Database = {
         Update: {
           address?: string | null
           address_number?: string | null
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           billing_cycle?: string | null
           city?: string | null
           cnpj?: string | null
@@ -378,11 +389,14 @@ export type Database = {
           extra_users?: number | null
           id?: string
           logo_url?: string | null
+          ltv?: number
           max_users?: number | null
           name?: string
           neighborhood?: string | null
           notes?: string | null
           origin?: string | null
+          payment_method?: string | null
+          pending_subscription_value?: number | null
           phone?: string | null
           salesperson_id?: string | null
           segment?: string | null
@@ -471,6 +485,7 @@ export type Database = {
       company_payments: {
         Row: {
           amount: number
+          asaas_payment_id: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -483,6 +498,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          asaas_payment_id?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -495,6 +511,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          asaas_payment_id?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -3373,7 +3390,7 @@ export type Database = {
           {
             foreignKeyName: "pricing_settings_company_id_fkey"
             columns: ["company_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -4583,6 +4600,59 @@ export type Database = {
           },
         ]
       }
+      subscription_cancellation_requests: {
+        Row: {
+          admin_notes: string | null
+          company_id: string
+          created_at: string
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string
+          reason_details: string | null
+          requested_by: string | null
+          scheduled_cancellation_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason: string
+          reason_details?: string | null
+          requested_by?: string | null
+          scheduled_cancellation_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          reason_details?: string | null
+          requested_by?: string | null
+          scheduled_cancellation_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_cancellation_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_history: {
         Row: {
           changed_by: string | null
@@ -4668,6 +4738,80 @@ export type Database = {
           type?: string | null
         }
         Relationships: []
+      }
+      subscription_payments: {
+        Row: {
+          amount: number
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
+          billing_cycle: string | null
+          billing_type: string | null
+          company_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_url: string | null
+          ltv_credited_at: string | null
+          paid_at: string | null
+          payment_method: string | null
+          pix_copy_paste: string | null
+          pix_expiration_date: string | null
+          pix_qr_code: string | null
+          status: string
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          billing_cycle?: string | null
+          billing_type?: string | null
+          company_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_url?: string | null
+          ltv_credited_at?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pix_copy_paste?: string | null
+          pix_expiration_date?: string | null
+          pix_qr_code?: string | null
+          status?: string
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          billing_cycle?: string | null
+          billing_type?: string | null
+          company_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_url?: string | null
+          ltv_credited_at?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pix_copy_paste?: string | null
+          pix_expiration_date?: string | null
+          pix_qr_code?: string | null
+          status?: string
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_plans: {
         Row: {
