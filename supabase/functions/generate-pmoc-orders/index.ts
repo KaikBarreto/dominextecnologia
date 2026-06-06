@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
 
         // Histórico (pmoc_generated_os mantém compatibilidade até Onda D)
         // plan_id agora é NULL — coluna ainda existe mas não há plano de origem
-        // (a tabela vai ser dropada na 1.9.3 ou substituída por contract_occurrences)
+        // (pmoc_generated_os é legada; o histórico vive em service_orders.contract_id)
         // Por enquanto, NÃO inserimos em pmoc_generated_os porque ela exige plan_id NOT NULL.
         // Quem quer histórico consulta service_orders.contract_id IS NOT NULL + origin='contract'.
 
