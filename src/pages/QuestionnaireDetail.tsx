@@ -103,7 +103,7 @@ export default function QuestionnaireDetail() {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate('/servicos?tab=questionnaires')}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>
-        <p className="text-muted-foreground">Questionário não encontrado.</p>
+        <p className="text-muted-foreground">Checklist não encontrado.</p>
       </div>
     );
   }
@@ -608,9 +608,9 @@ export default function QuestionnaireDetail() {
       <AlertDialog open={deleteTemplateOpen} onOpenChange={setDeleteTemplateOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar questionário?</AlertDialogTitle>
+            <AlertDialogTitle>Desativar checklist?</AlertDialogTitle>
             <AlertDialogDescription>
-              O questionário deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.
+              O checklist deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

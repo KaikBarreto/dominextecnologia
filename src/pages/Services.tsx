@@ -12,7 +12,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 const tabs = [
   { value: 'types', label: 'Tipos de Serviços', icon: Settings },
   { value: 'task-types', label: 'Tipos de Tarefas', icon: CheckSquare },
-  { value: 'questionnaires', label: 'Questionários', icon: FileText },
+  { value: 'questionnaires', label: 'Checklists', icon: FileText },
 ];
 
 export default function ServicesPage() {
@@ -31,7 +31,7 @@ export default function ServicesPage() {
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
         title="Serviços"
-        subtitle="Configure os tipos de serviços, tarefas e questionários"
+        subtitle="Configure os tipos de serviços, tarefas e checklists"
         icon={Briefcase}
       />
 

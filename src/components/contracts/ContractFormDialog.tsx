@@ -441,7 +441,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Questionário Padrão</Label>
+                  <Label>Checklist Padrão</Label>
                   <Select value={formTemplateId || 'none'} onValueChange={v => setFormTemplateId(v === 'none' ? '' : v)}>
                     <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
                     <SelectContent>

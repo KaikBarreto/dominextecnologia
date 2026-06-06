@@ -55,7 +55,7 @@ const modules: Module[] = [
     lessons: [
       { id: '2a', title: 'Criando sua primeira OS', duration: '7:20', videoId: 'dQw4w9WgXcQ' },
       { id: '2b', title: 'Status e fluxo de trabalho', duration: '10:00', videoId: 'dQw4w9WgXcQ' },
-      { id: '2c', title: 'Formulários e questionários', duration: '9:30', videoId: 'dQw4w9WgXcQ' },
+      { id: '2c', title: 'Formulários e checklists', duration: '9:30', videoId: 'dQw4w9WgXcQ' },
       { id: '2d', title: 'Assinaturas e check-in/out', duration: '6:10', videoId: 'dQw4w9WgXcQ' },
     ],
   },

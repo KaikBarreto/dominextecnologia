@@ -119,10 +119,10 @@ export function useFormTemplates() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
-      toast({ title: 'Questionário desativado!' });
+      toast({ title: 'Checklist desativado!' });
     },
     onError: (error) => {
-      toast({ title: 'Erro ao desativar questionário', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Erro ao desativar checklist', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -216,7 +216,7 @@ export function useFormTemplates() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
-      toast({ title: 'Serviços vinculados ao questionário!' });
+      toast({ title: 'Serviços vinculados ao checklist!' });
     },
     onError: (error) => {
       toast({ title: 'Erro ao vincular serviços', description: getErrorMessage(error), variant: 'destructive' });

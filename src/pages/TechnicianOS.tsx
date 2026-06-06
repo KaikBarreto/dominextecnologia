@@ -942,7 +942,7 @@ export default function TechnicianOS() {
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <ClipboardCheck className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Questionários</span>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Checklists</span>
                     </div>
                     <Accordion type="multiple" className="w-full">
                       {groups.map(([groupKey, group]) => {
@@ -974,7 +974,7 @@ export default function TechnicianOS() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
                                     <p className="font-medium text-sm truncate">
-                                      {group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Questionário'}
+                                      {group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Checklist'}
                                     </p>
                                     {(group.equipment?.equipment as any)?.category && (
                                       <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: (group.equipment!.equipment as any).category.color }}>
@@ -1060,7 +1060,7 @@ export default function TechnicianOS() {
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <ClipboardCheck className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Questionário</span>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Checklist</span>
                     {(() => {
                       const answered = publicFormResponses.filter(r => r.response_value || r.response_photo_url).length;
                       const total = publicFormResponses.length;
@@ -1379,7 +1379,7 @@ export default function TechnicianOS() {
             <CardHeader className="pb-2 px-3 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
-                Questionários
+                Checklists
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3">
@@ -1417,7 +1417,7 @@ export default function TechnicianOS() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-sm truncate">
-                                {item.equipment?.name || item.form_template?.name || 'Questionário'}
+                                {item.equipment?.name || item.form_template?.name || 'Checklist'}
                               </p>
                               {item.equipment?.category && (
                                 <Badge className="text-[10px] shrink-0 text-white border-0" style={{ backgroundColor: item.equipment.category.color }}>

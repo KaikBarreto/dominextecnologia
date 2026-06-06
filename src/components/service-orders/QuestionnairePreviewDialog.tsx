@@ -23,7 +23,7 @@ export function QuestionnairePreviewDialog({ templateId, open, onOpenChange, tem
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`Pré-visualização: ${template.name}`}>
       <div className="space-y-3">
         {sortedQuestions.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nenhuma pergunta neste questionário.</p>
+          <p className="text-sm text-muted-foreground text-center py-4">Nenhuma pergunta neste checklist.</p>
         ) : (
           sortedQuestions.map((q, i) => (
             <div key={q.id} className="flex items-start gap-2 p-3 rounded-lg border">

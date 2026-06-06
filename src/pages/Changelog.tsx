@@ -40,13 +40,30 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.39',
+    date: '06 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: '"Questionário" agora se chama "Checklist"',
+        description: 'Renomeamos o recurso de "Questionário" para "Checklist" em todo o sistema — na tela de Serviços, no preenchimento e no resumo da ordem de serviço, no aplicativo do técnico, nos contratos e nas permissões. É exatamente o mesmo recurso, com um nome mais direto e fácil de entender. Tudo o que você já criou continua igual, só o nome mudou.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Equipamentos e checklists do resumo da OS agora abrem e fecham',
+        description: 'No resumo de uma ordem de serviço, cada equipamento/checklist virou uma seção recolhível. Por padrão, só a primeira já vem aberta (no celular e no computador) — as demais você abre tocando no título, e a setinha mostra se está aberta ou fechada. Fica bem mais fácil navegar em ordens de serviço com vários equipamentos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.38',
     date: '06 de junho de 2026',
     type: 'patch',
     changes: [
       {
         title: 'Fotos da ordem de serviço agora em carrossel deslizante no celular',
-        description: 'No celular, ao abrir o resumo de uma ordem de serviço, as fotos não aparecem mais empilhadas em miniaturas pequenas. Agora cada foto aparece grande, uma de cada vez, e você arrasta para o lado para ver as próximas — com bolinhas indicando em qual você está. Vale tanto para as fotos gerais da OS quanto para as fotos de cada pergunta do questionário (antes, durante e depois do serviço). Tocar em qualquer foto continua abrindo ela em tela cheia.',
+        description: 'No celular, ao abrir o resumo de uma ordem de serviço, as fotos não aparecem mais empilhadas em miniaturas pequenas. Agora cada foto aparece grande, uma de cada vez, e você arrasta para o lado para ver as próximas — com bolinhas indicando em qual você está. Vale tanto para as fotos gerais da OS quanto para as fotos de cada pergunta do checklist (antes, durante e depois do serviço). Tocar em qualquer foto continua abrindo ela em tela cheia.',
         category: 'melhoria',
       },
       {
@@ -771,7 +788,7 @@ const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Detalhe de Empresa e Vendedor (painel Auctus) também ganham visual de aplicativo no celular',
-        description: 'Auditamos as telas de detalhe e duas estavam com visual desktop no celular: detalhe da Empresa (painel master Auctus) tinha título grande de 3rem que dominava a tela e abas em barra desktop, e detalhe do Vendedor tinha 4 abas em grid apertado. Agora as duas usam pílulas horizontais pra trocar de aba (mesmo padrão do resto do sistema), os botões de ação (Voltar/WhatsApp/Editar/Excluir) virou ícones compactos no mobile (com label só no computador), e o título reduziu pra "text-xl" no celular. Detalhe de Cliente, Equipamento, Contrato e Questionário já estavam OK.',
+        description: 'Auditamos as telas de detalhe e duas estavam com visual desktop no celular: detalhe da Empresa (painel master Auctus) tinha título grande de 3rem que dominava a tela e abas em barra desktop, e detalhe do Vendedor tinha 4 abas em grid apertado. Agora as duas usam pílulas horizontais pra trocar de aba (mesmo padrão do resto do sistema), os botões de ação (Voltar/WhatsApp/Editar/Excluir) virou ícones compactos no mobile (com label só no computador), e o título reduziu pra "text-xl" no celular. Detalhe de Cliente, Equipamento, Contrato e Checklist já estavam OK.',
         category: 'melhoria',
       },
     ],
@@ -956,7 +973,7 @@ const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Polish final do visual mobile no sistema',
-        description: 'Aplicamos o visual de aplicativo nativo nos últimos pedaços que ficaram fora das ondas anteriores: o Controle de Ponto Eletrônico (dentro de Funcionários), as Faturas de Cartão (dentro do Financeiro), as Temporadas e Episódios do Domiflix (quando o admin abre o detalhe de um título-série), o painel compartilhado de Questionários, os Custos Globais (dentro de Orçamentos) e a gestão de Categorias e Campos Customizados de Equipamento. Em todos os casos, o celular ganhou cabeçalho compacto, lista no estilo iOS/Android com arrastar pra editar/excluir e ícone de três pontinhos, e botão flutuante de "Novo X" quando aplicável. No computador, tudo continua exatamente como antes.',
+        description: 'Aplicamos o visual de aplicativo nativo nos últimos pedaços que ficaram fora das ondas anteriores: o Controle de Ponto Eletrônico (dentro de Funcionários), as Faturas de Cartão (dentro do Financeiro), as Temporadas e Episódios do Domiflix (quando o admin abre o detalhe de um título-série), o painel compartilhado de Checklists, os Custos Globais (dentro de Orçamentos) e a gestão de Categorias e Campos Customizados de Equipamento. Em todos os casos, o celular ganhou cabeçalho compacto, lista no estilo iOS/Android com arrastar pra editar/excluir e ícone de três pontinhos, e botão flutuante de "Novo X" quando aplicável. No computador, tudo continua exatamente como antes.',
         category: 'melhoria',
       },
     ],
@@ -968,7 +985,7 @@ const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Todas as telas do sistema com visual de aplicativo nativo no celular',
-        description: 'Fechamos o capítulo mobile-first do Dominex: 18 telas foram redesenhadas pra ter o mesmo visual de aplicativo nativo que Ordens de Serviço, Clientes e Equipamentos já tinham. As telas atualizadas agora têm cabeçalho compacto, lista no estilo iOS/Android (arrastar pra editar/excluir + ícone de três pontinhos com menu), botão flutuante de "Novo X" no canto inferior direito, filtros agrupados em gaveta de baixo, e contadores em chips coloridos que rolam de lado. Telas refatoradas: Agenda, PMOC, Rastreamento de Técnicos, Catálogo de Serviços, Estoque, Questionários, Financeiro (tabs de listagem), Orçamentos, Contratos, CRM (kanban + opção de lista), Funcionários, Usuários, Equipes, e os painéis de administração da Auctus (Empresas, Vendedores, Financeiro Auctus, CRM Auctus, Catálogo Domiflix). No computador, todas continuam exatamente como antes. Listagens com kanban (CRM) e árvores aninhadas (Domiflix) foram tratadas com cuidado pra preservar a funcionalidade existente.',
+        description: 'Fechamos o capítulo mobile-first do Dominex: 18 telas foram redesenhadas pra ter o mesmo visual de aplicativo nativo que Ordens de Serviço, Clientes e Equipamentos já tinham. As telas atualizadas agora têm cabeçalho compacto, lista no estilo iOS/Android (arrastar pra editar/excluir + ícone de três pontinhos com menu), botão flutuante de "Novo X" no canto inferior direito, filtros agrupados em gaveta de baixo, e contadores em chips coloridos que rolam de lado. Telas refatoradas: Agenda, PMOC, Rastreamento de Técnicos, Catálogo de Serviços, Estoque, Checklists, Financeiro (tabs de listagem), Orçamentos, Contratos, CRM (kanban + opção de lista), Funcionários, Usuários, Equipes, e os painéis de administração da Auctus (Empresas, Vendedores, Financeiro Auctus, CRM Auctus, Catálogo Domiflix). No computador, todas continuam exatamente como antes. Listagens com kanban (CRM) e árvores aninhadas (Domiflix) foram tratadas com cuidado pra preservar a funcionalidade existente.',
         category: 'melhoria',
       },
     ],
@@ -1004,7 +1021,7 @@ const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Fotos da Ordem de Serviço abrem dentro do app',
-        description: 'Antes, ao tocar em uma foto na visualização da Ordem de Serviço, o navegador abria a imagem em uma nova aba — quebrava o fluxo, especialmente no celular. Agora a foto abre em um visualizador sutil em cima da tela: imagem grande centralizada, fundo escurecido, setas para passar entre fotos do mesmo grupo, botão para baixar e botão para fechar. Vale tanto para as fotos uploadadas direto na OS quanto para as fotos enviadas nas respostas do questionário do técnico.',
+        description: 'Antes, ao tocar em uma foto na visualização da Ordem de Serviço, o navegador abria a imagem em uma nova aba — quebrava o fluxo, especialmente no celular. Agora a foto abre em um visualizador sutil em cima da tela: imagem grande centralizada, fundo escurecido, setas para passar entre fotos do mesmo grupo, botão para baixar e botão para fechar. Vale tanto para as fotos uploadadas direto na OS quanto para as fotos enviadas nas respostas do checklist do técnico.',
         category: 'correcao',
       },
       {
@@ -1186,8 +1203,8 @@ const changelog: ChangelogEntry[] = [
     type: 'patch',
     changes: [
       {
-        title: 'Vários questionários no mesmo equipamento',
-        description: 'Ao criar ou editar uma OS, agora dá pra adicionar mais de um questionário no mesmo equipamento — igual já funcionava em OS sem equipamento vinculado. Útil quando o atendimento exige checklists separados no mesmo aparelho (por exemplo: PMOC obrigatório por lei + checklist interno da empresa + NPS final). Cada questionário fica como um "badge" que pode ser adicionado ou removido livremente. O app do técnico em campo, o modal "Ver OS" e o relatório final mostram cada questionário separadamente, sem misturar respostas. OS antigas com um único questionário continuam funcionando normalmente, sem alteração.',
+        title: 'Vários checklists no mesmo equipamento',
+        description: 'Ao criar ou editar uma OS, agora dá pra adicionar mais de um checklist no mesmo equipamento — igual já funcionava em OS sem equipamento vinculado. Útil quando o atendimento exige checklists separados no mesmo aparelho (por exemplo: PMOC obrigatório por lei + checklist interno da empresa + NPS final). Cada checklist fica como um "badge" que pode ser adicionado ou removido livremente. O app do técnico em campo, o modal "Ver OS" e o relatório final mostram cada checklist separadamente, sem misturar respostas. OS antigas com um único checklist continuam funcionando normalmente, sem alteração.',
         category: 'melhoria',
       },
     ],
@@ -1608,7 +1625,7 @@ const changelog: ChangelogEntry[] = [
       },
       {
         title: 'Botão de retomar OS pausada',
-        description: 'OSs pausadas exibem botão para retomar o atendimento, voltando ao status "Em Andamento" e permitindo continuar questionários e assinaturas.',
+        description: 'OSs pausadas exibem botão para retomar o atendimento, voltando ao status "Em Andamento" e permitindo continuar checklists e assinaturas.',
         category: 'recurso',
       },
       {
@@ -1759,8 +1776,8 @@ const changelog: ChangelogEntry[] = [
         category: 'correcao',
       },
       {
-        title: 'Categoria e marca no cabeçalho dos questionários',
-        description: 'O cabeçalho de cada equipamento nos questionários agora exibe badge colorido da categoria, marca/modelo e localização — tanto na visão do técnico, link público e relatório PDF.',
+        title: 'Categoria e marca no cabeçalho dos checklists',
+        description: 'O cabeçalho de cada equipamento nos checklists agora exibe badge colorido da categoria, marca/modelo e localização — tanto na visão do técnico, link público e relatório PDF.',
         category: 'melhoria',
       },
       {
@@ -1769,8 +1786,8 @@ const changelog: ChangelogEntry[] = [
         category: 'melhoria',
       },
       {
-        title: 'Ordenação correta dos questionários',
-        description: 'As respostas dos questionários no link público e na visualização interna agora respeitam a ordem de posição configurada no template.',
+        title: 'Ordenação correta dos checklists',
+        description: 'As respostas dos checklists no link público e na visualização interna agora respeitam a ordem de posição configurada no template.',
         category: 'correcao',
       },
     ],
@@ -1900,17 +1917,17 @@ const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Correção de erro ao abrir OS pelo técnico',
-        description: 'Corrigido erro "a is not a function" que impedia a abertura da OS em alguns cenários, causado por dados de questionário retornados em formato inesperado.',
+        description: 'Corrigido erro "a is not a function" que impedia a abertura da OS em alguns cenários, causado por dados de checklist retornados em formato inesperado.',
         category: 'correcao',
       },
       {
         title: 'Correção de respostas duplicadas entre equipamentos',
-        description: 'Respostas de questionário agora são filtradas corretamente por template, evitando que respostas de um equipamento apareçam em outro.',
+        description: 'Respostas de checklist agora são filtradas corretamente por template, evitando que respostas de um equipamento apareçam em outro.',
         category: 'correcao',
       },
       {
         title: 'Fotos clicáveis em tela cheia no link público',
-        description: 'Fotos de respostas de questionários e fotos da OS no link de acompanhamento do cliente agora podem ser ampliadas ao clicar.',
+        description: 'Fotos de respostas de checklists e fotos da OS no link de acompanhamento do cliente agora podem ser ampliadas ao clicar.',
         category: 'melhoria',
       },
       {
@@ -1925,7 +1942,7 @@ const changelog: ChangelogEntry[] = [
       },
       {
         title: 'Edição e remoção de respostas e fotos',
-        description: 'Técnicos agora podem editar respostas já dadas (ícone de lápis) e remover fotos adicionadas a perguntas do questionário.',
+        description: 'Técnicos agora podem editar respostas já dadas (ícone de lápis) e remover fotos adicionadas a perguntas do checklist.',
         category: 'recurso',
       },
     ],
@@ -1993,8 +2010,8 @@ const changelog: ChangelogEntry[] = [
         category: 'correcao',
       },
       {
-        title: 'Questionários em accordion na OS do técnico',
-        description: 'O preenchimento da OS exibe questionários por equipamento em formato de accordion com indicador visual de conclusão, foto e local do equipamento.',
+        title: 'Checklists em accordion na OS do técnico',
+        description: 'O preenchimento da OS exibe checklists por equipamento em formato de accordion com indicador visual de conclusão, foto e local do equipamento.',
         category: 'melhoria',
       },
     ],
@@ -2133,8 +2150,8 @@ const changelog: ChangelogEntry[] = [
         category: 'correcao',
       },
       {
-        title: 'Soft delete de questionários',
-        description: 'Questionários agora são desativados em vez de excluídos, preservando o histórico de OS vinculadas.',
+        title: 'Soft delete de checklists',
+        description: 'Checklists agora são desativados em vez de excluídos, preservando o histórico de OS vinculadas.',
         category: 'melhoria',
       },
       {
@@ -2150,8 +2167,8 @@ const changelog: ChangelogEntry[] = [
     type: 'patch',
     changes: [
       {
-        title: 'Exclusão de questionários com mensagem tratada',
-        description: 'Erros de vínculo ao tentar excluir questionários agora são interpretados corretamente e exibidos com mensagem amigável em português.',
+        title: 'Exclusão de checklists com mensagem tratada',
+        description: 'Erros de vínculo ao tentar excluir checklists agora são interpretados corretamente e exibidos com mensagem amigável em português.',
         category: 'correcao',
       },
       {
@@ -2439,7 +2456,7 @@ const changelog: ChangelogEntry[] = [
       },
       {
         title: 'Ordenação por colunas em todas as tabelas restantes',
-        description: 'Adicionada ordenação por colunas em Questionários, Detalhe do Cliente, Detalhe do Equipamento, Detalhe do Contrato, Tipos de Serviço e Extrato de Funcionários.',
+        description: 'Adicionada ordenação por colunas em Checklists, Detalhe do Cliente, Detalhe do Equipamento, Detalhe do Contrato, Tipos de Serviço e Extrato de Funcionários.',
         category: 'melhoria',
       },
     ],
@@ -2785,7 +2802,7 @@ const changelog: ChangelogEntry[] = [
       },
       {
         title: 'Edição de perguntas por modal',
-        description: 'Ao editar uma pergunta do questionário, abre um modal completo ao invés de edição inline.',
+        description: 'Ao editar uma pergunta do checklist, abre um modal completo ao invés de edição inline.',
         category: 'melhoria',
       },
       {
@@ -3125,8 +3142,8 @@ const changelog: ChangelogEntry[] = [
         category: 'melhoria',
       },
       {
-        title: 'Múltiplos questionários no relatório',
-        description: 'O relatório de OS concluída agora exibe respostas de todos os questionários vinculados, não apenas o primeiro.',
+        title: 'Múltiplos checklists no relatório',
+        description: 'O relatório de OS concluída agora exibe respostas de todos os checklists vinculados, não apenas o primeiro.',
         category: 'correcao',
       },
     ],
@@ -3188,7 +3205,7 @@ const changelog: ChangelogEntry[] = [
     type: 'patch',
     changes: [
       {
-        title: 'Formulários dinâmicos (Questionários)',
+        title: 'Formulários dinâmicos (Checklists)',
         description: 'Criação de templates de formulário com perguntas de múltiplos tipos: texto, número, booleano, seleção, foto e assinatura.',
         category: 'recurso',
       },

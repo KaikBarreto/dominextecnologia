@@ -91,7 +91,7 @@ export default function QuestionnairesPage() {
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
       <MobilePageHeader
-        title="Questionários"
+        title="Checklists"
         subtitle="Gerencie modelos e perguntas por tipo de serviço"
         icon={FileText}
         actions={
@@ -101,7 +101,7 @@ export default function QuestionnairesPage() {
               onClick={() => setCreateOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Novo Questionário
+              Novo Checklist
             </Button>
           )
         }
@@ -112,7 +112,7 @@ export default function QuestionnairesPage() {
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isMobile ? 'Buscar questionários...' : 'Buscar por nome do questionário...'}
+            placeholder={isMobile ? 'Buscar checklists...' : 'Buscar por nome do checklist...'}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -130,13 +130,13 @@ export default function QuestionnairesPage() {
               icon={<FileText className="h-12 w-12" />}
               title={
                 searchTerm
-                  ? 'Nenhum questionário encontrado'
-                  : 'Nenhum questionário criado'
+                  ? 'Nenhum checklist encontrado'
+                  : 'Nenhum checklist criado'
               }
               description={
                 searchTerm
                   ? 'Tente uma busca diferente'
-                  : 'Toque em "Novo Questionário" para começar'
+                  : 'Toque em "Novo Checklist" para começar'
               }
             />
           ) : (
@@ -208,13 +208,13 @@ export default function QuestionnairesPage() {
                 <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="text-lg font-medium">
                   {searchTerm
-                    ? 'Nenhum questionário encontrado'
-                    : 'Nenhum questionário criado'}
+                    ? 'Nenhum checklist encontrado'
+                    : 'Nenhum checklist criado'}
                 </h3>
                 <p className="text-muted-foreground">
                   {searchTerm
                     ? 'Tente uma busca diferente'
-                    : 'Clique em "Novo Questionário" para começar'}
+                    : 'Clique em "Novo Checklist" para começar'}
                 </p>
               </div>
             ) : (
@@ -310,16 +310,16 @@ export default function QuestionnairesPage() {
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Questionário"
+          label="Checklist"
           onClick={() => setCreateOpen(true)}
         />
       )}
 
       {/* Create Modal */}
-      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Questionário">
+      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Checklist">
         <div className="space-y-4">
           <div>
-            <Label>Nome do questionário</Label>
+            <Label>Nome do checklist</Label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -371,11 +371,11 @@ export default function QuestionnairesPage() {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar questionário?</AlertDialogTitle>
+            <AlertDialogTitle>Desativar checklist?</AlertDialogTitle>
             <AlertDialogDescription>
               {templateToDelete
-                ? `O questionário "${templateToDelete.name}" deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.`
-                : 'O questionário deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.'}
+                ? `O checklist "${templateToDelete.name}" deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.`
+                : 'O checklist deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -251,7 +251,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   if (questions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
-        Nenhuma pergunta configurada para este questionário.
+        Nenhuma pergunta configurada para este checklist.
       </p>
     );
   }

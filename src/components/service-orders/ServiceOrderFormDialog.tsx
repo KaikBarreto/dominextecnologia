@@ -831,7 +831,7 @@ export function ServiceOrderFormDialog({
                 {/* Questionnaire per equipment */}
                 {selectedEquipmentIds.length > 0 ? (
                   <div className="space-y-3">
-                    <p className="text-sm font-medium">Questionários por equipamento</p>
+                    <p className="text-sm font-medium">Checklists por equipamento</p>
                     {selectedEquipmentIds.map((eqId) => {
                       const eq = equipment.find(e => e.id === eqId);
                       const selectedTemplates = equipmentTemplateMap[eqId] || [];
@@ -845,7 +845,7 @@ export function ServiceOrderFormDialog({
                                 const tmpl = filteredTemplates.find(t => t.id === tId);
                                 return (
                                   <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                                    {tmpl?.name || 'Questionário'}
+                                    {tmpl?.name || 'Checklist'}
                                     <button
                                       type="button"
                                       className="ml-1 rounded-full hover:bg-muted p-0.5"
@@ -874,7 +874,7 @@ export function ServiceOrderFormDialog({
                               }}
                             >
                               <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Adicionar questionário..." />
+                                <SelectValue placeholder="Adicionar checklist..." />
                               </SelectTrigger>
                               <SelectContent>
                                 {availableTemplates.map((t) => (
@@ -883,7 +883,7 @@ export function ServiceOrderFormDialog({
                                   </SelectItem>
                                 ))}
                                 {availableTemplates.length === 0 && (
-                                  <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum questionário disponível</div>
+                                  <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
                                 )}
                               </SelectContent>
                             </Select>
@@ -892,7 +892,7 @@ export function ServiceOrderFormDialog({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                title="Pré-visualizar questionário"
+                                title="Pré-visualizar checklist"
                                 onClick={() => setPreviewTemplateId(selectedTemplates[0])}
                               >
                                 <Eye className="h-4 w-4" />
@@ -905,14 +905,14 @@ export function ServiceOrderFormDialog({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">Questionários</Label>
+                    <Label className="text-sm font-medium">Checklists</Label>
                     {selectedStandaloneTemplateIds.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {selectedStandaloneTemplateIds.map(tId => {
                           const tmpl = filteredTemplates.find(t => t.id === tId);
                           return (
                             <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                              {tmpl?.name || 'Questionário'}
+                              {tmpl?.name || 'Checklist'}
                               <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
                                 ✕
                               </button>
@@ -923,13 +923,13 @@ export function ServiceOrderFormDialog({
                     )}
                     <div className="flex gap-2 items-center">
                       <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
-                        <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar questionário..." /></SelectTrigger>
+                        <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar checklist..." /></SelectTrigger>
                         <SelectContent>
                           {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).map((t) => (
                             <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
                           ))}
                           {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).length === 0 && (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum questionário disponível</div>
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
                           )}
                         </SelectContent>
                       </Select>
@@ -1347,7 +1347,7 @@ export function ServiceOrderFormDialog({
               {/* Questionnaire per equipment */}
               {selectedEquipmentIds.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">Questionários por equipamento</p>
+                  <p className="text-sm font-medium">Checklists por equipamento</p>
                   {selectedEquipmentIds.map((eqId) => {
                     const eq = equipment.find(e => e.id === eqId);
                     const selectedTemplates = equipmentTemplateMap[eqId] || [];
@@ -1361,7 +1361,7 @@ export function ServiceOrderFormDialog({
                               const tmpl = filteredTemplates.find(t => t.id === tId);
                               return (
                                 <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                                  {tmpl?.name || 'Questionário'}
+                                  {tmpl?.name || 'Checklist'}
                                   <button
                                     type="button"
                                     className="ml-1 rounded-full hover:bg-muted p-0.5"
@@ -1390,7 +1390,7 @@ export function ServiceOrderFormDialog({
                             }}
                           >
                             <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Adicionar questionário..." />
+                              <SelectValue placeholder="Adicionar checklist..." />
                             </SelectTrigger>
                             <SelectContent>
                               {availableTemplates.map((t) => (
@@ -1399,7 +1399,7 @@ export function ServiceOrderFormDialog({
                                 </SelectItem>
                               ))}
                               {availableTemplates.length === 0 && (
-                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum questionário disponível</div>
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
                               )}
                             </SelectContent>
                           </Select>
@@ -1408,7 +1408,7 @@ export function ServiceOrderFormDialog({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              title="Pré-visualizar questionário"
+                              title="Pré-visualizar checklist"
                               onClick={() => setPreviewTemplateId(selectedTemplates[0])}
                             >
                               <Eye className="h-4 w-4" />
@@ -1421,14 +1421,14 @@ export function ServiceOrderFormDialog({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Questionários</Label>
+                  <Label className="text-sm font-medium">Checklists</Label>
                   {selectedStandaloneTemplateIds.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedStandaloneTemplateIds.map(tId => {
                         const tmpl = filteredTemplates.find(t => t.id === tId);
                         return (
                           <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                            {tmpl?.name || 'Questionário'}
+                            {tmpl?.name || 'Checklist'}
                             <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
                               ✕
                             </button>
@@ -1439,13 +1439,13 @@ export function ServiceOrderFormDialog({
                   )}
                   <div className="flex gap-2 items-center">
                     <Select value="" onValueChange={(v) => { if (v && v !== 'none' && !selectedStandaloneTemplateIds.includes(v)) setSelectedStandaloneTemplateIds(prev => [...prev, v]); }}>
-                      <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar questionário..." /></SelectTrigger>
+                      <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar checklist..." /></SelectTrigger>
                       <SelectContent>
                         {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).map((t) => (
                           <SelectItem key={t.id} value={t.id}>{t.name} ({t.questions?.length || 0} perguntas)</SelectItem>
                         ))}
                         {filteredTemplates.filter(t => !selectedStandaloneTemplateIds.includes(t.id)).length === 0 && (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum questionário disponível</div>
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum checklist disponível</div>
                         )}
                       </SelectContent>
                     </Select>

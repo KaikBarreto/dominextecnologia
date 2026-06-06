@@ -759,7 +759,7 @@ export default function ServiceOrders() {
                                               onClick: () => { setViewingOsId(os.id); setViewDialogOpen(true); },
                                             },
                                             {
-                                              label: 'Abrir questionário',
+                                              label: 'Abrir checklist',
                                               icon: ExternalLink,
                                               onClick: () => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank'),
                                             },

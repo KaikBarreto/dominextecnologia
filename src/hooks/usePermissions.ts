@@ -35,7 +35,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:schedule', label: 'Agenda', group: 'Geral', category: 'geral' },
   { key: 'screen:service_orders', label: 'Ordens de Serviço', group: 'Serviços', category: 'servicos' },
   { key: 'screen:services', label: 'Serviços', group: 'Serviços', category: 'servicos' },
-  { key: 'screen:questionnaires', label: 'Questionários', group: 'Serviços', category: 'servicos' },
+  { key: 'screen:questionnaires', label: 'Checklists', group: 'Serviços', category: 'servicos' },
   { key: 'screen:contracts', label: 'Contratos', group: 'Serviços', category: 'servicos' },
   { key: 'screen:equipment', label: 'Equipamentos', group: 'Serviços', category: 'servicos' },
   { key: 'screen:customers', label: 'Clientes', group: 'Comercial', category: 'comercial' },

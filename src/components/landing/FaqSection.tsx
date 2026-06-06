@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: 'Funciona em celular? Tem app para o técnico?',
-    a: 'Sim. A plataforma é 100% web e responsiva (funciona em qualquer navegador) e o técnico acessa por um app PWA instalável no Android e iOS, com check-in/out, fotos, assinatura digital e questionários.',
+    a: 'Sim. A plataforma é 100% web e responsiva (funciona em qualquer navegador) e o técnico acessa por um app PWA instalável no Android e iOS, com check-in/out, fotos, assinatura digital e checklists.',
   },
   {
     q: 'Como funciona o teste grátis?',
@@ -29,7 +29,7 @@ const faqs = [
   },
   {
     q: 'Posso personalizar formulários, checklists e relatórios?',
-    a: 'Sim. Você cria templates de questionários por tipo de serviço, define campos obrigatórios, fotos e assinatura. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
+    a: 'Sim. Você cria templates de checklists por tipo de serviço, define campos obrigatórios, fotos e assinatura. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
   },
   {
     q: 'Tem CRM e funil de vendas integrado?',

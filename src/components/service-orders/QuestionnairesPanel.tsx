@@ -91,7 +91,7 @@ export function QuestionnairesPanel() {
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" />
-            Novo questionário
+            Novo checklist
           </Button>
         </div>
       )}
@@ -100,16 +100,16 @@ export function QuestionnairesPanel() {
         isMobile ? (
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
-            title="Nenhum questionário criado"
-            description='Toque em "Novo Questionário" para começar'
+            title="Nenhum checklist criado"
+            description='Toque em "Novo Checklist" para começar'
           />
         ) : (
           <Card>
             <CardContent className="p-0">
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-medium">Nenhum questionário criado</h3>
-                <p className="text-muted-foreground">Clique em "Novo questionário" para começar</p>
+                <h3 className="text-lg font-medium">Nenhum checklist criado</h3>
+                <p className="text-muted-foreground">Clique em "Novo checklist" para começar</p>
               </div>
             </CardContent>
           </Card>
@@ -243,20 +243,20 @@ export function QuestionnairesPanel() {
         </Card>
       )}
 
-      {/* FAB mobile-only para criar novo questionário. */}
+      {/* FAB mobile-only para criar novo checklist. */}
       {isMobile && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Questionário"
+          label="Checklist"
           onClick={() => setCreateOpen(true)}
         />
       )}
 
       {/* Create Modal */}
-      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Questionário">
+      <ResponsiveModal open={createOpen} onOpenChange={setCreateOpen} title="Novo Checklist">
         <div className="space-y-4">
           <div>
-            <Label>Nome do questionário</Label>
+            <Label>Nome do checklist</Label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -308,11 +308,11 @@ export function QuestionnairesPanel() {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar questionário?</AlertDialogTitle>
+            <AlertDialogTitle>Desativar checklist?</AlertDialogTitle>
             <AlertDialogDescription>
               {templateToDelete
-                ? `O questionário "${templateToDelete.name}" deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.`
-                : 'O questionário deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.'}
+                ? `O checklist "${templateToDelete.name}" deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.`
+                : 'O checklist deixará de aparecer na listagem e não poderá mais ser vinculado em novas OSs, mas continuará preservado nas OSs já existentes.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

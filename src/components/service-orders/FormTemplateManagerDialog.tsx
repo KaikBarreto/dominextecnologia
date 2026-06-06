@@ -309,7 +309,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
         <div className="p-4 border-b">
           <h3 className="font-semibold flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
-            Questionários
+            Checklists
           </h3>
         </div>
         
@@ -318,14 +318,14 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
           {!showCreateTemplate ? (
             <Button className="w-full" variant="outline" onClick={() => setShowCreateTemplate(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Novo questionário
+              Novo checklist
             </Button>
           ) : (
             <div className="flex gap-2">
               <Input
                 value={newTemplateName}
                 onChange={(e) => setNewTemplateName(e.target.value)}
-                placeholder="Nome do questionário"
+                placeholder="Nome do checklist"
                 className="flex-1"
               />
               <Button
@@ -366,7 +366,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
             ))}
             {templates.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-8">
-                Nenhum questionário criado
+                Nenhum checklist criado
               </p>
             )}
           </div>
@@ -523,7 +523,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Selecione um questionário para editar</p>
+              <p>Selecione um checklist para editar</p>
             </div>
           </div>
         )}
@@ -535,9 +535,9 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
     <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remover questionário?</AlertDialogTitle>
+          <AlertDialogTitle>Remover checklist?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta ação não pode ser desfeita. Todas as perguntas deste questionário serão removidas.
+            Esta ação não pode ser desfeita. Todas as perguntas deste checklist serão removidas.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

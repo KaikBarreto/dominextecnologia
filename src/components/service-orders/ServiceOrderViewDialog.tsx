@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2 } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import { useServiceRatings } from '@/hooks/useServiceRatings';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
 import { cn } from '@/lib/utils';
@@ -408,17 +409,24 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                 const titleParts: string[] = [];
                 if (item.equipment?.name) titleParts.push(item.equipment.name);
                 if (item.form_template?.name) titleParts.push(item.form_template.name);
-                const title = titleParts.join(' — ') || 'Questionário';
+                const title = titleParts.join(' — ') || 'Checklist';
                 return (
                   <Card key={cardKey}>
-                    <CardHeader className="py-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <ClipboardCheck className="h-4 w-4" /> {title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0 space-y-3">
-                      {itemResponses.map(renderResponse)}
-                    </CardContent>
+                    <Collapsible defaultOpen={idx === 0}>
+                      <CollapsibleTrigger asChild>
+                        <CardHeader className="group py-3 min-h-[44px] cursor-pointer w-full flex-row items-center justify-between gap-2">
+                          <CardTitle className="text-sm flex items-center gap-2 text-left">
+                            <ClipboardCheck className="h-4 w-4 shrink-0" /> {title}
+                          </CardTitle>
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 space-y-3">
+                          {itemResponses.map(renderResponse)}
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </Card>
                 );
               })}
@@ -429,14 +437,21 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         // Legacy fallback: single template on the OS, no junction rows
         return (
           <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4" /> Questionário: {serviceOrder.form_template?.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              {formResponses.map(renderResponse)}
-            </CardContent>
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="group py-3 min-h-[44px] cursor-pointer w-full flex-row items-center justify-between gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2 text-left">
+                    <ClipboardCheck className="h-4 w-4 shrink-0" /> Checklist: {serviceOrder.form_template?.name}
+                  </CardTitle>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0 space-y-3">
+                  {formResponses.map(renderResponse)}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
           </Card>
         );
       })()}

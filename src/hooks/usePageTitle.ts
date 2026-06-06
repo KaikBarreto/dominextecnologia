@@ -9,7 +9,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/ordens-servico": "Ordens de Serviço",
   "/servicos": "Serviços",
-  "/questionarios": "Questionários",
+  "/questionarios": "Checklists",
   "/agenda": "Agenda",
   "/clientes": "Clientes",
   "/equipamentos": "Equipamentos",
@@ -55,7 +55,7 @@ export const usePageTitle = () => {
       if (pathname.startsWith("/clientes/")) title = "Cliente";
       else if (pathname.startsWith("/equipamentos/")) title = "Equipamento";
       else if (pathname.startsWith("/contratos/")) title = "Contrato";
-      else if (pathname.startsWith("/questionarios/")) title = "Questionário";
+      else if (pathname.startsWith("/questionarios/")) title = "Checklist";
       else if (pathname.startsWith("/admin/empresas/")) title = "Admin | Empresa";
       else if (pathname.startsWith("/os-tecnico/")) title = "OS Técnico";
       else if (pathname.startsWith("/avaliacao/")) title = "Avaliação";

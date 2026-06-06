@@ -64,7 +64,7 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
   },
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('form_template_service_types'),
-    text: 'Este tipo de serviço não pode ser excluído porque está vinculado a questionários.',
+    text: 'Este tipo de serviço não pode ser excluído porque está vinculado a checklists.',
   },
 
   // ── FK: Technician / OS insert ──
@@ -116,19 +116,19 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
   // ── FK: Form Templates / Questionnaires ──
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('service_orders_form_template_id_fkey'),
-    text: 'Este questionário não pode ser excluído porque está vinculado a ordens de serviço.',
+    text: 'Este checklist não pode ser excluído porque está vinculado a ordens de serviço.',
   },
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('contract_items_form_template_id_fkey'),
-    text: 'Este questionário não pode ser excluído porque está vinculado a itens de contrato.',
+    text: 'Este checklist não pode ser excluído porque está vinculado a itens de contrato.',
   },
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('contracts_form_template_id_fkey'),
-    text: 'Este questionário não pode ser excluído porque está vinculado a contratos.',
+    text: 'Este checklist não pode ser excluído porque está vinculado a contratos.',
   },
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('_template_id_fkey'),
-    text: 'Este questionário não pode ser excluído porque está vinculado a ordens de serviço ou contratos.',
+    text: 'Este checklist não pode ser excluído porque está vinculado a ordens de serviço ou contratos.',
   },
 
   // ── FK: Inventory ──
