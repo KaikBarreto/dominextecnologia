@@ -361,12 +361,6 @@ export function useServiceOrders() {
 
   const deleteServiceOrder = useMutation({
     mutationFn: async (id: string) => {
-      // Clear FK references in contract_occurrences
-      await supabase
-        .from('contract_occurrences')
-        .update({ service_order_id: null })
-        .eq('service_order_id', id);
-
       // Clear FK references in other tables
       await supabase
         .from('service_order_equipment')

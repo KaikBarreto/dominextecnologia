@@ -17,7 +17,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
  * aborta com toast informativo e NÃO duplica.
  *
  * Espelha fielmente o loop de geração de `useContracts.createContract`
- * (mesma frequência, mesmo horizonte, mesma estrutura de occurrence + OS +
+ * (mesma frequência, mesmo horizonte, mesma estrutura de OS +
  * service_order_assignees + service_order_equipment). Único atalho: pega
  * assignees apenas a partir do `technician_id` do contrato — se o gestor
  * quiser ajustar time/responsáveis, edita as OSs depois ou usa o fluxo
@@ -168,15 +168,8 @@ export function useGenerateRetroactiveContractOSs() {
           if (assignErr) console.error('Erro vinculando responsáveis:', assignErr);
         }
 
-        // Cria contract_occurrence
-        const { error: occErr } = await supabase.from('contract_occurrences').insert({
-          contract_id: contractId,
-          scheduled_date: dateStr,
-          service_order_id: os.id,
-          occurrence_number: i + 1,
-          status: 'scheduled',
-        } as any);
-        if (occErr) console.error('Erro criando ocorrência:', occErr);
+        // A OS recorrente JÁ é a visita do contrato — não há mais
+        // tabela-sombra de ocorrências pra criar.
       }
 
       return {

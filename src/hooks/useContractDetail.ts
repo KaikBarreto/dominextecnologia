@@ -1,16 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { Contract } from './useContracts';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
+import {
+  type Contract,
+  type ContractServiceOrder,
+  getNextContractOS,
+  isActiveContractOS,
+} from './useContracts';
 import { getErrorMessage } from '@/utils/errorMessages';
 
+/**
+ * Detalhe de um contrato (PMOC ou comum).
+ *
+ * Fonte única das "visitas" = `service_orders` filtrado por `contract_id`.
+ * A antiga tabela-sombra de ocorrências foi aposentada (geração eager de OS
+ * desde a v1.9.12 deixou-a 1-pra-1 com service_orders). As OSs do contrato
+ * são embutidas via FK `service_orders.contract_id` — mesmo padrão da aba
+ * Cronograma e do hook `useContracts`.
+ *
+ * "Visita #N" é DERIVADA: ordena as OSs por `scheduled_date` asc e usa
+ * `index + 1` (não existe `occurrence_number` em service_orders).
+ */
 export function useContractDetail(contractId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { updateServiceOrder } = useServiceOrders();
 
   const { data: contract, isLoading } = useQuery({
     queryKey: ['contract-detail', contractId],
     enabled: !!contractId,
+    // Concluir/cancelar a OS acontece em OUTRA tela. Ao voltar pra cá,
+    // refazemos a busca pra refletir status/progresso reais em tempo real.
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contracts')
@@ -19,7 +42,7 @@ export function useContractDetail(contractId: string | undefined) {
           customers (id, name, document, phone),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
-          contract_occurrences (id, contract_id, scheduled_date, service_order_id, status, occurrence_number, service_orders:service_orders(id, order_number, status, scheduled_date))
+          service_orders (id, order_number, status, scheduled_date, equipment_id)
         `)
         .eq('id', contractId!)
         .single();
@@ -44,41 +67,44 @@ export function useContractDetail(contractId: string | undefined) {
     },
   });
 
-  const updateOccurrenceStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from('contract_occurrences')
-        .update({ status } as any)
-        .eq('id', id);
-      if (error) throw error;
+  // "Pular" uma visita = CANCELAR a OS daquela data. Reusa a mutation de
+  // update de OS (regra de negócio de OS mora no useServiceOrders) em vez de
+  // escrever na antiga tabela-sombra de ocorrências (aposentada).
+  const cancelOccurrenceOs = useMutation({
+    mutationFn: async (serviceOrderId: string) => {
+      await updateServiceOrder.mutateAsync({ id: serviceOrderId, status: 'cancelada' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contract-detail', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
-      toast({ title: 'Ocorrência atualizada!' });
+      toast({ title: 'Visita cancelada!' });
     },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
-  // Computed stats
-  const occurrences = contract?.contract_occurrences || [];
-  const totalOccurrences = occurrences.length;
-  const completedOccurrences = occurrences.filter(o => o.status === 'completed').length;
-  const nextOccurrence = occurrences
-    .filter(o => o.status === 'scheduled')
-    .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime())[0];
+  // Stats derivadas 100% das OSs reais do contrato.
+  const contractOrders: ContractServiceOrder[] = contract?.service_orders || [];
+  const totalOccurrences = contractOrders.length;
+  const completedOccurrences = contractOrders.filter(o => o.status === 'concluida').length;
+  // Próxima visita = OS ativa (≠ concluida/cancelada) com menor scheduled_date.
+  const nextOrder = getNextContractOS(contractOrders);
 
   return {
     contract,
     isLoading,
-    updateOccurrenceStatus,
+    cancelOccurrenceOs,
     linkedTransactions,
     isLoadingTransactions,
     stats: {
       totalOccurrences,
       completedOccurrences,
       progressPercent: totalOccurrences > 0 ? Math.round((completedOccurrences / totalOccurrences) * 100) : 0,
-      nextOccurrence,
+      nextOccurrence: nextOrder,
     },
   };
 }
+
+// Re-export utilitário pra a tela de detalhe filtrar OS ativa sem reimportar
+// de dois lugares.
+export { isActiveContractOS };

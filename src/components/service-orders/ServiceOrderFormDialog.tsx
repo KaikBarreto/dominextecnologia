@@ -518,34 +518,26 @@ export function ServiceOrderFormDialog({
           const diffMs = new Date(newDate + 'T12:00:00').getTime() - new Date(oldDate + 'T12:00:00').getTime();
           const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-          // Get all future occurrences from the same contract
-          const { data: futureOccurrences } = await supabase
-            .from('contract_occurrences')
-            .select('id, scheduled_date, service_order_id')
+          // Get all future service orders from the same contract
+          const { data: futureOrders } = await supabase
+            .from('service_orders')
+            .select('id, scheduled_date')
             .eq('contract_id', contractId)
             .gt('scheduled_date', oldDate)
             .order('scheduled_date', { ascending: true });
 
-          if (futureOccurrences && futureOccurrences.length > 0) {
-            for (const occ of futureOccurrences) {
-              const newOccDate = new Date(new Date(occ.scheduled_date + 'T12:00:00').getTime() + diffDays * 24 * 60 * 60 * 1000);
-              const formattedDate = newOccDate.toISOString().split('T')[0];
+          if (futureOrders && futureOrders.length > 0) {
+            for (const os of futureOrders) {
+              if (!os.scheduled_date) continue;
+              const newOsDate = new Date(new Date(os.scheduled_date + 'T12:00:00').getTime() + diffDays * 24 * 60 * 60 * 1000);
+              const formattedDate = newOsDate.toISOString().split('T')[0];
 
-              // Update occurrence
               await supabase
-                .from('contract_occurrences')
+                .from('service_orders')
                 .update({ scheduled_date: formattedDate })
-                .eq('id', occ.id);
-
-              // Update linked service order if exists
-              if (occ.service_order_id) {
-                await supabase
-                  .from('service_orders')
-                  .update({ scheduled_date: formattedDate })
-                  .eq('id', occ.service_order_id);
-              }
+                .eq('id', os.id);
             }
-            editToast({ title: `${futureOccurrences.length} ocorrência(s) futura(s) ajustada(s)` });
+            editToast({ title: `${futureOrders.length} ocorrência(s) futura(s) ajustada(s)` });
           }
         }
       } catch (err: any) {

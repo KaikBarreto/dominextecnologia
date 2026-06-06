@@ -105,10 +105,6 @@ const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: stri
 
   // ── FK: Contracts (delete blocked) ──
   {
-    test: (m) => m.includes('violates foreign key constraint') && m.includes('contract_occurrences_contract_id_fkey'),
-    text: 'Este contrato não pode ser excluído porque possui ocorrências geradas. Use a exclusão do contrato pela página de detalhe.',
-  },
-  {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('financial_transactions_contract_id_fkey'),
     text: 'Este contrato não pode ser excluído porque possui transações financeiras vinculadas.',
   },
