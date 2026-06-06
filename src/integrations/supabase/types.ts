@@ -637,6 +637,41 @@ export type Database = {
           },
         ]
       }
+      company_pmoc_document_templates: {
+        Row: {
+          certificado_content: string | null
+          company_id: string
+          created_at: string
+          termo_rt_content: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          certificado_content?: string | null
+          company_id: string
+          created_at?: string
+          termo_rt_content?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          certificado_content?: string | null
+          company_id?: string
+          created_at?: string
+          termo_rt_content?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_pmoc_document_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address: string | null

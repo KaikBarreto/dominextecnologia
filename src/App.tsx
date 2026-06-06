@@ -72,7 +72,7 @@ import Finance from "./pages/Finance";
 import PMOC from "./pages/PMOC";
 import Contracts from "./pages/Contracts";
 import ContractDetail from "./pages/ContractDetail";
-import ResponsibleTechnicians from "./pages/ResponsibleTechnicians";
+import ContractSettings from "./pages/ContractSettings";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -273,6 +273,8 @@ const AppRoutes = () => (
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />
     {/* Portal PMOC público (Onda B v1.9.1) — fora do auth wall, indexável pelo Google */}
+    <Route path="/contrato/unidade/:token" element={<PmocPublicPortal />} />
+    {/* Alias legado: QR Codes físicos já impressos apontam pro caminho antigo */}
     <Route path="/pmoc/unidade/:token" element={<PmocPublicPortal />} />
 
     {/* Checkout - full screen, no layout */}
@@ -309,7 +311,10 @@ const AppRoutes = () => (
       <Route path="/pmoc" element={<PMOC />} />
       <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><Contracts /></PermissionRoute>} />
       <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ContractDetail /></PermissionRoute>} />
-      <Route path="/responsaveis-tecnicos" element={<PermissionRoute screenKey="screen:contracts"><ResponsibleTechnicians /></PermissionRoute>} />
+      {/* Path estático (não /contratos/configuracoes) pra não colidir com /contratos/:id do ContractDetail. */}
+      <Route path="/configuracoes-contrato" element={<PermissionRoute screenKey="screen:contracts"><ContractSettings /></PermissionRoute>} />
+      {/* Rota antiga: redireciona direto pra aba RT da nova tela (mantém bookmarks/links). */}
+      <Route path="/responsaveis-tecnicos" element={<Navigate to="/configuracoes-contrato?tab=rt" replace />} />
       <Route path="/usuarios" element={<Navigate to="/configuracoes?tab=usuarios" replace />} />
       <Route path="/configuracoes" element={<PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>} />
       <Route path="/perfil" element={<Profile />} />

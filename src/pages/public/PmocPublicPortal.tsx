@@ -49,7 +49,7 @@ import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 /**
  * Portal PMOC Público — redesign 2026-05-24.
  *
- * Rota: `/pmoc/unidade/:token` (fora do auth wall — ver App.tsx).
+ * Rotas: `/contrato/unidade/:token` (+ alias legado `/pmoc/unidade/:token`) — fora do auth wall, ver App.tsx.
  *
  * Layout:
  *  - Header hero (identidade do tenant) sempre visível no topo.

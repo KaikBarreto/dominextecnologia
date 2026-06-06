@@ -29,8 +29,9 @@ import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSi
 import { PmocContractDocsTab } from '@/components/pmoc/PmocContractDocsTab';
 import { PmocContractCronogramaTab } from '@/components/pmoc/PmocContractCronogramaTab';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useContractDetail } from '@/hooks/useContractDetail';
-import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
+import { useContractDetail, isActiveContractOS } from '@/hooks/useContractDetail';
+import { useContracts, getFrequencyLabel, type ContractServiceOrder } from '@/hooks/useContracts';
+import { osStatusLabels, type OsStatus } from '@/types/database';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,11 +56,19 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'success' | 'outli
   expired: { label: 'Expirado', variant: 'secondary' },
 };
 
-const OCC_STATUS: Record<string, { label: string; variant: 'success' | 'outline' | 'destructive' | 'secondary' }> = {
-  scheduled: { label: 'Agendada', variant: 'outline' },
-  completed: { label: 'Concluída', variant: 'success' },
-  skipped: { label: 'Pulada', variant: 'secondary' },
-  rescheduled: { label: 'Reagendada', variant: 'outline' },
+// Variante de Badge por status REAL da OS. Labels vêm de `osStatusLabels`
+// (fonte canônica compartilhada com a tela de Ordens de Serviço). Não há um
+// mapa de variante de Badge compartilhado no codebase (DaySchedule usa
+// variantes base; TechnicianOS usa semânticas), então fixamos aqui as cores
+// semânticas coerentes com o resto do app.
+const OS_STATUS_VARIANT: Record<OsStatus, 'success' | 'info' | 'warning' | 'destructive' | 'outline'> = {
+  agendada: 'outline',
+  pendente: 'outline',
+  a_caminho: 'info',
+  em_andamento: 'info',
+  pausada: 'warning',
+  concluida: 'success',
+  cancelada: 'destructive',
 };
 
 const FREQUENCY_OPTIONS = [
@@ -76,12 +85,14 @@ export default function ContractDetail() {
   const { resolvedTheme } = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { contract, isLoading, updateOccurrenceStatus, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
+  const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
   const { settings: companySettings } = useCompanySettings();
 
-  // Aba ativa quando contrato é PMOC (Onda C). Default = visão geral.
-  const [pmocTab, setPmocTab] = useState<'overview' | 'documentos' | 'cronograma'>('overview');
+  // Aba ativa do contrato. PMOC tem 4 abas; contrato comum tem 2 (Visão Geral
+  // + Ocorrências). Default = visão geral. "Ocorrências" virou aba própria em
+  // TODO contrato (decisão do CEO).
+  const [pmocTab, setPmocTab] = useState<'overview' | 'ocorrencias' | 'documentos' | 'cronograma'>('overview');
 
   const { createContract, deleteContract } = useContracts();
   const { toast } = useToast();
@@ -110,6 +121,9 @@ export default function ContractDetail() {
   const [showBulkEditPrompt, setShowBulkEditPrompt] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<any>(null);
   const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
+  // OS (visita) que o gestor pediu pra cancelar via botão "Pular".
+  // Guarda o id da OS até a confirmação no AlertDialog.
+  const [cancelingOsId, setCancelingOsId] = useState<string | null>(null);
 
   // Portal PMOC (Onda B v1.9.1) — só aparece quando is_pmoc=true.
   const { hasRole } = useAuth();
@@ -216,10 +230,18 @@ export default function ContractDetail() {
     return () => obs.disconnect();
   }, [isMobile]);
 
-  const sortedOccurrences = useMemo(() =>
-    (contract?.contract_occurrences || []).sort((a: any, b: any) => a.occurrence_number - b.occurrence_number),
-    [contract]
-  );
+  // Visitas do contrato = OSs reais ordenadas por scheduled_date asc.
+  // "#N" é DERIVADO (index + 1) — não existe occurrence_number em service_orders.
+  // Anexamos `occurrence_number` derivado a cada OS pra preservar a UI/sort/print
+  // existentes sem reescrever a coluna "#".
+  const sortedOccurrences = useMemo<(ContractServiceOrder & { occurrence_number: number })[]>(() => {
+    const orders = [...(contract?.service_orders || [])].sort((a, b) => {
+      const da = a.scheduled_date ? parseISO(a.scheduled_date).getTime() : 0;
+      const db = b.scheduled_date ? parseISO(b.scheduled_date).getTime() : 0;
+      return da - db;
+    });
+    return orders.map((o, i) => ({ ...o, occurrence_number: i + 1 }));
+  }, [contract]);
   const { sortedItems: sortedOcc, sortConfig: occSortConfig, handleSort: handleOccSort } = useTableSort(sortedOccurrences);
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
@@ -328,9 +350,11 @@ export default function ContractDetail() {
     if (!contract) return;
     setIsRenewing(true);
     try {
-      const lastOcc = sortedOccurrences[sortedOccurrences.length - 1];
-      const newStartDate = lastOcc
-        ? format(addDays(parseISO(lastOcc.scheduled_date), 1), 'yyyy-MM-dd')
+      // Nova data de início = dia seguinte à MAIOR scheduled_date das OSs do
+      // contrato (sortedOccurrences já vem ordenado asc → última = maior).
+      const lastOrder = sortedOccurrences[sortedOccurrences.length - 1];
+      const newStartDate = lastOrder?.scheduled_date
+        ? format(addDays(parseISO(lastOrder.scheduled_date), 1), 'yyyy-MM-dd')
         : format(new Date(), 'yyyy-MM-dd');
 
       const result = await createContract.mutateAsync({
@@ -422,7 +446,7 @@ export default function ContractDetail() {
   // Os campos abaixo vivem em colunas adicionadas pela Onda A/B (RT) — usamos
   // narrowing defensivo via Record genérico até types.ts ser regenerado.
   type RtRelation = { full_name?: string; modality?: string; cft_crea?: string };
-  type CustomerExtra = { address?: string; city?: string; state?: string };
+  type CustomerExtra = { document?: string; address?: string; city?: string; state?: string };
   // PostgREST join `responsible_technicians:responsible_technician_id (...)` no useContracts
   // resulta no alias PLURAL `responsible_technicians` (não singular). Bug histórico: lia
   // singular → contractRt sempre undefined → banner pintava RT como faltando mesmo
@@ -452,6 +476,7 @@ export default function ContractDetail() {
         rt_cft_crea: contractRt?.cft_crea ?? '',
         cidade: companySettings?.city ?? '',
         customer_name: customerExtra.name ?? '',
+        customer_document: customerExtra.document ?? '',
         customer_address: [customerExtra.address, customerExtra.city, customerExtra.state]
           .filter(Boolean)
           .join(', '),
@@ -537,10 +562,18 @@ export default function ContractDetail() {
         contratos não-PMOC seguem direto pra "Visão Geral" sem nav.
       */}
       {(() => {
+        // Abas PMOC (4): Visão Geral, Ocorrências, Documentos, Cronograma.
         const pmocSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
+          { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
           { value: 'documentos', label: 'Documentos', icon: FileText },
           { value: 'cronograma', label: 'Cronograma', icon: Calendar },
+        ];
+
+        // Abas de contrato comum (2): Visão Geral + Ocorrências.
+        const commonSidebarTabs: SettingsTab[] = [
+          { value: 'overview', label: 'Visão Geral', icon: Info },
+          { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
         ];
 
         const overviewContent = (
@@ -789,123 +822,6 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          {/* Occurrences */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-            <CardHeader>
-              <CardTitle className="min-w-0 text-base sm:text-lg break-words">Ocorrências ({occurrences.length})</CardTitle>
-            </CardHeader>
-            <CardContent className={cn(isMobile ? 'p-3 min-w-0' : 'p-0 min-w-0')}>
-              {isMobile ? (
-                <div className="space-y-2 min-w-0">
-                  {occPagination.paginatedItems.map(occ => {
-                    const occDate = parseLocalDate(occ.scheduled_date);
-                    const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
-                    const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
-                    return (
-                      <div key={occ.id} className={cn('min-w-0 space-y-2 rounded-xl border p-3', isPast && 'border-warning/50 bg-warning/5')}>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-xs text-muted-foreground">#{occ.occurrence_number}</span>
-                          <Badge variant={occStatusCfg.variant} className="shrink-0">{occStatusCfg.label}</Badge>
-                        </div>
-                        <div className="flex min-w-0 flex-col items-start gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                          <span className={cn('font-medium break-words', isPast && 'text-warning')}>
-                            {format(occDate, 'dd/MM/yyyy')} <span className="font-normal text-muted-foreground">({format(occDate, 'EEE', { locale: ptBR })})</span>
-                          </span>
-                          {occ.service_orders ? (
-                            <Badge variant="secondary" className="shrink-0 self-start text-xs">OS #{occ.service_orders.order_number}</Badge>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center justify-end gap-1">
-                          {occ.service_order_id && (
-                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 active:scale-90 transition-transform rounded-xl" asChild>
-                              <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer" aria-label="Abrir OS em nova aba">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          )}
-                          {occ.status === 'scheduled' && (
-                            <Button
-                              variant="ghost" size="icon" className="min-h-11 min-w-11 text-muted-foreground hover:text-warning active:scale-90 transition-transform rounded-xl"
-                              title="Pular esta ocorrência"
-                              onClick={() => updateOccurrenceStatus.mutate({ id: occ.id, status: 'skipped' })}
-                            >
-                              <SkipForward className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div className="min-w-0 overflow-x-auto">
-                    <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">#</SortableTableHead>
-                        <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>Data</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Dia</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>OS</SortableTableHead>
-                        <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>Status</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {occPagination.paginatedItems.map(occ => {
-                        const occDate = parseLocalDate(occ.scheduled_date);
-                        const isPast = occ.status === 'scheduled' && isBefore(occDate, new Date());
-                        const occStatusCfg = OCC_STATUS[occ.status] || OCC_STATUS.scheduled;
-
-                        return (
-                          <TableRow key={occ.id} className={cn(isPast && 'bg-warning/5')}>
-                            <TableCell className="font-mono text-xs text-muted-foreground">{occ.occurrence_number}</TableCell>
-                            <TableCell className={cn(isPast && 'text-warning font-medium')}>
-                              {format(occDate, 'dd/MM/yyyy')}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {format(occDate, 'EEE', { locale: ptBR })}
-                            </TableCell>
-                            <TableCell>
-                              {occ.service_orders ? (
-                                <Badge variant="secondary">OS #{occ.service_orders.order_number}</Badge>
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={occStatusCfg.variant}>{occStatusCfg.label}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                {occ.service_order_id && (
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                                    <a href={`/os-tecnico/${occ.service_order_id}`} target="_blank" rel="noopener noreferrer">
-                                      <ExternalLink className="h-3.5 w-3.5" />
-                                    </a>
-                                  </Button>
-                                )}
-                                {occ.status === 'scheduled' && (
-                                  <Button
-                                    variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-warning"
-                                    title="Pular esta ocorrência"
-                                    onClick={() => updateOccurrenceStatus.mutate({ id: occ.id, status: 'skipped' })}
-                                  >
-                                    <SkipForward className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-              {!isMobile && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
-            </CardContent>
-          </Card>
         </div>
 
         {/* Right column */}
@@ -973,18 +889,159 @@ export default function ContractDetail() {
           </div>
         );
 
-        if (!isPmoc) {
-          return overviewContent;
-        }
+        // Aba "Ocorrências" (própria, em todo contrato). Clicar na linha abre o
+        // DETALHE da OS vinculada na MESMA aba. Status/atrasada derivam da OS real.
+        const occurrencesContent = (
+          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+            <CardHeader>
+              <CardTitle className="min-w-0 text-base sm:text-lg break-words">Ocorrências ({occurrences.length})</CardTitle>
+            </CardHeader>
+            <CardContent className={cn(isMobile ? 'p-3 min-w-0' : 'p-0 min-w-0')}>
+              {isMobile ? (
+                <div className="space-y-2 min-w-0">
+                  {occPagination.paginatedItems.map(os => {
+                    // Status REAL da OS (fonte única). Label canônico + variante semântica.
+                    const osStatus = os.status as OsStatus;
+                    const statusLabel = osStatusLabels[osStatus] ?? os.status;
+                    const statusVariant = OS_STATUS_VARIANT[osStatus] ?? 'outline';
+                    const occDate = os.scheduled_date ? parseLocalDate(os.scheduled_date) : null;
+                    // "Atrasada" = OS ativa (não concluída/cancelada) com data já passada.
+                    const isLate = isActiveContractOS(os) && !!occDate && isBefore(occDate, new Date());
+                    const isActive = isActiveContractOS(os);
+                    const goToOs = () => navigate(`/os-tecnico/${os.id}`);
+                    return (
+                      <div
+                        key={os.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={goToOs}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToOs(); } }}
+                        className={cn(
+                          'min-w-0 space-y-2 rounded-xl border p-3 transition-colors',
+                          isLate && 'border-warning/50 bg-warning/5',
+                          'cursor-pointer active:scale-[0.99] hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">#{os.occurrence_number}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isLate && <Badge variant="warning" className="shrink-0">Atrasada</Badge>}
+                            <Badge variant={statusVariant} className="shrink-0">{statusLabel}</Badge>
+                          </div>
+                        </div>
+                        <div className="flex min-w-0 flex-col items-start gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                          <span className={cn('font-medium break-words', isLate && 'text-warning')}>
+                            {occDate ? (
+                              <>{format(occDate, 'dd/MM/yyyy')} <span className="font-normal text-muted-foreground">({format(occDate, 'EEE', { locale: ptBR })})</span></>
+                            ) : 'Sem data'}
+                          </span>
+                          <Badge variant="secondary" className="shrink-0 self-start text-xs">OS #{os.order_number}</Badge>
+                        </div>
+                        {isActive && (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost" size="icon" className="min-h-11 min-w-11 text-muted-foreground hover:text-destructive active:scale-90 transition-transform rounded-xl"
+                              title="Pular (cancelar esta visita)"
+                              onClick={(e) => { e.stopPropagation(); setCancelingOsId(os.id); }}
+                            >
+                              <SkipForward className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div className="min-w-0 overflow-x-auto">
+                    <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">#</SortableTableHead>
+                        <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>Data</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>Dia</SortableTableHead>
+                        <SortableTableHead sortKey="order_number" sortConfig={occSortConfig} onSort={handleOccSort}>OS</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>Status</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">Ações</SortableTableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {occPagination.paginatedItems.map(os => {
+                        const osStatus = os.status as OsStatus;
+                        const statusLabel = osStatusLabels[osStatus] ?? os.status;
+                        const statusVariant = OS_STATUS_VARIANT[osStatus] ?? 'outline';
+                        const occDate = os.scheduled_date ? parseLocalDate(os.scheduled_date) : null;
+                        const isLate = isActiveContractOS(os) && !!occDate && isBefore(occDate, new Date());
+                        const isActive = isActiveContractOS(os);
+                        const goToOs = () => navigate(`/os-tecnico/${os.id}`);
 
+                        return (
+                          <TableRow
+                            key={os.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={goToOs}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToOs(); } }}
+                            className={cn(
+                              isLate && 'bg-warning/5',
+                              'cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                            )}
+                          >
+                            <TableCell className="font-mono text-xs text-muted-foreground">{os.occurrence_number}</TableCell>
+                            <TableCell className={cn(isLate && 'text-warning font-medium')}>
+                              {occDate ? format(occDate, 'dd/MM/yyyy') : '-'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {occDate ? format(occDate, 'EEE', { locale: ptBR }) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">OS #{os.order_number}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                {isLate && <Badge variant="warning">Atrasada</Badge>}
+                                <Badge variant={statusVariant}>{statusLabel}</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {isActive && (
+                                  <Button
+                                    variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    title="Pular (cancelar esta visita)"
+                                    onClick={(e) => { e.stopPropagation(); setCancelingOsId(os.id); }}
+                                  >
+                                    <SkipForward className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              {!isMobile && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
+            </CardContent>
+          </Card>
+        );
+
+        // "Ocorrências" virou aba própria em TODO contrato. PMOC tem 4 abas;
+        // contrato comum tem 2 (Visão Geral + Ocorrências).
         return (
           <SettingsSidebarLayout
-            tabs={pmocSidebarTabs}
+            tabs={isPmoc ? pmocSidebarTabs : commonSidebarTabs}
             activeTab={pmocTab}
-            onTabChange={(v) => setPmocTab(v as 'overview' | 'documentos' | 'cronograma')}
+            onTabChange={(v) => setPmocTab(v as 'overview' | 'ocorrencias' | 'documentos' | 'cronograma')}
           >
             {pmocTab === 'overview' && overviewContent}
-            {pmocTab === 'documentos' && id && (
+            {pmocTab === 'ocorrencias' && occurrencesContent}
+            {isPmoc && pmocTab === 'documentos' && id && (
               <PmocContractDocsTab
                 contractId={id}
                 templateContext={pmocTemplateContext}
@@ -994,7 +1051,7 @@ export default function ContractDetail() {
                 }
               />
             )}
-            {pmocTab === 'cronograma' && id && (
+            {isPmoc && pmocTab === 'cronograma' && id && (
               <PmocContractCronogramaTab contractId={id} />
             )}
           </SettingsSidebarLayout>
@@ -1052,8 +1109,7 @@ export default function ContractDetail() {
                 <p>Tem certeza que deseja excluir o contrato <strong>{contract.name}</strong>?</p>
                 <p className="text-sm">Serão excluídos junto com o contrato:</p>
                 <ul className="text-sm list-disc pl-5 space-y-1">
-                  <li>{occurrences.length} ocorrências</li>
-                  <li>{occurrences.filter(o => o.service_order_id).length} ordens de serviço vinculadas</li>
+                  <li>{occurrences.length} ordens de serviço vinculadas</li>
                   <li>{(linkedTransactions || []).length} transações financeiras (contas a receber)</li>
                   <li>{items.length} itens do contrato</li>
                   <li>Alertas de cobrança na agenda</li>
@@ -1098,7 +1154,7 @@ export default function ContractDetail() {
                   <li>Horizonte: {contract.horizon_months} meses</li>
                   <li>{items.length} itens</li>
                 </ul>
-                <p className="text-sm">A data de início será o dia seguinte à última ocorrência do contrato atual.</p>
+                <p className="text-sm">A data de início será o dia seguinte à última visita (OS) do contrato atual.</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1181,6 +1237,29 @@ export default function ContractDetail() {
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
               Regenerar token
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancelar visita (botão "Pular") — agora cancela a OS daquela data. */}
+      <AlertDialog open={!!cancelingOsId} onOpenChange={(open) => { if (!open) setCancelingOsId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar esta visita?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A ordem de serviço desta visita será marcada como cancelada e não aparecerá mais como pendente. Você pode reativá-la depois pela tela da OS.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelOccurrenceOs.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (cancelingOsId) cancelOccurrenceOs.mutate(cancelingOsId, { onSuccess: () => setCancelingOsId(null) }); }}
+              disabled={cancelOccurrenceOs.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelOccurrenceOs.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <SkipForward className="h-4 w-4 mr-2" />}
+              Cancelar visita
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, RotateCcw, Save } from 'lucide-react';
+import { Loader2, RotateCcw, Save, Building2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
@@ -13,6 +13,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { PmocRichTextEditor } from './PmocRichTextEditor';
 import type { PmocVariableContext } from '@/utils/pmocVariables';
 
@@ -46,6 +52,17 @@ export interface PmocDocEditorDialogProps {
   onSave: (html: string) => Promise<void>;
   /** Reset pra template padrão (envia NULL no banco). Opcional. */
   onResetToDefault?: () => Promise<void>;
+  /**
+   * Carrega no editor o conteúdo do MODELO PADRÃO da empresa pro doc atual.
+   * Retorna o HTML a popular (NÃO salva sozinho — só popula). Opcional; quando
+   * ausente, o botão "Puxar template padrão da empresa" não aparece.
+   */
+  onPullCompanyTemplate?: () => string;
+  /**
+   * Desabilita o botão "Puxar template padrão da empresa" (ex: empresa nunca
+   * definiu modelo). Quando true, o botão fica desabilitado com tooltip.
+   */
+  pullCompanyTemplateDisabled?: boolean;
   /** Loader externo (vem do hook). */
   isSaving?: boolean;
   /** Dica explicativa exibida acima do editor. */
@@ -66,6 +83,8 @@ export function PmocDocEditorDialog({
   defaultHtml,
   onSave,
   onResetToDefault,
+  onPullCompanyTemplate,
+  pullCompanyTemplateDisabled = false,
   isSaving = false,
   helperText,
   templateContext,
@@ -116,6 +135,14 @@ export function PmocDocEditorDialog({
     onOpenChange(false);
   };
 
+  const handlePullCompanyTemplate = () => {
+    if (!onPullCompanyTemplate) return;
+    const incoming = onPullCompanyTemplate();
+    setHtml(incoming);
+    setIsDirty(true);
+    // Não salva — o gestor revisa e salva (igual ao "Restaurar texto padrão").
+  };
+
   const handleResetConfirmed = async () => {
     setShowResetConfirm(false);
     if (!onResetToDefault) return;
@@ -132,7 +159,7 @@ export function PmocDocEditorDialog({
 
   const footer = (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {onResetToDefault && (
           <Button
             type="button"
@@ -145,6 +172,33 @@ export function PmocDocEditorDialog({
             <RotateCcw className="mr-1 h-3.5 w-3.5" />
             Restaurar texto padrão
           </Button>
+        )}
+        {onPullCompanyTemplate && (
+          <TooltipProvider delayDuration={120}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* span wrapper: botão desabilitado não dispara tooltip sozinho */}
+                <span className="inline-flex">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePullCompanyTemplate}
+                    disabled={isSaving || pullCompanyTemplateDisabled}
+                    className="min-h-[40px]"
+                  >
+                    <Building2 className="mr-1 h-3.5 w-3.5" />
+                    Puxar template padrão da empresa
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {pullCompanyTemplateDisabled && (
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                  Sua empresa ainda não definiu um modelo padrão para este documento.
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
       <div className="flex items-center justify-end gap-2">

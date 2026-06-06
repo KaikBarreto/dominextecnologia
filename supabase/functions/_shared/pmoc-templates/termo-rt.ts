@@ -29,7 +29,6 @@ import {
   SIGNATURE_BLOCK_HEIGHT,
 } from "./signature-embed.ts";
 import { PmocVariableContext, substituteVariables } from "./variables.ts";
-import { drawTenantHeader } from "./header.ts";
 import { drawDominexFooter } from "./footer.ts";
 
 // Marcador opcional no HTML pra posicionar o bloco de assinatura. Se ausente,
@@ -54,7 +53,7 @@ export function buildDefaultTermoRtHtml(): string {
   return `
 <h2>TERMO DE RESPONSABILIDADE TÉCNICA — PMOC</h2>
 
-<p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, responsável pela execução dos serviços de manutenção preventiva, corretiva e higienização dos sistemas de climatização da unidade contratante, declara para os devidos fins que os serviços relacionados ao Plano de Manutenção, Operação e Controle (PMOC) serão executados sob supervisão técnica do profissional abaixo identificado:</p>
+<p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, responsável pela execução dos serviços de manutenção preventiva, corretiva e higienização dos sistemas de climatização da unidade contratante <strong><span data-pmoc-var="cliente.nome"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="cliente.documento"></span></strong>, localizada em <strong><span data-pmoc-var="cliente.endereco"></span></strong>, declara para os devidos fins que os serviços relacionados ao Plano de Manutenção, Operação e Controle (PMOC) serão executados sob supervisão técnica do profissional abaixo identificado:</p>
 
 <h3>RESPONSÁVEL TÉCNICO</h3>
 
@@ -70,18 +69,9 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p><span data-pmoc-var="empresa.cidade"></span>, <span data-pmoc-var="contrato.criado_dia"></span> de <span data-pmoc-var="contrato.criado_mes"></span> de <span data-pmoc-var="contrato.criado_ano"></span>.</p>
 
-<p><strong>CONTRATANTE:</strong></p>
-
 <p>&nbsp;</p>
 <p>&nbsp;</p>
-<p>___________________________________________</p>
-
-<p><strong><span data-pmoc-var="empresa.razao_social"></span>:</strong></p>
-
 <p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>___________________________________________</p>
-
 ${SIGNATURE_BLOCK_MARKER}
 `.trim();
 }
@@ -127,36 +117,10 @@ export async function drawTermoRtPage(
   // Nova página sempre (termo começa em folha limpa)
   const initialPage = pdf.addPage([A4_W, A4_H]);
 
-  // -- Onda I (v1.9.x): cabeçalho com identidade do tenant no topo do TRT.
-  //    Replica o visual do ReportHeader da OS (logo + nome + CNPJ + endereço).
-  //    Sempre desenha (mesmo sem opt-in) — tenant é a parte regulatória do
-  //    documento, faz sentido aparecer também no PDF standalone.
-  const headerResult = await drawTenantHeader(
-    pdf,
-    initialPage,
-    {
-      name: ctx.empresa.razao_social,
-      cnpj: ctx.empresa.cnpj || null,
-      phone: ctx.empresa.phone ?? null,
-      email: ctx.empresa.email ?? null,
-      address: ctx.empresa.address ?? null,
-      address_number: ctx.empresa.address_number ?? null,
-      neighborhood: ctx.empresa.neighborhood ?? null,
-      city: ctx.empresa.cidade || null,
-      state: ctx.empresa.state ?? null,
-      zip_code: ctx.empresa.zip_code ?? null,
-      logo_bytes: ctx.empresa.logo_bytes ?? null,
-      logo_mime: ctx.empresa.logo_mime ?? null,
-    },
-    {
-      bgColor: ctx.empresa.header_bg_color ?? null,
-      textColor: ctx.empresa.header_text_color ?? null,
-      logoSize: ctx.empresa.header_logo_size ?? null,
-    },
-  );
-
-  // Conteúdo começa abaixo do header (com respiro de 18pt).
-  const contentStartY = headerResult.bottomY - 18;
+  // Conteúdo começa do topo padrão (mesmo do certificado). A barra de
+  // identidade do tenant no topo foi removida a pedido do CEO — a identidade
+  // regulatória já consta no corpo do termo e na assinatura automática do RT.
+  const contentStartY = A4_H - MARGIN_Y;
   const result = await renderHtmlToPdf(pdf, clean, {
     startPage: initialPage,
     cursorY: contentStartY,

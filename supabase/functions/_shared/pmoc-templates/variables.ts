@@ -115,6 +115,11 @@ export const PMOC_VARIABLES = {
     source: "customers.name",
     category: "cliente",
   },
+  "cliente.documento": {
+    label: "CNPJ/CPF do Cliente",
+    source: "customers.document",
+    category: "cliente",
+  },
   "cliente.endereco": {
     label: "Endereço do Cliente",
     source: "customers.address",

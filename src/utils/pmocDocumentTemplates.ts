@@ -36,6 +36,7 @@ export interface PmocTemplateContext {
   rt_cft_crea: string;
   cidade: string;
   customer_name: string;
+  customer_document: string;
   customer_address: string;
   contract_frequency_label: string;
   contract_start_date_extenso: string;
@@ -65,7 +66,7 @@ export function buildDefaultTermoRtHtml(): string {
   return `
 <h2>TERMO DE RESPONSABILIDADE TÉCNICA — PMOC</h2>
 
-<p>A empresa <strong>${v('empresa.razao_social')}</strong>, inscrita no CNPJ nº <strong>${v('empresa.cnpj')}</strong>, responsável pela execução dos serviços de manutenção preventiva, corretiva e higienização dos sistemas de climatização da unidade contratante, declara para os devidos fins que os serviços relacionados ao Plano de Manutenção, Operação e Controle (PMOC) serão executados sob supervisão técnica do profissional abaixo identificado:</p>
+<p>A empresa <strong>${v('empresa.razao_social')}</strong>, inscrita no CNPJ nº <strong>${v('empresa.cnpj')}</strong>, responsável pela execução dos serviços de manutenção preventiva, corretiva e higienização dos sistemas de climatização da unidade contratante <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ nº <strong>${v('cliente.documento')}</strong>, localizada em <strong>${v('cliente.endereco')}</strong>, declara para os devidos fins que os serviços relacionados ao Plano de Manutenção, Operação e Controle (PMOC) serão executados sob supervisão técnica do profissional abaixo identificado:</p>
 
 <h3>RESPONSÁVEL TÉCNICO</h3>
 
@@ -81,27 +82,9 @@ export function buildDefaultTermoRtHtml(): string {
 
 <p>${v('empresa.cidade')}, ${v('contrato.criado_dia')} de ${v('contrato.criado_mes')} de ${v('contrato.criado_ano')}.</p>
 
-<p><strong>CONTRATANTE:</strong></p>
-
 <p>&nbsp;</p>
 <p>&nbsp;</p>
-<p>___________________________________________</p>
-
-<p><strong>${v('empresa.razao_social')}:</strong></p>
-
 <p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>___________________________________________</p>
-
-<p><strong>RESPONSÁVEL TÉCNICO:</strong></p>
-
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>___________________________________________</p>
-
-<p>${v('rt.nome')}<br>
-${v('rt.modalidade')}<br>
-CFT: ${v('rt.cft_crea')}</p>
 `.trim();
 }
 
@@ -112,7 +95,7 @@ export function buildDefaultCertificadoHtml(): string {
   return `
 <h2>CERTIFICADO DE CONFORMIDADE</h2>
 
-<p>Certificamos que a unidade <strong>${v('cliente.nome')}</strong>, localizada em ${v('cliente.endereco')}, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong>${v('rt.nome')}</strong> (${v('rt.modalidade')} — CFT ${v('rt.cft_crea')}).</p>
+<p>A empresa <strong>${v('empresa.razao_social')}</strong>, inscrita no CNPJ nº <strong>${v('empresa.cnpj')}</strong>, certifica que a unidade <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ nº <strong>${v('cliente.documento')}</strong>, localizada em ${v('cliente.endereco')}, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong>${v('rt.nome')}</strong> (${v('rt.modalidade')} — CFT ${v('rt.cft_crea')}).</p>
 
 <p><strong>Periodicidade das manutenções:</strong> ${v('contrato.frequencia')}.<br>
 <strong>Vigência:</strong> a partir de ${v('contrato.vigencia_inicio')}.</p>
@@ -121,9 +104,6 @@ export function buildDefaultCertificadoHtml(): string {
 
 <p>&nbsp;</p>
 <p>&nbsp;</p>
-<p>___________________________________________<br>
-${v('rt.nome')}<br>
-${v('rt.modalidade')} — CFT ${v('rt.cft_crea')}</p>
 `.trim();
 }
 

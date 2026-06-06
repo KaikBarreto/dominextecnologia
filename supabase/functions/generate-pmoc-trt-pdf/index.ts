@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       supabase
         .from("customers")
-        .select("name, address, city, state")
+        .select("name, document, address, city, state")
         .eq("id", contract.customer_id)
         .maybeSingle(),
       supabase
@@ -509,6 +509,7 @@ Deno.serve(async (req) => {
       "rt.cft_crea": (rt.cft_crea ?? "").trim(),
       "rt.registro": ((rt as { registry_number?: string | null }).registry_number ?? "").trim(),
       "cliente.nome": customer?.name ?? "",
+      "cliente.documento": (customer?.document ?? "").trim(),
       "cliente.endereco": (customer?.address ?? "").trim(),
       "cliente.cidade": (customer?.city ?? "").trim(),
       "contrato.nome": contract.name ?? "",
@@ -534,8 +535,14 @@ Deno.serve(async (req) => {
     //         (logo + endereço + cores), rodapé Dominex (depende de
     //         white-label) e espaçamento das linhas de assinatura mudaram
     //         o output visual.
+    //         Onda J (v1.9.x): bump pra trt_v5 — novo template do Termo RT
+    //         (só o RT assina, bloco de dados cliente/empresa reformulado,
+    //         var `cliente.documento` no corpo e remoção da barra preta do
+    //         cabeçalho). Mudança é só de TEXTO/layout do template, então os
+    //         dados de entrada não mudam — sem bump, PDFs cacheados não
+    //         regenerariam com o template novo.
     const hashInput = JSON.stringify({
-      v: "trt_v4",
+      v: "trt_v5",
       tenant: {
         name: tenantName,
         cnpj,

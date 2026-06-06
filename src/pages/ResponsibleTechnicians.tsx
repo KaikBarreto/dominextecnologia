@@ -45,7 +45,16 @@ function getInitials(name?: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-export default function ResponsibleTechnicians() {
+/**
+ * Conteúdo reutilizável de Responsáveis Técnicos.
+ *
+ * - `embedded`: quando `true`, NÃO renderiza o cabeçalho de página
+ *   (MobilePageHeader) nem o padding `pb-24` mobile — usado quando o conteúdo
+ *   vive dentro de uma aba (ex.: Configurações de Contrato), pra não empilhar
+ *   dois títulos. O botão "Novo Responsável" do desktop também é omitido no
+ *   modo embarcado (a aba já tem seu próprio FAB/ações se necessário).
+ */
+export function ResponsibleTechniciansContent({ embedded = false }: { embedded?: boolean }) {
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusKey[]>([]);
@@ -153,12 +162,14 @@ export default function ResponsibleTechnicians() {
   // ----------------------------------------------------------------------
   if (isLoading) {
     return (
-      <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
-        <MobilePageHeader
-          title="Responsáveis Técnicos"
-          subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
-          icon={ShieldCheck}
-        />
+      <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', !embedded && isMobile && 'pb-24')}>
+        {!embedded && (
+          <MobilePageHeader
+            title="Responsáveis Técnicos"
+            subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
+            icon={ShieldCheck}
+          />
+        )}
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
@@ -173,12 +184,14 @@ export default function ResponsibleTechnicians() {
   // ----------------------------------------------------------------------
   if (isError) {
     return (
-      <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
-        <MobilePageHeader
-          title="Responsáveis Técnicos"
-          subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
-          icon={ShieldCheck}
-        />
+      <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', !embedded && isMobile && 'pb-24')}>
+        {!embedded && (
+          <MobilePageHeader
+            title="Responsáveis Técnicos"
+            subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
+            icon={ShieldCheck}
+          />
+        )}
         <EmptyState
           icon={<XCircle className="h-12 w-12 text-destructive" />}
           title="Erro ao carregar responsáveis técnicos"
@@ -190,23 +203,39 @@ export default function ResponsibleTechnicians() {
   }
 
   return (
-    <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
-      <MobilePageHeader
-        title="Responsáveis Técnicos"
-        subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
-        icon={ShieldCheck}
-        actions={
-          isMobile ? undefined : (
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={openNew}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Responsável
-            </Button>
-          )
-        }
-      />
+    <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', !embedded && isMobile && 'pb-24')}>
+      {!embedded && (
+        <MobilePageHeader
+          title="Responsáveis Técnicos"
+          subtitle="Cadastro regulatório PMOC (Lei 13.589/2018)"
+          icon={ShieldCheck}
+          actions={
+            isMobile ? undefined : (
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={openNew}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Responsável
+              </Button>
+            )
+          }
+        />
+      )}
+
+      {/* No modo embarcado (aba), o header de página some — então oferecemos um
+          botão "Novo Responsável" próprio no desktop pra não perder a ação. */}
+      {embedded && !isMobile && (
+        <div className="flex justify-end">
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={openNew}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Responsável
+          </Button>
+        </div>
+      )}
 
       {/* Stats — chips clicáveis filtram a lista */}
       <StatCarousel items={statItems} />
@@ -491,4 +520,14 @@ export default function ResponsibleTechnicians() {
       </AlertDialog>
     </div>
   );
+}
+
+/**
+ * Página standalone de Responsáveis Técnicos.
+ * Hoje o acesso principal é via Configurações de Contrato (aba RT); a rota
+ * antiga `/responsaveis-tecnicos` redireciona pra lá. Mantida como page por
+ * compatibilidade caso seja referenciada diretamente.
+ */
+export default function ResponsibleTechnicians() {
+  return <ResponsibleTechniciansContent />;
 }

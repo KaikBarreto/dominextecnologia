@@ -255,5 +255,5 @@ function buildMockPayload(_token: string): PortalPayload {
 /** URL pública canônica do portal — usada em UI interna e geração de QR Code. */
 export function buildPmocPortalUrl(token: string, origin?: string): string {
   const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://dominex.app');
-  return `${base}/pmoc/unidade/${token}`;
+  return `${base}/contrato/unidade/${token}`;
 }

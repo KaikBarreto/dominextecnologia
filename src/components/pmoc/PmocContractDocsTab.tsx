@@ -32,6 +32,7 @@ import { RtSignatureQuickDialog } from './RtSignatureQuickDialog';
 import {
   usePmocContractCustomDocs,
 } from '@/hooks/usePmocContractCustomDocs';
+import { useCompanyPmocDocTemplates } from '@/hooks/useCompanyPmocDocTemplates';
 import {
   usePmocDocuments,
   type PmocDocument,
@@ -106,6 +107,7 @@ function toVariableContext(ctx: Partial<PmocTemplateContext> | undefined): PmocV
     'rt.modalidade': ctx.rt_modalidade,
     'rt.cft_crea': ctx.rt_cft_crea,
     'cliente.nome': ctx.customer_name,
+    'cliente.documento': ctx.customer_document,
     'cliente.endereco': ctx.customer_address,
     'contrato.frequencia': ctx.contract_frequency_label,
     'contrato.vigencia_inicio': ctx.contract_start_date_extenso,
@@ -278,6 +280,10 @@ export function PmocContractDocsTab({
     resetCertificadoToDefault,
     isSaving,
   } = usePmocContractCustomDocs(contractId);
+
+  // Modelo padrão da empresa — fonte do botão "Puxar template padrão da empresa"
+  // dentro de cada editor. NULL pra um doc = empresa nunca definiu modelo.
+  const { templates: companyTemplates } = useCompanyPmocDocTemplates();
 
   const { documents, latestByType, isLoading: isLoadingDocs, refetch } = usePmocDocuments(contractId);
 
@@ -567,6 +573,8 @@ export function PmocContractDocsTab({
         defaultHtml={defaultTermoRt}
         onSave={saveTermoRT}
         onResetToDefault={resetTermoRTToDefault}
+        onPullCompanyTemplate={() => companyTemplates?.termo_rt_content ?? defaultTermoRt}
+        pullCompanyTemplateDisabled={!companyTemplates?.termo_rt_content}
         isSaving={isSaving}
         helperText="Esse texto será embutido na página 2 do PDF do Dossiê PMOC. Variáveis aparecem como badges; o PDF final substitui pelo valor cadastrado."
         templateContext={variableContext}
@@ -579,6 +587,8 @@ export function PmocContractDocsTab({
         defaultHtml={defaultCertificado}
         onSave={saveCertificado}
         onResetToDefault={resetCertificadoToDefault}
+        onPullCompanyTemplate={() => companyTemplates?.certificado_content ?? defaultCertificado}
+        pullCompanyTemplateDisabled={!companyTemplates?.certificado_content}
         isSaving={isSaving}
         helperText="Esse texto será embutido na página 3 do PDF do Dossiê PMOC. Variáveis aparecem como badges; o PDF final substitui pelo valor cadastrado."
         templateContext={variableContext}

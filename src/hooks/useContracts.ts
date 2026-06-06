@@ -31,10 +31,25 @@ export interface Contract {
   responsible_technician_id: string | null;
   pmoc_legal_compliance_text: string | null;
   next_pmoc_generation_date: string | null;
-  customers?: { id: string; name: string } | null;
+  customers?: { id: string; name: string; document?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
   responsible_technicians?: { id: string; full_name: string; cft_crea: string | null; modality: string | null } | null;
   contract_items?: ContractItem[];
-  contract_occurrences?: ContractOccurrence[];
+  // OSs do contrato — fonte única das "visitas". Embute via FK
+  // service_orders.contract_id. A tabela-sombra de ocorrências foi aposentada:
+  // cada OS recorrente JÁ é a visita (geração eager desde a v1.9.12).
+  service_orders?: ContractServiceOrder[];
+}
+
+/**
+ * OS de um contrato, na forma mínima usada pela listagem e pelas stats.
+ * "Visita #N" é DERIVADA: ordenar por scheduled_date asc e usar index + 1
+ * (não existe occurrence_number em service_orders).
+ */
+export interface ContractServiceOrder {
+  id: string;
+  order_number: number;
+  status: string;
+  scheduled_date: string | null;
 }
 
 export interface ContractItem {
@@ -48,14 +63,25 @@ export interface ContractItem {
   equipment?: { id: string; name: string; brand: string | null; model: string | null } | null;
 }
 
-export interface ContractOccurrence {
-  id: string;
-  contract_id: string;
-  scheduled_date: string;
-  service_order_id: string | null;
-  status: string;
-  occurrence_number: number;
-  service_orders?: { id: string; order_number: number; status: string; scheduled_date: string | null } | null;
+// Status de OS que NÃO contam como "visita ativa". Tudo fora desse conjunto
+// (agendada, pendente, a_caminho, em_andamento, pausada) é OS ativa/pendente.
+const INACTIVE_OS_STATUSES = new Set(['concluida', 'cancelada']);
+
+/** OS ativa = ainda vai/pode acontecer (não concluída nem cancelada). */
+export function isActiveContractOS(os: { status?: string | null }): boolean {
+  return !INACTIVE_OS_STATUSES.has(os.status ?? '');
+}
+
+/**
+ * Próxima visita do contrato = OS ativa com menor scheduled_date.
+ * Derivado 100% de service_orders (a OS recorrente É a visita).
+ */
+export function getNextContractOS<T extends { status?: string | null; scheduled_date?: string | null }>(
+  oss: T[] | null | undefined,
+): T | undefined {
+  return (oss || [])
+    .filter((os) => isActiveContractOS(os) && !!os.scheduled_date)
+    .sort((a, b) => new Date(a.scheduled_date!).getTime() - new Date(b.scheduled_date!).getTime())[0];
 }
 
 export function generateOccurrences(
@@ -99,10 +125,10 @@ export function useContracts() {
         .from('contracts')
         .select(`
           *,
-          customers (id, name),
+          customers (id, name, document, address, city, state),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
-          contract_occurrences (id, contract_id, scheduled_date, service_order_id, status, occurrence_number, service_orders:service_orders(id, order_number, status, scheduled_date))
+          service_orders (id, order_number, status, scheduled_date)
         `)
         .order('created_at', { ascending: false });
 
@@ -316,14 +342,9 @@ export function useContracts() {
             if (assignErr) console.error('Error creating assignees:', assignErr);
           }
 
-          const { error: occErr } = await supabase.from('contract_occurrences').insert({
-            contract_id: (contract as any).id,
-            scheduled_date: dateStr,
-            service_order_id: os.id,
-            occurrence_number: i + 1,
-            status: 'scheduled',
-          } as any);
-          if (occErr) console.error('Error creating occurrence:', occErr);
+          // A OS recorrente JÁ é a visita do contrato — não existe mais a
+          // tabela-sombra de ocorrências. "Visita #N" é derivada da ordem
+          // por scheduled_date na hora de exibir.
         }
 
         if (osErrorCount > 0) {
@@ -409,21 +430,22 @@ export function useContracts() {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    // Collect service_order IDs linked to this contract (via occurrences)
-    const { data: occurrences } = await supabase
-      .from('contract_occurrences')
-      .select('service_order_id, scheduled_date')
+    // Fonte única: service_orders do contrato (a tabela-sombra de ocorrências
+    // foi aposentada). Futuras (scheduled_date >= hoje) são apagadas; passadas
+    // são desvinculadas pra continuarem no histórico como OS avulsas.
+    const { data: contractOss } = await supabase
+      .from('service_orders')
+      .select('id, scheduled_date')
       .eq('contract_id', id);
 
-    // Only delete future OS; keep past ones (unlink them from contract)
-    const futureOsIds = (occurrences || [])
-      .filter(o => o.scheduled_date >= todayStr)
-      .map(o => o.service_order_id)
+    const futureOsIds = (contractOss || [])
+      .filter(o => (o.scheduled_date ?? '') >= todayStr)
+      .map(o => o.id)
       .filter(Boolean) as string[];
 
-    const pastOsIds = (occurrences || [])
-      .filter(o => o.scheduled_date < todayStr)
-      .map(o => o.service_order_id)
+    const pastOsIds = (contractOss || [])
+      .filter(o => (o.scheduled_date ?? '') < todayStr)
+      .map(o => o.id)
       .filter(Boolean) as string[];
 
     const deletedOsCount = futureOsIds.length;
@@ -433,7 +455,6 @@ export function useContracts() {
     await supabase.from('financial_transactions').delete().eq('contract_id', id);
 
     // Delete related records
-    await supabase.from('contract_occurrences').delete().eq('contract_id', id);
     await supabase.from('contract_items').delete().eq('contract_id', id);
 
     // Delete future linked service orders (and their junction rows)
@@ -450,11 +471,6 @@ export function useContracts() {
     if (pastOsIds.length > 0) {
       await supabase.from('service_orders').update({ contract_id: null } as any).in('id', pastOsIds);
     }
-
-    // Delete future OS that reference this contract directly but weren't in occurrences
-    await supabase.from('service_orders').delete().eq('contract_id', id).gte('scheduled_date', todayStr);
-    // Unlink past OS that reference this contract directly
-    await supabase.from('service_orders').update({ contract_id: null } as any).eq('contract_id', id);
 
     const { error } = await supabase.from('contracts').delete().eq('id', id);
     if (error) throw error;
@@ -501,25 +517,28 @@ export function useContracts() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const osGeneratedThisMonth = visibleContracts.flatMap(c => c.contract_occurrences || []).filter(o => {
-    if (!o.service_order_id) return false;
-    const d = new Date(o.scheduled_date);
+  // Stats derivadas 100% de service_orders do contrato (fonte única).
+  const osGeneratedThisMonth = visibleContracts.flatMap(c => c.service_orders || []).filter(os => {
+    if (!os.scheduled_date) return false;
+    const d = new Date(os.scheduled_date + 'T12:00:00');
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   }).length;
 
   const sevenDaysFromNow = addDays(now, 7);
-  const upcomingOccurrences = visibleContracts.flatMap(c => c.contract_occurrences || []).filter(o => {
-    if (o.status !== 'scheduled') return false;
-    const d = new Date(o.scheduled_date);
+  const upcomingOccurrences = visibleContracts.flatMap(c => c.service_orders || []).filter(os => {
+    if (!isActiveContractOS(os) || !os.scheduled_date) return false;
+    const d = new Date(os.scheduled_date + 'T12:00:00');
     return d >= now && d <= sevenDaysFromNow;
   }).length;
 
   const thirtyDaysFromNow = addDays(now, 30);
   const expiringContracts = activeContracts.filter(c => {
-    const lastOccurrence = (c.contract_occurrences || [])
-      .sort((a, b) => b.occurrence_number - a.occurrence_number)[0];
-    if (!lastOccurrence) return false;
-    const lastDate = new Date(lastOccurrence.scheduled_date);
+    // "Vencendo" = última OS do contrato (maior scheduled_date) cai dentro de 30 dias.
+    const lastOs = (c.service_orders || [])
+      .filter(os => !!os.scheduled_date)
+      .sort((a, b) => new Date(b.scheduled_date!).getTime() - new Date(a.scheduled_date!).getTime())[0];
+    if (!lastOs?.scheduled_date) return false;
+    const lastDate = new Date(lastOs.scheduled_date + 'T12:00:00');
     return lastDate <= thirtyDaysFromNow;
   }).length;
 

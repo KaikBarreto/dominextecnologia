@@ -26,7 +26,7 @@ const corsHeaders = {
 };
 
 const APP_DOMAIN = "https://dominex.app";
-const PORTAL_PATH = "/pmoc/unidade"; // /pmoc/unidade/<token>
+const PORTAL_PATH = "/contrato/unidade"; // /contrato/unidade/<token>
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function jsonResponse(body: unknown, status: number) {

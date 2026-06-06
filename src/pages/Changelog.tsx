@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.10.0',
+    date: '06 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Nova tela "Configurações de Contrato" com modelos de documentos por empresa',
+        description: 'Agora você define em um só lugar os modelos dos documentos PMOC da sua empresa — o Termo de Responsabilidade Técnica e o Certificado de Conformidade. Todo contrato novo já nasce com esses modelos prontos, e você ainda pode ajustar o texto de um contrato específico quando precisar, com um botão para puxar o modelo padrão da empresa de volta. Os Responsáveis Técnicos passaram a ficar nessa mesma tela, agora acessível pelo botão "Configurações de Contrato" na tela de Contratos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Documentos PMOC mais limpos e com os dados do cliente',
+        description: 'O Termo de Responsabilidade Técnica e o Certificado de Conformidade agora trazem os dados do cliente (nome, CNPJ e endereço) ao lado dos dados da sua empresa. Apenas o Responsável Técnico assina os documentos — removemos os campos de assinatura repetidos e os campos de assinatura da contratante e da contratada. O Certificado deixa claro que a sua empresa certifica o cliente, e o cabeçalho do Termo ficou mais limpo e padronizado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Link do painel público da unidade mais claro',
+        description: 'O endereço do painel público que você compartilha com o cliente (ou exibe no QR Code da unidade) agora começa por "/contrato/unidade". Os QR Codes e links antigos que você já imprimiu ou enviou continuam funcionando normalmente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Concluir a ordem de serviço agora atualiza o andamento do contrato',
+        description: 'Quando o técnico concluía uma ordem de serviço ligada a um contrato recorrente, a visita continuava marcada como "Agendada" e as barras de progresso do contrato ficavam zeradas. Agora, ao concluir (ou cancelar) a ordem de serviço, a manutenção correspondente do contrato é atualizada automaticamente — o andamento e o histórico do contrato passam a refletir o que já foi realizado. Ajustes manuais que você fez nas manutenções (remarcadas ou puladas) continuam preservados.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.9.40',
     date: '06 de junho de 2026',
     type: 'patch',

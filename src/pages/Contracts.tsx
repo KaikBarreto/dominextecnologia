@@ -16,7 +16,7 @@ import {
   Eye,
   Pencil,
   Wind,
-  ShieldCheck,
+  Settings,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
@@ -39,7 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useContracts, getFrequencyLabel } from '@/hooks/useContracts';
+import { useContracts, getFrequencyLabel, getNextContractOS } from '@/hooks/useContracts';
 import { useContractsHealth, type ContractHealthStatus } from '@/hooks/useContractHealth';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
@@ -174,18 +174,13 @@ export default function Contracts() {
 
   // Enriquece cada contrato com campos derivados pra que `useTableSort` consiga
   // ordenar por Saúde, Próxima OS e Itens (esses dados moram em fontes externas:
-  // healthByContractId e contract_occurrences). Sort lê via getNestedValue —
-  // mantemos as chaves planas pra um lookup direto e barato.
+  // healthByContractId e as service_orders do contrato). Sort lê via
+  // getNestedValue — mantemos as chaves planas pra um lookup direto e barato.
   const sortableItems = useMemo(
     () =>
       filtered.map((c) => {
-        const next = (c.contract_occurrences || [])
-          .filter((o) => o.status === 'scheduled')
-          .sort(
-            (a, b) =>
-              new Date(a.scheduled_date).getTime() -
-              new Date(b.scheduled_date).getTime(),
-          )[0];
+        // Próxima visita = OS ativa (não concluída/cancelada) com menor data.
+        const next = getNextContractOS(c.service_orders);
         const healthRow = healthByContractId[c.id];
         const healthKey: ContractHealthStatus = healthRow?.health_status ?? 'em_dia';
         // Ordem semântica: em_dia (0) < manutencao_pendente (1) < necessita_atencao (2)
@@ -204,12 +199,9 @@ export default function Contracts() {
   const { sortedItems, sortConfig, handleSort } = useTableSort(sortableItems);
   const pagination = useDataPagination(sortedItems);
 
-  const getNextOccurrence = (c: typeof contracts[0]) => {
-    const next = (c.contract_occurrences || [])
-      .filter((o) => o.status === 'scheduled')
-      .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime())[0];
-    return next;
-  };
+  // Próxima visita do contrato = OS ativa (não concluída/cancelada) com a menor
+  // data agendada. Derivado de service_orders (a OS recorrente É a visita).
+  const getNextOccurrence = (c: typeof contracts[0]) => getNextContractOS(c.service_orders);
 
   // ----------------------------------------------------------------
   // Stats para o StatCarousel mobile (chips coloridos).
@@ -350,10 +342,10 @@ export default function Contracts() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => navigate('/responsaveis-tecnicos')}
+                onClick={() => navigate('/configuracoes-contrato')}
                 className="gap-2"
               >
-                <ShieldCheck className="h-4 w-4" /> Responsáveis Técnicos
+                <Settings className="h-4 w-4" /> Configurações de Contrato
               </Button>
               <Button onClick={() => setDialogOpen(true)} className="gap-2">
                 <Plus className="h-4 w-4" /> Novo Contrato
@@ -484,7 +476,7 @@ export default function Contracts() {
                   getFrequencyLabel(contract.frequency_type, contract.frequency_value),
                   `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`,
                 ];
-                if (nextOcc) {
+                if (nextOcc?.scheduled_date) {
                   subtitleParts.push(
                     `Próx: ${format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}`
                   );
@@ -683,7 +675,7 @@ export default function Contracts() {
                               </Tooltip>
                             </TableCell>
                             <TableCell>
-                              {nextOcc ? (
+                              {nextOcc?.scheduled_date ? (
                                 <span className={nextOccDateColor(nextOcc.scheduled_date)}>
                                   {format(parseISO(nextOcc.scheduled_date + 'T12:00:00'), 'dd/MM/yyyy')}
                                 </span>
@@ -786,7 +778,7 @@ export default function Contracts() {
                 <p>Tem certeza? Todas as OSs, ocorrências e transações vinculadas serão excluídas.</p>
                 {(() => {
                   const target = contracts.find(c => c.id === deleteTarget);
-                  const osCount = (target?.contract_occurrences || []).filter(o => o.service_order_id).length;
+                  const osCount = (target?.service_orders || []).length;
                   if (osCount === 0) return null;
                   return (
                     <p className="text-sm font-medium text-warning">
