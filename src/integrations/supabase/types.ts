@@ -894,58 +894,6 @@ export type Database = {
           },
         ]
       }
-      contract_occurrences: {
-        Row: {
-          contract_id: string
-          created_at: string
-          id: string
-          occurrence_number: number
-          scheduled_date: string
-          service_order_id: string | null
-          status: string
-        }
-        Insert: {
-          contract_id: string
-          created_at?: string
-          id?: string
-          occurrence_number: number
-          scheduled_date: string
-          service_order_id?: string | null
-          status?: string
-        }
-        Update: {
-          contract_id?: string
-          created_at?: string
-          id?: string
-          occurrence_number?: number
-          scheduled_date?: string
-          service_order_id?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "contract_occurrences_contract_id_fkey"
-            columns: ["contract_id"]
-            isOneToOne: false
-            referencedRelation: "contract_health_status"
-            referencedColumns: ["contract_id"]
-          },
-          {
-            foreignKeyName: "contract_occurrences_contract_id_fkey"
-            columns: ["contract_id"]
-            isOneToOne: false
-            referencedRelation: "contracts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contract_occurrences_service_order_id_fkey"
-            columns: ["service_order_id"]
-            isOneToOne: false
-            referencedRelation: "service_orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       contracts: {
         Row: {
           billing_responsible_id: string | null
