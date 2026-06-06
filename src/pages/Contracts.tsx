@@ -332,6 +332,16 @@ export default function Contracts() {
           title="Contratos"
           subtitle="Gerencie contratos e manutenções"
           icon={ScrollText}
+          actions={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Configurações de Contrato"
+              onClick={() => navigate('/configuracoes-contrato')}
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
+          }
         />
       ) : (
         <PageHeader

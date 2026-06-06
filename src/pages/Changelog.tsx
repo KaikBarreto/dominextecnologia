@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.10.1',
+    date: '06 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Prévia dos documentos antes de salvar',
+        description: 'Ao editar os modelos de documento PMOC (Termo de Responsabilidade Técnica e Certificado de Conformidade), agora há um botão "Prévia" que abre uma folha A4 mostrando exatamente como o documento vai ficar, já com os dados preenchidos. Vale tanto nas Configurações de Contrato quanto no documento de um contrato específico.',
+        category: 'recurso',
+      },
+      {
+        title: 'Navegação das Configurações de Contrato mais prática',
+        description: 'No computador, as seções (Documentos e Responsáveis Técnicos) agora aparecem em um menu lateral, mais fácil de navegar. No celular, um botão de engrenagem no topo da tela de Contratos leva direto para as configurações. E foi adicionado um botão "Voltar" para retornar à lista de contratos.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aviso de alterações não salvas só quando há mudança de verdade',
+        description: 'Antes, ao abrir e fechar um documento sem editar nada, o sistema às vezes perguntava "Descartar alterações?" sem necessidade. Agora esse aviso só aparece quando você realmente alterou o texto.',
+        category: 'correcao',
+      },
+      {
+        title: 'Indicadores da tela de Orçamentos no novo visual',
+        description: 'Os cartões de indicadores da tela de Orçamentos passaram para o mesmo visual moderno já usado na tela de Ordens de Serviço. Os valores em reais agora aparecem formatados corretamente (com o símbolo R$).',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.10.0',
     date: '06 de junho de 2026',
     type: 'minor',

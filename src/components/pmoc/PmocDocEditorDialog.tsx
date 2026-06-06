@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Loader2, RotateCcw, Save, Building2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Loader2, RotateCcw, Save, Building2, Eye } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { PmocRichTextEditor } from './PmocRichTextEditor';
+import { PmocDocPreviewModal } from './PmocDocPreviewModal';
 import type { PmocVariableContext } from '@/utils/pmocVariables';
 
 /**
@@ -96,6 +97,16 @@ export function PmocDocEditorDialog({
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  /**
+   * Baseline normalizada do conteúdo. O TipTap re-serializa o HTML no mount
+   * (normalização) e dispara `onChange` mesmo sem o usuário digitar nada.
+   * Capturamos esse PRIMEIRO HTML emitido como baseline e comparamos contra
+   * ele pra detectar edição REAL. `null` = ainda não capturada (próxima
+   * abertura / primeiro `handleChange`).
+   */
+  const baselineRef = useRef<string | null>(null);
 
   // Sincroniza quando reabrir com novo conteúdo
   useEffect(() => {
@@ -103,17 +114,31 @@ export function PmocDocEditorDialog({
       const fresh = initialHtml && initialHtml.trim() !== '' ? initialHtml : defaultHtml;
       setHtml(fresh);
       setIsDirty(false);
+      // Reseta a baseline: a próxima emissão do editor (normalização do mount)
+      // vira a nova referência, sem marcar dirty.
+      baselineRef.current = null;
     }
   }, [open, initialHtml, defaultHtml]);
 
   const handleChange = (next: string) => {
     setHtml(next);
-    setIsDirty(true);
+    // Primeira emissão após abrir = normalização do TipTap. Vira a baseline e
+    // NÃO conta como edição.
+    if (baselineRef.current === null) {
+      baselineRef.current = next;
+      setIsDirty(false);
+      return;
+    }
+    // Demais emissões: dirty só se o conteúdo divergir da baseline.
+    setIsDirty(next !== baselineRef.current);
   };
 
   const handleSave = async () => {
     try {
       await onSave(html);
+      // Conteúdo salvo vira a nova baseline (fecha logo em seguida, mas mantém
+      // o estado coerente caso o modal permaneça montado).
+      baselineRef.current = html;
       setIsDirty(false);
       onOpenChange(false);
     } catch {
@@ -139,7 +164,15 @@ export function PmocDocEditorDialog({
     if (!onPullCompanyTemplate) return;
     const incoming = onPullCompanyTemplate();
     setHtml(incoming);
-    setIsDirty(true);
+    // O editor re-renderiza com o novo `value` e dispara `handleChange`, que
+    // compara contra a baseline e marca dirty se de fato mudou. Forçamos dirty
+    // aqui também como salvaguarda: se a baseline ainda não foi capturada,
+    // garante que a troca de template não passe despercebida.
+    if (baselineRef.current !== null && incoming !== baselineRef.current) {
+      setIsDirty(true);
+    } else if (baselineRef.current === null) {
+      setIsDirty(true);
+    }
     // Não salva — o gestor revisa e salva (igual ao "Restaurar texto padrão").
   };
 
@@ -202,6 +235,17 @@ export function PmocDocEditorDialog({
         )}
       </div>
       <div className="flex items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPreview(true)}
+          disabled={isSaving}
+          className="min-h-[40px]"
+        >
+          <Eye className="mr-1 h-3.5 w-3.5" />
+          Prévia
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -308,6 +352,14 @@ export function PmocDocEditorDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Prévia: folha A4 com o conteúdo atual e variáveis substituídas. */}
+      <PmocDocPreviewModal
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        html={html}
+        templateContext={templateContext}
+      />
     </>
   );
 }

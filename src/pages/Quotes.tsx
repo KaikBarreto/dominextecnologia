@@ -38,7 +38,7 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
-import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
+import { KPICard } from '@/components/dashboard/KPICard';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -103,62 +103,77 @@ function QuotesList() {
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered);
   const pagination = useDataPagination(sortedItems);
 
-  // KPIs como chips do StatCarousel. StatCarousel renderiza `{item.count}` cru;
-  // para valores monetários e percentuais, passamos string via cast — funciona
-  // em runtime (JSX aceita string|number) sem precisar alterar o primitivo.
+  // KPIs no padrão KPICard (mesmo visual da tela de Ordens de Serviço).
+  // Valores monetários usam `formattedValue` com R$ já formatado — antes o
+  // StatCarousel renderizava o número cru sem moeda.
   const fmtBRL = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-  const statItems: StatCarouselItem[] = useMemo(() => {
-    const base: StatCarouselItem[] = [
+  const kpiCards = useMemo(() => {
+    const base: Array<{
+      title: string;
+      value: number;
+      formattedValue?: string;
+      icon: typeof FileText;
+      bgClass: string;
+      delay: number;
+      onClick?: () => void;
+    }> = [
       {
-        key: 'totalOpen',
-        label: 'Em Aberto',
-        count: fmtBRL(kpis.totalOpen) as unknown as number,
-        icon: <Wallet className="h-4 w-4" />,
-        accentColor: '#0ea5e9',
+        title: 'Em Aberto',
+        value: kpis.totalOpen,
+        formattedValue: fmtBRL(kpis.totalOpen),
+        icon: Wallet,
+        bgClass: 'bg-warning',
+        delay: 0,
+        onClick: () => setStatusFilter(['enviado']),
       },
       {
-        key: 'conversion',
-        label: 'Conversão',
-        count: `${kpis.conversionRate}%` as unknown as number,
-        icon: <TrendingUp className="h-4 w-4" />,
-        accentColor: '#22c55e',
+        title: 'Conversão',
+        value: kpis.conversionRate,
+        formattedValue: `${kpis.conversionRate}%`,
+        icon: TrendingUp,
+        bgClass: 'bg-success',
+        delay: 1,
+        onClick: () => setStatusFilter(['aprovado']),
       },
       {
-        key: 'avgTicket',
-        label: 'Ticket Médio',
-        count: fmtBRL(kpis.avgTicket) as unknown as number,
-        icon: <BarChart3 className="h-4 w-4" />,
-        accentColor: '#6366f1',
+        title: 'Ticket Médio',
+        value: kpis.avgTicket,
+        formattedValue: fmtBRL(kpis.avgTicket),
+        icon: BarChart3,
+        bgClass: 'bg-info',
+        delay: 2,
       },
     ];
 
     if (hasPricing) {
       base.push(
         {
-          key: 'margin',
-          label: 'Margem Média',
-          count: `${kpis.avgMarginPct}%` as unknown as number,
-          icon: <TrendingUp className="h-4 w-4" />,
-          accentColor: '#10b981',
+          title: 'Margem Média',
+          value: kpis.avgMarginPct,
+          formattedValue: `${kpis.avgMarginPct}%`,
+          icon: TrendingUp,
+          bgClass: 'bg-success',
+          delay: base.length,
         },
         {
-          key: 'cost',
-          label: 'Custo Total',
-          count: fmtBRL(kpis.totalCostSum) as unknown as number,
-          icon: <Calculator className="h-4 w-4" />,
-          accentColor: '#f59e0b',
+          title: 'Custo Total',
+          value: kpis.totalCostSum,
+          formattedValue: fmtBRL(kpis.totalCostSum),
+          icon: Calculator,
+          bgClass: 'bg-destructive',
+          delay: base.length + 1,
         },
       );
     }
 
     base.push({
-      key: 'total',
-      label: 'Total',
-      count: kpis.total,
-      icon: <Hash className="h-4 w-4" />,
-      accentColor: '#475569',
+      title: 'Total',
+      value: kpis.total,
+      icon: Hash,
+      bgClass: 'bg-info',
+      delay: base.length,
     });
 
     return base;
@@ -325,7 +340,22 @@ function QuotesList() {
             </FilterSheet>
           </div>
 
-          <StatCarousel items={statItems} loading={isLoading} />
+          <div className="relative -mx-3">
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-background to-transparent" />
+            <div className="flex gap-3 overflow-x-auto px-3 pb-1 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {isLoading
+                ? [0, 1, 2, 3].map((i) => (
+                    <div key={i} className="snap-start shrink-0 w-[78%]">
+                      <Skeleton className="h-[108px] w-full rounded-2xl" />
+                    </div>
+                  ))
+                : kpiCards.map((card) => (
+                    <div key={card.title} className="snap-start shrink-0 w-[78%]">
+                      <KPICard {...card} />
+                    </div>
+                  ))}
+            </div>
+          </div>
         </>
       ) : (
         <>
@@ -341,58 +371,15 @@ function QuotesList() {
             </div>
           </div>
 
-          {/* KPIs desktop (preservado exatamente como antes) */}
-          <div className={cn('grid gap-3', hasPricing ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6' : 'grid-cols-2 md:grid-cols-4')}>
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total em Aberto</p>
-                <p className="text-sm sm:text-lg font-bold text-foreground truncate">
-                  {kpis.totalOpen.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Taxa de Conversão</p>
-                <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.conversionRate}%</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Ticket Médio</p>
-                <p className="text-sm sm:text-lg font-bold text-foreground truncate">
-                  {kpis.avgTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
-              </CardContent>
-            </Card>
-            {hasPricing && (
-              <>
-                <Card>
-                  <CardContent className="p-3 sm:p-4">
-                    <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" />Margem Média
-                    </p>
-                    <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.avgMarginPct}%</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-3 sm:p-4">
-                    <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
-                      <Calculator className="h-3 w-3" />Custo Total
-                    </p>
-                    <p className="text-sm sm:text-lg font-bold text-foreground truncate">
-                      {kpis.totalCostSum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-            <Card>
-              <CardContent className="p-3 sm:p-4">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
-                <p className="text-sm sm:text-lg font-bold text-foreground">{kpis.total}</p>
-              </CardContent>
-            </Card>
+          {/* KPIs desktop — padrão KPICard (mesmo da tela de Ordens de Serviço) */}
+          <div className={cn('grid gap-3 grid-cols-2', hasPricing ? 'lg:grid-cols-3' : 'lg:grid-cols-4')}>
+            {isLoading
+              ? [0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-[108px] w-full rounded-2xl" />
+                ))
+              : kpiCards.map((card) => (
+                  <KPICard key={card.title} {...card} />
+                ))}
           </div>
 
           {/* Filters desktop */}

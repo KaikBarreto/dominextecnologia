@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { FileText, ShieldCheck, Settings } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { FileText, ShieldCheck, Settings, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
-import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { CompanyPmocTemplatesTab } from '@/components/pmoc/CompanyPmocTemplatesTab';
 import { ResponsibleTechniciansContent } from '@/pages/ResponsibleTechnicians';
 
 type ContractSettingsTab = 'documentos' | 'rt';
+
+const SETTINGS_TABS: SettingsTab[] = [
+  { value: 'documentos', label: 'Documentos', icon: FileText },
+  { value: 'rt', label: 'Responsáveis Técnicos', icon: ShieldCheck },
+];
 
 function normalizeTab(raw: string | null): ContractSettingsTab {
   return raw === 'rt' ? 'rt' : 'documentos';
 }
 
 /**
- * Configurações de Contrato — casca com abas.
+ * Configurações de Contrato — casca com navegação lateral (sidebar no desktop,
+ * pills no mobile via SettingsSidebarLayout — mesmo padrão da tela de Orçamentos).
  *
  * Abas:
  *  1. Documentos (default) → template de documentos PMOC da empresa.
@@ -27,6 +33,7 @@ function normalizeTab(raw: string | null): ContractSettingsTab {
  */
 export default function ContractSettings() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<ContractSettingsTab>(() =>
@@ -49,41 +56,32 @@ export default function ContractSettings() {
 
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
+      <div className="mb-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 -ml-2 text-muted-foreground"
+          onClick={() => navigate('/contratos')}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+      </div>
+
       <MobilePageHeader
         title="Configurações de Contrato"
         subtitle="Documentos e responsáveis técnicos"
         icon={Settings}
       />
 
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        {isMobile ? (
-          <MobilePillTabs
-            tabs={[
-              { value: 'documentos', label: 'Documentos', icon: <FileText className="h-4 w-4" /> },
-              { value: 'rt', label: 'Responsáveis Técnicos', icon: <ShieldCheck className="h-4 w-4" /> },
-            ]}
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-          />
-        ) : (
-          <TabsList>
-            <TabsTrigger value="documentos" className="gap-2">
-              <FileText className="h-4 w-4" /> Documentos
-            </TabsTrigger>
-            <TabsTrigger value="rt" className="gap-2">
-              <ShieldCheck className="h-4 w-4" /> Responsáveis Técnicos
-            </TabsTrigger>
-          </TabsList>
-        )}
-
-        <TabsContent value="documentos" className="mt-4">
-          <CompanyPmocTemplatesTab />
-        </TabsContent>
-
-        <TabsContent value="rt" className="mt-4">
-          <ResponsibleTechniciansContent embedded />
-        </TabsContent>
-      </Tabs>
+      <SettingsSidebarLayout
+        tabs={SETTINGS_TABS}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+      >
+        {activeTab === 'documentos' && <CompanyPmocTemplatesTab />}
+        {activeTab === 'rt' && <ResponsibleTechniciansContent embedded />}
+      </SettingsSidebarLayout>
     </div>
   );
 }
