@@ -2,17 +2,19 @@ import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { PenLine } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { substituteVariables } from '@/utils/pmocVariables';
+import { substituteVariables, buildPreviewContext } from '@/utils/pmocVariables';
 import type { PmocVariableContext } from '@/utils/pmocVariables';
 
 /**
  * Prévia do documento PMOC (folha A4 branca).
  *
- * Mostra o conteúdo ATUAL do editor rich-text já com as variáveis substituídas
- * pelos valores reais (via `substituteVariables`). Quando `templateContext` está
- * ausente (caso do template padrão da empresa, sem contrato/cliente), as
- * variáveis vazias caem na linha pontilhada — é o comportamento esperado
- * ("como está ficando").
+ * Mostra o conteúdo ATUAL do editor rich-text já com as variáveis substituídas.
+ * A prévia é SEMPRE preenchida: usamos `buildPreviewContext`, que prioriza o
+ * valor REAL do `templateContext` e cai em valores genéricos de exemplo
+ * (`PMOC_PREVIEW_SAMPLE`) pro que estiver faltando. Assim a prévia do template
+ * padrão da empresa (sem contrato/cliente) aparece toda preenchida com exemplos,
+ * e a prévia de um contrato mostra dados reais + genérico só onde faltar. Nunca
+ * cai na linha pontilhada.
  *
  * Sanitização: o HTML vem do nosso próprio editor (conteúdo controlado pelo
  * TipTap), mas aplicamos DOMPurify como segunda camada antes do
@@ -52,12 +54,19 @@ export function PmocDocPreviewModal({
   html,
   templateContext,
 }: PmocDocPreviewModalProps) {
-  // Substitui variáveis pelo valor real (ou linha pontilhada quando vazio) e
-  // sanitiza o resultado. Memoizado pra não reprocessar a cada render.
+  // Contexto da prévia: valores reais quando existem, genéricos de exemplo pro
+  // que faltar. Garante folha SEMPRE preenchida (nunca linha pontilhada).
+  const previewContext = useMemo(
+    () => buildPreviewContext(templateContext),
+    [templateContext],
+  );
+
+  // Substitui variáveis pelo previewContext e sanitiza o resultado. Memoizado
+  // pra não reprocessar a cada render.
   const renderedHtml = useMemo(() => {
-    const substituted = substituteVariables(html || '', templateContext);
+    const substituted = substituteVariables(html || '', previewContext);
     return sanitizePreviewHtml(substituted);
-  }, [html, templateContext]);
+  }, [html, previewContext]);
 
   return (
     <ResponsiveModal
@@ -78,20 +87,34 @@ export function PmocDocPreviewModal({
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
           />
 
-          {/* Rodapé da folha: onde a assinatura do RT entrará no PDF. */}
-          <div className="border-t border-dashed border-black/20 px-6 pb-8 pt-6 sm:px-12">
+          {/* Rodapé da folha: bloco visual demarcando onde a assinatura do RT
+              entra no PDF. Espelha o bloco automático do signature-embed.ts:
+              "X" marcando o ponto → linha → nome do RT → modalidade/CFT. */}
+          <div className="border-t border-dashed border-black/20 px-6 pb-8 pt-8 sm:px-12">
             <div className="mx-auto max-w-xs text-center">
-              <div className="mb-1 border-b border-black/40" aria-hidden="true">
+              {/* "X" grande e discreto marcando onde assinar ("assine aqui"). */}
+              <div
+                className="select-none text-3xl font-semibold leading-none text-black/25"
+                aria-hidden="true"
+              >
+                ✗
+              </div>
+              {/* Linha de assinatura. */}
+              <div className="mt-1 border-b border-black/50" aria-hidden="true">
                 &nbsp;
               </div>
-              <p className="text-[11px] text-black/60">
-                Assinatura do Responsável Técnico
+              {/* Nome do RT (do contexto da prévia: real ou genérico). */}
+              <p className="mt-1.5 text-[12px] font-semibold text-black/80">
+                {previewContext['rt.nome']}
+              </p>
+              {/* Modalidade + CFT, em linha menor e cinza. */}
+              <p className="text-[10px] text-black/50">
+                {previewContext['rt.modalidade']} — CFT {previewContext['rt.cft_crea']}
               </p>
             </div>
-            <p className="mt-4 flex items-start gap-1.5 text-[11px] leading-snug text-black/50">
-              <PenLine className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-              A assinatura do Responsável Técnico é adicionada automaticamente no
-              rodapé do PDF.
+            <p className="mt-5 flex items-center justify-center gap-1.5 text-[10px] leading-snug text-black/40">
+              <PenLine className="h-3 w-3 shrink-0" aria-hidden="true" />
+              Espaço reservado para a assinatura do Responsável Técnico.
             </p>
           </div>
         </div>

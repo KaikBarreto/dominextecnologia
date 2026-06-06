@@ -172,6 +172,67 @@ export const PMOC_VARIABLES = {
 /** Chave válida (`'empresa.cnpj' | 'rt.nome' | ...`). */
 export type PmocVariableKey = keyof typeof PMOC_VARIABLES;
 
+/**
+ * Valores genéricos de exemplo, um por chave do catálogo.
+ *
+ * Usado SÓ na prévia do documento (`PmocDocPreviewModal`) pra que o gestor veja
+ * a folha "como ficaria preenchida" mesmo quando não há contrato/cliente real
+ * (caso do template padrão da empresa). NÃO é usado na geração de PDF — lá os
+ * valores reais (ou linha pontilhada) é que valem.
+ *
+ * O `Record<PmocVariableKey, string>` garante, em tempo de compilação, que toda
+ * chave do catálogo tem um genérico correspondente.
+ */
+export const PMOC_PREVIEW_SAMPLE: Record<PmocVariableKey, string> = {
+  // ───── Empresa ─────
+  'empresa.nome': 'NOME DA EMPRESA',
+  'empresa.razao_social': 'RAZÃO SOCIAL DA EMPRESA LTDA',
+  'empresa.cnpj': '00.000.000/0001-00',
+  'empresa.endereco': 'Rua Exemplo, 123 — Centro — Cidade/UF',
+  'empresa.cidade': 'Cidade',
+  'empresa.estado': 'UF',
+  'empresa.telefone': '(99) 99999-9999',
+  'empresa.email': 'contato@empresa.com.br',
+  // ───── Responsável Técnico ─────
+  'rt.nome': 'NOME DO RESPONSÁVEL TÉCNICO',
+  'rt.modalidade': 'Engenheiro Civil',
+  'rt.cft_crea': '000000000-0',
+  'rt.registro': '000000000-0',
+  // ───── Cliente ─────
+  'cliente.nome': 'NOME DO CLIENTE',
+  'cliente.documento': '00.000.000/0001-00',
+  'cliente.endereco': 'Av. Exemplo, 456 — Bairro — Cidade/UF',
+  'cliente.cidade': 'Cidade',
+  // ───── Contrato ─────
+  'contrato.nome': 'Contrato de Manutenção PMOC',
+  'contrato.vigencia_inicio': '01 de janeiro de 2026',
+  'contrato.frequencia': 'Mensal',
+  'contrato.criado_dia': '01',
+  'contrato.criado_mes': 'janeiro',
+  'contrato.criado_ano': '2026',
+  // ───── Data ─────
+  'data.hoje_extenso': '01 de janeiro de 2026',
+};
+
+/**
+ * Monta um contexto de prévia: para cada chave do catálogo, usa o valor REAL do
+ * `context` quando existir e não-vazio; senão cai no genérico de
+ * `PMOC_PREVIEW_SAMPLE`. Real tem prioridade — o genérico só preenche o que
+ * falta. Resultado: prévia SEMPRE preenchida (nunca cai na linha pontilhada).
+ *
+ * Usado pela prévia do documento PMOC. NÃO usar na geração de PDF real.
+ */
+export function buildPreviewContext(
+  context: PmocVariableContext | undefined | null,
+): Record<PmocVariableKey, string> {
+  const result = { ...PMOC_PREVIEW_SAMPLE };
+  (Object.keys(PMOC_PREVIEW_SAMPLE) as PmocVariableKey[]).forEach((key) => {
+    const real = context?.[key]?.trim();
+    if (real) result[key] = real;
+  });
+  return result;
+}
+
 /** Type guard pra checar se uma string é uma chave válida do catálogo. */
 export function isPmocVariableKey(value: string): value is PmocVariableKey {
   return Object.prototype.hasOwnProperty.call(PMOC_VARIABLES, value);

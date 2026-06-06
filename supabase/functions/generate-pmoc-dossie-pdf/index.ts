@@ -549,8 +549,11 @@ Deno.serve(async (req) => {
     //    preta). Cobre também o Certificado, gerado nesta mesma função.
     //    Mudança é só de TEXTO/layout — sem bump, PDFs cacheados não
     //    regenerariam com o template novo.
+    //    Onda K (v1.9.x): bump pra dossie_v7 — mais respiro vertical entre
+    //    seções dos templates do Termo RT e do Certificado (só espaçamento/
+    //    layout, dados de entrada idênticos — sem bump não regeneraria).
     const hashInput = JSON.stringify({
-      v: "dossie_v6",
+      v: "dossie_v7",
       tenant: {
         name: tenantName,
         cnpj,

@@ -53,7 +53,11 @@ export function buildDefaultTermoRtHtml(): string {
   return `
 <h2>TERMO DE RESPONSABILIDADE TÉCNICA — PMOC</h2>
 
+<p>&nbsp;</p>
+
 <p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, responsável pela execução dos serviços de manutenção preventiva, corretiva e higienização dos sistemas de climatização da unidade contratante <strong><span data-pmoc-var="cliente.nome"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="cliente.documento"></span></strong>, localizada em <strong><span data-pmoc-var="cliente.endereco"></span></strong>, declara para os devidos fins que os serviços relacionados ao Plano de Manutenção, Operação e Controle (PMOC) serão executados sob supervisão técnica do profissional abaixo identificado:</p>
+
+<p>&nbsp;</p>
 
 <h3>RESPONSÁVEL TÉCNICO</h3>
 
@@ -61,16 +65,18 @@ export function buildDefaultTermoRtHtml(): string {
 <strong>Modalidade:</strong> <span data-pmoc-var="rt.modalidade"></span><br>
 <strong>Registro Profissional CFT:</strong> <span data-pmoc-var="rt.cft_crea"></span></p>
 
+<p>&nbsp;</p>
+
 <p>O responsável técnico acima qualificado será responsável pela supervisão técnica do PMOC, validação dos procedimentos executados, orientações técnicas e conformidade dos serviços relacionados aos sistemas de climatização da unidade atendida.</p>
 
 <p>Os serviços operacionais poderão ser executados por equipe técnica operacional da <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, devidamente treinada e orientada, ficando o responsável técnico encarregado da supervisão geral do plano de manutenção.</p>
 
 <p>A documentação referente ao PMOC ficará disponível na unidade para apresentação aos órgãos fiscalizadores competentes.</p>
 
+<p>&nbsp;</p>
+
 <p><span data-pmoc-var="empresa.cidade"></span>, <span data-pmoc-var="contrato.criado_dia"></span> de <span data-pmoc-var="contrato.criado_mes"></span> de <span data-pmoc-var="contrato.criado_ano"></span>.</p>
 
-<p>&nbsp;</p>
-<p>&nbsp;</p>
 <p>&nbsp;</p>
 ${SIGNATURE_BLOCK_MARKER}
 `.trim();

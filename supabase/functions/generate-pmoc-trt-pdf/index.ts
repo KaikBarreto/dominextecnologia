@@ -541,8 +541,11 @@ Deno.serve(async (req) => {
     //         cabeçalho). Mudança é só de TEXTO/layout do template, então os
     //         dados de entrada não mudam — sem bump, PDFs cacheados não
     //         regenerariam com o template novo.
+    //         Onda K (v1.9.x): bump pra trt_v6 — mais respiro vertical entre
+    //         seções do template do Termo RT (só espaçamento/layout, dados de
+    //         entrada idênticos — sem bump, PDFs cacheados não regenerariam).
     const hashInput = JSON.stringify({
-      v: "trt_v5",
+      v: "trt_v6",
       tenant: {
         name: tenantName,
         cnpj,

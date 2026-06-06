@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.10.2',
+    date: '06 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Prévia dos documentos mais realista',
+        description: 'A prévia dos documentos PMOC agora mostra os campos preenchidos com dados de exemplo (como "NOME DA EMPRESA" e "(99) 99999-9999"), em vez de linhas em branco, e marca com um "X" o local onde fica a assinatura do Responsável Técnico. Assim fica mais fácil visualizar como o documento vai ficar de verdade. Quando você abre a prévia dentro de um contrato, os dados reais já cadastrados aparecem normalmente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mais respiro nos documentos PMOC',
+        description: 'Ajustamos o espaçamento entre as seções do Termo de Responsabilidade Técnica e do Certificado de Conformidade, aproveitando melhor o espaço em branco da página — mantendo o documento em uma única folha.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.10.1',
     date: '06 de junho de 2026',
     type: 'patch',

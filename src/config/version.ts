@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.10.1";
+export const APP_VERSION = "1.10.2";
 
-export const VERSION_NOTES = "Agora, ao editar os modelos de documento (Termo de Responsabilidade Técnica e Certificado de Conformidade), você tem um botão \"Prévia\" que abre uma folha A4 mostrando como o documento vai ficar antes de salvar. A tela de Configurações de Contrato ganhou navegação lateral no computador e um atalho de engrenagem na tela de Contratos pelo celular. Também ajustamos o aviso de alterações não salvas (só aparece quando você realmente mudou algo) e modernizamos os indicadores da tela de Orçamentos, com os valores em reais formatados corretamente.";
+export const VERSION_NOTES = "A prévia dos documentos PMOC ficou mais realista: agora ela mostra os campos preenchidos com dados de exemplo (em vez de linhas em branco) e marca com um \"X\" o local da assinatura do Responsável Técnico, pra você visualizar melhor como o documento vai ficar. Também ajustamos o espaçamento entre as seções do Termo de Responsabilidade Técnica e do Certificado de Conformidade, aproveitando melhor o espaço da página — sempre mantendo o documento em uma única folha.";

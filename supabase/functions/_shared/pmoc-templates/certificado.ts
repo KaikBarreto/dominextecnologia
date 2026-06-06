@@ -36,10 +36,16 @@ export function buildDefaultCertificadoHtml(): string {
   return `
 <h2>CERTIFICADO DE CONFORMIDADE</h2>
 
+<p>&nbsp;</p>
+
 <p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, certifica que a unidade <strong><span data-pmoc-var="cliente.nome"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="cliente.documento"></span></strong>, localizada em <span data-pmoc-var="cliente.endereco"></span>, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong><span data-pmoc-var="rt.nome"></span></strong> (<span data-pmoc-var="rt.modalidade"></span> — CFT <span data-pmoc-var="rt.cft_crea"></span>).</p>
+
+<p>&nbsp;</p>
 
 <p><strong>Periodicidade das manutenções:</strong> <span data-pmoc-var="contrato.frequencia"></span>.<br>
 <strong>Vigência:</strong> a partir de <span data-pmoc-var="contrato.vigencia_inicio"></span>.</p>
+
+<p>&nbsp;</p>
 
 <p>Documento gerado em <span data-pmoc-var="data.hoje_extenso"></span>.</p>
 
