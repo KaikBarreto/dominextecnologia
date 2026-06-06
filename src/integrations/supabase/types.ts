@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -38,6 +63,21 @@ export type Database = {
           last_activity?: string | null
           session_token?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      admin_crm_followup_template: {
+        Row: {
+          offset_days: number
+          step: number
+        }
+        Insert: {
+          offset_days: number
+          step: number
+        }
+        Update: {
+          offset_days?: number
+          step?: number
         }
         Relationships: []
       }
@@ -290,6 +330,71 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      admin_tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          crm_lead_id: string | null
+          description: string | null
+          due_date: string | null
+          followup_step: number | null
+          id: string
+          observation: string | null
+          priority: Database["public"]["Enums"]["admin_task_priority"]
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["admin_task_status"]
+          title: string
+          type: Database["public"]["Enums"]["admin_task_type"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_lead_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          followup_step?: number | null
+          id?: string
+          observation?: string | null
+          priority?: Database["public"]["Enums"]["admin_task_priority"]
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["admin_task_status"]
+          title: string
+          type?: Database["public"]["Enums"]["admin_task_type"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_lead_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          followup_step?: number | null
+          id?: string
+          observation?: string | null
+          priority?: Database["public"]["Enums"]["admin_task_priority"]
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["admin_task_status"]
+          title?: string
+          type?: Database["public"]["Enums"]["admin_task_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_tasks_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "admin_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {
@@ -5630,6 +5735,15 @@ export type Database = {
       }
     }
     Enums: {
+      admin_task_priority: "baixa" | "media" | "alta" | "urgente"
+      admin_task_status: "novo" | "em_andamento" | "aguardando" | "resolvido"
+      admin_task_type:
+        | "chamado"
+        | "implantacao"
+        | "bug"
+        | "financeiro"
+        | "melhoria"
+        | "follow-up"
       app_role:
         | "admin"
         | "gestor"
@@ -5783,8 +5897,21 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
+      admin_task_priority: ["baixa", "media", "alta", "urgente"],
+      admin_task_status: ["novo", "em_andamento", "aguardando", "resolvido"],
+      admin_task_type: [
+        "chamado",
+        "implantacao",
+        "bug",
+        "financeiro",
+        "melhoria",
+        "follow-up",
+      ],
       app_role: [
         "admin",
         "gestor",

@@ -320,14 +320,14 @@ const AppRoutes = () => (
       <Route path="/mapa-ao-vivo" element={<LiveMap />} />
       <Route path="/assinatura" element={<Billing />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/empresas" element={<AdminCompanies />} />
-      <Route path="/admin/empresas/:id" element={<AdminCompanyDetail />} />
-      <Route path="/admin/financeiro" element={<AdminFinancial />} />
-      <Route path="/admin/crm" element={<AdminCRM />} />
-      <Route path="/admin/vendedores" element={<AdminSalespeople />} />
-      <Route path="/admin/vendedores/:id" element={<AdminSalespersonDetail />} />
-      <Route path="/admin/configuracoes" element={<AdminSettings />} />
+      <Route path="/admin/dashboard" element={<AdminScreenRoute screenKey="admin_dashboard"><AdminDashboard /></AdminScreenRoute>} />
+      <Route path="/admin/empresas" element={<AdminScreenRoute screenKey="admin_empresas"><AdminCompanies /></AdminScreenRoute>} />
+      <Route path="/admin/empresas/:id" element={<AdminScreenRoute screenKey="admin_empresas"><AdminCompanyDetail /></AdminScreenRoute>} />
+      <Route path="/admin/financeiro" element={<AdminScreenRoute screenKey="admin_financeiro"><AdminFinancial /></AdminScreenRoute>} />
+      <Route path="/admin/crm" element={<AdminScreenRoute screenKey="admin_crm"><AdminCRM /></AdminScreenRoute>} />
+      <Route path="/admin/vendedores" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespeople /></AdminScreenRoute>} />
+      <Route path="/admin/vendedores/:id" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
+      <Route path="/admin/configuracoes" element={<AdminScreenRoute screenKey="admin_configuracoes"><AdminSettings /></AdminScreenRoute>} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
       <Route path="/changelog" element={<Changelog />} />
       <Route path="/tutoriais" element={<Navigate to="/domiflix" replace />} />

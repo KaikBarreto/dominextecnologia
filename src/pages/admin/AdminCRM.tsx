@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, ClipboardList } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,11 +28,14 @@ import { COMPANY_SEGMENTS, getSegment } from '@/utils/companySegments';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { AdminTasksTab } from '@/components/admin/tasks/AdminTasksTab';
+import { useAdminTasksCount } from '@/hooks/useAdminTasks';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 type DatePreset = 'all' | 'today' | 'this_week' | 'this_month' | 'this_year' | 'custom';
@@ -57,7 +62,86 @@ function OriginIcon({ name, className }: { name: string; className?: string }) {
   return <LucideIcon className={className || 'h-3 w-3'} />;
 }
 
+type CrmTabKey = 'crm' | 'tarefas';
+
 export default function AdminCRM() {
+  const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data: openTasksCount = 0 } = useAdminTasksCount();
+
+  // Aba ativa: querystring tem prioridade; senão localStorage; senão 'crm'.
+  const [activeTab, setActiveTab] = useState<CrmTabKey>(() => {
+    const fromUrl = searchParams.get('tab');
+    if (fromUrl === 'tarefas' || fromUrl === 'crm') return fromUrl;
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('admin-crm-active-tab') : null;
+    return saved === 'tarefas' ? 'tarefas' : 'crm';
+  });
+
+  // Sincroniza ?tab= na URL se vier vazia (sem empilhar histórico).
+  useEffect(() => {
+    if (searchParams.get('tab') !== activeTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', activeTab);
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const handleTabChange = (v: string) => {
+    const key = (v === 'tarefas' ? 'tarefas' : 'crm') as CrmTabKey;
+    setActiveTab(key);
+    localStorage.setItem('admin-crm-active-tab', key);
+  };
+
+  const tasksLabel = (
+    <span className="inline-flex items-center gap-1.5">
+      Tarefas
+      {openTasksCount > 0 && (
+        <Badge className="h-4 min-w-4 px-1 text-[10px] bg-primary text-primary-foreground border-0">
+          {openTasksCount}
+        </Badge>
+      )}
+    </span>
+  );
+
+  return (
+    <Tabs value={activeTab} onValueChange={handleTabChange}>
+      <div className="container mx-auto px-3 sm:px-4 lg:px-6 pt-4 lg:pt-6">
+        {isMobile ? (
+          <MobilePillTabs
+            tabs={[
+              { value: 'crm', label: 'CRM' },
+              {
+                value: 'tarefas',
+                label: openTasksCount > 0 ? `Tarefas (${openTasksCount})` : 'Tarefas',
+                icon: <ClipboardList className="h-4 w-4" />,
+              },
+            ]}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+          />
+        ) : (
+          <TabsList>
+            <TabsTrigger value="crm">CRM</TabsTrigger>
+            <TabsTrigger value="tarefas">{tasksLabel}</TabsTrigger>
+          </TabsList>
+        )}
+      </div>
+
+      <TabsContent value="crm" className="mt-0">
+        <CrmTab />
+      </TabsContent>
+
+      <TabsContent value="tarefas" className="mt-0">
+        <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6">
+          <AdminTasksTab />
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function CrmTab() {
   const { leads, isLoading, updateLead } = useAdminLeads();
   const { stages, isLoading: stagesLoading } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
