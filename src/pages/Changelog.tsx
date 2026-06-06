@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.9.40',
+    date: '06 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A busca de ordens de serviço agora encontra qualquer OS',
+        description: 'Antes, ao pesquisar na lista de ordens de serviço, o sistema só procurava dentro do período e do status que estavam selecionados — então uma OS de outro mês ou de outra situação parecia ter sumido. Agora a busca é universal: ao digitar nome do cliente, número ou código da OS, tipo de serviço, equipamento ou título da tarefa, o sistema procura em todas as suas ordens de serviço, de qualquer mês e qualquer situação. Enquanto você pesquisa, um aviso indica que os filtros ficam pausados; ao apagar a busca, a lista volta a mostrar o período e os filtros que você escolheu.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.9.39',
     date: '06 de junho de 2026',
     type: 'patch',

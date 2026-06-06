@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.9.39";
+export const APP_VERSION = "1.9.40";
 
-export const VERSION_NOTES = "O que antes se chamava 'Questionário' agora se chama 'Checklist' em todo o sistema — é exatamente o mesmo recurso, com um nome mais direto. Além disso, no resumo da ordem de serviço, cada equipamento/checklist virou uma seção que abre e fecha: por padrão só a primeira já vem aberta (no celular e no computador) e você abre as outras tocando no título.";
+export const VERSION_NOTES = "A busca da lista de ordens de serviço agora é universal: ao digitar nome do cliente, número ou código da OS, tipo de serviço, equipamento ou título da tarefa, o sistema procura em todas as suas ordens de serviço, de qualquer mês e qualquer situação — não fica mais limitada ao período ou status selecionados. Enquanto você pesquisa, um aviso mostra que os filtros ficam pausados; ao apagar a busca, a lista volta a mostrar o período e os filtros que você escolheu.";

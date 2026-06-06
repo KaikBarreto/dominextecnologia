@@ -143,25 +143,36 @@ export default function ServiceOrders() {
     return `${prefix}-${year}-${String(os.order_number).padStart(6, '0')}`;
   };
 
+  // Busca universal: com texto digitado, procuramos em TODAS as OS carregadas,
+  // ignorando filtro de data ("este mês") E filtro de status. Sem isso, OS
+  // antigas/de outro status "sumiam" e davam impressão de dado perdido.
+  const hasSearch = searchTerm.trim().length > 0;
+
   const filteredOrders = useMemo(() => {
-    // Filtro de data aplica em TUDO (kanban, lista, KPIs) — DateRangeFilter no topo
-    // é a fonte da verdade do recorte temporal da tela. Antes o kanban ignorava
-    // o filtro e mostrava o universo completo, o que dessincronizava com os KPIs.
+    if (hasSearch) {
+      // Filtros pausados: base é o universo completo de OS, só a busca restringe.
+      return serviceOrders.filter((os) => {
+        const osCode = getOsCode(os);
+        const orderNum = String(os.order_number).padStart(6, '0');
+        return (
+          fuzzyIncludes(os.customer?.name, searchTerm) ||
+          fuzzyIncludes(osCode, searchTerm) ||
+          fuzzyIncludes(orderNum, searchTerm) ||
+          fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
+          fuzzyIncludes((os as any).task_title, searchTerm) ||
+          fuzzyIncludes((os as any).equipment?.name, searchTerm)
+        );
+      });
+    }
+
+    // Sem busca: comportamento padrão. Filtro de data aplica em TUDO (kanban,
+    // lista, KPIs) — DateRangeFilter no topo é a fonte da verdade do recorte
+    // temporal da tela — combinado com o filtro de status.
     const baseOrders = filterByDate(serviceOrders, 'scheduled_date');
     return baseOrders.filter((os) => {
-      const osCode = getOsCode(os);
-      const orderNum = String(os.order_number).padStart(6, '0');
-      const matchesSearch =
-        fuzzyIncludes(os.customer?.name, searchTerm) ||
-        fuzzyIncludes(osCode, searchTerm) ||
-        fuzzyIncludes(orderNum, searchTerm) ||
-        fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
-        fuzzyIncludes((os as any).task_title, searchTerm) ||
-        fuzzyIncludes((os as any).equipment?.name, searchTerm);
-      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(os.status);
-      return matchesSearch && matchesStatus;
+      return statusFilter.length === 0 || statusFilter.includes(os.status);
     });
-  }, [serviceOrders, searchTerm, statusFilter, range, filterByDate]);
+  }, [serviceOrders, searchTerm, hasSearch, statusFilter, range, filterByDate]);
 
   // Ordem semântica do status pra que SortableTableHead consiga ordenar
   // por "fluxo de trabalho" (agendada → pendente → … → concluida → cancelada)
@@ -314,10 +325,11 @@ export default function ServiceOrders() {
 
   // Contagem de filtros ativos (busca, status, preset diferente do default).
   // Usada no FilterSheet mobile, que ainda inclui o controle de "Período".
-  const activeFilterCount =
-    (searchTerm ? 1 : 0) +
-    (statusFilter.length > 0 ? 1 : 0) +
-    (preset !== 'this_month' ? 1 : 0);
+  // Durante a busca, status e data ficam pausados — então o count reflete só a
+  // busca (1), pra não sugerir filtros que não estão sendo aplicados.
+  const activeFilterCount = hasSearch
+    ? 1
+    : (statusFilter.length > 0 ? 1 : 0) + (preset !== 'this_month' ? 1 : 0);
 
   // Filtros estruturados (sem contar a busca) — usado pelo FilterButton desktop,
   // que só consolida Status (o seletor de período fica inline acima).
@@ -441,6 +453,12 @@ export default function ServiceOrders() {
                   </FilterSheet>
                 </div>
 
+                {hasSearch && (
+                  <p className="text-xs text-muted-foreground -mt-1 px-0.5">
+                    Mostrando resultados de todas as OS (filtros pausados)
+                  </p>
+                )}
+
                 <div className="relative -mx-3">
                   <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-background to-transparent" />
                   <div className="flex gap-3 overflow-x-auto px-3 pb-1 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -506,6 +524,12 @@ export default function ServiceOrders() {
                     )}
                   </div>
                 </div>
+
+                {hasSearch && (
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    Mostrando resultados de todas as OS (filtros pausados)
+                  </p>
+                )}
 
                 <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                   {isLoading
