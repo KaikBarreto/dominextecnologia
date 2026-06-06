@@ -64,6 +64,11 @@ const changelog: ChangelogEntry[] = [
         description: 'Quando o técnico concluía uma ordem de serviço ligada a um contrato recorrente, a visita continuava marcada como "Agendada" e as barras de progresso do contrato ficavam zeradas. Agora, ao concluir (ou cancelar) a ordem de serviço, a manutenção correspondente do contrato é atualizada automaticamente — o andamento e o histórico do contrato passam a refletir o que já foi realizado. Ajustes manuais que você fez nas manutenções (remarcadas ou puladas) continuam preservados.',
         category: 'correcao',
       },
+      {
+        title: 'Ocorrências do contrato agora abrem a ordem de serviço e mostram a situação real',
+        description: 'Na tela do contrato, a aba "Ocorrências" passou a listar as próprias ordens de serviço daquela unidade, com a situação real de cada uma sempre atualizada (agendada, em andamento, concluída, cancelada). Basta clicar em uma ocorrência para abrir a ordem de serviço daquela visita. E o botão de pular uma visita agora cancela a ordem de serviço correspondente, com confirmação, para que ela não continue aparecendo como pendente.',
+        category: 'melhoria',
+      },
     ],
   },
   {
