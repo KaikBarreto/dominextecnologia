@@ -1,0 +1,55 @@
+-- ⚠️⚠️⚠️ NÃO APLICAR AINDA — fecha a enumeração pública restante (Fase 0.2). ⚠️⚠️⚠️
+--
+-- O Tech Lead deve, NESTA ordem:
+--   1. Confirmar que get_portal_data e get_rating_with_os_by_token JÁ ESTÃO no ar
+--      (migration 20260607120000_get_portal_data_rpc.sql — aditiva, já aplicada).
+--   2. Testar NO AR, ANTES do drop:
+--        a) /portal/:token  — portal carrega cliente, equipamentos e OS via
+--           get_portal_data; "Abrir Chamado" continua inserindo (policy própria
+--           "Public can create portal tickets" — NÃO mexida aqui); deep-link
+--           ?eq=<id> abre o equipamento; botão "Acompanhar"/detalhe abre
+--           /os-tecnico/:id?modo=cliente.
+--        b) /avaliar/:token — página de avaliação carrega OS via
+--           get_rating_with_os_by_token e envia a nota (UPDATE por token, policy
+--           própria — NÃO mexida aqui).
+--        c) /os-tecnico/:id?modo=cliente — segue 100% via get_public_os (Fase 0.1).
+--   3. SÓ ENTÃO aplicar este DROP e re-testar (a)(b)(c) — nada pode quebrar.
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- POR QUÊ
+-- As duas policies abaixo são `TO anon` e NÃO validam token: usam
+-- is_customer_in_active_portal(cid), que só checa
+-- EXISTS(customer_portals WHERE customer_id=cid AND is_active). Com a chave
+-- pública (no bundle), qualquer um enumera clientes e OSs de TODA empresa que
+-- tenha ALGUM portal ativo (vazamento confirmado: 112 OSs / 7 clientes).
+--
+-- O ramo extra de service_orders — EXISTS(service_ratings sr WHERE
+-- sr.service_order_id = service_orders.id) — liberava QUALQUER OS que tivesse uma
+-- avaliação, sem token. Ele sustentava a leitura direta de service_orders na
+-- página de avaliação. Agora essa leitura passa por
+-- get_rating_with_os_by_token (SECURITY DEFINER, valida o token), então o ramo
+-- inteiro pode cair junto com a policy.
+--
+-- A leitura pública agora passa 100% por RPCs SECURITY DEFINER que validam o
+-- token internamente e recebem só um token/id — sem enumeração:
+--   • Portal do Cliente  → get_portal_data(p_token)
+--   • Página de avaliação → get_rating_with_os_by_token(p_token)
+--   • Link público de OS  → get_public_os(p_os_id)   (Fase 0.1)
+--
+-- O QUE PERMANECE (NÃO mexer):
+--   • customers: "Public can view customer by portal token" (SELECT anon com
+--     header x-portal-token). Mantida — outros fluxos com header-token usam.
+--     (O portal já não depende dela: lê tudo via get_portal_data.)
+--   • service_orders: "Public can create portal tickets" (INSERT anon) —
+--     "Abrir Chamado" do portal. Mantida.
+--   • service_ratings: policies de token (get_rating_by_token + UPDATE por token)
+--     — submissão da avaliação. NÃO tocadas aqui.
+--   • technician_locations — DELIBERADAMENTE DE FORA (follow-up próprio).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Public view service_orders via portal" ON public.service_orders;
+DROP POLICY IF EXISTS "Public view customers via active portal" ON public.customers;
+
+-- Após este drop, service_orders NÃO tem mais nenhuma policy de SELECT anon — a
+-- leitura pública é exclusivamente via as RPCs SECURITY DEFINER acima. O isolamento
+-- entre tenants no anon volta a depender só de token validado dentro da RPC.
