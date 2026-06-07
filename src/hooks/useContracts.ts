@@ -31,6 +31,10 @@ export interface Contract {
   responsible_technician_id: string | null;
   pmoc_legal_compliance_text: string | null;
   next_pmoc_generation_date: string | null;
+  // Gate dos documentos no portal público (2026-06). Quando false, o portal do
+  // cliente final NÃO exibe os documentos PMOC (Dossiê, TRT, Certificado,
+  // Cronograma). O gestor libera/oculta na aba Documentos do contrato.
+  portal_documents_released: boolean;
   customers?: { id: string; name: string; document?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
   responsible_technicians?: { id: string; full_name: string; cft_crea: string | null; modality: string | null } | null;
   contract_items?: ContractItem[];
@@ -426,6 +430,37 @@ export function useContracts() {
       toast({ variant: 'destructive', title: 'Erro ao atualizar contrato', description: getErrorMessage(e) }),
   });
 
+  /**
+   * Libera/oculta os documentos PMOC no portal público do cliente final
+   * (2026-06). Atualiza só `contracts.portal_documents_released` no próprio
+   * contrato (RLS multi-tenant garante que o gestor só altera contrato da sua
+   * company). Invalida a query do detalhe pra o botão refletir o novo estado.
+   */
+  const setPortalDocumentsReleased = useMutation({
+    mutationFn: async ({ contractId, released }: { contractId: string; released: boolean }) => {
+      const { error } = await supabase
+        .from('contracts')
+        .update({ portal_documents_released: released } as any)
+        .eq('id', contractId);
+      if (error) throw error;
+      return { contractId, released };
+    },
+    onSuccess: ({ contractId, released }) => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['pmoc-portal'] });
+      toast({
+        title: released ? 'Documentos liberados no portal' : 'Documentos ocultados do portal',
+      });
+    },
+    onError: (e: Error) =>
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar liberação dos documentos',
+        description: getErrorMessage(e),
+      }),
+  });
+
   const executeDeleteContract = async (id: string): Promise<{ deletedOsCount: number; unlinkedOsCount: number }> => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -548,6 +583,7 @@ export function useContracts() {
     createContract,
     updateContract,
     updateContractStatus,
+    setPortalDocumentsReleased,
     deleteContract,
     stats: {
       active: activeContracts.length,

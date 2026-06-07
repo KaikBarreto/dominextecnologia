@@ -121,6 +121,46 @@ function extractErrorCode(err: unknown): string {
   return String(err ?? '');
 }
 
+/**
+ * Auto-geração da V1 dos documentos PMOC ao CRIAR um contrato (2026-06).
+ *
+ * Dispara, em segundo plano e SEQUENCIALMENTE, a geração de:
+ *   1. Termo de Responsabilidade Técnica (TRT)
+ *   2. Certificado de Conformidade
+ *   3. Cronograma Anual
+ *   4. Dossiê PMOC (por último — agrega TRT + Certificado)
+ *
+ * Best-effort: cada erro individual é capturado e IGNORADO (apenas logado).
+ * Se faltar CNPJ/RT, aquele documento só não gera — o gestor gera manual depois
+ * pela aba Documentos. NÃO bloqueia navegação nem lança erro pro chamador.
+ *
+ * Não usa toast aqui (o chamador decide se quer feedback discreto), e não invalida
+ * queries (a aba Documentos do contrato refaz a query ao ser aberta).
+ *
+ * Importante: chamar SÓ pra contratos `is_pmoc=true`.
+ */
+export async function autoGeneratePmocDocsV1(contractId: string): Promise<void> {
+  if (!contractId) return;
+
+  // Ordem: TRT → Certificado → Cronograma → Dossiê (dossiê por último).
+  const steps: PmocEdgeFunctionName[] = [
+    'generate-pmoc-trt-pdf',
+    'generate-pmoc-certificado-pdf',
+    'generate-pmoc-cronograma-pdf',
+    'generate-pmoc-dossie-pdf',
+  ];
+
+  for (const fn of steps) {
+    try {
+      await callEdgeFunction(fn, contractId);
+    } catch (err) {
+      // Best-effort: documento que falhar (ex: cnpj_missing, sem RT) só não é
+      // gerado agora. O gestor pode gerar manualmente depois.
+      console.warn(`[autoGeneratePmocDocsV1] ${fn} falhou (ignorado):`, err);
+    }
+  }
+}
+
 export function useGenerateDossiePdf() {
   const { toast } = useToast();
   const queryClient = useQueryClient();

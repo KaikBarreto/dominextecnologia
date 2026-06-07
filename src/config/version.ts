@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.10.3";
+export const APP_VERSION = "1.11.0";
 
-export const VERSION_NOTES = "Corrigimos um erro que, em alguns casos, impedia a geração do Termo de Responsabilidade Técnica, do Certificado de Conformidade e do Dossiê PMOC. Além disso, o Certificado de Conformidade agora pode ser gerado e baixado individualmente (como já acontecia com o Termo), o cronograma anual passou a fazer parte do próprio Dossiê PMOC, e os modelos de documentos na tela de Configurações de Contrato ganharam um visual mais claro.";
+export const VERSION_NOTES = "Ao criar um contrato PMOC, o sistema agora já gera automaticamente a primeira versão dos documentos (Termo de Responsabilidade Técnica, Certificado de Conformidade, Cronograma e Dossiê). E você passou a controlar quando esses documentos ficam visíveis para o cliente: na aba Documentos do contrato, use \"Liberar documentos no portal do cliente\". Enquanto não liberar, o cliente continua vendo o painel da unidade (status, agenda e histórico), mas não os documentos.";

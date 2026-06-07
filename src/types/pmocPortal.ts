@@ -191,6 +191,13 @@ export interface PortalPayload {
   schedule: PortalScheduleEntry[];
   /** OSs concluídas (limit 20, ordem completed_at DESC). */
   history: PortalHistoryEntry[];
+  /**
+   * Gate de documentos (1.5.0). `false` → o gestor ainda não liberou os
+   * documentos pro cliente final; nesse caso `documents` vem vazio e a seção
+   * mostra um aviso neutro. Pode estar ausente em payloads antigos (trata como
+   * `true` por compatibilidade — backfill já marcou contratos com documentos).
+   */
+  documents_released?: boolean;
   /** Documentos reais (dossiê + cronograma + TRT). Renomeado de `documents_real` em 1.3.0. */
   documents: PortalRealDocument[];
 }

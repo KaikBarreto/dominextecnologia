@@ -10,6 +10,9 @@ import {
   Info,
   ShieldCheck,
   AlertTriangle,
+  Eye,
+  EyeOff,
+  Globe,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,6 +34,7 @@ import { RtSignatureQuickDialog } from './RtSignatureQuickDialog';
 import {
   usePmocContractCustomDocs,
 } from '@/hooks/usePmocContractCustomDocs';
+import { useContracts } from '@/hooks/useContracts';
 import { useCompanyPmocDocTemplates } from '@/hooks/useCompanyPmocDocTemplates';
 import {
   usePmocDocuments,
@@ -138,6 +142,12 @@ export interface PmocContractDocsTabProps {
    * `responsible_technicians.signature_image_url`.
    */
   responsibleTechnicianId?: string | null;
+  /**
+   * Estado atual do gate de documentos no portal público (2026-06). Vem do
+   * contrato carregado em ContractDetail (`contracts.portal_documents_released`).
+   * `true` → o cliente final vê os documentos no portal; `false` → ocultos.
+   */
+  portalDocumentsReleased?: boolean;
 }
 
 /** Badge visual do status da assinatura embarcada num PDF PMOC (Onda E). */
@@ -271,6 +281,7 @@ export function PmocContractDocsTab({
   contractId,
   templateContext,
   responsibleTechnicianId,
+  portalDocumentsReleased = false,
 }: PmocContractDocsTabProps) {
   const {
     customDocs,
@@ -280,6 +291,9 @@ export function PmocContractDocsTab({
     resetCertificadoToDefault,
     isSaving,
   } = usePmocContractCustomDocs(contractId);
+
+  // Gate dos documentos no portal público — libera/oculta pro cliente final.
+  const { setPortalDocumentsReleased } = useContracts();
 
   // Modelo padrão da empresa — fonte do botão "Puxar template padrão da empresa"
   // dentro de cada editor. NULL pra um doc = empresa nunca definiu modelo.
@@ -392,6 +406,64 @@ export function PmocContractDocsTab({
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Gate do portal público — libera/oculta os documentos pro cliente final.
+          Quando liberado, o cliente vê Dossiê, Termo, Certificado e Cronograma
+          no portal público da unidade (QR Code). Ação neutra/primária. */}
+      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                portalDocumentsReleased ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground',
+              )}
+            >
+              <Globe className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold">Documentos no portal do cliente</p>
+                <Badge variant={portalDocumentsReleased ? 'success' : 'outline'} className="gap-1 text-[10px]">
+                  {portalDocumentsReleased ? (
+                    <>
+                      <Eye className="h-3 w-3" aria-hidden="true" /> Liberado
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="h-3 w-3" aria-hidden="true" /> Oculto
+                    </>
+                  )}
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Quando liberado, o cliente vê os documentos (Dossiê, Termo, Certificado, Cronograma) no portal público da unidade.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant={portalDocumentsReleased ? 'outline' : 'default'}
+            onClick={() =>
+              setPortalDocumentsReleased.mutate({
+                contractId,
+                released: !portalDocumentsReleased,
+              })
+            }
+            disabled={setPortalDocumentsReleased.isPending}
+            className="min-h-11 shrink-0 active:scale-[0.97] transition-transform rounded-xl"
+          >
+            {setPortalDocumentsReleased.isPending ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : portalDocumentsReleased ? (
+              <EyeOff className="mr-1.5 h-4 w-4" />
+            ) : (
+              <Eye className="mr-1.5 h-4 w-4" />
+            )}
+            {portalDocumentsReleased ? 'Ocultar documentos do portal' : 'Liberar documentos no portal do cliente'}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Card 1 — Dossiê PMOC (TRT + Certificado vivem aqui dentro)
           ===========================================================

@@ -205,6 +205,7 @@ Deno.serve(async (req) => {
           "pmoc_legal_compliance_text",
           "is_pmoc",
           "status",
+          "portal_documents_released",
         ].join(","),
       )
       .eq("public_pmoc_token", token)
@@ -518,7 +519,14 @@ Deno.serve(async (req) => {
     //
     //      Onda E: 'termo_rt' adicionado como terceiro doc_type e exposto com
     //      signature_status ('signed' | 'pending') derivado de notes.
+    //
+    //      GATE (2026-06): os documentos SÓ aparecem no portal público quando o
+    //      gestor libera explicitamente (`contracts.portal_documents_released`).
+    //      Enquanto false, retornamos `documents: []` e `documents_released:false`
+    //      — o restante do portal (status, RT, agenda, histórico) NÃO é afetado.
     // -------------------------------------------------------------------------
+    const documentsReleased = contract.portal_documents_released === true;
+
     const DOC_TYPES = ["dossie_pmoc", "cronograma_anual", "termo_rt"] as const;
     const DOC_LABELS: Record<typeof DOC_TYPES[number], string> = {
       dossie_pmoc: "Dossiê PMOC (Capa + Termo + Certificado)",
@@ -526,77 +534,91 @@ Deno.serve(async (req) => {
       termo_rt: "Termo de Responsabilidade Técnica (TRT)",
     };
 
-    const { data: docRows } = await supabase
-      .from("pmoc_documents")
-      .select("doc_type, version, generated_at, pdf_storage_path, notes")
-      .eq("contract_id", contract.id)
-      .eq("company_id", contract.company_id) // defesa em camada
-      .in("doc_type", DOC_TYPES as unknown as string[])
-      .order("version", { ascending: false });
-
-    // Agrupa por doc_type pegando só a maior version
-    const latestByType = new Map<
-      string,
-      { version: number; generated_at: string; pdf_storage_path: string; notes: string | null }
-    >();
-    for (const row of docRows ?? []) {
-      if (!latestByType.has(row.doc_type)) {
-        latestByType.set(row.doc_type, {
-          version: row.version,
-          generated_at: row.generated_at,
-          pdf_storage_path: row.pdf_storage_path,
-          notes: row.notes ?? null,
-        });
-      }
-    }
-
-    // Onda E: signature_status só é relevante pra docs que carregam o bloco
-    // de assinatura do RT (termo_rt e dossie_pmoc; cronograma_anual não tem).
-    const SIG_RELEVANT = new Set<string>(["termo_rt", "dossie_pmoc"]);
-    const deriveSigStatus = (
-      type: string,
-      notes: string | null,
-    ): "signed" | "pending" | null => {
-      if (!SIG_RELEVANT.has(type)) return null;
-      if (notes && notes.startsWith("signature:")) {
-        return notes.split(":")[1] === "pending" ? "pending" : "signed";
-      }
-      // Fallback histórico: docs gerados antes da Onda E não têm notes.
-      return null;
+    // Quando não liberado, nem tocamos no banco de documentos/storage.
+    type PortalDocument = {
+      type: typeof DOC_TYPES[number];
+      label: string;
+      available: boolean;
+      version: number | null;
+      generated_at: string | null;
+      pdf_url: string | null;
+      signature_status: "signed" | "pending" | null;
     };
+    let documents: PortalDocument[] = [];
 
-    // Gera signed URL TTL 24h pra cada doc disponível
-    const documents = await Promise.all(
-      DOC_TYPES.map(async (type) => {
-        const latest = latestByType.get(type);
-        if (!latest) {
+    if (documentsReleased) {
+      const { data: docRows } = await supabase
+        .from("pmoc_documents")
+        .select("doc_type, version, generated_at, pdf_storage_path, notes")
+        .eq("contract_id", contract.id)
+        .eq("company_id", contract.company_id) // defesa em camada
+        .in("doc_type", DOC_TYPES as unknown as string[])
+        .order("version", { ascending: false });
+
+      // Agrupa por doc_type pegando só a maior version
+      const latestByType = new Map<
+        string,
+        { version: number; generated_at: string; pdf_storage_path: string; notes: string | null }
+      >();
+      for (const row of docRows ?? []) {
+        if (!latestByType.has(row.doc_type)) {
+          latestByType.set(row.doc_type, {
+            version: row.version,
+            generated_at: row.generated_at,
+            pdf_storage_path: row.pdf_storage_path,
+            notes: row.notes ?? null,
+          });
+        }
+      }
+
+      // Onda E: signature_status só é relevante pra docs que carregam o bloco
+      // de assinatura do RT (termo_rt e dossie_pmoc; cronograma_anual não tem).
+      const SIG_RELEVANT = new Set<string>(["termo_rt", "dossie_pmoc"]);
+      const deriveSigStatus = (
+        type: string,
+        notes: string | null,
+      ): "signed" | "pending" | null => {
+        if (!SIG_RELEVANT.has(type)) return null;
+        if (notes && notes.startsWith("signature:")) {
+          return notes.split(":")[1] === "pending" ? "pending" : "signed";
+        }
+        // Fallback histórico: docs gerados antes da Onda E não têm notes.
+        return null;
+      };
+
+      // Gera signed URL TTL 24h pra cada doc disponível
+      documents = await Promise.all(
+        DOC_TYPES.map(async (type) => {
+          const latest = latestByType.get(type);
+          if (!latest) {
+            return {
+              type,
+              label: DOC_LABELS[type],
+              available: false,
+              version: null as number | null,
+              generated_at: null as string | null,
+              pdf_url: null as string | null,
+              signature_status: SIG_RELEVANT.has(type)
+                ? ("pending" as "signed" | "pending")
+                : null,
+            };
+          }
+          const { data: signed } = await supabase.storage
+            .from("pmoc-documents")
+            .createSignedUrl(latest.pdf_storage_path, 86400); // TTL 24h
           return {
             type,
             label: DOC_LABELS[type],
-            available: false,
-            version: null as number | null,
-            generated_at: null as string | null,
-            pdf_url: null as string | null,
-            signature_status: SIG_RELEVANT.has(type)
-              ? ("pending" as "signed" | "pending")
-              : null,
+            available: !!signed?.signedUrl,
+            version: latest.version,
+            generated_at: latest.generated_at,
+            pdf_url: signed?.signedUrl ?? null,
+            signature_status: deriveSigStatus(type, latest.notes),
+            // NOTA: pdf_storage_path INTENCIONALMENTE não exposto (§6.3.5 RLS).
           };
-        }
-        const { data: signed } = await supabase.storage
-          .from("pmoc-documents")
-          .createSignedUrl(latest.pdf_storage_path, 86400); // TTL 24h
-        return {
-          type,
-          label: DOC_LABELS[type],
-          available: !!signed?.signedUrl,
-          version: latest.version,
-          generated_at: latest.generated_at,
-          pdf_url: signed?.signedUrl ?? null,
-          signature_status: deriveSigStatus(type, latest.notes),
-          // NOTA: pdf_storage_path INTENCIONALMENTE não exposto (§6.3.5 RLS).
-        };
-      }),
-    );
+        }),
+      );
+    }
 
     // -------------------------------------------------------------------------
     // 4) Payload final — TODO campo retornado tem que estar autorizado em §3.2
@@ -622,7 +644,7 @@ Deno.serve(async (req) => {
 
     const payload = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.4.0", // 1.4.0 — Header do portal espelha ReportHeader (cores/logo configurados + CNPJ/phone/email)
+      payload_version: "1.5.0", // 1.5.0 — Gate de documentos: só aparecem quando portal_documents_released=true
       unit: {
         name: customer?.name ?? null,
         address: customer?.address ?? null,
@@ -677,6 +699,10 @@ Deno.serve(async (req) => {
       },
       schedule,
       history,
+      // Gate (2026-06): quando false, `documents` vem vazio e o front esconde a
+      // seção. O flag explícito ajuda a UI a distinguir "ainda não liberado" de
+      // "liberado mas sem PDFs gerados".
+      documents_released: documentsReleased,
       documents,
     };
 

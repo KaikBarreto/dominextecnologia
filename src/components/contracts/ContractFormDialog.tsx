@@ -22,6 +22,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 import { PmocQuickCreateRTDialog } from '@/components/pmoc/PmocQuickCreateRTDialog';
+import { autoGeneratePmocDocsV1 } from '@/hooks/useGeneratePmocDocument';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -309,6 +310,20 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
         const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
         const expectedOsCount = (result as any)?.expectedOsCount ?? occurrences.length;
+        const newContractId = (result as any)?.id as string | undefined;
+
+        // Auto-gera a V1 dos documentos PMOC (TRT, Certificado, Cronograma,
+        // Dossiê) em segundo plano. SÓ pra contratos PMOC — contrato comum não
+        // tem documentos e a chamada nem dispara. Best-effort: não bloqueia o
+        // navigate nem trava a UI; erros individuais são ignorados (o gestor
+        // gera manual depois se faltar CNPJ/RT).
+        if (isPmoc && newContractId) {
+          void autoGeneratePmocDocsV1(newContractId);
+          toast({
+            title: 'Gerando documentos do contrato…',
+            description: 'TRT, Certificado, Cronograma e Dossiê estão sendo criados em segundo plano.',
+          });
+        }
 
         // PMOC e contrato comum agora seguem o mesmo fluxo: geração imediata
         // das N OSs no momento da criação. Toast unificado.

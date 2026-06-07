@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.0',
+    date: '07 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Documentos do contrato gerados automaticamente',
+        description: 'Ao criar um contrato PMOC, o sistema já gera sozinho a primeira versão dos documentos — Termo de Responsabilidade Técnica, Certificado de Conformidade, Cronograma Anual e Dossiê PMOC. Você não precisa mais gerar cada um manualmente logo após criar o contrato (se algum dado obrigatório ainda estiver faltando, é só completar e gerar aquele documento).',
+        category: 'recurso',
+      },
+      {
+        title: 'Você controla quando o cliente vê os documentos no portal',
+        description: 'Agora os documentos PMOC só aparecem no portal público da unidade quando você libera. Na aba Documentos do contrato, use "Liberar documentos no portal do cliente" (e "Ocultar documentos do portal" para esconder de novo). Enquanto não liberar, o cliente continua vendo o painel da unidade — status, próxima manutenção e histórico —, mas não os documentos.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.10.3',
     date: '07 de junho de 2026',
     type: 'minor',

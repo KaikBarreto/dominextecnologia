@@ -256,7 +256,11 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     schedule = [],
     history = [],
     documents = [],
+    documents_released,
   } = payload;
+
+  // Compat: payloads antigos (sem o flag) tratam como liberado.
+  const documentsReleased = documents_released !== false;
 
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('visao-geral');
@@ -566,7 +570,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
               />
             )}
             {activeTab === 'documentos' && (
-              <TabDocuments documents={documents} />
+              <TabDocuments documents={documents} released={documentsReleased} />
             )}
             {activeTab === 'historico' && (
               <TabHistory history={history} onOsClick={setSelectedOS} />
@@ -691,9 +695,28 @@ function TabSchedule({
   );
 }
 
-function TabDocuments({ documents }: { documents: PortalRealDocument[] }) {
+function TabDocuments({
+  documents,
+  released,
+}: {
+  documents: PortalRealDocument[];
+  /** Gate (1.5.0): false → o gestor ainda não liberou os documentos. */
+  released: boolean;
+}) {
   const available = documents.filter((d) => d.available);
   const unavailable = documents.filter((d) => !d.available);
+
+  // Gate fechado: não há documentos a mostrar (vêm vazios da edge). Exibe um
+  // aviso neutro, sem header de seção vazio.
+  if (!released || documents.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Os documentos desta unidade serão disponibilizados em breve.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -717,11 +740,6 @@ function TabDocuments({ documents }: { documents: PortalRealDocument[] }) {
             ))}
           </div>
         </>
-      )}
-      {documents.length === 0 && (
-        <p className="text-center text-xs text-muted-foreground">
-          Os documentos serão disponibilizados em breve.
-        </p>
       )}
     </div>
   );

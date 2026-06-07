@@ -1049,6 +1049,10 @@ export default function ContractDetail() {
                   (contract as unknown as { responsible_technician_id?: string | null })
                     .responsible_technician_id ?? null
                 }
+                portalDocumentsReleased={
+                  (contract as unknown as { portal_documents_released?: boolean | null })
+                    .portal_documents_released ?? false
+                }
               />
             )}
             {isPmoc && pmocTab === 'cronograma' && id && (
