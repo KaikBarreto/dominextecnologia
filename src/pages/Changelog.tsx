@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.10.3',
+    date: '07 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Geração de documentos PMOC corrigida',
+        description: 'Corrigimos um erro que, em alguns casos, impedia a geração do Termo de Responsabilidade Técnica, do Certificado de Conformidade e do Dossiê PMOC. Agora os documentos voltam a ser gerados normalmente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Certificado de Conformidade com geração e download individual',
+        description: 'Agora você pode gerar e baixar o Certificado de Conformidade separadamente, direto pelo contrato, do mesmo jeito que já fazia com o Termo de Responsabilidade Técnica.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma anual agora faz parte do Dossiê PMOC',
+        description: 'O cronograma de 12 meses passou a ser incluído automaticamente dentro do Dossiê PMOC, junto da capa, do Termo de Responsabilidade Técnica e do Certificado de Conformidade. Ele deixou de ser um documento separado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Modelos de documentos com visual mais claro',
+        description: 'Na tela de Configurações de Contrato, os cards dos modelos padrão (Termo e Certificado) ficaram mais organizados e mostram se o texto está no padrão ou foi personalizado pela sua empresa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.10.2',
     date: '06 de junho de 2026',
     type: 'patch',

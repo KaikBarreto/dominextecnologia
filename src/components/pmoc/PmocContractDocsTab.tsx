@@ -8,7 +8,6 @@ import {
   RefreshCw,
   ChevronDown,
   Info,
-  CalendarRange,
   ShieldCheck,
   AlertTriangle,
 } from 'lucide-react';
@@ -43,6 +42,7 @@ import {
   useGenerateDossiePdf,
   useGenerateCronogramaPdf,
   useGenerateTrtPdf,
+  useGenerateCertificadoPdf,
 } from '@/hooks/useGeneratePmocDocument';
 import {
   buildDefaultTermoRtHtml,
@@ -288,8 +288,8 @@ export function PmocContractDocsTab({
   const { documents, latestByType, isLoading: isLoadingDocs, refetch } = usePmocDocuments(contractId);
 
   const generateDossie = useGenerateDossiePdf();
-  const generateCronograma = useGenerateCronogramaPdf();
   const generateTrt = useGenerateTrtPdf();
+  const generateCertificado = useGenerateCertificadoPdf();
 
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
@@ -321,8 +321,8 @@ export function PmocContractDocsTab({
   );
 
   const latestDossie = latestByType.dossie_pmoc;
-  const latestCronograma = latestByType.cronograma_anual;
   const latestTrt = latestByType.termo_rt;
+  const latestCertificado = latestByType.certificado;
 
   // Onda G — diagnóstico de campos faltantes no `templateContext`. Quando
   // algum campo crítico estiver vazio, exibimos banner warning no topo da aba
@@ -342,6 +342,10 @@ export function PmocContractDocsTab({
   const trtStatus: PmocDocumentSignatureStatus = latestTrt
     ? latestTrt.signature_status ?? 'pending'
     : null;
+  // Mesma lógica pro Certificado individual (também leva assinatura do RT).
+  const certStatus: PmocDocumentSignatureStatus = latestCertificado
+    ? latestCertificado.signature_status ?? 'pending'
+    : null;
   // Mesma lógica pro Dossiê (também leva assinatura — Onda E).
   const dossieStatus: PmocDocumentSignatureStatus = latestDossie
     ? latestDossie.signature_status ?? 'pending'
@@ -351,12 +355,12 @@ export function PmocContractDocsTab({
     await generateDossie.mutateAsync({ contract_id: contractId });
     refetch();
   };
-  const handleGenerateCronograma = async () => {
-    await generateCronograma.mutateAsync({ contract_id: contractId });
-    refetch();
-  };
   const handleGenerateTrt = async () => {
     await generateTrt.mutateAsync({ contract_id: contractId });
+    refetch();
+  };
+  const handleGenerateCertificado = async () => {
+    await generateCertificado.mutateAsync({ contract_id: contractId });
     refetch();
   };
 
@@ -410,7 +414,7 @@ export function PmocContractDocsTab({
             <SignatureStatusBadge status={dossieStatus} />
           </div>
           <p className="text-xs text-muted-foreground">
-            Documento completo: capa + Termo de Responsabilidade Técnica + Certificado de Conformidade.
+            Documento completo: capa + Termo de Responsabilidade Técnica + Certificado de Conformidade + Cronograma Anual.
           </p>
           <p className="text-xs text-muted-foreground">
             Última geração: {formatGeneratedAt(latestDossie?.generated_at)}
@@ -491,8 +495,39 @@ export function PmocContractDocsTab({
               title="Certificado de Conformidade"
               preview={certificadoPreview}
               edited={!!certificadoHtml}
-              helperTooltip="Esse texto vai pra página 3 do Dossiê PMOC, com o selo da Lei Federal 13.589/2018. Só existe dentro do Dossiê."
+              helperTooltip="Esse texto vai pra página 3 do Dossiê PMOC, com o selo da Lei Federal 13.589/2018. Editar aqui afeta o Dossiê e o Certificado individual (baixe abaixo)."
               onEdit={() => setEditorOpen('certificado')}
+              topRightSlot={
+                <div className="flex items-center gap-1.5">
+                  {latestCertificado && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      v{latestCertificado.version}
+                    </Badge>
+                  )}
+                  <SignatureStatusBadge status={certStatus} />
+                </div>
+              }
+              extraActions={
+                <>
+                  {latestCertificado?.pdf_storage_path && (
+                    <DownloadLatestButton doc={latestCertificado} label="Baixar Certificado" />
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateCertificado}
+                    disabled={generateCertificado.isPending}
+                    className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
+                  >
+                    {generateCertificado.isPending ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1 h-4 w-4" />
+                    )}
+                    {latestCertificado ? 'Gerar Certificado individual' : 'Gerar Certificado'}
+                  </Button>
+                </>
+              }
             />
           </div>
 
@@ -518,45 +553,6 @@ export function PmocContractDocsTab({
                 {latestDossie ? 'Gerar nova versão' : 'Gerar Dossiê completo'}
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 2 — Cronograma Anual */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
-            <CalendarRange className="h-5 w-5 shrink-0" />
-            <span className="min-w-0 break-words">Cronograma Anual</span>
-            {latestCronograma && (
-              <Badge variant="secondary" className="ml-2">
-                v{latestCronograma.version}
-              </Badge>
-            )}
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            PDF com 12 meses (1 mês por página). Última geração:{' '}
-            {formatGeneratedAt(latestCronograma?.generated_at)}
-          </p>
-        </CardHeader>
-        <CardContent className="min-w-0">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {latestCronograma?.pdf_storage_path && (
-              <DownloadLatestButton doc={latestCronograma} label="Baixar última versão" />
-            )}
-            <Button
-              size="sm"
-              onClick={handleGenerateCronograma}
-              disabled={generateCronograma.isPending}
-              className="min-h-11 active:scale-[0.97] transition-transform rounded-xl"
-            >
-              {generateCronograma.isPending ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-1 h-4 w-4" />
-              )}
-              {latestCronograma ? 'Gerar/Atualizar PDF' : 'Gerar PDF anual'}
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -623,6 +619,7 @@ function DownloadLatestButton({
   const generateDossie = useGenerateDossiePdf();
   const generateCronograma = useGenerateCronogramaPdf();
   const generateTrt = useGenerateTrtPdf();
+  const generateCertificado = useGenerateCertificadoPdf();
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
@@ -633,6 +630,8 @@ function DownloadLatestButton({
         result = await generateDossie.mutateAsync({ contract_id: doc.contract_id });
       } else if (doc.doc_type === 'cronograma_anual') {
         result = await generateCronograma.mutateAsync({ contract_id: doc.contract_id });
+      } else if (doc.doc_type === 'certificado') {
+        result = await generateCertificado.mutateAsync({ contract_id: doc.contract_id });
       } else {
         // termo_rt (Onda E)
         result = await generateTrt.mutateAsync({ contract_id: doc.contract_id });
@@ -694,7 +693,7 @@ function VersionHistory({
       (acc[d.doc_type] ||= []).push(d);
       return acc;
     },
-    { dossie_pmoc: [], cronograma_anual: [], termo_rt: [] },
+    { dossie_pmoc: [], cronograma_anual: [], termo_rt: [], certificado: [] },
   );
 
   return (
@@ -718,6 +717,7 @@ function VersionHistory({
         <CollapsibleContent>
           <CardContent className="space-y-4 border-t pt-4">
             <TypeBlock title="Termo de Responsabilidade Técnica" docs={byType.termo_rt} />
+            <TypeBlock title="Certificado de Conformidade" docs={byType.certificado} />
             <TypeBlock title="Dossiê PMOC" docs={byType.dossie_pmoc} />
             <TypeBlock title="Cronograma Anual" docs={byType.cronograma_anual} />
           </CardContent>

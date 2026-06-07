@@ -47,7 +47,8 @@ interface GenerateInput {
 type PmocEdgeFunctionName =
   | 'generate-pmoc-dossie-pdf'
   | 'generate-pmoc-cronograma-pdf'
-  | 'generate-pmoc-trt-pdf';
+  | 'generate-pmoc-trt-pdf'
+  | 'generate-pmoc-certificado-pdf';
 
 /**
  * Erro tipado lançado pelo `callEdgeFunction`. Carrega o `code` curto vindo da
@@ -233,6 +234,60 @@ export function useGenerateTrtPdf() {
     onError: (err: unknown) => {
       const code = extractErrorCode(err);
       const msg = getPmocErrorMessage(code, 'Erro ao gerar TRT');
+      toast({
+        variant: 'destructive',
+        title: msg.title,
+        description: msg.description,
+        action: msg.cta
+          ? (
+            <ToastAction
+              altText={msg.cta.label}
+              onClick={() => {
+                window.location.href = msg.cta!.path;
+              }}
+            >
+              {msg.cta.label}
+            </ToastAction>
+          )
+          : undefined,
+      });
+    },
+  });
+}
+
+/**
+ * Gera o Certificado de Conformidade standalone (paridade com o TRT).
+ *
+ * 1 página A4. Pode ser regenerado independente do Dossiê. Espelha
+ * `useGenerateTrtPdf`: o backend embute a assinatura real do RT quando
+ * disponível; caso contrário, deixa linha em branco e devolve
+ * `signature_status: 'pending'` pra UI sinalizar.
+ */
+export function useGenerateCertificadoPdf() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ contract_id }: GenerateInput) =>
+      callEdgeFunction('generate-pmoc-certificado-pdf', contract_id),
+    onSuccess: (result, { contract_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['pmoc-documents', contract_id] });
+
+      const baseTitle = result.cached ? 'Certificado já estava atualizado' : 'Certificado gerado!';
+      let description: string;
+      if (result.cached) {
+        description = 'Os dados não mudaram desde a última versão. Usando a versão atual.';
+      } else if (result.signature_status === 'pending') {
+        description = `Versão ${result.version} criada. A assinatura do RT ainda não foi cadastrada — o PDF saiu com linha em branco pra assinar à mão.`;
+      } else {
+        description = `Versão ${result.version} criada com sucesso.`;
+      }
+
+      toast({ title: baseTitle, description });
+    },
+    onError: (err: unknown) => {
+      const code = extractErrorCode(err);
+      const msg = getPmocErrorMessage(code, 'Erro ao gerar Certificado');
       toast({
         variant: 'destructive',
         title: msg.title,

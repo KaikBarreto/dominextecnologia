@@ -1,36 +1,19 @@
 // =============================================================================
-// generate-pmoc-dossie-pdf — Gera dossiê PMOC (capa + Termo RT + Certificado +
-//                            Cronograma Anual de 12 meses).
+// generate-pmoc-certificado-pdf — Gera SÓ o Certificado de Conformidade (1 doc).
 // =============================================================================
 // AUTENTICADA (Authorization obrigatório). Roles admin/gestor/super_admin.
-// Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.2
-// Regra: docs/planos/2026-05-23-pmoc-onda-C-rls-rules.md §5.1
-//
-// Fluxo:
-//   1. CORS + Authorization obrigatório.
-//   2. Resolver auth.uid().
-//   3. Resolver company_id do user + role admin/gestor/super_admin.
-//   4. Resolver contrato pedido (404 unificado pra cross-tenant).
-//   5. is_pmoc=true (senão 400).
-//   6. CNPJ tenant + RT atribuído (senão 400 com mensagem clara).
-//   7. Carregar custom_docs.
-//   8. Calcular content_hash.
-//   9. Cache hit? → retorna signed URL do PDF antigo (TTL 1h).
-//  10. Compor PDF: capa + termo + certificado + cronograma (12 páginas).
-//  11. Upload pra bucket pmoc-documents.
-//  12. INSERT em pmoc_documents (version = max + 1).
-//  13. Retorna { pdf_url, version, cached: false }.
+// Plano: Onda L (v1.9.x) — Certificado individual (paridade com o TRT).
+// Espelha generate-pmoc-trt-pdf 1:1 mas:
+//   - Renderiza só 1 página (Certificado), sem capa, sem termo, sem cronograma.
+//   - Usa custom HTML de `pmoc_contract_documents_custom.certificado_content`.
+//   - doc_type='certificado' ao gravar em pmoc_documents.
+//   - Hash inclui signature_image_url (RT atualiza assinatura → cache miss).
+//   - Retorno: { pdf_url, version, cached, signature_status }.
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
-import { drawCapaPage } from "../_shared/pmoc-templates/capa.ts";
-import { drawTermoRtPage } from "../_shared/pmoc-templates/termo-rt.ts";
 import { drawCertificadoPage } from "../_shared/pmoc-templates/certificado.ts";
-import {
-  drawCronogramaMesPage,
-  CronogramaServiceOrder,
-} from "../_shared/pmoc-templates/cronograma-mes.ts";
 import {
   TemplateContext,
   dateToExtenso,
@@ -49,6 +32,8 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 // =============================================================================
 // Erro padronizado (Onda G): code + message PT-BR + field + action.
+// Frontend mapeia 'code' pra mensagem rica (toast com link de ação).
+// Mensagem (message) é fallback caso o frontend não tenha o mapeamento.
 // =============================================================================
 type ErrorAction = { label: string; href: string };
 interface StandardError {
@@ -65,7 +50,7 @@ function errorBody(
   opts: { field?: string; action?: ErrorAction } = {},
 ): StandardError {
   return {
-    error: code,
+    error: code, // legacy alias
     code,
     message,
     ...(opts.field ? { field: opts.field } : {}),
@@ -73,7 +58,7 @@ function errorBody(
   };
 }
 
-// Rate limit in-memory: 10 req/min por user (§5.4 RLS rules)
+// Rate limit in-memory: 10 req/min por user
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 10;
 const rateBucket = new Map<string, number[]>();
@@ -219,7 +204,7 @@ Deno.serve(async (req) => {
           "start_date",
           "frequency_type",
           "frequency_value",
-          // Onda H+ — usado pra `contrato.criado_{dia,mes,ano}` no termo/cert.
+          // Onda H+ — usado pra `contrato.criado_{dia,mes,ano}` no certificado.
           "created_at",
         ].join(","),
       )
@@ -262,7 +247,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         errorBody(
           "contract_not_pmoc",
-          "Este contrato não está marcado como PMOC. Edite o contrato e ative a opção 'Contrato PMOC' para gerar o dossiê.",
+          "Este contrato não está marcado como PMOC. Edite o contrato e ative a opção 'Contrato PMOC' para gerar o Certificado de Conformidade.",
           {
             field: "contract.is_pmoc",
             action: { label: "Editar contrato", href: `/contratos/${contractId}/editar` },
@@ -272,7 +257,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 6. Carregar dependências (tenant, customer, RT, custom_docs)
+    // ---- 6. Carregar dependências (tenant, customer, RT com assinatura, custom_docs)
     const [
       { data: customer },
       { data: companySettings },
@@ -287,9 +272,10 @@ Deno.serve(async (req) => {
       supabase
         .from("company_settings")
         // CNPJ vive em `company_settings.document` (não há coluna `cnpj`).
-        // Onda H: campos extra alimentam o PmocVariableContext do termo/cert.
+        // Onda H: incluímos campos extra (address, state, phone, email) pra
+        // alimentar o PmocVariableContext que substitui <span data-pmoc-var>.
         // Onda I: + report_header_* pra estilizar o cabeçalho identidade do
-        //         tenant no topo do Termo RT (embedded no Dossiê).
+        //         tenant no topo do documento.
         .select(
           "name, document, logo_url, white_label_enabled, white_label_logo_url, city, address, address_number, neighborhood, complement, zip_code, state, phone, email, report_header_bg_color, report_header_text_color, report_header_logo_size",
         )
@@ -307,7 +293,7 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null } as { data: null }),
       supabase
         .from("pmoc_contract_documents_custom")
-        .select("termo_rt_content, certificado_content")
+        .select("certificado_content")
         .eq("contract_id", contract.id)
         .eq("company_id", contract.company_id) // filtro defensivo cross-tenant
         .maybeSingle(),
@@ -331,7 +317,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         errorBody(
           "cnpj_missing",
-          "CNPJ da empresa não cadastrado em Configurações > Empresa. O dossiê PMOC exige CNPJ pela Lei 13.589/2018.",
+          "CNPJ da empresa não cadastrado em Configurações > Empresa. O Certificado exige CNPJ pela Lei 13.589/2018.",
           {
             field: "company_settings.document",
             action: { label: "Ir para Configurações", href: "/configuracoes/empresa" },
@@ -357,7 +343,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         errorBody(
           "rt_missing",
-          "Contrato sem Responsável Técnico vinculado. Edite o contrato e atribua um RT antes de gerar o dossiê.",
+          "Contrato sem Responsável Técnico vinculado. Edite o contrato e atribua um RT antes de gerar o Certificado.",
           {
             field: "contract.responsible_technician_id",
             action: { label: "Editar contrato", href: `/contratos/${contractId}/editar` },
@@ -370,7 +356,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         errorBody(
           "rt_full_name_missing",
-          "O Responsável Técnico do contrato está sem nome completo cadastrado. Atualize o cadastro do RT antes de gerar o dossiê.",
+          "O Responsável Técnico do contrato está sem nome completo cadastrado. Atualize o cadastro do RT antes de gerar o Certificado.",
           {
             field: "responsible_technicians.full_name",
             action: { label: "Ir para Responsáveis Técnicos", href: "/configuracoes/responsaveis-tecnicos" },
@@ -402,42 +388,43 @@ Deno.serve(async (req) => {
       warnings.push("customer_address_missing");
     }
 
-    // Logo bytes (best-effort)
-    const useWhiteLabel = companySettings?.white_label_enabled === true;
-    const logoUrl = useWhiteLabel
-      ? companySettings?.white_label_logo_url ?? companySettings?.logo_url ?? null
-      : companySettings?.logo_url ?? null;
-
-    let logoBytes: Uint8Array | null = null;
-    let logoMime: "image/png" | "image/jpeg" | null = null;
-    if (logoUrl) {
-      try {
-        const res = await fetch(logoUrl);
-        if (res.ok) {
-          const ct = res.headers.get("content-type") ?? "";
-          if (ct.includes("png")) {
-            logoBytes = new Uint8Array(await res.arrayBuffer());
-            logoMime = "image/png";
-          } else if (ct.includes("jpeg") || ct.includes("jpg")) {
-            logoBytes = new Uint8Array(await res.arrayBuffer());
-            logoMime = "image/jpeg";
-          }
-        }
-      } catch {
-        // sem logo é ok — fallback é texto
-      }
-    }
-
     // Cidade (do company_settings, fallback do customer)
     const cidade = (companySettings?.city ?? customer?.city ?? "").trim() || "_______________________";
 
-    // ---- (Onda I — v1.9.x) Cores do report_header_* pro cabeçalho identidade
-    //      tenant no Termo RT (embedded no Dossiê).
-    const dossieHeaderBg =
+    // ---- (Onda I — v1.9.x) Carregar logo do tenant pro cabeçalho.
+    //      Best-effort: se falhar download, header desenha a inicial do nome.
+    //      Respeita white-label (usa white_label_logo_url quando ativo).
+    const certUseWhiteLabel = companySettings?.white_label_enabled === true;
+    const certLogoUrl = certUseWhiteLabel
+      ? companySettings?.white_label_logo_url ?? companySettings?.logo_url ?? null
+      : companySettings?.logo_url ?? null;
+
+    let certLogoBytes: Uint8Array | null = null;
+    let certLogoMime: "image/png" | "image/jpeg" | null = null;
+    if (certLogoUrl) {
+      try {
+        const res = await fetch(certLogoUrl);
+        if (res.ok) {
+          const ct = res.headers.get("content-type") ?? "";
+          if (ct.includes("png")) {
+            certLogoBytes = new Uint8Array(await res.arrayBuffer());
+            certLogoMime = "image/png";
+          } else if (ct.includes("jpeg") || ct.includes("jpg")) {
+            certLogoBytes = new Uint8Array(await res.arrayBuffer());
+            certLogoMime = "image/jpeg";
+          }
+        }
+      } catch {
+        // sem logo é ok — header cai no fallback de inicial
+      }
+    }
+
+    // ---- (Onda I — v1.9.x) Cores do report_header_* (fallback DEFAULT do front).
+    const certHeaderBg =
       ((companySettings as unknown as Record<string, unknown>)?.report_header_bg_color as string | null) ?? null;
-    const dossieHeaderText =
+    const certHeaderText =
       ((companySettings as unknown as Record<string, unknown>)?.report_header_text_color as string | null) ?? null;
-    const dossieHeaderLogoSize =
+    const certHeaderLogoSize =
       ((companySettings as unknown as Record<string, unknown>)?.report_header_logo_size as number | null) ?? null;
 
     // ---- 7. Monta TemplateContext
@@ -446,11 +433,8 @@ Deno.serve(async (req) => {
         razao_social: tenantName,
         cnpj,
         cidade,
-        logo_bytes: logoBytes,
-        logo_mime: logoMime,
-        // Onda I (v1.9.x) — campos extras pro cabeçalho identidade tenant no
-        // Termo RT (página 2 do Dossiê) e pro rodapé Dominex (oculto em
-        // white-label).
+        logo_bytes: certLogoBytes,
+        logo_mime: certLogoMime,
         phone: companySettings?.phone ?? null,
         email: companySettings?.email ?? null,
         address: companySettings?.address ?? null,
@@ -458,16 +442,15 @@ Deno.serve(async (req) => {
         neighborhood: companySettings?.neighborhood ?? null,
         state: companySettings?.state ?? null,
         zip_code: companySettings?.zip_code ?? null,
-        header_bg_color: dossieHeaderBg,
-        header_text_color: dossieHeaderText,
-        header_logo_size: dossieHeaderLogoSize,
-        white_label_enabled: useWhiteLabel,
+        header_bg_color: certHeaderBg,
+        header_text_color: certHeaderText,
+        header_logo_size: certHeaderLogoSize,
+        white_label_enabled: certUseWhiteLabel,
       },
       rt: {
         nome: rt.full_name,
         modalidade: rt.modality ?? "Técnico em Refrigeração",
         cft_crea: rt.cft_crea ?? null,
-        // Onda E: assinatura visual do RT embedada automaticamente quando existir.
         signature_image_url: rt.signature_image_url ?? null,
         stamp_image_url: rt.stamp_image_url ?? null,
       },
@@ -490,9 +473,7 @@ Deno.serve(async (req) => {
     };
 
     // ---- 7.5 (Onda H) PmocVariableContext — chaves "ponto" pra substituir
-    //          os <span data-pmoc-var="X"> no HTML do termo/certificado.
-    //          17 chaves espelhando o catálogo em variables.ts. Vazio aqui vira
-    //          linha pontilhada `____________________` no PDF final.
+    //          os <span data-pmoc-var="X"> no HTML do certificado (custom ou default).
     const empresaEnderecoFull = [
       companySettings?.address,
       companySettings?.address_number,
@@ -503,8 +484,8 @@ Deno.serve(async (req) => {
       .filter((s) => s.length > 0)
       .join(", ");
 
-    // Onda H+ — partes de `contracts.created_at` pras 3 variáveis novas
-    //          usadas na assinatura "Cidade, DD de mês de AAAA." do termo RT.
+    // Onda H+ — extrai dia/mês/ano por extenso de `contracts.created_at`
+    //          pras variáveis `contrato.criado_{dia,mes,ano}`.
     const createdParts = extractContractCreatedParts(
       (contract as { created_at?: string | null }).created_at ?? null,
     );
@@ -538,61 +519,16 @@ Deno.serve(async (req) => {
       "data.hoje_extenso": dateToExtenso(new Date()),
     };
 
-    // ---- 7.6 (Onda L) Cronograma anual — janela de 12 meses a partir do mês
-    //          atual. COPIA a lógica de generate-pmoc-cronograma-pdf pra incluir
-    //          as 12 páginas de calendário ao final do Dossiê.
-    const now = new Date();
-    const startMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const endMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 12, 1));
-
-    const startIso = startMonth.toISOString().slice(0, 10);
-    const endIso = endMonth.toISOString().slice(0, 10);
-
-    const { data: orders } = await supabase
-      .from("service_orders")
-      .select("id, order_number, scheduled_date, status")
-      .eq("contract_id", contract.id)
-      .eq("company_id", contract.company_id) // filtro defensivo
-      .gte("scheduled_date", startIso)
-      .lt("scheduled_date", endIso);
-
-    const cronogramaOrders: CronogramaServiceOrder[] = (orders ?? []).map((o) => ({
-      id: o.id,
-      order_number: o.order_number ?? null,
-      scheduled_date: o.scheduled_date ?? null,
-      status: o.status,
-    }));
-
-    // ---- 8. content_hash dos campos dinâmicos
-    //    Onda E: bump pra dossie_v2 (signature_image_url entra no hash).
-    //    Onda H: bump pra dossie_v3 (variableContext entra — campos novos do
-    //    company_settings/RT invalidam cache certinho).
-    //    Onda H+ (v1.9.x): bump pra dossie_v4 — 3 chaves novas
-    //    `contrato.criado_{dia,mes,ano}` entraram no variableContext.
-    //    Onda I (v1.9.x): bump pra dossie_v5 — cabeçalho identidade tenant
-    //    no Termo RT (logo + endereço + cores), rodapé Dominex novo
-    //    (substitui "Powered by Dominex" antigo, oculto em white-label) e
-    //    espaçamento das linhas de assinatura mudaram o output visual.
-    //    Onda J (v1.9.x): bump pra dossie_v6 — novo template do Termo RT e
-    //    do Certificado (só o RT assina, bloco de dados cliente/empresa
-    //    reformulado, var `cliente.documento` no corpo e remoção da barra
-    //    preta). Cobre também o Certificado, gerado nesta mesma função.
-    //    Mudança é só de TEXTO/layout — sem bump, PDFs cacheados não
-    //    regenerariam com o template novo.
-    //    Onda K (v1.9.x): bump pra dossie_v7 — mais respiro vertical entre
-    //    seções dos templates do Termo RT e do Certificado (só espaçamento/
-    //    layout, dados de entrada idênticos — sem bump não regeneraria).
-    //    Onda L (v1.9.x): bump pra dossie_v8 — o Cronograma Anual (12 páginas)
-    //    passou a viver DENTRO do Dossiê. A janela de meses + as OSs
-    //    (números/datas/status ordenados) entram no hash pra o cache invalidar
-    //    quando o cronograma mudar.
+    // ---- 8. content_hash — INCLUI signature_image_url (RT atualiza assinatura
+    //         → hash muda → cache miss → nova versão). Espelha o TRT, mas com
+    //         namespace `cert_v1` e o conteúdo custom `certificado_content`.
     const hashInput = JSON.stringify({
-      v: "dossie_v8",
+      v: "cert_v1",
       tenant: {
         name: tenantName,
         cnpj,
         city: cidade,
-        logo: !!logoBytes,
+        logo: !!certLogoBytes,
         phone: companySettings?.phone ?? null,
         email: companySettings?.email ?? null,
         address: companySettings?.address ?? null,
@@ -600,29 +536,22 @@ Deno.serve(async (req) => {
         neighborhood: companySettings?.neighborhood ?? null,
         state: companySettings?.state ?? null,
         zip_code: companySettings?.zip_code ?? null,
-        header_bg: dossieHeaderBg,
-        header_text: dossieHeaderText,
-        header_logo_size: dossieHeaderLogoSize,
-        white_label: useWhiteLabel,
+        header_bg: certHeaderBg,
+        header_text: certHeaderText,
+        header_logo_size: certHeaderLogoSize,
+        white_label: certUseWhiteLabel,
       },
       rt: {
         nome: ctx.rt.nome,
         modalidade: ctx.rt.modalidade,
         cft_crea: ctx.rt.cft_crea,
+        // URL faz parte do hash — se o RT troca a assinatura, regen é forçado.
         signature_image_url: ctx.rt.signature_image_url ?? null,
       },
       customer: ctx.customer,
       contract: ctx.contract,
-      termo: customDocs?.termo_rt_content ?? null,
       cert: customDocs?.certificado_content ?? null,
       vars: variableContext,
-      // Onda L — cronograma embutido: janela + OSs ordenadas invalidam o cache.
-      cronograma: {
-        window: { start: startIso, end: endIso },
-        orders: cronogramaOrders
-          .map((o) => ({ n: o.order_number, d: o.scheduled_date, s: o.status }))
-          .sort((a, b) => (a.d ?? "").localeCompare(b.d ?? "")),
-      },
     });
     const contentHash = await sha256Hex(hashInput);
 
@@ -632,7 +561,7 @@ Deno.serve(async (req) => {
       .select("id, version, pdf_storage_path, generated_at, notes")
       .eq("contract_id", contract.id)
       .eq("company_id", contract.company_id)
-      .eq("doc_type", "dossie_pmoc")
+      .eq("doc_type", "certificado")
       .eq("content_hash", contentHash)
       .order("version", { ascending: false })
       .limit(1)
@@ -644,13 +573,12 @@ Deno.serve(async (req) => {
         .createSignedUrl(existingDoc.pdf_storage_path, 3600); // TTL 1h
 
       if (signedErr || !signed) {
-        // PDF não existe no storage (mismatch). Forçar regen.
-        console.warn("[generate-pmoc-dossie-pdf] cache hit mas signed URL falhou — regenerando", {
+        console.warn("[generate-pmoc-certificado-pdf] cache hit mas signed URL falhou — regenerando", {
           contract_id: maskUuid(contract.id),
           path: existingDoc.pdf_storage_path,
         });
       } else {
-        // Onda E: derivar signature_status do notes; fallback pra checar a URL.
+        // Estimar signature_status do notes (gravado no INSERT)
         const sigStatus =
           existingDoc.notes && existingDoc.notes.startsWith("signature:")
             ? existingDoc.notes.split(":")[1] === "pending"
@@ -660,7 +588,7 @@ Deno.serve(async (req) => {
               ? "signed"
               : "pending";
 
-        console.log("[generate-pmoc-dossie-pdf] cache hit", {
+        console.log("[generate-pmoc-certificado-pdf] cache hit", {
           contract_id: maskUuid(contract.id),
           version: existingDoc.version,
           warnings: warnings.length,
@@ -681,19 +609,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---- 10. Compor PDF
+    // ---- 10. Compor PDF (só o Certificado)
     const pdf = await PDFDocument.create();
-    pdf.setTitle(`PMOC — Dossiê — ${ctx.customer.name}`);
-    pdf.setSubject("Plano de Manutenção, Operação e Controle — Lei 13.589/2018");
+    pdf.setTitle(`PMOC — Certificado de Conformidade — ${ctx.customer.name}`);
+    pdf.setSubject("Certificado de Conformidade — Lei 13.589/2018");
     pdf.setProducer("Dominex");
 
-    await drawCapaPage(pdf, ctx);
-    const termoResult = await drawTermoRtPage(
-      pdf,
-      ctx,
-      customDocs?.termo_rt_content ?? null,
-      variableContext,
-    );
     const certResult = await drawCertificadoPage(
       pdf,
       ctx,
@@ -701,26 +622,12 @@ Deno.serve(async (req) => {
       variableContext,
     );
 
-    // ---- Onda L: Cronograma Anual (12 páginas, 1 mês por página) ao final.
-    //      Usa o MESMO TemplateContext do dossiê (tenant + customer + contract).
-    for (let i = 0; i < 12; i++) {
-      const month = new Date(
-        Date.UTC(startMonth.getUTCFullYear(), startMonth.getUTCMonth() + i, 1),
-      );
-      await drawCronogramaMesPage({
-        pdf,
-        ctx,
-        month,
-        serviceOrders: cronogramaOrders,
-      });
-    }
-
     const pdfBytes = await pdf.save();
     const pdfSize = pdfBytes.length;
 
-    // Onda E: signature_status agregado (pending se QUALQUER página ficou pendente)
-    const signatureStatus: "signed" | "pending" =
-      termoResult.signaturePending || certResult.signaturePending ? "pending" : "signed";
+    const signatureStatus: "signed" | "pending" = certResult.signaturePending
+      ? "pending"
+      : "signed";
 
     // ---- 11. Próxima versão
     const { data: maxRow } = await supabase
@@ -728,13 +635,13 @@ Deno.serve(async (req) => {
       .select("version")
       .eq("contract_id", contract.id)
       .eq("company_id", contract.company_id)
-      .eq("doc_type", "dossie_pmoc")
+      .eq("doc_type", "certificado")
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     const nextVersion = (maxRow?.version ?? 0) + 1;
-    const storagePath = `${contract.company_id}/${contract.id}/dossie_pmoc-v${nextVersion}.pdf`;
+    const storagePath = `${contract.company_id}/${contract.id}/certificado-v${nextVersion}.pdf`;
 
     // ---- 12. Upload pro storage
     const { error: uploadErr } = await supabase.storage
@@ -745,7 +652,7 @@ Deno.serve(async (req) => {
       });
 
     if (uploadErr) {
-      console.error("[generate-pmoc-dossie-pdf] upload error", {
+      console.error("[generate-pmoc-certificado-pdf] upload error", {
         contract_id: maskUuid(contract.id),
         message: uploadErr.message,
       });
@@ -758,13 +665,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- 13. INSERT em pmoc_documents
-    //    Onda E: notes grava signature:status pra que cache hit subsequente
-    //    devolva o mesmo status sem re-embedar a imagem.
+    // ---- 13. INSERT em pmoc_documents — grava signature_status no notes pra
+    //         que o cache hit subsequente saiba devolver sem precisar embedar.
     const { error: insertErr } = await supabase.from("pmoc_documents").insert({
       company_id: contract.company_id,
       contract_id: contract.id,
-      doc_type: "dossie_pmoc",
+      doc_type: "certificado",
       version: nextVersion,
       content_hash: contentHash,
       pdf_storage_path: storagePath,
@@ -775,7 +681,7 @@ Deno.serve(async (req) => {
     if (insertErr) {
       // Tenta limpar PDF órfão
       await supabase.storage.from("pmoc-documents").remove([storagePath]);
-      console.error("[generate-pmoc-dossie-pdf] insert error", {
+      console.error("[generate-pmoc-certificado-pdf] insert error", {
         contract_id: maskUuid(contract.id),
         message: insertErr.message,
       });
@@ -803,16 +709,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("[generate-pmoc-dossie-pdf] generated", {
+    console.log("[generate-pmoc-certificado-pdf] generated", {
       contract_id: maskUuid(contract.id),
       version: nextVersion,
       content_hash: contentHash.slice(0, 8) + "...",
       pdf_size_bytes: pdfSize,
-      tags_removed_termo: termoResult.tagsRemoved,
-      attrs_removed_termo: termoResult.attrsRemoved,
-      tags_removed_cert: certResult.tagsRemoved,
-      attrs_removed_cert: certResult.attrsRemoved,
-      cronograma_orders: cronogramaOrders.length,
+      tags_removed: certResult.tagsRemoved,
+      attrs_removed: certResult.attrsRemoved,
       signature_status: signatureStatus,
       warnings: warnings.length,
       duration_ms: Date.now() - t0,
@@ -831,7 +734,7 @@ Deno.serve(async (req) => {
       warnings.length > 0 ? { "X-Pmoc-Warnings": warnings.join(",") } : {},
     );
   } catch (err) {
-    console.error("[generate-pmoc-dossie-pdf] unexpected error", {
+    console.error("[generate-pmoc-certificado-pdf] unexpected error", {
       message: (err as Error)?.message ?? String(err),
     });
     return jsonResponse(

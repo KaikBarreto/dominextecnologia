@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.10.2";
+export const APP_VERSION = "1.10.3";
 
-export const VERSION_NOTES = "A prévia dos documentos PMOC ficou mais realista: agora ela mostra os campos preenchidos com dados de exemplo (em vez de linhas em branco) e marca com um \"X\" o local da assinatura do Responsável Técnico, pra você visualizar melhor como o documento vai ficar. Também ajustamos o espaçamento entre as seções do Termo de Responsabilidade Técnica e do Certificado de Conformidade, aproveitando melhor o espaço da página — sempre mantendo o documento em uma única folha.";
+export const VERSION_NOTES = "Corrigimos um erro que, em alguns casos, impedia a geração do Termo de Responsabilidade Técnica, do Certificado de Conformidade e do Dossiê PMOC. Além disso, o Certificado de Conformidade agora pode ser gerado e baixado individualmente (como já acontecia com o Termo), o cronograma anual passou a fazer parte do próprio Dossiê PMOC, e os modelos de documentos na tela de Configurações de Contrato ganharam um visual mais claro.";
