@@ -24,6 +24,7 @@ import {
 } from "./signature-embed.ts";
 import { PmocVariableContext, substituteVariables } from "./variables.ts";
 import { drawDominexFooter } from "./footer.ts";
+import { drawComplianceSeal } from "./assets/draw-compliance-seal.ts";
 
 const BLACK = rgb(0, 0, 0);
 
@@ -91,7 +92,10 @@ export async function drawCertificadoPage(
   //    Reservamos espaço pro selo "Conforme Lei" + (se aplicável) o footer
   //    Dominex novo (~72pt). Onda I (v1.9.x): bump pra 90pt quando há footer.
   const isWhiteLabel = ctx.empresa.white_label_enabled === true;
-  const SEAL_RESERVED = isWhiteLabel ? 60 : 90;
+  // Onda (selo PNG): o selo gráfico (~55pt) + texto + linha decorativa empilham
+  // ACIMA do "Conforme Lei…", então reservamos mais espaço pra não colidir com
+  // o bloco de assinatura. Antes: 60 (WL) / 90 (footer).
+  const SEAL_RESERVED = isWhiteLabel ? 130 : 160;
   const SPACE_NEEDED = SIGNATURE_BLOCK_HEIGHT + 20 + SEAL_RESERVED;
 
   let sigPage = result.page;
@@ -139,11 +143,21 @@ export async function drawCertificadoPage(
     color: BLACK,
   });
 
-  // Linha decorativa pequena acima do selo
+  // Selo PNG de conformidade — centralizado e LOGO ACIMA do texto da lei.
+  // (~8pt de respiro entre o topo do texto e a base do selo.)
+  const sealTopOfText = sealY + sealSize;
+  const sealImgH = await drawComplianceSeal(pdf, finalPage, {
+    centerX: A4_W / 2,
+    baselineY: sealTopOfText + 8,
+    width: 64,
+  });
+
+  // Linha decorativa pequena acima do selo PNG.
   const decorW = 80;
+  const decorY = sealTopOfText + 8 + sealImgH + 8;
   finalPage.drawLine({
-    start: { x: (A4_W - decorW) / 2, y: sealY + 16 },
-    end: { x: (A4_W - decorW) / 2 + decorW, y: sealY + 16 },
+    start: { x: (A4_W - decorW) / 2, y: decorY },
+    end: { x: (A4_W - decorW) / 2 + decorW, y: decorY },
     thickness: 0.5,
     color: BLACK,
   });

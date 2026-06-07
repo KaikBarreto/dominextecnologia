@@ -18,6 +18,7 @@ import {
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
 import { TemplateContext } from "./context.ts";
+import { drawComplianceSeal } from "./assets/draw-compliance-seal.ts";
 
 const A4_W = 595.28;
 const A4_H = 841.89;
@@ -329,12 +330,20 @@ export async function drawCronogramaMesPage(
   const sealText = "Conforme Lei Federal 13.589/2018";
   const sealSize = 9;
   const sealW = helvBold.widthOfTextAtSize(sealText, sealSize);
+  const sealTextX = A4_W - gridMarginX - sealW;
   page.drawText(sealText, {
-    x: A4_W - gridMarginX - sealW,
+    x: sealTextX,
     y: legendY + 1,
     size: sealSize,
     font: helvBold,
     color: COLORS.black,
+  });
+
+  // Selo PNG de conformidade — centralizado sobre o texto da lei, logo ACIMA.
+  await drawComplianceSeal(pdf, page, {
+    centerX: sealTextX + sealW / 2,
+    baselineY: legendY + 1 + sealSize + 6,
+    width: 56,
   });
 
   return page;

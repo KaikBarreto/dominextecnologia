@@ -18,6 +18,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 import QRCode from "https://esm.sh/qrcode@1.5.4";
+import { drawComplianceSeal } from "../_shared/pmoc-templates/assets/draw-compliance-seal.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -359,6 +360,13 @@ Deno.serve(async (req) => {
       size: 11,
       font: helvBold,
       color: black,
+    });
+
+    // -- Selo PNG de conformidade — centralizado e LOGO ACIMA do texto da lei.
+    await drawComplianceSeal(pdf, page, {
+      centerX: PAGE_W / 2,
+      baselineY: margin + 11 + 8,
+      width: 64,
     });
 
     const pdfBytes = await pdf.save();

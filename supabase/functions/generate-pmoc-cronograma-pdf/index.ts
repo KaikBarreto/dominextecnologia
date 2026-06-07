@@ -366,7 +366,7 @@ Deno.serve(async (req) => {
     //    o RT muda a assinatura, TODOS os PDFs do contrato regeneram", lei do
     //    CEO).
     const hashInput = JSON.stringify({
-      v: "cronograma_v2",
+      v: "cronograma_v3",
       tenant: tenantName,
       customer: customer?.name ?? "",
       window: { start: startIso, end: endIso },

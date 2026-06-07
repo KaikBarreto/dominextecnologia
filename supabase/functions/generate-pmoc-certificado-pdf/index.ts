@@ -523,7 +523,7 @@ Deno.serve(async (req) => {
     //         → hash muda → cache miss → nova versão). Espelha o TRT, mas com
     //         namespace `cert_v1` e o conteúdo custom `certificado_content`.
     const hashInput = JSON.stringify({
-      v: "cert_v1",
+      v: "cert_v2",
       tenant: {
         name: tenantName,
         cnpj,

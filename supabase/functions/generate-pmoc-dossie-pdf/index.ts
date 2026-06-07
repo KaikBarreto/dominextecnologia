@@ -587,7 +587,7 @@ Deno.serve(async (req) => {
     //    (números/datas/status ordenados) entram no hash pra o cache invalidar
     //    quando o cronograma mudar.
     const hashInput = JSON.stringify({
-      v: "dossie_v8",
+      v: "dossie_v9",
       tenant: {
         name: tenantName,
         cnpj,
