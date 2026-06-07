@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Navigation, Star, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -20,11 +20,10 @@ import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { useServiceRatings } from '@/hooks/useServiceRatings';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { SignedImg } from '@/components/ui/SignedImg';
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
+import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { PmocComplianceBadge } from '@/components/pmoc/PmocComplianceBadge';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
-import { cn } from '@/lib/utils';
 
 interface OSPhoto {
   id: string;
@@ -68,77 +67,10 @@ const statusColors: Record<OsStatus, string> = {
   cancelada: 'bg-destructive/10 text-destructive border-destructive',
 };
 
-/**
- * Carrossel horizontal de fotos — uma foto grande por vez, arrasta pro lado.
- * "Espiada" da próxima na borda deixa claro que dá pra arrastar (basis-[85%]).
- * Toque na foto abre o visualizador em tela cheia via onOpen(index).
- * renderOverlay opcional desenha algo sobre cada foto (ex.: Badge do tipo).
- * Com 1 foto só, mostra a foto grande sem carrossel/dots.
- */
-function PhotoCarousel({
-  urls,
-  onOpen,
-  renderOverlay,
-}: {
-  urls: string[];
-  onOpen: (index: number) => void;
-  renderOverlay?: (index: number) => ReactNode;
-}) {
-  const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    if (!api) return;
-    setCurrent(api.selectedScrollSnap());
-    const onSelect = () => setCurrent(api.selectedScrollSnap());
-    api.on('select', onSelect);
-    return () => {
-      api.off('select', onSelect);
-    };
-  }, [api]);
-
-  const renderPhoto = (url: string, index: number) => (
-    <button
-      type="button"
-      onClick={() => onOpen(index)}
-      aria-label={`Ampliar foto ${index + 1} de ${urls.length}`}
-      className="relative block w-full aspect-[4/3] rounded-lg overflow-hidden bg-muted hover:opacity-90 active:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      <SignedImg src={url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
-      {renderOverlay?.(index)}
-    </button>
-  );
-
-  // Uma foto só: sem carrossel nem dots.
-  if (urls.length < 2) {
-    return urls.length === 1 ? renderPhoto(urls[0], 0) : null;
-  }
-
-  return (
-    <div className="space-y-2">
-      <Carousel setApi={setApi} opts={{ align: 'start' }}>
-        <CarouselContent className="-ml-2">
-          {urls.map((url, index) => (
-            <CarouselItem key={index} className="pl-2 basis-[85%]">
-              {renderPhoto(url, index)}
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
-      <div className="flex items-center justify-center gap-1.5" aria-hidden="true">
-        {urls.map((_, index) => (
-          <span
-            key={index}
-            className={cn(
-              'h-1.5 rounded-full transition-all',
-              index === current ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30',
-            )}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+// Helper de imagem do dialog: usa SignedImg (resolve signed URLs de buckets privados).
+const renderSignedImage = (url: string, alt: string, className: string) => (
+  <SignedImg src={url} alt={alt} className={className} />
+);
 
 export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onEdit, onDelete, onStatusChange }: ServiceOrderViewDialogProps) {
   const navigate = useNavigate();
@@ -345,6 +277,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                 <PhotoCarousel
                   urls={urls}
                   onOpen={(index) => openPreview(urls, index)}
+                  renderImage={renderSignedImage}
                   renderOverlay={(index) => (
                     <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] capitalize">
                       {photos[index].photo_type}
@@ -381,7 +314,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                       .filter(Boolean);
                     return (
                       <div className="mt-1">
-                        <PhotoCarousel urls={urls} onOpen={(i) => openPreview(urls, i)} />
+                        <PhotoCarousel urls={urls} onOpen={(i) => openPreview(urls, i)} renderImage={renderSignedImage} />
                       </div>
                     );
                   })()}

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Download, Printer, User, Wrench, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, PenTool, Link2, Star } from 'lucide-react';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,11 +62,11 @@ interface OSReportProps {
 // Helper to safely extract joined object (Supabase may return array for some joins)
 const unwrapJoin = (val: any) => Array.isArray(val) ? val[0] || null : val;
 
-function ReportImage({ src, alt, className, onClick }: { src: string; alt: string; className?: string; onClick?: () => void }) {
+function ReportImage({ src, alt, className, onClick, wrapperClassName }: { src: string; alt: string; className?: string; onClick?: () => void; wrapperClassName?: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   return (
-    <div className="relative inline-block">
+    <div className={wrapperClassName || 'relative inline-block'}>
       {!loaded && !error && (
         <div className={cn('bg-slate-200 animate-pulse rounded-md', className?.replace(/cursor-pointer|hover:opacity-80|transition-opacity/g, '') || 'w-20 h-20')} />
       )}
@@ -468,16 +469,31 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                     <p className="text-sm text-slate-600 break-words">{response.response_value}</p>
                   )
                 )}
-                {hasPhoto && (
-                  <div className="flex flex-wrap gap-2">
-                    {(() => {
-                      const urls = response.response_photo_url!.split(',').filter(Boolean).map(u => u.trim());
-                      return urls.map((url, i) => (
-                        <ReportImage key={i} src={url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setGalleryImages(urls); setGalleryIndex(i); setPreviewImage(url); }} />
-                      ));
-                    })()}
-                  </div>
-                )}
+                {hasPhoto && (() => {
+                  const urls = response.response_photo_url!.split(',').filter(Boolean).map(u => u.trim());
+                  const openFullscreen = (i: number) => { setGalleryImages(urls); setGalleryIndex(i); setPreviewImage(urls[i]); };
+                  return (
+                    <>
+                      {/* Mobile-tela: carrossel (foto grande, swipe). Escondido no desktop e SEMPRE no print
+                          pra impressão/PDF nunca perder foto — o grid abaixo cobre esses casos. */}
+                      <div className="md:hidden print:hidden">
+                        <PhotoCarousel
+                          urls={urls}
+                          onOpen={openFullscreen}
+                          renderImage={(url, alt, imgClassName) => (
+                            <ReportImage src={url} alt={alt} className={imgClassName} wrapperClassName="block w-full h-full" />
+                          )}
+                        />
+                      </div>
+                      {/* Desktop-tela + SEMPRE no print: grid com TODAS as fotos visíveis (como antes). */}
+                      <div className="hidden md:flex print:flex flex-wrap gap-2">
+                        {urls.map((url, i) => (
+                          <ReportImage key={i} src={url} alt="Resposta" className="w-20 h-20 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openFullscreen(i)} />
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>
