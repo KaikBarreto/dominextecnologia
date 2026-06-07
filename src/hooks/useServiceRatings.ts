@@ -106,23 +106,14 @@ export function usePublicRating(token: string | undefined) {
     queryKey: ['public-rating', token],
     enabled: !!token,
     queryFn: async () => {
-      const { data: rpcRows, error } = await supabase
-        .rpc('get_rating_by_token', { _token: token! });
+      // RPC SECURITY DEFINER valida o token e já devolve a linha de avaliação +
+      // a OS relacionada (id, order_number, scheduled_date, customer{id,name}).
+      // Sem leitura anon direta de service_orders.
+      const { data, error } = await supabase
+        .rpc('get_rating_with_os_by_token', { p_token: token! });
       if (error) throw error;
-      const ratingRow = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
-      if (!ratingRow) throw new Error('Avaliação não encontrada');
-
-      // Carregar OS relacionada (RLS já permite leitura via portal/token? — caso contrário, retornamos só rating)
-      let service_order: any = null;
-      if ((ratingRow as any).service_order_id) {
-        const { data: osData } = await supabase
-          .from('service_orders')
-          .select('id, order_number, scheduled_date, customer:customers(id, name)')
-          .eq('id', (ratingRow as any).service_order_id)
-          .maybeSingle();
-        service_order = osData;
-      }
-      return { ...(ratingRow as any), service_order } as unknown as ServiceRating;
+      if (!data) throw new Error('Avaliação não encontrada');
+      return data as unknown as ServiceRating;
     },
   });
 

@@ -22,11 +22,10 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 
-interface PortalData {
+interface Customer {
   id: string;
-  customer_id: string;
-  token: string;
-  is_active: boolean;
+  name: string;
+  company_id: string;
 }
 
 interface Equipment {
@@ -77,8 +76,7 @@ export default function CustomerPortal() {
   const eqParam = searchParams.get('eq');
   const { toast } = useToast();
 
-  const [portal, setPortal] = useState<PortalData | null>(null);
-  const [customer, setCustomer] = useState<{ id: string; name: string } | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
@@ -106,54 +104,46 @@ export default function CustomerPortal() {
     loadPortalData();
   }, [token]);
 
-  // Realtime for service orders
+  // Realtime: quando uma OS do cliente muda, recarrega o portal inteiro pela RPC
+  // validada por token (não lemos service_orders direto — RLS sem token).
   useEffect(() => {
     if (!customer?.id) return;
     const channel = supabase
       .channel('portal-os')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders', filter: `customer_id=eq.${customer.id}` }, () => {
-        loadServiceOrders(customer.id);
+        loadPortalData();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [customer?.id]);
 
+  // Carrega TUDO que o portal precisa numa única RPC SECURITY DEFINER que valida
+  // o token internamente (customer + company_settings + equipment + OS). Sem
+  // leituras anon diretas de customers/company_settings/equipment/service_orders.
   const loadPortalData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data: portalRows, error: portalError } = await supabase
-        .rpc('get_portal_by_token', { _token: token! });
+      const { data, error: rpcError } = await supabase
+        .rpc('get_portal_data', { p_token: token! });
 
-      const portalData = Array.isArray(portalRows) ? portalRows[0] : portalRows;
-
-      if (portalError || !portalData) {
+      if (rpcError || !data) {
         setError('Portal não encontrado ou desativado.');
         setLoading(false);
         return;
       }
 
-      setPortal(portalData as any);
+      const payload = data as {
+        customer: Customer;
+        company_settings: CompanySettings | null;
+        equipment: Equipment[];
+        service_orders: ServiceOrder[];
+      };
 
-      const { data: customerData } = await supabase
-        .from('customers')
-        .select('id, name')
-        .eq('id', (portalData as any).customer_id)
-        .single();
-
-      if (customerData) setCustomer(customerData as any);
-
-      const { data: settings } = await supabase
-        .from('company_settings')
-        .select('name, logo_url, phone, email, address, city, state')
-        .limit(1)
-        .single();
-      if (settings) setCompanySettings(settings as any);
-
-      await Promise.all([
-        loadEquipment((portalData as any).customer_id),
-        loadServiceOrders((portalData as any).customer_id),
-      ]);
+      setCustomer(payload.customer);
+      setCompanySettings(payload.company_settings ?? null);
+      setEquipment(payload.equipment ?? []);
+      setServiceOrders(payload.service_orders ?? []);
     } catch {
       setError('Erro ao carregar portal.');
     } finally {
@@ -161,30 +151,12 @@ export default function CustomerPortal() {
     }
   };
 
-  const loadEquipment = async (customerId: string) => {
-    const { data } = await supabase
-      .from('equipment')
-      .select('id, name, brand, model, serial_number, location, status, photo_url, identifier')
-      .eq('customer_id', customerId)
-      .order('name');
-    if (data) setEquipment(data as Equipment[]);
-  };
-
-  const loadServiceOrders = async (customerId: string) => {
-    const { data } = await supabase
-      .from('service_orders')
-      .select('id, order_number, status, description, scheduled_date, created_at, os_type')
-      .eq('customer_id', customerId)
-      .order('created_at', { ascending: false });
-    if (data) setServiceOrders(data as ServiceOrder[]);
-  };
-
   const handleSubmitTicket = async () => {
     if (!ticketDesc.trim() || !customer) return;
     setTicketSubmitting(true);
     try {
-      // Use customer's company_id (portal can be unauthenticated)
-      const company_id = (customer as any).company_id;
+      // Usa o company_id do cliente (portal pode estar sem autenticação).
+      const company_id = customer.company_id;
       const payload = normalizeOptionalForeignKeys({
         customer_id: customer.id,
         equipment_id: ticketEquipmentId || null,
@@ -200,7 +172,7 @@ export default function CustomerPortal() {
       setShowTicketForm(false);
       setTicketDesc('');
       setTicketEquipmentId('');
-      await loadServiceOrders(customer.id);
+      await loadPortalData();
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao abrir chamado', description: getErrorMessage(err) });
     } finally {
@@ -221,7 +193,7 @@ export default function CustomerPortal() {
     );
   }
 
-  if (error || !portal) {
+  if (error || !customer) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />

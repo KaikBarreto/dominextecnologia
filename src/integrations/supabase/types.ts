@@ -5592,8 +5592,10 @@ export type Database = {
           is_active: boolean
         }[]
       }
+      get_portal_data: { Args: { p_token: string }; Returns: Json }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
+      get_rating_with_os_by_token: { Args: { p_token: string }; Returns: Json }
       get_quote_by_token: {
         Args: { _token: string }
         Returns: {
