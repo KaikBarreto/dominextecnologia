@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Filter, X } from 'lucide-react';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -71,7 +72,8 @@ interface FinanceContasProps {
 export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange }: FinanceContasProps) {
   const [subTab, setSubTab] = useState<SubTab>('pagar');
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  // Filtro multi-select: vazio = todas as categorias. Pattern FilterCheckboxGroup.
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -220,9 +222,9 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
       else if (filter === 'vencidas') {
         if (t.is_paid || !t.due_date || !isBefore(parseLocalDate(t.due_date), today)) return false;
       }
-      // Filtro de categoria
-      if (categoryFilter !== 'all') {
-        if ((t.category ?? '') !== categoryFilter) return false;
+      // Filtro de categoria (multi-select: vazio = todas)
+      if (categoryFilter.length > 0) {
+        if (!categoryFilter.includes(t.category ?? '')) return false;
       }
       return true;
     });
@@ -308,7 +310,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
 
   // Resumo da categoria ativa: total + quantidade de lancamentos.
   const categorySummary = useMemo(() => {
-    if (categoryFilter === 'all') return null;
+    if (categoryFilter.length === 0) return null;
     const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
     return { total, count: filtered.length };
   }, [filtered, categoryFilter]);
@@ -390,20 +392,20 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
             { value: 'receber', label: 'A Receber', icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
           ]}
           activeTab={subTab}
-          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter('all'); }}
+          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter([]); }}
         />
       ) : (
         <div className="flex gap-2">
           <Button
             variant={subTab === 'pagar' ? 'default' : 'outline'}
-            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter('all'); }}
+            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter([]); }}
             className={cn('min-h-11 rounded-xl', subTab === 'pagar' && 'bg-destructive hover:bg-destructive/90 text-white')}
           >
             A Pagar
           </Button>
           <Button
             variant={subTab === 'receber' ? 'default' : 'outline'}
-            onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter('all'); }}
+            onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter([]); }}
             className={cn('min-h-11 rounded-xl', subTab === 'receber' && 'bg-success hover:bg-success/90 text-white')}
           >
             A Receber
@@ -530,38 +532,29 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
         </div>
       )}
 
-      {/* Filtro de categoria — aparece quando há categorias disponíveis */}
+      {/* Filtro de categoria — aparece quando há categorias disponíveis.
+          Multi-select (FilterCheckboxGroup): vazio = todas; marcar 1+ filtra. */}
       {availableCategories.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-full sm:w-[220px] rounded-xl text-sm">
-                <SelectValue placeholder="Todas as categorias" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as categorias</SelectItem>
-                {availableCategories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {categoryFilter !== 'all' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 shrink-0 rounded-xl"
-                onClick={() => setCategoryFilter('all')}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+            <div className="w-full sm:max-w-[320px]">
+              <FilterCheckboxGroup
+                label="Categoria"
+                selected={categoryFilter}
+                onChange={setCategoryFilter}
+                emptyLabel="Todas as categorias"
+                options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
+              />
+            </div>
           </div>
 
-          {/* Resumo da categoria ativa */}
+          {/* Resumo das categorias ativas */}
           {categorySummary && (
-            <div className="flex items-center gap-3 rounded-lg bg-muted p-3 text-sm">
-              <Badge variant="outline" className="shrink-0">{categoryFilter}</Badge>
+            <div className="flex items-center gap-3 rounded-lg bg-muted p-3 text-sm flex-wrap">
+              <Badge variant="outline" className="shrink-0">
+                {categoryFilter.length === 1 ? categoryFilter[0] : `${categoryFilter.length} categorias`}
+              </Badge>
               <span className="text-muted-foreground">
                 Total: <span className="font-semibold text-foreground tabular-nums">{formatCurrency(categorySummary.total)}</span>
               </span>
@@ -578,7 +571,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
           Cada linha é destacada (border colorido + ícone cartão + badge
           de quantidade de despesas). Click abre detalhe, "Pagar Fatura" abre modal
           (bloqueado até o fechamento). v1.9.15. */}
-      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && categoryFilter === 'all' && (
+      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && categoryFilter.length === 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
@@ -611,11 +604,15 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
         </div>
-      ) : filtered.length === 0 && (cardInvoices.length === 0 || categoryFilter !== 'all') ? (
+      ) : filtered.length === 0 && (cardInvoices.length === 0 || categoryFilter.length > 0) ? (
         <EmptyState
           icon={<DollarSign className="h-12 w-12" />}
           title="Nenhuma conta encontrada"
-          description={categoryFilter !== 'all' ? `Nenhum registro na categoria "${categoryFilter}"` : 'Nenhum registro para o filtro selecionado'}
+          description={categoryFilter.length === 1
+            ? `Nenhum registro na categoria "${categoryFilter[0]}"`
+            : categoryFilter.length > 1
+              ? 'Nenhum registro nas categorias selecionadas'
+              : 'Nenhum registro para o filtro selecionado'}
         />
       ) : filtered.length === 0 ? (
         // Só faturas (visíveis) — não mostra empty state nem a tabela vazia abaixo.

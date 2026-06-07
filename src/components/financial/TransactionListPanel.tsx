@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignedLink } from '@/components/ui/SignedLink';
 import { FilterButton } from '@/components/ui/FilterButton';
-import { Label } from '@/components/ui/label';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
@@ -24,9 +24,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -85,15 +82,17 @@ export function TransactionListPanel({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [accountFilter, setAccountFilter] = useState(initialAccountFilter || 'all');
+  // Filtros multi-select: vazio = "todos" (mostra tudo). Pattern FilterCheckboxGroup.
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  // Deep-link de conta vem como string única do parent → vira array de 1.
+  const [accountFilter, setAccountFilter] = useState<string[]>(initialAccountFilter ? [initialAccountFilter] : []);
 
   // Mantém o filtro sincronizado com o deep-link (ex: usuário muda de conta na URL).
   useEffect(() => {
-    if (initialAccountFilter) setAccountFilter(initialAccountFilter);
+    if (initialAccountFilter) setAccountFilter([initialAccountFilter]);
   }, [initialAccountFilter]);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -122,32 +121,32 @@ export function TransactionListPanel({
   }, [transactions, allAccounts]);
 
   const activeFiltersCount = [
-    categoryFilter !== 'all',
-    statusFilter !== 'all',
-    accountFilter !== 'all',
-    type === 'all' && typeFilter !== 'all',
+    categoryFilter.length > 0,
+    statusFilter.length > 0,
+    accountFilter.length > 0,
+    type === 'all' && typeFilter.length > 0,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
-    setCategoryFilter('all');
-    setStatusFilter('all');
-    setAccountFilter('all');
-    setTypeFilter('all');
+    setCategoryFilter([]);
+    setStatusFilter([]);
+    setAccountFilter([]);
+    setTypeFilter([]);
     onClearAccountFilter?.();
   };
 
   const clearAccountFilterOnly = () => {
-    setAccountFilter('all');
+    setAccountFilter([]);
     onClearAccountFilter?.();
   };
 
-  const effectiveType = type === 'all' ? typeFilter : type;
-
   const filtered = transactions
-    .filter((t) => effectiveType === 'all' || t.transaction_type === effectiveType)
-    .filter((t) => categoryFilter === 'all' || t.category === categoryFilter)
-    .filter((t) => statusFilter === 'all' || (statusFilter === 'paid' ? t.is_paid : !t.is_paid))
-    .filter((t) => accountFilter === 'all' || (t as any).account_id === accountFilter)
+    .filter((t) => (type === 'all'
+      ? (typeFilter.length === 0 || typeFilter.includes(t.transaction_type))
+      : t.transaction_type === type))
+    .filter((t) => categoryFilter.length === 0 || (t.category != null && categoryFilter.includes(t.category)))
+    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.is_paid ? 'paid' : 'unpaid'))
+    .filter((t) => accountFilter.length === 0 || accountFilter.includes((t as any).account_id))
     .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
 
   // Resumo financeiro da conta filtrada (visível só quando há filtro ativo de conta).
@@ -156,8 +155,10 @@ export function TransactionListPanel({
   // - Saídas no período: somatório de despesas pagas;
   // - Saldo inicial: vem do cadastro da conta;
   // - Saldo atual: usa o cálculo global do hook (atemporal — todas as transações pagas).
-  const filteredAccount = accountFilter !== 'all'
-    ? allAccounts.find((a) => a.id === accountFilter) ?? null
+  // Resumo da conta só faz sentido quando exatamente UMA conta está filtrada
+  // (com várias contas selecionadas o card de saldo único seria ambíguo).
+  const filteredAccount = accountFilter.length === 1
+    ? allAccounts.find((a) => a.id === accountFilter[0]) ?? null
     : null;
 
   const accountSummary = useMemo(() => {
@@ -361,61 +362,45 @@ export function TransactionListPanel({
             Drawer de baixo no mobile, sheet lateral no desktop (pattern v1.9.9). */}
         <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
           {type === 'all' && (
-            <div className="space-y-1.5">
-              <Label>Tipo</Label>
-              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="entrada">Receitas</SelectItem>
-                  <SelectItem value="saida">Despesas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <FilterCheckboxGroup
+              label="Tipo"
+              selected={typeFilter}
+              onChange={setTypeFilter}
+              emptyLabel="Todos"
+              options={[
+                { value: 'entrada', label: 'Entrada' },
+                { value: 'saida', label: 'Saída' },
+              ]}
+            />
           )}
-          <div className="space-y-1.5">
-            <Label>Categoria</Label>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas categorias</SelectItem>
-                {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Status</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="paid">Pago</SelectItem>
-                <SelectItem value="pending">Pendente</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Caixa / Conta bancária</Label>
-            <Select value={accountFilter} onValueChange={setAccountFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos caixas e contas</SelectItem>
-                {Array.from(accountNames.entries()).map(([id, acc]) => {
-                  const Icon = getAccIcon(acc.type);
-                  return (
-                    <SelectItem key={id} value={id}>
-                      <span className="flex items-center gap-2">
-                        <span className="rounded-full p-1" style={{ backgroundColor: acc.color }}>
-                          <Icon className="h-3 w-3 text-white" />
-                        </span>
-                        {acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
+          <FilterCheckboxGroup
+            label="Categoria"
+            selected={categoryFilter}
+            onChange={setCategoryFilter}
+            emptyLabel="Todas"
+            options={categories.map((c) => ({ value: c, label: c }))}
+          />
+          <FilterCheckboxGroup
+            label="Status"
+            selected={statusFilter}
+            onChange={setStatusFilter}
+            emptyLabel="Todos"
+            options={[
+              { value: 'paid', label: 'Pago' },
+              { value: 'unpaid', label: 'Pendente' },
+            ]}
+          />
+          <FilterCheckboxGroup
+            label="Caixa / Conta bancária"
+            selected={accountFilter}
+            onChange={setAccountFilter}
+            emptyLabel="Todos"
+            options={Array.from(accountNames.entries()).map(([id, acc]) => ({
+              value: id,
+              label: acc.type === 'caixa' ? `${acc.name} (dinheiro)` : acc.name,
+              color: acc.color,
+            }))}
+          />
         </FilterButton>
       </div>
 

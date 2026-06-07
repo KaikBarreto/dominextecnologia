@@ -10,17 +10,21 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   FilterCheckboxGroup,
   type FilterCheckboxOption,
 } from '@/components/mobile/FilterCheckboxGroup';
-import type { ContractHealthStatus } from '@/hooks/useContractHealth';
+
+// Opções de Saúde e Tipo (multi-select). Vazio = mostra tudo.
+const HEALTH_OPTIONS: FilterCheckboxOption[] = [
+  { value: 'em_dia', label: 'Em dia' },
+  { value: 'manutencao_pendente', label: 'Manutenção Pendente' },
+  { value: 'necessita_atencao', label: 'ATENÇÃO' },
+];
+
+const TYPE_OPTIONS: FilterCheckboxOption[] = [
+  { value: 'pmoc', label: 'PMOC' },
+  { value: 'common', label: 'Comum (não-PMOC)' },
+];
 
 interface ContractsFilterButtonProps {
   // Status (multi-select).
@@ -28,13 +32,13 @@ interface ContractsFilterButtonProps {
   statusFilter: string[];
   onStatusChange: (next: string[]) => void;
 
-  // Saúde (single).
-  healthFilter: 'all' | ContractHealthStatus;
-  onHealthChange: (next: 'all' | ContractHealthStatus) => void;
+  // Saúde (multi-select).
+  healthFilter: string[];
+  onHealthChange: (next: string[]) => void;
 
-  // Tipo (single).
-  typeFilter: 'all' | 'pmoc' | 'common';
-  onTypeChange: (next: 'all' | 'pmoc' | 'common') => void;
+  // Tipo (multi-select).
+  typeFilter: string[];
+  onTypeChange: (next: string[]) => void;
 
   /** Quantidade de filtros ativos (badge no botão). */
   activeCount: number;
@@ -96,48 +100,21 @@ export function ContractsFilterButton({
             emptyLabel="Todos"
           />
 
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">
-              Saúde
-            </label>
-            <Select
-              value={healthFilter}
-              onValueChange={(v) => onHealthChange(v as typeof healthFilter)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="em_dia">Em dia</SelectItem>
-                <SelectItem value="manutencao_pendente">
-                  Manutenção Pendente
-                </SelectItem>
-                <SelectItem value="necessita_atencao">
-                  ATENÇÃO
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FilterCheckboxGroup
+            label="Saúde"
+            options={HEALTH_OPTIONS}
+            selected={healthFilter}
+            onChange={onHealthChange}
+            emptyLabel="Todas"
+          />
 
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">
-              Tipo
-            </label>
-            <Select
-              value={typeFilter}
-              onValueChange={(v) => onTypeChange(v as typeof typeFilter)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pmoc">PMOC</SelectItem>
-                <SelectItem value="common">Comum (não-PMOC)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FilterCheckboxGroup
+            label="Tipo"
+            options={TYPE_OPTIONS}
+            selected={typeFilter}
+            onChange={onTypeChange}
+            emptyLabel="Todos"
+          />
         </div>
 
         <div className="sticky bottom-0 border-t bg-background px-5 py-3 flex items-center gap-2">

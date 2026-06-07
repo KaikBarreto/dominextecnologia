@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Res
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({
   value: String(i),
@@ -23,31 +24,41 @@ export function TimeReport() {
   const { employees } = useAdminTimeSheet();
   const [month, setMonth] = useState(String(now.getMonth()));
   const [year, setYear] = useState(String(now.getFullYear()));
-  const [employeeId, setEmployeeId] = useState('all');
+  // Funcionário: multi-select (vazio = todos). Mês/Ano permanecem seletores de período.
+  const [employeeIds, setEmployeeIds] = useState<string[]>([]);
 
-  // Contagem de filtros ativos: mês != atual, ano != atual, funcionário != "todos".
+  // Contagem de filtros ativos: mês != atual, ano != atual, funcionário selecionado.
   // Mês e ano contam só quando diferem do default da carga inicial (now).
   const activeFiltersCount =
     (month !== String(now.getMonth()) ? 1 : 0) +
     (year !== String(now.getFullYear()) ? 1 : 0) +
-    (employeeId !== 'all' ? 1 : 0);
+    (employeeIds.length > 0 ? 1 : 0);
 
   const clearFilters = () => {
     setMonth(String(now.getMonth()));
     setYear(String(now.getFullYear()));
-    setEmployeeId('all');
+    setEmployeeIds([]);
   };
 
   const startDate = format(startOfMonth(new Date(+year, +month)), 'yyyy-MM-dd');
   const endDate = format(endOfMonth(new Date(+year, +month)), 'yyyy-MM-dd');
 
-  const { data: sheets = [] } = useTimeHistory({
-    employeeId: employeeId !== 'all' ? employeeId : undefined,
+  // O hook só aceita 1 funcionário. Com exatamente 1 selecionado, filtra server-side;
+  // com vários (ou nenhum), traz todos do período e filtra client-side.
+  const { data: rawSheets = [] } = useTimeHistory({
+    employeeId: employeeIds.length === 1 ? employeeIds[0] : undefined,
     startDate,
     endDate,
   });
 
-  const employee = employees.find(e => e.id === employeeId);
+  const sheets = useMemo(() => {
+    if (employeeIds.length <= 1) return rawSheets;
+    return rawSheets.filter(s => s.employee_id && employeeIds.includes(s.employee_id));
+  }, [rawSheets, employeeIds]);
+
+  // Summary/calendário por funcionário só fazem sentido com exatamente 1 selecionado.
+  const singleEmployeeId = employeeIds.length === 1 ? employeeIds[0] : null;
+  const employee = singleEmployeeId ? employees.find(e => e.id === singleEmployeeId) : undefined;
 
   const summary = useMemo(() => {
     const workedDays = sheets.filter(s => s.status === 'complete' || s.status === 'open').length;
@@ -99,9 +110,11 @@ export function TimeReport() {
           de baixo no mobile, sheet lateral no desktop. */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {employeeId === 'all'
+          {employeeIds.length === 0
             ? 'Visão geral de todos os funcionários'
-            : `Relatório de ${employees.find(e => e.id === employeeId)?.name ?? ''}`}
+            : employeeIds.length === 1
+              ? `Relatório de ${employees.find(e => e.id === employeeIds[0])?.name ?? ''}`
+              : `Relatório de ${employeeIds.length} funcionários`}
         </p>
         <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
           <div className="space-y-1.5">
@@ -120,21 +133,19 @@ export function TimeReport() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Funcionário</Label>
-            <Select value={employeeId} onValueChange={setEmployeeId}>
-              <SelectTrigger><SelectValue placeholder="Funcionário" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          <FilterCheckboxGroup
+            label="Funcionário"
+            selected={employeeIds}
+            onChange={setEmployeeIds}
+            emptyLabel="Todos"
+            options={employees.map(e => ({ value: e.id, label: e.name }))}
+          />
         </FilterButton>
       </div>
 
-      {/* Summary Card */}
-      {employeeId !== 'all' && employee && (
+      {/* Summary Card — só com exatamente 1 funcionário selecionado.
+          Com vários (ou todos), calendário e gráfico abaixo agregam o conjunto. */}
+      {employee && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3 mb-4">

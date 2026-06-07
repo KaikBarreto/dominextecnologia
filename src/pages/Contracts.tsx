@@ -38,7 +38,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KPICard } from '@/components/dashboard/KPICard';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useContracts, getFrequencyLabel, getNextContractOS } from '@/hooks/useContracts';
 import { useContractsHealth, type ContractHealthStatus } from '@/hooks/useContractHealth';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
@@ -102,9 +101,10 @@ export default function Contracts() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  // Filtros novos da Onda A: saúde (semáforo) e tipo (PMOC / Comum / Todos).
-  const [healthFilter, setHealthFilter] = useState<'all' | ContractHealthStatus>('all');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'pmoc' | 'common'>('all');
+  // Filtros novos da Onda A: saúde (semáforo) e tipo (PMOC / Comum).
+  // Multi-select com semântica "vazio = mostra tudo" (padrão FilterCheckboxGroup).
+  const [healthFilter, setHealthFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
 
@@ -113,10 +113,11 @@ export default function Contracts() {
   // usuário muda o filtro pelo UI (sem deixar query string fantasma).
   useEffect(() => {
     const tipo = searchParams.get('tipo');
-    if (tipo === 'pmoc' && typeFilter !== 'pmoc') {
-      setTypeFilter('pmoc');
-    } else if (tipo === 'comum' && typeFilter !== 'common') {
-      setTypeFilter('common');
+    // Deep-link filtra por um único tipo → array com o valor único.
+    if (tipo === 'pmoc' && !(typeFilter.length === 1 && typeFilter[0] === 'pmoc')) {
+      setTypeFilter(['pmoc']);
+    } else if (tipo === 'comum' && !(typeFilter.length === 1 && typeFilter[0] === 'common')) {
+      setTypeFilter(['common']);
     }
     // intencional: só lê na montagem/mudança externa de query string.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,20 +125,23 @@ export default function Contracts() {
 
   useEffect(() => {
     // Mantém URL espelhando o filtro Tipo (UX: link compartilhável + back/forward).
+    // Só espelha quando há exatamente um tipo marcado (deep-link é single-valor).
     const current = searchParams.get('tipo');
-    if (typeFilter === 'pmoc' && current !== 'pmoc') {
+    const onlyPmoc = typeFilter.length === 1 && typeFilter[0] === 'pmoc';
+    const onlyCommon = typeFilter.length === 1 && typeFilter[0] === 'common';
+    if (onlyPmoc && current !== 'pmoc') {
       setSearchParams((p) => {
         const next = new URLSearchParams(p);
         next.set('tipo', 'pmoc');
         return next;
       }, { replace: true });
-    } else if (typeFilter === 'common' && current !== 'comum') {
+    } else if (onlyCommon && current !== 'comum') {
       setSearchParams((p) => {
         const next = new URLSearchParams(p);
         next.set('tipo', 'comum');
         return next;
       }, { replace: true });
-    } else if (typeFilter === 'all' && current) {
+    } else if (!onlyPmoc && !onlyCommon && current) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p);
         next.delete('tipo');
@@ -154,18 +158,19 @@ export default function Contracts() {
           fuzzyIncludes(c.name, search) || fuzzyIncludes(c.customers?.name, search);
         const matchesStatus = statusFilter.length === 0 || statusFilter.includes(c.status);
 
-        // Tipo: PMOC vs comum.
+        // Tipo: PMOC vs comum. Vazio = mostra tudo.
         const isPmoc = (c as any).is_pmoc === true;
         const matchesType =
-          typeFilter === 'all' ||
-          (typeFilter === 'pmoc' && isPmoc) ||
-          (typeFilter === 'common' && !isPmoc);
+          typeFilter.length === 0 ||
+          (typeFilter.includes('pmoc') && isPmoc) ||
+          (typeFilter.includes('common') && !isPmoc);
 
         // Saúde: lookup via healthByContractId. Contratos sem entrada na view
         // (ex: pré-migration) caem em `em_dia` por padrão — semáforo nunca quebra a tela.
+        // Vazio = mostra tudo.
         const healthRow = healthByContractId[c.id];
         const health: ContractHealthStatus = healthRow?.health_status ?? 'em_dia';
-        const matchesHealth = healthFilter === 'all' || health === healthFilter;
+        const matchesHealth = healthFilter.length === 0 || healthFilter.includes(health);
 
         return matchesSearch && matchesStatus && matchesType && matchesHealth;
       }),
@@ -246,8 +251,8 @@ export default function Contracts() {
   // "Filtros" do desktop (busca tem campo próprio fora do sheet).
   const structuredFilterCount =
     (statusFilter.length > 0 ? 1 : 0) +
-    (healthFilter !== 'all' ? 1 : 0) +
-    (typeFilter !== 'all' ? 1 : 0);
+    (healthFilter.length > 0 ? 1 : 0) +
+    (typeFilter.length > 0 ? 1 : 0);
   // Total (inclui busca) usado pelo FilterSheet mobile, que abriga só os
   // estruturados mas mostra o agregado pra dar feedback global de "tem coisa
   // filtrada agora". Mantém comportamento herdado do mobile.
@@ -255,14 +260,14 @@ export default function Contracts() {
   const clearFilters = () => {
     setSearch('');
     setStatusFilter([]);
-    setHealthFilter('all');
-    setTypeFilter('all');
+    setHealthFilter([]);
+    setTypeFilter([]);
   };
   // Limpa só os filtros estruturados (preserva a busca em andamento).
   const clearStructuredFilters = () => {
     setStatusFilter([]);
-    setHealthFilter('all');
-    setTypeFilter('all');
+    setHealthFilter([]);
+    setTypeFilter([]);
   };
 
   // Opções pro FilterCheckboxGroup de status, com acento por hex.
@@ -271,6 +276,17 @@ export default function Contracts() {
     { value: 'paused', label: 'Pausado', color: STATUS_HEX.paused },
     { value: 'cancelled', label: 'Cancelado', color: STATUS_HEX.cancelled },
     { value: 'expired', label: 'Expirado', color: STATUS_HEX.expired },
+  ];
+
+  // Opções de Saúde e Tipo (multi-select, "vazio = mostra tudo").
+  const healthOptions: FilterCheckboxOption[] = [
+    { value: 'em_dia', label: 'Em dia' },
+    { value: 'manutencao_pendente', label: 'Manutenção Pendente' },
+    { value: 'necessita_atencao', label: 'ATENÇÃO' },
+  ];
+  const typeOptions: FilterCheckboxOption[] = [
+    { value: 'pmoc', label: 'PMOC' },
+    { value: 'common', label: 'Comum (não-PMOC)' },
   ];
 
   // Conteúdo do FilterSheet (status + saúde + tipo — busca fica fixa fora).
@@ -283,33 +299,20 @@ export default function Contracts() {
         onChange={setStatusFilter}
         emptyLabel="Todos"
       />
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Saúde</label>
-        <Select value={healthFilter} onValueChange={(v) => setHealthFilter(v as typeof healthFilter)}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="em_dia">Em dia</SelectItem>
-            <SelectItem value="manutencao_pendente">Manutenção pendente</SelectItem>
-            <SelectItem value="necessita_atencao">ATENÇÃO</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tipo</label>
-        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pmoc">PMOC</SelectItem>
-            <SelectItem value="common">Comum (não-PMOC)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterCheckboxGroup
+        label="Saúde"
+        options={healthOptions}
+        selected={healthFilter}
+        onChange={setHealthFilter}
+        emptyLabel="Todas"
+      />
+      <FilterCheckboxGroup
+        label="Tipo"
+        options={typeOptions}
+        selected={typeFilter}
+        onChange={setTypeFilter}
+        emptyLabel="Todos"
+      />
     </div>
   );
 

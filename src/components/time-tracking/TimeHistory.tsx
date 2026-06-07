@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Download, Eye, Calendar as CalendarIcon } from 'lucide-react';
@@ -34,7 +33,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 export function TimeHistory() {
   const { employees } = useAdminTimeSheet();
   const isMobile = useIsMobile();
-  // Filtros multi-select: vazio = "todos". Desktop Select mapeia single->array.
+  // Filtros multi-select: vazio = "todos" (mostra tudo). Mobile e desktop usam FilterCheckboxGroup.
   const [employeeIds, setEmployeeIds] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [detailSheet, setDetailSheet] = useState<{ employeeId: string; employeeName: string; date: string } | null>(null);
@@ -101,14 +100,10 @@ export function TimeHistory() {
   };
 
   // ----------------------------------------------------------------
-  // Filtros — versão desktop (inline Select single) vs mobile (FilterCheckboxGroup multi)
+  // Filtros — multi-select (FilterCheckboxGroup) tanto no mobile quanto desktop.
+  // Vazio = mostra tudo; marcar 1+ filtra. Mesmo estado array em ambos os modos.
   // ----------------------------------------------------------------
-  // Mapeamento desktop single<->multi: 'all' = [], '<id>' = [id]
-  const desktopEmployeeValue = employeeIds.length === 1 ? employeeIds[0] : 'all';
-  const desktopStatusValue = statusFilter.length === 1 ? statusFilter[0] : 'all';
-
-  // Mobile usa o pattern antigo (FilterSheet com FilterCheckboxGroup multi-select).
-  const mobileFiltersBody = (
+  const filtersBody = (
     <>
       <FilterCheckboxGroup
         label="Funcionário"
@@ -135,49 +130,6 @@ export function TimeHistory() {
     </>
   );
 
-  // Desktop: três filtros consolidados num FilterButton standard. Mantém
-  // mapeamento single->array dos selects (multi-select fica como mobile-only).
-  const desktopFiltersBody = (
-    <>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Funcionário</Label>
-        <Select
-          value={desktopEmployeeValue}
-          onValueChange={(v) => setEmployeeIds(v === 'all' ? [] : [v])}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Funcionário" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Período</Label>
-        <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Status</Label>
-        <Select
-          value={desktopStatusValue}
-          onValueChange={(v) => setStatusFilter(v === 'all' ? [] : [v])}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="complete">Completo</SelectItem>
-            <SelectItem value="incomplete">Incompleto</SelectItem>
-            <SelectItem value="justified">Justificado</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </>
-  );
-
   return (
     <div className="space-y-4">
       {/* Filtros: mobile mantém FilterSheet (multi-select via checkbox); desktop
@@ -185,7 +137,7 @@ export function TimeHistory() {
       {isMobile ? (
         <div className="flex items-center justify-between gap-2">
           <FilterSheet activeCount={activeFilterCount} onClear={clearFilters}>
-            {mobileFiltersBody}
+            {filtersBody}
           </FilterSheet>
           <Button
             variant="outline"
@@ -204,7 +156,7 @@ export function TimeHistory() {
           </p>
           <div className="flex items-center gap-2">
             <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
-              {desktopFiltersBody}
+              {filtersBody}
             </FilterButton>
             <Button
               variant="outline"

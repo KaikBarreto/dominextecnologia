@@ -54,6 +54,11 @@ const changelog: ChangelogEntry[] = [
         description: 'Ajustamos o espaçamento entre as seções do Termo de Responsabilidade Técnica e do Certificado de Conformidade, aproveitando melhor o espaço em branco da página — mantendo o documento em uma única folha.',
         category: 'melhoria',
       },
+      {
+        title: 'Filtros mais flexíveis: escolha vários de uma vez',
+        description: 'Os filtros das listas (como em Contratos, Financeiro e Ponto) agora começam vazios — mostrando tudo — e você marca quantas opções quiser para filtrar por elas. Dá para selecionar mais de um status, categoria, conta ou pessoa ao mesmo tempo; deixando tudo desmarcado, a lista volta a mostrar todos os itens.',
+        category: 'melhoria',
+      },
     ],
   },
   {
