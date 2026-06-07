@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import type { OSRMRoute } from '@/utils/geolocation';
 import 'leaflet/dist/leaflet.css';
@@ -22,34 +23,28 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
   const [isEnRoute, setIsEnRoute] = useState(false);
   const mapInitialized = useRef(false);
 
-  // Fetch customer coords for this OS
+  // Fetch customer coords for this OS.
+  // Página PÚBLICA (cliente anônimo): lê pela RPC SECURITY DEFINER `get_public_os`
+  // (recebe só o id da OS), em vez de varrer service_orders/customers direto.
   useEffect(() => {
     const fetchCustomer = async () => {
-      const { data: os } = await supabase
-        .from('service_orders')
-        .select('customer_id')
-        .eq('id', serviceOrderId)
-        .single();
-      if (!os?.customer_id) return;
+      const { data, error } = await supabaseAnon.rpc('get_public_os', { p_os_id: serviceOrderId });
+      if (error || !data) return;
+      const geo = (data as any).customer_geo;
+      if (!geo) return;
 
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id, lat, lng, address, city, state, zip_code')
-        .eq('id', os.customer_id)
-        .single();
-      if (!customer) return;
+      let lat = geo.lat ? Number(geo.lat) : null;
+      let lng = geo.lng ? Number(geo.lng) : null;
 
-      let lat = customer.lat ? Number(customer.lat) : null;
-      let lng = customer.lng ? Number(customer.lng) : null;
-
+      // Sem coordenadas salvas: geocodifica o endereço só no client (sem
+      // write-back — anon não tem permissão de UPDATE em customers).
       if (!lat || !lng) {
-        const addr = buildCustomerAddress(customer);
+        const addr = buildCustomerAddress(geo);
         if (!addr) return;
         const coords = await geocodeAddress(addr);
         if (!coords) return;
         lat = coords.lat;
         lng = coords.lng;
-        await supabase.from('customers').update({ lat, lng } as any).eq('id', customer.id);
       }
 
       setCustomerCoords({ lat, lng });

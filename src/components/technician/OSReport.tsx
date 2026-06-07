@@ -185,13 +185,20 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   
 
   useEffect(() => {
-    fetchCompany();
-    fetchAllResponses();
-    fetchRating();
-    fetchEquipmentItems();
-    fetchTechnician();
-    if ((serviceOrder as any).contract_id) fetchContract((serviceOrder as any).contract_id);
-  }, [serviceOrder.id]);
+    if (forceReadOnly) {
+      // Modo cliente (anon): UMA RPC SECURITY DEFINER traz tudo desta OS.
+      // Substitui as leituras anon diretas que enumeravam todas as OSs.
+      fetchPublicReport();
+    } else {
+      // Modo autenticado: leituras diretas, como antes.
+      fetchCompany();
+      fetchAllResponses();
+      fetchRating();
+      fetchEquipmentItems();
+      fetchTechnician();
+      if ((serviceOrder as any).contract_id) fetchContract((serviceOrder as any).contract_id);
+    }
+  }, [serviceOrder.id, forceReadOnly]);
 
   useEffect(() => {
     const validValues = responsesByTemplate
@@ -226,6 +233,67 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       window.removeEventListener('afterprint', restoreAfterPrint);
     };
   }, [openQuestionnaireItems, formResponses, equipmentItems.length]);
+
+  // Aplica o branding white-label (estado + header config) a partir do registro
+  // de company_settings. Reusado pelo modo autenticado e pelo modo público.
+  const applyCompanyData = (data: any | null) => {
+    setCompany(null);
+    setIsWhiteLabel(false);
+    setHeaderConfig(DEFAULT_HEADER_CONFIG);
+    if (!data) return;
+    setCompany(data);
+    const d = data as any;
+    const wlEnabled = !!d.white_label_enabled;
+    setIsWhiteLabel(wlEnabled);
+    setHeaderConfig(wlEnabled ? {
+      bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+      textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
+      logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+      showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+      logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
+      statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+      logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
+    } : DEFAULT_HEADER_CONFIG);
+  };
+
+  // MODO CLIENTE (anon): toda a leitura do relatório passa por UMA RPC
+  // SECURITY DEFINER (`get_public_os`) que recebe só o id e devolve aquela OS.
+  const fetchPublicReport = async () => {
+    const { data, error } = await supabaseAnon.rpc('get_public_os', { p_os_id: serviceOrder.id });
+    if (error || !data) return;
+    const payload = data as any;
+
+    // company white-label
+    applyCompanyData(payload.company_settings || null);
+
+    // form_responses + question(form_questions.*) join — mesmo formato do select direto
+    const responses = (payload.form_responses || []).map((r: any) => ({
+      ...r,
+      question: unwrapJoin(r.question),
+    }));
+    const sorted = responses.sort((a: any, b: any) => (a.question?.position ?? 0) - (b.question?.position ?? 0));
+    setFormResponses(sorted);
+
+    // rating
+    setRatingData(payload.rating || null);
+
+    // equipment_items (já com category aninhada no payload)
+    setEquipmentItems((payload.equipment_items || []) as unknown as EquipmentItem[]);
+
+    // technician (full_name, avatar_url) com fallback de snapshot
+    if (payload.technician) {
+      setTechnicianInfo({ full_name: payload.technician.full_name, photo_url: payload.technician.avatar_url });
+    } else if (snapshot?.technician) {
+      setTechnicianInfo({ full_name: snapshot.technician.full_name, photo_url: snapshot.technician.avatar_url });
+    }
+
+    // contract (id, name) com fallback de snapshot
+    if (payload.contract) {
+      setContractInfo(payload.contract);
+    } else if (snapshot?.contract) {
+      setContractInfo(snapshot.contract);
+    }
+  };
 
   const fetchTechnician = async () => {
     let userId = serviceOrder.technician_id;
@@ -263,21 +331,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       .select('*')
       .eq('company_id', companyId)
       .maybeSingle();
-    if (data) {
-      setCompany(data);
-      const d = data as any;
-      const wlEnabled = !!d.white_label_enabled;
-      setIsWhiteLabel(wlEnabled);
-      setHeaderConfig(wlEnabled ? {
-        bgColor: d.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
-        textColor: d.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
-        logoSize: d.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
-        showLogoBg: d.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
-        logoBgColor: d.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
-        statusBarColor: d.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
-        logoType: d.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
-      } : DEFAULT_HEADER_CONFIG);
-    }
+    if (data) applyCompanyData(data);
   };
 
   const fetchContract = async (contractId: string) => {

@@ -173,13 +173,47 @@ export default function TechnicianOS() {
     }
   };
 
-  const fetchCompany = useCallback(async (companyId?: string | null) => {
-    // SEMPRE limpa primeiro — não permite vazar nome/logo/cor entre OSes/empresas
-    // (regra-lei #2 — white-label não vaza entre tenants).
+  // Aplica o branding white-label (estado + cor primária via CSS var).
+  // SEMPRE reseta antes — não permite vazar nome/logo/cor entre OSes/empresas
+  // (regra-lei #2 — white-label não vaza entre tenants).
+  const applyCompany = useCallback((data: any | null) => {
     setCompany(null);
+    if (!data) return;
 
+    setCompany(data);
+
+    // Apply white label primary color to CSS custom property for this page
+    if (data.white_label_enabled && data.white_label_primary_color) {
+      const hex = data.white_label_primary_color;
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (result) {
+        let r = parseInt(result[1], 16) / 255;
+        let g = parseInt(result[2], 16) / 255;
+        let b = parseInt(result[3], 16) / 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+        if (max !== min) {
+          const d2 = max - min;
+          s = l > 0.5 ? d2 / (2 - max - min) : d2 / (max + min);
+          switch (max) {
+            case r: h = ((g - b) / d2 + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d2 + 2) / 6; break;
+            case b: h = ((r - g) / d2 + 4) / 6; break;
+          }
+        }
+        const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+        document.documentElement.style.setProperty('--primary', hsl);
+        document.documentElement.style.setProperty('--ring', hsl);
+      }
+    }
+  }, []);
+
+  const fetchCompany = useCallback(async (companyId?: string | null) => {
     const resolvedCompanyId = companyId || null;
-    if (!resolvedCompanyId) return;
+    if (!resolvedCompanyId) {
+      applyCompany(null);
+      return;
+    }
 
     const { data } = await db
       .from('company_settings')
@@ -187,35 +221,67 @@ export default function TechnicianOS() {
       .eq('company_id', resolvedCompanyId)
       .maybeSingle();
 
-    if (data) {
-      setCompany(data);
+    applyCompany(data || null);
+  }, [applyCompany, db]);
 
-      // Apply white label primary color to CSS custom property for this page
-      if (data.white_label_enabled && data.white_label_primary_color) {
-        const hex = data.white_label_primary_color;
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        if (result) {
-          let r = parseInt(result[1], 16) / 255;
-          let g = parseInt(result[2], 16) / 255;
-          let b = parseInt(result[3], 16) / 255;
-          const max = Math.max(r, g, b), min = Math.min(r, g, b);
-          let h = 0, s = 0, l = (max + min) / 2;
-          if (max !== min) {
-            const d2 = max - min;
-            s = l > 0.5 ? d2 / (2 - max - min) : d2 / (max + min);
-            switch (max) {
-              case r: h = ((g - b) / d2 + (g < b ? 6 : 0)) / 6; break;
-              case g: h = ((b - r) / d2 + 2) / 6; break;
-              case b: h = ((r - g) / d2 + 4) / 6; break;
-            }
-          }
-          const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-          document.documentElement.style.setProperty('--primary', hsl);
-          document.documentElement.style.setProperty('--ring', hsl);
-        }
+  // MODO CLIENTE (anon): toda a leitura passa por UMA RPC SECURITY DEFINER
+  // (`get_public_os`) que recebe só o id e devolve aquela OS. Substitui as
+  // leituras anon diretas que enumeravam todas as OSs de todas as empresas.
+  const fetchPublicOS = useCallback(async (opts?: { isPoll?: boolean }): Promise<void> => {
+    if (!id) return;
+    try {
+      const { data, error } = await supabaseAnon.rpc('get_public_os', { p_os_id: id });
+      if (error) throw error;
+      if (!data) {
+        setServiceOrder(null);
+        return;
       }
+      const payload = data as any;
+
+      // service_order + joins que a página lê direto do objeto
+      const so = {
+        ...payload.service_order,
+        customer: payload.customer || null,
+        equipment: payload.equipment || null,
+        form_template: payload.form_template || null,
+        service_type: payload.service_type || null,
+      };
+      setServiceOrder(so as any);
+      setCheckInTime(so.check_in_time ?? null);
+      setCheckOutTime(so.check_out_time ?? null);
+      setCheckInLocation((so.check_in_location as any) ?? null);
+      setCheckOutLocation((so.check_out_location as any) ?? null);
+      const existingPmocStatus = so.pmoc_conformity_status as
+        | 'conforme' | 'parcial' | 'nao_conforme' | null | undefined;
+      if (existingPmocStatus) setConformityStatus(existingPmocStatus);
+      const existingPmocNotes = so.pmoc_conformity_notes as string | null | undefined;
+      if (existingPmocNotes) setConformityNotes(existingPmocNotes);
+
+      // photos (os_photos.*) já ordenadas por created_at asc no servidor
+      setPhotos((payload.photos || []) as OSPhoto[]);
+
+      // equipment_items (service_order_equipment + joins)
+      setEquipmentItems((payload.equipment_items || []) as unknown as EquipmentItem[]);
+
+      // form_responses + question join (espelha o select da página)
+      setPublicFormResponses(payload.form_responses || []);
+
+      // technician profile (full_name, avatar_url)
+      setTechnicianProfile(payload.technician || null);
+
+      // company white-label — só na carga inicial (o reset interno causaria
+      // flicker do logo a cada poll; o branding não muda durante a OS).
+      if (!opts?.isPoll) applyCompany(payload.company_settings || null);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao carregar OS',
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [id, toast, applyCompany]);
 
   const fetchServiceOrder = useCallback(async () => {
     try {
@@ -268,7 +334,13 @@ export default function TechnicianOS() {
   }, [id, toast, fetchCompany]);
 
   useEffect(() => {
-    if (id) {
+    // Espera a resolução do estado de auth pra escolher o caminho de leitura.
+    if (!id || isAuthenticated === null) return;
+    if (isAuthenticated === false) {
+      // Modo cliente/público (anon): UMA RPC SECURITY DEFINER carrega tudo.
+      fetchPublicOS();
+    } else {
+      // Modo autenticado (técnico): leituras diretas, como antes.
       fetchServiceOrder();
       fetchPhotos();
       fetchEquipmentItems();
@@ -279,10 +351,43 @@ export default function TechnicianOS() {
       document.documentElement.style.removeProperty('--primary');
       document.documentElement.style.removeProperty('--ring');
     };
-  }, [id, fetchServiceOrder, fetchTechnicianProfile]);
+  }, [id, isAuthenticated, fetchPublicOS, fetchServiceOrder, fetchTechnicianProfile]);
 
+  // Modo cliente (anon): sem realtime (as policies anon caem). Atualização "ao
+  // vivo" via polling leve da RPC a cada ~20s, só enquanto a aba está visível.
   useEffect(() => {
     if (!id || isAuthenticated !== false) return;
+
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => {
+        if (document.visibilityState === 'visible') fetchPublicOS({ isPoll: true });
+      }, 20000);
+    };
+    const stop = () => {
+      if (timer) { clearInterval(timer); timer = null; }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchPublicOS({ isPoll: true }); // refresh imediato ao voltar pra aba
+        start();
+      } else {
+        stop();
+      }
+    };
+
+    start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [id, isAuthenticated, fetchPublicOS]);
+
+  // Modo autenticado: realtime nativo (técnico logado lê as tabelas direto).
+  useEffect(() => {
+    if (!id || isAuthenticated !== true) return;
 
     const channel = db
       .channel(`os-realtime-${id}`)

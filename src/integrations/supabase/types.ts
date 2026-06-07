@@ -5593,6 +5593,7 @@ export type Database = {
         }[]
       }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
+      get_public_os: { Args: { p_os_id: string }; Returns: Json }
       get_quote_by_token: {
         Args: { _token: string }
         Returns: {
