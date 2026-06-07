@@ -40,9 +40,9 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
-    version: '1.11.0',
+    version: '1.10.4',
     date: '07 de junho de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Documentos do contrato gerados automaticamente',
