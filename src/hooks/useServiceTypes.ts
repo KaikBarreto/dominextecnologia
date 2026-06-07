@@ -31,9 +31,13 @@ export function useServiceTypes() {
   const { data: serviceTypes = [], isLoading } = useQuery({
     queryKey: ['service-types'],
     queryFn: async () => {
+      // Defense-in-depth: filtra pela própria empresa no client (RLS continua a fronteira)
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const companyId = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('service_types')
         .select('*')
+        .eq('company_id', companyId)
         .order('name');
       if (error) throw error;
       return data as unknown as ServiceType[];

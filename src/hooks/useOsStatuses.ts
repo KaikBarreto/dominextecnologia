@@ -21,9 +21,13 @@ export function useOsStatuses() {
   const query = useQuery({
     queryKey: ['os_statuses'],
     queryFn: async () => {
+      // Defense-in-depth: filtra pela própria empresa no client (RLS continua a fronteira)
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const companyId = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('os_statuses')
         .select('*')
+        .eq('company_id', companyId)
         .order('position');
       if (error) throw error;
       return data as OsStatusRecord[];

@@ -29,9 +29,13 @@ export function useTaskTypes() {
   const { data: taskTypes = [], isLoading } = useQuery({
     queryKey: ['task-types'],
     queryFn: async () => {
+      // Defense-in-depth: filtra pela própria empresa no client (RLS continua a fronteira)
+      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
+      const companyId = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('task_types' as any)
         .select('*')
+        .eq('company_id', companyId)
         .order('name');
       if (error) throw error;
       return data as unknown as TaskType[];

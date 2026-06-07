@@ -217,6 +217,19 @@ Deno.serve(async (req) => {
         { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
       ]);
 
+    // Seed catálogo de serviço default (tipos de serviço, status de OS, tipos de tarefa).
+    // NÃO-FATAL: se falhar, a empresa já foi criada — apenas registra o erro e segue.
+    try {
+      const { error: seedCatalogError } = await supabaseAdmin.rpc('seed_company_catalog', {
+        p_company_id: company.id,
+      });
+      if (seedCatalogError) {
+        console.error('Aviso: falha ao semear catálogo de serviço (não-fatal):', seedCatalogError);
+      }
+    } catch (seedErr) {
+      console.error('Aviso: exceção ao semear catálogo de serviço (não-fatal):', seedErr);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
