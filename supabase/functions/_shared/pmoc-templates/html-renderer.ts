@@ -102,7 +102,10 @@ function parseInline(html: string): InlineToken[] {
     parts.forEach((part, idx) => {
       if (part.length > 0) {
         tokens.push({
-          text: decodeEntities(part),
+          // Colapsa whitespace (inclui \n, \r, \t vindos do HTML-fonte) num
+          // espaço único — semântica HTML padrão. Sem isso, um \n cru chega
+          // ao pdf-lib e o WinAnsi lança "cannot encode \n (0x000a)" → 500.
+          text: decodeEntities(part).replace(/\s+/g, " "),
           bold: stack.includes("strong"),
           italic: stack.includes("em"),
           underline: stack.includes("u") || stack.includes("a"),
