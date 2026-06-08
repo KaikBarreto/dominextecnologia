@@ -11,13 +11,16 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, MessageCircle, Pencil, Trash2 } from 'lucide-react';
+import { Plus, MessageCircle, Pencil, Trash2, Trophy, X, CheckCircle2 } from 'lucide-react';
 import { phoneMask } from '@/utils/masks';
 import { useAdminLeadInteractions, useAdminCrmStages, useAdminLeads, ADMIN_INTERACTION_TYPES, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSegment } from '@/utils/companySegments';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { RegistrarVendaDialog } from '@/components/admin/salesperson/RegistrarVendaDialog';
+import { LossReasonDialog } from '@/components/crm/LossReasonDialog';
+import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { AdminLeadFormDialog } from './AdminLeadFormDialog';
 import {
   AlertDialog,
@@ -46,11 +49,17 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
   const { interactions, createInteraction } = useAdminLeadInteractions(leadProp.id);
   const { stages } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
-  const { deleteLead, leads } = useAdminLeads();
+  const { deleteLead, updateLead, leads } = useAdminLeads();
   const { user } = useAuth();
 
   const lead = leads.find(l => l.id === leadProp.id) || leadProp;
   const stage = stages.find(s => s.id === lead.stage_id);
+
+  // Estágios de fechamento (configuráveis por flag — nunca hardcoded).
+  const wonStage = stages.find(s => s.is_won) || null;
+  const lostStage = stages.find(s => s.is_lost) || null;
+  const isWon = !!stage?.is_won;
+  const isLost = !!stage?.is_lost;
 
   // Vendedores (com foto) p/ resolver o responsável pelo lead.
   const { data: salespeople = [] } = useQuery({
@@ -72,6 +81,34 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
   const [showForm, setShowForm] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [lossDialogOpen, setLossDialogOpen] = useState(false);
+  const [vendaDialogOpen, setVendaDialogOpen] = useState(false);
+
+  const whatsappLink = buildWhatsAppLink(lead.phone);
+
+  // Perder: abre dialog de motivo e move pro estágio is_lost gravando loss_reason.
+  // Reaproveita o mesmo LossReasonDialog usado no drag do kanban.
+  const handleLossConfirm = (reason: string, details: string) => {
+    if (!lostStage) return;
+    const combined = details.trim() ? `${reason} — ${details.trim()}` : reason;
+    updateLead.mutate({ id: lead.id, stage_id: lostStage.id, loss_reason: combined });
+    setLossDialogOpen(false);
+  };
+
+  // Ganhar = gerar a venda (marcando SDR + Closer). O botão só ABRE o diálogo de
+  // venda; o lead NÃO vira ganho aqui. Sem venda salva = sem ganho.
+  const handleWin = () => {
+    if (!wonStage) return;
+    setVendaDialogOpen(true);
+  };
+
+  // Disparado pelo RegistrarVendaDialog só após a venda ser gravada. Aí sim
+  // movemos o lead pro estágio is_won e fechamos o modal de detalhe.
+  const handleVendaSuccess = () => {
+    if (!wonStage) return;
+    updateLead.mutate({ id: lead.id, stage_id: wonStage.id });
+    onOpenChange(false);
+  };
 
   const handleAddInteraction = () => {
     if (!newDesc.trim()) return;
@@ -96,28 +133,76 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
 
   const formatCurrency = (v: number | null) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
 
+  const leadFooter = (
+    <div className="flex flex-col gap-3">
+      {/* Linha principal de fechamento — só aparece com o lead ainda aberto.
+          Ganho → selo verde; Perdido → motivo em destaque vermelho. */}
+      {isWon ? (
+        <div className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2.5 text-success">
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          <span className="font-semibold text-sm">Negócio ganho</span>
+        </div>
+      ) : isLost ? (
+        <div className="flex flex-col gap-1 rounded-lg bg-destructive/10 px-3 py-2.5">
+          <span className="inline-flex items-center gap-1.5 font-semibold text-sm text-destructive">
+            <X className="h-4 w-4 shrink-0" /> Negócio perdido
+          </span>
+          {lead.loss_reason && (
+            <span className="text-xs text-muted-foreground pl-6">{lead.loss_reason}</span>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={() => setLossDialogOpen(true)}
+            disabled={!lostStage}
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground py-3 h-auto text-base font-semibold"
+          >
+            <X className="h-5 w-5 mr-2" /> Perder
+          </Button>
+          <Button
+            onClick={handleWin}
+            disabled={!wonStage}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-3 h-auto text-base font-semibold"
+          >
+            <Trophy className="h-5 w-5 mr-2" /> Ganhar
+          </Button>
+        </div>
+      )}
+
+      {/* Linha utilitária — Editar / Excluir */}
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          size="sm"
+          className="bg-orange-500 hover:bg-orange-600 text-white"
+          onClick={() => setEditOpen(true)}
+        >
+          <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
+        </Button>
+        <Button size="sm" variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
+          <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Lead">
+      <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Lead" footer={leadFooter}>
         <ScrollArea className="max-h-[70vh]">
           <div className="space-y-4 pr-2">
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 justify-end">
-              <Button
-                size="sm"
-                className="bg-orange-500 hover:bg-orange-600 text-white"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
-              </Button>
-            </div>
+            {/* Atalho rápido de contato */}
+            {whatsappLink && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  className="bg-[#25D366] hover:bg-[#1da851] text-white"
+                  onClick={() => window.open(whatsappLink, '_blank', 'noopener,noreferrer')}
+                >
+                  <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp
+                </Button>
+              </div>
+            )}
 
             {/* ---- VIEW MODE ---- */}
             <div className="space-y-4">
@@ -226,18 +311,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                   {lead.notes || 'Nenhuma observação registrada.'}
                 </p>
               </div>
-
-              {stage?.is_lost && lead.loss_reason && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Motivo da perda</h3>
-                    <p className="text-sm text-muted-foreground bg-destructive/10 p-3 rounded-lg whitespace-pre-wrap">
-                      {lead.loss_reason}
-                    </p>
-                  </div>
-                </>
-              )}
+              {/* Motivo da perda agora aparece no rodapé (selo de fechamento). */}
             </div>
 
             <Separator />
@@ -301,6 +375,26 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
         open={editOpen}
         onOpenChange={setEditOpen}
         editingLead={lead}
+      />
+
+      <LossReasonDialog
+        open={lossDialogOpen}
+        onOpenChange={setLossDialogOpen}
+        leadTitle={lead.title}
+        onConfirm={handleLossConfirm}
+      />
+
+      {/* Ganhar → registra a venda (SDR + Closer). O lead só vira ganho no
+          onSuccess; cancelar o diálogo deixa o lead aberto. */}
+      <RegistrarVendaDialog
+        open={vendaDialogOpen}
+        onOpenChange={setVendaDialogOpen}
+        prefill={{
+          companyName: lead.company_name ?? undefined,
+          value: lead.value ?? undefined,
+          leadId: lead.id,
+        }}
+        onSuccess={handleVendaSuccess}
       />
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
