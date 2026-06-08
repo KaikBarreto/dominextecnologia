@@ -15,6 +15,7 @@ import { CardPaymentForm } from "./CardPaymentForm";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useTheme } from "next-themes";
+import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -137,6 +138,13 @@ export function CheckoutLayout({
 }: CheckoutLayoutProps) {
   const navigate = useNavigate();
   const { resolvedTheme } = useTheme();
+  // White-label da empresa DO checkout: useWhiteLabel resolve pelo company_id
+  // do usuário logado (que é o tenant do próprio checkout) — nunca global, e
+  // já retorna enabled=false para super_admin. Quando white-label está ativo,
+  // escondemos a marca Dominex; mostramos o logo da empresa se houver.
+  // isLoading mantém o default seguro (logo Dominex) até a regra ser conhecida.
+  const { enabled: whiteLabelEnabled, logoUrl: whiteLabelLogoUrl, isLoading: whiteLabelLoading } = useWhiteLabel();
+  const hideDominexLogo = !whiteLabelLoading && whiteLabelEnabled;
   const cpfCnpjClean = cpfCnpj.replace(/\D/g, "");
   const isCpfCnpjValid = cpfCnpjClean.length === 11 
     ? validateCPF(cpfCnpjClean) 
@@ -189,9 +197,24 @@ export function CheckoutLayout({
           transition={{ duration: 0.5 }}
         >
           <div className="max-w-md mx-auto w-full space-y-8">
-            <div className="flex items-center gap-3">
-              <img src={logoWhite} alt="Dominex" className="h-10" />
-            </div>
+            {hideDominexLogo ? (
+              // White-label ativo: nunca exibir a marca Dominex. Se a empresa
+              // tem logo próprio, mostramos no lugar; senão, não renderizamos
+              // nada (sem imagem quebrada nem espaço vazio).
+              whiteLabelLogoUrl ? (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={whiteLabelLogoUrl}
+                    alt={companyName || "Logo"}
+                    className="h-10 max-w-[220px] object-contain"
+                  />
+                </div>
+              ) : null
+            ) : (
+              <div className="flex items-center gap-3">
+                <img src={logoWhite} alt="Dominex" className="h-10" />
+              </div>
+            )}
             <button
               onClick={() => navigate("/dashboard")}
               className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm -mt-4"

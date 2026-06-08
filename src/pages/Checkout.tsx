@@ -27,6 +27,7 @@ import type { CardData, PaymentResult } from "@/hooks/useAsaasPayment";
 import { useAsaasPayment } from "@/hooks/useAsaasPayment";
 import logoWhite from "@/assets/logo-white-horizontal.png";
 import logoDark from "@/assets/logo-horizontal-verde.png";
+import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -89,6 +90,11 @@ export default function Checkout() {
   const isRenewal = searchParams.get("mode") === "renewal";
   const { resolvedTheme } = useTheme();
   const { profile } = useAuth();
+  // Mesma regra do painel de pagamento: white-label da empresa do checkout
+  // (resolvido pelo company_id do usuário logado, nunca global). Ativo =
+  // esconde a marca Dominex; isLoading mantém o default Dominex.
+  const { enabled: whiteLabelEnabled, logoUrl: whiteLabelLogoUrl, isLoading: whiteLabelLoading } = useWhiteLabel();
+  const hideDominexLogo = !whiteLabelLoading && whiteLabelEnabled;
   const {
     createPixPayment,
     createBoletoPayment,
@@ -395,11 +401,23 @@ export default function Checkout() {
         </div>
 
         <div className="text-center space-y-3">
-          <img
-            src={resolvedTheme === "dark" ? logoWhite : logoDark}
-            alt="Dominex"
-            className="h-10 mx-auto"
-          />
+          {hideDominexLogo ? (
+            // White-label ativo: nunca exibir a marca Dominex aqui. Logo da
+            // empresa quando houver; senão, nada (sem imagem quebrada/espaço).
+            whiteLabelLogoUrl ? (
+              <img
+                src={whiteLabelLogoUrl}
+                alt="Logo"
+                className="h-10 mx-auto max-w-[220px] object-contain"
+              />
+            ) : null
+          ) : (
+            <img
+              src={resolvedTheme === "dark" ? logoWhite : logoDark}
+              alt="Dominex"
+              className="h-10 mx-auto"
+            />
+          )}
           <h1 className="text-2xl font-bold">Ative sua Assinatura</h1>
 
           {trialExpired ? (
