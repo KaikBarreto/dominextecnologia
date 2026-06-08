@@ -42,5 +42,12 @@ verify_jwt = false
 [functions.pmoc-portal-share]
 verify_jwt = false
 
+# asaas-webhook: endpoint PÚBLICO chamado pela Asaas (sem JWT).
+# FAIL-CLOSED: valida o header asaas-access-token contra ASAAS_WEBHOOK_TOKEN
+# (timing-safe) dentro da função. Sem o secret setado → 401 sempre.
+[functions.asaas-webhook]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
-# create-user, manage-user, cep-lookup, og-image, os-share, create-company
+# create-user, manage-user, cep-lookup, og-image, os-share, create-company,
+# activate-subscription (super_admin), confirm-sale-payment (super_admin)

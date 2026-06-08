@@ -159,6 +159,7 @@ export type Database = {
       admin_financial_transactions: {
         Row: {
           amount: number
+          asaas_transaction_id: string | null
           category: string | null
           created_at: string
           created_by: string | null
@@ -172,6 +173,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          asaas_transaction_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
@@ -185,6 +187,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          asaas_transaction_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
@@ -912,6 +915,7 @@ export type Database = {
           next_pmoc_generation_date: string | null
           notes: string | null
           pmoc_legal_compliance_text: string | null
+          portal_documents_released: boolean
           public_pmoc_token: string | null
           responsible_technician_id: string | null
           service_type_id: string | null
@@ -939,6 +943,7 @@ export type Database = {
           next_pmoc_generation_date?: string | null
           notes?: string | null
           pmoc_legal_compliance_text?: string | null
+          portal_documents_released?: boolean
           public_pmoc_token?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
@@ -966,6 +971,7 @@ export type Database = {
           next_pmoc_generation_date?: string | null
           notes?: string | null
           pmoc_legal_compliance_text?: string | null
+          portal_documents_released?: boolean
           public_pmoc_token?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
@@ -3870,6 +3876,7 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           referral_code: string | null
+          role: string
           salary: number
           updated_at: string
           user_id: string | null
@@ -3886,6 +3893,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           referral_code?: string | null
+          role?: string
           salary?: number
           updated_at?: string
           user_id?: string | null
@@ -3902,6 +3910,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           referral_code?: string | null
+          role?: string
           salary?: number
           updated_at?: string
           user_id?: string | null
@@ -4011,6 +4020,7 @@ export type Database = {
         Row: {
           amount: number
           billing_cycle: string
+          closer_commission: number | null
           commission_amount: number
           company_id: string | null
           created_at: string
@@ -4022,10 +4032,13 @@ export type Database = {
           notes: string | null
           paid_amount: number
           salesperson_id: string
+          sdr_commission: number | null
+          sdr_id: string | null
         }
         Insert: {
           amount?: number
           billing_cycle?: string
+          closer_commission?: number | null
           commission_amount?: number
           company_id?: string | null
           created_at?: string
@@ -4037,10 +4050,13 @@ export type Database = {
           notes?: string | null
           paid_amount?: number
           salesperson_id: string
+          sdr_commission?: number | null
+          sdr_id?: string | null
         }
         Update: {
           amount?: number
           billing_cycle?: string
+          closer_commission?: number | null
           commission_amount?: number
           company_id?: string | null
           created_at?: string
@@ -4052,6 +4068,8 @@ export type Database = {
           notes?: string | null
           paid_amount?: number
           salesperson_id?: string
+          sdr_commission?: number | null
+          sdr_id?: string | null
         }
         Relationships: [
           {
@@ -4071,6 +4089,20 @@ export type Database = {
           {
             foreignKeyName: "salesperson_sales_salesperson_id_fkey"
             columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople_basic"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesperson_sales_sdr_id_fkey"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesperson_sales_sdr_id_fkey"
+            columns: ["sdr_id"]
             isOneToOne: false
             referencedRelation: "salespeople_basic"
             referencedColumns: ["id"]
@@ -5541,6 +5573,7 @@ export type Database = {
           name: string | null
           photo_url: string | null
           referral_code: string | null
+          role: string | null
           user_id: string | null
         }
         Insert: {
@@ -5550,6 +5583,7 @@ export type Database = {
           name?: string | null
           photo_url?: string | null
           referral_code?: string | null
+          role?: string | null
           user_id?: string | null
         }
         Update: {
@@ -5559,6 +5593,7 @@ export type Database = {
           name?: string | null
           photo_url?: string | null
           referral_code?: string | null
+          role?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -5570,6 +5605,10 @@ export type Database = {
       can_bootstrap_admin: { Args: never; Returns: boolean }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      compute_next_expiration: {
+        Args: { p_current: string; p_cycle: string }
+        Returns: string
+      }
       compute_payroll_periods: {
         Args: { p_employee_id: string; p_from: string; p_to: string }
         Returns: {
@@ -5577,6 +5616,14 @@ export type Database = {
           due_date: string
           period: string
         }[]
+      }
+      credit_ltv_once_for_payment: {
+        Args: {
+          p_amount: number
+          p_asaas_payment_id: string
+          p_company_id: string
+        }
+        Returns: boolean
       }
       generate_payroll_for_employee: {
         Args: { p_employee_id: string; p_lookahead_days?: number }
@@ -5595,7 +5642,6 @@ export type Database = {
       get_portal_data: { Args: { p_token: string }; Returns: Json }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
-      get_rating_with_os_by_token: { Args: { p_token: string }; Returns: Json }
       get_quote_by_token: {
         Args: { _token: string }
         Returns: {
@@ -5656,6 +5702,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_rating_with_os_by_token: { Args: { p_token: string }; Returns: Json }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_permissions: { Args: { _user_id: string }; Returns: Json }
       has_admin_permission: {
@@ -5718,6 +5765,10 @@ export type Database = {
       reset_system_step: {
         Args: { p_audit_id: string; p_company_id: string; p_step: string }
         Returns: Json
+      }
+      seed_company_catalog: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
     }
     Enums: {
