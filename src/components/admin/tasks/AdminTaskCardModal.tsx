@@ -13,6 +13,7 @@ import {
 import { Briefcase, CheckCircle2, Trash2, MessageCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
+import { getFollowupMessage } from '@/utils/followupMessages';
 import {
   AdminTask,
   AdminTaskStatus,
@@ -54,7 +55,10 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
   const isFollowup = task.type === 'follow-up';
   const leadName = task.crm_lead?.company_name || task.crm_lead?.contact_name || task.crm_lead?.title;
   const typeConfig = TASK_TYPE_CONFIG[task.type];
-  const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone);
+  // Follow-up: abre o WhatsApp com a mensagem do passo já pré-preenchida.
+  // Outros tipos (ou passo fora de 1–10): abre sem texto.
+  const followupMessage = getFollowupMessage(task.type, (task as any).followup_step);
+  const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone, followupMessage);
 
   return (
     <ResponsiveModal

@@ -12,6 +12,7 @@ import { Building2, Check, CalendarClock, MessageCircle } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
+import { getFollowupMessage } from '@/utils/followupMessages';
 
 interface TaskCardProps {
   task: AdminTask;
@@ -35,7 +36,10 @@ export function TaskCard({ task, isDragging, onClick, onQuickResolve, assignee }
     isBefore(parseISO(task.due_date), startOfDay(new Date()));
 
   const leadName = task.crm_lead?.company_name || task.crm_lead?.contact_name || task.crm_lead?.title;
-  const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone);
+  // Follow-up: abre o WhatsApp com a mensagem do passo já pré-preenchida.
+  // Outros tipos (ou passo fora de 1–10): abre sem texto.
+  const followupMessage = getFollowupMessage(task.type, (task as any).followup_step);
+  const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone, followupMessage);
 
   return (
     <div
