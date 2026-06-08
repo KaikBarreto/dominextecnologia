@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.0',
+    date: '08 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Assine e pague online, com ativação automática',
+        description: 'Agora você contrata e paga sua assinatura direto pelo sistema — por PIX, cartão de crédito ou boleto. Assim que o pagamento é confirmado, seu acesso é liberado automaticamente e o vencimento é atualizado, sem precisar falar com ninguém. Quando o seu período acaba, é só escolher o plano e pagar pela própria tela.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acompanhe e cancele sua assinatura quando quiser',
+        description: 'Na tela de Assinatura você vê seu plano, o vencimento e pode cancelar a qualquer momento. Ao cancelar, as cobranças futuras param e você mantém o acesso normalmente até o fim do período que já pagou.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.10.5',
     date: '08 de junho de 2026',
     type: 'patch',
