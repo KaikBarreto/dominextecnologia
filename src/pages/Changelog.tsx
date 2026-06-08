@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.10.5',
+    date: '08 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configurações da empresa salvam sozinhas e mostram o status',
+        description: 'Na tela de Configurações, agora aparece na hora se suas alterações estão sendo salvas ("Salvando…") ou já foram guardadas ("Salvo"). E se você sair da tela logo depois de digitar, seus dados não se perdem mais — eles são salvos automaticamente antes de você sair.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.10.4',
     date: '07 de junho de 2026',
     type: 'patch',

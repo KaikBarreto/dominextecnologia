@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -155,6 +155,8 @@ export default function Settings() {
   const settingsLoadedRef = useRef(false);
   const isHydratingRef = useRef(false);
   const lastSavedJsonRef = useRef<string>('');
+  // Selo de status do auto-save (a tela inteira salva, não só a aba Empresa).
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -223,24 +225,46 @@ export default function Settings() {
 
   const debouncedSave = useCallback(() => {
     if (!settingsLoadedRef.current || isHydratingRef.current) return;
+    // Marca "sujo" assim que algo muda; o indicador reflete na hora.
+    const dirty = JSON.stringify(buildPayload()) !== lastSavedJsonRef.current;
+    setIsDirty(dirty);
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    if (!dirty) return;
     autoSaveTimerRef.current = setTimeout(() => {
       const payload = buildPayload();
       const json = JSON.stringify(payload);
-      if (json === lastSavedJsonRef.current) return;
+      if (json === lastSavedJsonRef.current) { setIsDirty(false); return; }
       lastSavedJsonRef.current = json;
-      updateSettings.mutate(payload as any, {
-        onSuccess: () => {
-          toast({ title: 'Dados da empresa salvos!' });
-        },
-      });
+      setIsDirty(false);
+      updateSettings.mutate(payload as any);
     }, 800);
-  }, [buildPayload, updateSettings, toast]);
+  }, [buildPayload, updateSettings]);
 
   useEffect(() => {
     debouncedSave();
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
   }, [debouncedSave]);
+
+  // Flush imediato do save pendente (blur de campo / saída da tela).
+  // Não pode ser chamado no cleanup do efeito de debounce (roda a cada render
+  // e mataria o debounce); só em onBlur e no unmount real.
+  const flushSave = useCallback(() => {
+    if (!settingsLoadedRef.current || isHydratingRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    const payload = buildPayload();
+    const json = JSON.stringify(payload);
+    if (json === lastSavedJsonRef.current) return;
+    lastSavedJsonRef.current = json;
+    setIsDirty(false);
+    // Fire-and-forget: a requisição HTTP sai mesmo se o componente desmontar.
+    updateSettings.mutate(payload as any);
+  }, [buildPayload, updateSettings]);
+
+  // Ref sempre apontando pra versão mais recente de flushSave, pra usar no
+  // efeito de unmount (deps vazias) sem capturar uma closure obsoleta.
+  const flushRef = useRef(flushSave);
+  flushRef.current = flushSave;
+  useEffect(() => () => { flushRef.current?.(); }, []);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
@@ -905,12 +929,6 @@ export default function Settings() {
                 )}
               </div>}
 
-              {updateSettings.isPending && (
-                <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Salvando...
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -991,21 +1009,57 @@ export default function Settings() {
     }
   };
 
+  // Selo discreto de status do auto-save (a tela inteira salva, não só Empresa).
+  // Cor de sucesso via token semântico do design system (text-success).
+  const saveStatus = (() => {
+    if (updateSettings.isPending) {
+      return (
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Salvando…
+        </span>
+      );
+    }
+    if (isDirty) {
+      return (
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+          Alterações não salvas
+        </span>
+      );
+    }
+    if (settingsLoadedRef.current) {
+      return (
+        <span className="flex items-center gap-1.5 text-xs text-success">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Salvo
+        </span>
+      );
+    }
+    return null;
+  })();
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Configurações"
         subtitle="Gerencie as configurações do sistema"
         icon={SettingsIcon}
+        actions={saveStatus}
       />
 
-      <SettingsSidebarLayout
-        tabs={visibleTabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      >
-        {renderContent()}
-      </SettingsSidebarLayout>
+      {/* onBlur no container captura o blur dos inputs filhos (bubbles) e faz
+          flush imediato do save pendente — digitar e sair de um campo grava na
+          hora, sem esperar o debounce nem arriscar perda ao trocar de aba. */}
+      <div onBlur={flushSave}>
+        <SettingsSidebarLayout
+          tabs={visibleTabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        >
+          {renderContent()}
+        </SettingsSidebarLayout>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.10.4";
+export const APP_VERSION = "1.10.5";
 
-export const VERSION_NOTES = "Ao criar um contrato PMOC, o sistema agora já gera automaticamente a primeira versão dos documentos (Termo de Responsabilidade Técnica, Certificado de Conformidade, Cronograma e Dossiê). E você passou a controlar quando esses documentos ficam visíveis para o cliente: na aba Documentos do contrato, use \"Liberar documentos no portal do cliente\". Enquanto não liberar, o cliente continua vendo o painel da unidade (status, agenda e histórico), mas não os documentos.";
+export const VERSION_NOTES = "Na tela de Configurações, agora você vê na hora se suas alterações estão sendo salvas (\"Salvando…\") ou já foram guardadas (\"Salvo\"). E se você sair da tela logo depois de digitar, seus dados não se perdem mais — eles são salvos automaticamente antes de você sair.";
