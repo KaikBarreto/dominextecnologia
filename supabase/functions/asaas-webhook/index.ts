@@ -517,6 +517,23 @@ Deno.serve(async (req) => {
     console.log(`[webhook] evento ${event} recebido`);
 
     // ==========================================================
+    // PIX AUTOMÁTICO — autorização CRIADA (apenas informativo)
+    // O dinheiro/ativação chega depois no ACTIVATED e nos PAYMENT_RECEIVED.
+    // Aqui NÃO há processamento financeiro: nada de processConfirmedPayment,
+    // nada de crédito de LTV. Só confirmamos o recebimento (200) pra não ficar
+    // silenciosamente ignorado — paridade com o EcoSistema.
+    // ==========================================================
+    if (event === "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED") {
+      const authorization = body.pixAutomatic || body.authorization || body;
+      const authId: string | undefined =
+        authorization?.id || authorization?.authorizationId;
+      console.log(
+        `[pix-auto] autorização CRIADA (informativo) authId=${authId ?? "n/d"} — sem processamento financeiro`,
+      );
+      return json({ received: true, informational: true });
+    }
+
+    // ==========================================================
     // PIX AUTOMÁTICO — autorização ativada (pagamento confirmado)
     // ==========================================================
     if (event === "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED") {
