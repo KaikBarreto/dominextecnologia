@@ -1,4 +1,4 @@
-import { Shield, Lock, QrCode, FileText, CreditCard as CreditCardIcon, Loader2, Check, ArrowLeft, Calendar, XCircle, CheckCircle2 } from "lucide-react";
+import { Shield, Lock, QrCode, FileText, CreditCard as CreditCardIcon, Loader2, Check, ArrowLeft, Calendar, XCircle, CheckCircle2, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,8 +48,26 @@ interface CheckoutLayoutProps {
   paymentSuccess?: boolean;
   nextDueDate?: string | null;
   companyName?: string;
+  companyPhone?: string;
+  companyAddress?: string;
   userEmail?: string;
   isLoading?: boolean;
+  /** PIX Automático recorrente (toggle dentro do PixPaymentView). */
+  pixRecurring?: boolean;
+  onPixRecurringChange?: (value: boolean) => void;
+  /** Anual no cartão pode parcelar em até 12x. */
+  allowCardInstallments?: boolean;
+  /** Erro do cartão (mostra na seção certa do form). */
+  cardErrorMessage?: string | null;
+  cardErrorSection?: "card" | "holder" | "address" | null;
+  /** Promoção temporária (custom_price). */
+  hasCustomPrice?: boolean;
+  originalPrice?: number;
+  customPriceEndDate?: string | null;
+  customPriceOriginal?: number | null;
+  /** Aviso de mudança de valor agendada (upgrade/downgrade). */
+  pendingSubscriptionValue?: number | null;
+  currentSubscriptionValue?: number | null;
 }
 
 // Simple CPF/CNPJ validation
@@ -101,8 +119,21 @@ export function CheckoutLayout({
   paymentSuccess,
   nextDueDate,
   companyName,
+  companyPhone,
+  companyAddress,
   userEmail,
   isLoading,
+  pixRecurring,
+  onPixRecurringChange,
+  allowCardInstallments,
+  cardErrorMessage,
+  cardErrorSection,
+  hasCustomPrice,
+  originalPrice,
+  customPriceEndDate,
+  customPriceOriginal,
+  pendingSubscriptionValue,
+  currentSubscriptionValue,
 }: CheckoutLayoutProps) {
   const navigate = useNavigate();
   const { resolvedTheme } = useTheme();
@@ -179,15 +210,31 @@ export function CheckoutLayout({
               </div>
 
               <div className="space-y-1">
+                {hasCustomPrice && originalPrice != null && (
+                  <p className="text-sm text-gray-500 line-through">
+                    R$ {originalPrice.toFixed(2).replace(".", ",")}
+                  </p>
+                )}
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold">
                     R$ {finalPrice.toFixed(2).replace(".", ",")}
                   </span>
-                  <span className="text-gray-400">/{billingCycle === "yearly" ? "ano" : "mês"}</span>
+                  {/* Cartão = sempre cobrança mensal recorrente, independente do
+                      toggle anual (B9 revisado). PIX/boleto seguem o ciclo. */}
+                  <span className="text-gray-400">/{paymentMethod === "card" ? "mês" : billingCycle === "yearly" ? "ano" : "mês"}</span>
                 </div>
-                {billingCycle === "yearly" && (
+                {paymentMethod === "card" ? (
+                  <p className="text-sm text-emerald-400">
+                    Cobrança mensal recorrente. Cancele quando quiser.
+                  </p>
+                ) : billingCycle === "yearly" ? (
                   <p className="text-sm text-emerald-400">
                     Equivale a R$ {(finalPrice / 12).toFixed(2).replace(".", ",")}/mês · 20% de desconto
+                  </p>
+                ) : null}
+                {billingCycle === "yearly" && paymentMethod === "card" && (
+                  <p className="text-sm text-gray-400">
+                    O desconto anual de 20% vale apenas para Pix ou Boleto à vista.
                   </p>
                 )}
               </div>
@@ -196,7 +243,25 @@ export function CheckoutLayout({
                 {nextDueDate && (
                   <div className="flex items-center gap-2.5 text-sm bg-white/5 rounded-lg px-3 py-2.5">
                     <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
-                    <span>Próximo vencimento: <span className="font-semibold">{format(new Date(nextDueDate), "dd/MM/yyyy")}</span></span>
+                    <span>Próximo vencimento após este pagamento: <span className="font-semibold">{format(new Date(nextDueDate), "dd/MM/yyyy")}</span></span>
+                  </div>
+                )}
+
+                {hasCustomPrice && customPriceEndDate && customPriceOriginal != null && (
+                  <div className="flex items-start gap-2.5 text-sm bg-blue-500/10 rounded-lg px-3 py-2.5">
+                    <Sparkles className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                    <span>
+                      R$ {finalPrice.toFixed(2).replace(".", ",")}, e após {format(new Date(customPriceEndDate), "dd/MM/yyyy")} reajustará para R$ {customPriceOriginal.toFixed(2).replace(".", ",")}/mês
+                    </span>
+                  </div>
+                )}
+
+                {pendingSubscriptionValue != null && currentSubscriptionValue != null && pendingSubscriptionValue !== currentSubscriptionValue && (
+                  <div className="flex items-start gap-2.5 text-sm bg-orange-500/10 rounded-lg px-3 py-2.5">
+                    <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+                    <span>
+                      Após pagar esta mensalidade de R$ {currentSubscriptionValue.toFixed(2).replace(".", ",")}, seu novo valor será de R$ {pendingSubscriptionValue.toFixed(2).replace(".", ",")}/mês.
+                    </span>
                   </div>
                 )}
               </div>
@@ -281,7 +346,7 @@ export function CheckoutLayout({
                           <CreditCardIcon className="h-6 w-6" />
                           <div className="flex flex-col items-start sm:items-center">
                             <span className="text-sm font-bold">Cartão de Crédito</span>
-                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">Em até 12x</span>
+                            <span className="text-xs text-muted-foreground group-hover:text-white/80 transition-colors">Cobrança mensal</span>
                           </div>
                           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none hidden sm:inline-flex">
                             RECOMENDADO
@@ -343,6 +408,9 @@ export function CheckoutLayout({
                     pixExpirationDate={paymentData.pix_expiration_date}
                     isLoading={isCreatingPayment}
                     onBack={onClearPayment}
+                    isRecurring={pixRecurring}
+                    onRecurringChange={onPixRecurringChange}
+                    isRecurringSupported={!!onPixRecurringChange}
                   />
                 )}
 
@@ -370,6 +438,21 @@ export function CheckoutLayout({
                     isLoading={isCreatingPayment}
                     onSubmit={(cardData) => onCreatePayment("card", cardData)}
                     onBack={onClearPayment}
+                    errorMessage={cardErrorMessage}
+                    errorSection={cardErrorSection}
+                    allowInstallments={allowCardInstallments}
+                    initialData={{
+                      holderEmail: userEmail,
+                      holderPhone: companyPhone,
+                      holderPostalCode: (() => {
+                        const cepMatch = companyAddress?.match(/CEP:\s*(\d{5}-?\d{3})/i);
+                        return cepMatch ? cepMatch[1] : undefined;
+                      })(),
+                      holderAddressNumber: (() => {
+                        const parts = companyAddress?.split(" - ")?.[0]?.split(", ");
+                        return parts && parts.length > 1 ? parts[1]?.trim() : undefined;
+                      })(),
+                    }}
                   />
                 )}
 

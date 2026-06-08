@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,7 +9,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Loader2, CreditCard, User, MapPin, AlertTriangle } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ArrowLeft, Loader2, CreditCard, User, MapPin, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -32,9 +36,17 @@ interface CardPaymentFormProps {
     totalAmount: number;
   }) => void;
   onBack: () => void;
+  errorMessage?: string | null;
+  errorSection?: "card" | "holder" | "address" | null;
+  /** Permite parcelar (anual no cartão até 12x). Mensal = 1x fixo. */
+  allowInstallments?: boolean;
+  initialData?: {
+    holderEmail?: string;
+    holderPhone?: string;
+    holderPostalCode?: string;
+    holderAddressNumber?: string;
+  };
 }
-
-const INTEREST_RATE = 0.0299;
 
 const applyCpfMask = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -66,6 +78,10 @@ export function CardPaymentForm({
   isLoading,
   onSubmit,
   onBack,
+  errorMessage,
+  errorSection,
+  allowInstallments = false,
+  initialData,
 }: CardPaymentFormProps) {
   const [formData, setFormData] = useState({
     holderName: "",
@@ -78,42 +94,99 @@ export function CardPaymentForm({
     holderPhone: "",
     holderPostalCode: "",
     holderAddressNumber: "",
-    installmentCount: 1,
+    installmentCount: allowInstallments ? 12 : 1,
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["card"]));
+
+  const toggleSection = (section: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  };
+
+  const openSectionIfClosed = (section: string) => {
+    setOpenSections((prev) => {
+      if (prev.has(section)) return prev;
+      const next = new Set(prev);
+      next.add(section);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData((prev) => ({
+        ...prev,
+        holderEmail: initialData.holderEmail || prev.holderEmail,
+        holderPhone: initialData.holderPhone ? applyPhoneMask(initialData.holderPhone) : prev.holderPhone,
+        holderPostalCode: initialData.holderPostalCode ? applyCepMask(initialData.holderPostalCode) : prev.holderPostalCode,
+        holderAddressNumber: initialData.holderAddressNumber || prev.holderAddressNumber,
+      }));
+    }
+  }, [initialData]);
+
+  const isCardSectionComplete = useCallback(
+    () =>
+      formData.number.replace(/\s/g, "").length >= 13 &&
+      formData.holderName.length >= 2 &&
+      formData.expiryMonth !== "" &&
+      formData.expiryYear !== "" &&
+      formData.ccv.length >= 3,
+    [formData.number, formData.holderName, formData.expiryMonth, formData.expiryYear, formData.ccv],
+  );
+
+  const isHolderSectionComplete = useCallback(
+    () =>
+      formData.holderCpf.replace(/\D/g, "").length === 11 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(formData.holderEmail) &&
+      formData.holderPhone.replace(/\D/g, "").length >= 10,
+    [formData.holderCpf, formData.holderEmail, formData.holderPhone],
+  );
+
+  const isAddressSectionComplete = useCallback(
+    () =>
+      formData.holderPostalCode.replace(/\D/g, "").length === 8 &&
+      formData.holderAddressNumber.length >= 1,
+    [formData.holderPostalCode, formData.holderAddressNumber],
+  );
+
+  // Abre a próxima seção quando a atual completa
+  useEffect(() => {
+    if (isCardSectionComplete()) openSectionIfClosed("holder");
+  }, [isCardSectionComplete]);
+
+  useEffect(() => {
+    if (isHolderSectionComplete()) openSectionIfClosed("address");
+  }, [isHolderSectionComplete]);
+
+  // Abre a seção com erro quando o pagamento falha
+  useEffect(() => {
+    if (errorSection) setOpenSections(new Set([errorSection]));
+  }, [errorSection, errorMessage]);
 
   const handleChange = (field: string, value: string) => {
     let maskedValue = value;
-
-    if (field === "holderCpf") {
-      maskedValue = applyCpfMask(value);
-    } else if (field === "holderPhone") {
-      maskedValue = applyPhoneMask(value);
-    } else if (field === "holderPostalCode") {
-      maskedValue = applyCepMask(value);
-    } else if (field === "number") {
+    if (field === "holderCpf") maskedValue = applyCpfMask(value);
+    else if (field === "holderPhone") maskedValue = applyPhoneMask(value);
+    else if (field === "holderPostalCode") maskedValue = applyCepMask(value);
+    else if (field === "number") {
       maskedValue = value
         .replace(/\D/g, "")
         .replace(/(\d{4})(?=\d)/g, "$1 ")
         .trim()
         .slice(0, 19);
-    } else if (field === "ccv") {
-      maskedValue = value.replace(/\D/g, "").slice(0, 4);
-    }
+    } else if (field === "ccv") maskedValue = value.replace(/\D/g, "").slice(0, 4);
 
     setFormData((prev) => ({ ...prev, [field]: maskedValue }));
   };
 
-  const getCalculatedAmount = () => {
-    const installments = formData.installmentCount;
-    if (installments === 1) return amount;
-    return amount * Math.pow(1 + INTEREST_RATE, installments);
-  };
-
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
     if (formData.number.replace(/\s/g, "").length < 13) errors.number = "Número do cartão inválido";
     if (formData.holderName.length < 2) errors.holderName = "Nome no cartão é obrigatório";
     if (!formData.expiryMonth) errors.expiryMonth = "Selecione o mês";
@@ -124,10 +197,18 @@ export function CardPaymentForm({
     if (formData.holderPhone.replace(/\D/g, "").length < 10) errors.holderPhone = "Telefone inválido";
     if (formData.holderPostalCode.replace(/\D/g, "").length !== 8) errors.holderPostalCode = "CEP inválido";
     if (!formData.holderAddressNumber.trim()) errors.holderAddressNumber = "Número é obrigatório";
-    
+
     setValidationErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
+      const first = Object.keys(errors)[0];
+      if (["number", "holderName", "expiryMonth", "expiryYear", "ccv"].includes(first)) {
+        setOpenSections(new Set(["card"]));
+      } else if (["holderCpf", "holderEmail", "holderPhone"].includes(first)) {
+        setOpenSections(new Set(["holder"]));
+      } else {
+        setOpenSections(new Set(["address"]));
+      }
       toast.error("Preencha todos os campos corretamente");
       return false;
     }
@@ -137,190 +218,256 @@ export function CardPaymentForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    onSubmit({
-      ...formData,
-      totalAmount: getCalculatedAmount(),
-    });
+    onSubmit({ ...formData, totalAmount: amount });
   };
 
-  const currentTotalAmount = getCalculatedAmount();
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 15 }, (_, i) => currentYear + i);
-  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+  const cardComplete = isCardSectionComplete();
+  const holderComplete = isHolderSectionComplete();
+  const addressComplete = isAddressSectionComplete();
 
-  const installmentOptions = Array.from({ length: 12 }, (_, i) => {
-    const count = i + 1;
-    if (count === 1) {
-      return { value: count, label: `1x de R$ ${amount.toFixed(2).replace(".", ",")} (sem juros)` };
-    }
-    const total = amount * Math.pow(1 + INTEREST_RATE, count);
-    const perInstallment = total / count;
-    return { value: count, label: `${count}x de R$ ${perInstallment.toFixed(2).replace(".", ",")}` };
-  });
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+  const years = Array.from({ length: 15 }, (_, i) => String(new Date().getFullYear() + i).slice(-2));
+
+  // Parcelas: anual no cartão pode parcelar até 12x SEM juros (mensal×12).
+  const installmentOptions = allowInstallments
+    ? Array.from({ length: 12 }, (_, i) => {
+        const count = i + 1;
+        const perInstallment = amount / count;
+        return {
+          value: count,
+          label: `${count}x de R$ ${perInstallment.toFixed(2).replace(".", ",")}${count === 1 ? " (à vista)" : " sem juros"}`,
+        };
+      })
+    : [];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
+    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-4" autoComplete="on">
       <Button type="button" variant="outline" size="sm" onClick={onBack} className="mb-2">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Voltar
       </Button>
 
-      {/* Card Data */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
-          <span>Dados do cartão</span>
+      {/* Banner de erro */}
+      {errorMessage && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive text-white text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-white" />
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium">{errorMessage}</span>
+            {errorSection && (
+              <span className="text-white/80 text-xs">
+                {errorSection === "card" && "Verifique os dados do cartão acima."}
+                {errorSection === "holder" && "Verifique os dados do titular acima."}
+                {errorSection === "address" && "Verifique o endereço de cobrança acima."}
+              </span>
+            )}
+          </div>
         </div>
-        <Separator />
+      )}
 
-        <div>
+      {/* Seção: dados do cartão */}
+      <Collapsible open={openSections.has("card")} onOpenChange={() => toggleSection("card")}>
+        <CollapsibleTrigger className="w-full">
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2">
+              {cardComplete ? (
+                <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                  <Check className="h-3 w-3 text-primary-foreground" />
+                </div>
+              ) : (
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className={cn("text-sm font-semibold uppercase tracking-wider", cardComplete ? "text-primary" : "text-foreground")}>
+                Dados do cartão
+              </span>
+            </div>
+            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", openSections.has("card") && "rotate-180")} />
+          </div>
+        </CollapsibleTrigger>
+        <Separator />
+        <CollapsibleContent className="space-y-2 pt-3 px-1 pb-1 data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
           <Input
+            id="cc-number"
+            name="cc-number"
+            autoComplete="cc-number"
+            inputMode="numeric"
             placeholder="Número do cartão"
             value={formData.number}
-            onChange={(e) => handleChange("number", e.target.value)}
+            onChange={(e) => { handleChange("number", e.target.value); setValidationErrors((p) => ({ ...p, number: "" })); }}
             className={cn(validationErrors.number && "border-destructive")}
-            inputMode="numeric"
           />
-        </div>
 
-        <div>
+          <div className="grid grid-cols-[1fr_1fr_80px] gap-2">
+            <Select value={formData.expiryMonth} onValueChange={(v) => handleChange("expiryMonth", v)}>
+              <SelectTrigger className={cn(validationErrors.expiryMonth && "border-destructive")}>
+                <SelectValue placeholder="MM" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={formData.expiryYear} onValueChange={(v) => handleChange("expiryYear", v)}>
+              <SelectTrigger className={cn(validationErrors.expiryYear && "border-destructive")}>
+                <SelectValue placeholder="AA" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Input
+              id="cc-csc"
+              name="cc-csc"
+              autoComplete="cc-csc"
+              inputMode="numeric"
+              placeholder="CVV"
+              maxLength={4}
+              value={formData.ccv}
+              onChange={(e) => { handleChange("ccv", e.target.value); setValidationErrors((p) => ({ ...p, ccv: "" })); }}
+              className={cn(validationErrors.ccv && "border-destructive")}
+            />
+          </div>
+
           <Input
-            placeholder="Nome impresso no cartão"
+            id="cc-name"
+            name="cc-name"
+            autoComplete="cc-name"
+            placeholder="Nome no cartão"
             value={formData.holderName}
-            onChange={(e) => handleChange("holderName", e.target.value.toUpperCase())}
+            onChange={(e) => { handleChange("holderName", e.target.value.toUpperCase()); setValidationErrors((p) => ({ ...p, holderName: "" })); }}
             className={cn(validationErrors.holderName && "border-destructive")}
           />
-        </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <Select value={formData.expiryMonth} onValueChange={(v) => handleChange("expiryMonth", v)}>
-            <SelectTrigger className={cn(validationErrors.expiryMonth && "border-destructive")}>
-              <SelectValue placeholder="Mês" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {allowInstallments && (
+            <Select
+              value={String(formData.installmentCount)}
+              onValueChange={(v) => setFormData((prev) => ({ ...prev, installmentCount: Number(v) }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Parcelas" />
+              </SelectTrigger>
+              <SelectContent>
+                {installmentOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
 
-          <Select value={formData.expiryYear} onValueChange={(v) => handleChange("expiryYear", v)}>
-            <SelectTrigger className={cn(validationErrors.expiryYear && "border-destructive")}>
-              <SelectValue placeholder="Ano" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Input
-            placeholder="CVV"
-            value={formData.ccv}
-            onChange={(e) => handleChange("ccv", e.target.value)}
-            className={cn(validationErrors.ccv && "border-destructive")}
-            inputMode="numeric"
-            maxLength={4}
-          />
-        </div>
-
-        <div>
-          <Select value={String(formData.installmentCount)} onValueChange={(v) => setFormData(prev => ({ ...prev, installmentCount: Number(v) }))}>
-            <SelectTrigger>
-              <SelectValue placeholder="Parcelas" />
-            </SelectTrigger>
-            <SelectContent>
-              {installmentOptions.map((opt) => (
-                <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Holder Data */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <span>Dados do titular</span>
-        </div>
-        <Separator />
-
-        <Input
-          placeholder="CPF do titular"
-          value={formData.holderCpf}
-          onChange={(e) => handleChange("holderCpf", e.target.value)}
-          className={cn(validationErrors.holderCpf && "border-destructive")}
-        />
-
-        <Input
-          placeholder="E-mail"
-          type="email"
-          value={formData.holderEmail}
-          onChange={(e) => handleChange("holderEmail", e.target.value)}
-          className={cn(validationErrors.holderEmail && "border-destructive")}
-        />
-
-        <Input
-          placeholder="Telefone"
-          value={formData.holderPhone}
-          onChange={(e) => handleChange("holderPhone", e.target.value)}
-          className={cn(validationErrors.holderPhone && "border-destructive")}
-        />
-      </div>
-
-      {/* Address */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <span>Endereço de cobrança</span>
-        </div>
-        <Separator />
-
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            placeholder="CEP"
-            value={formData.holderPostalCode}
-            onChange={(e) => handleChange("holderPostalCode", e.target.value)}
-            className={cn(validationErrors.holderPostalCode && "border-destructive")}
-          />
-          <Input
-            placeholder="Número"
-            value={formData.holderAddressNumber}
-            onChange={(e) => handleChange("holderAddressNumber", e.target.value)}
-            className={cn(validationErrors.holderAddressNumber && "border-destructive")}
-          />
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="p-4 rounded-lg bg-muted/50 border space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Valor</span>
-          <span>R$ {amount.toFixed(2).replace(".", ",")}</span>
-        </div>
-        {formData.installmentCount > 1 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Juros ({formData.installmentCount}x)</span>
-            <span>R$ {(currentTotalAmount - amount).toFixed(2).replace(".", ",")}</span>
+      {/* Seção: dados do titular */}
+      <Collapsible open={openSections.has("holder")} onOpenChange={() => toggleSection("holder")}>
+        <CollapsibleTrigger className="w-full">
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2">
+              {holderComplete ? (
+                <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                  <Check className="h-3 w-3 text-primary-foreground" />
+                </div>
+              ) : (
+                <User className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className={cn("text-sm font-semibold uppercase tracking-wider", holderComplete ? "text-primary" : "text-foreground")}>
+                Dados do titular
+              </span>
+            </div>
+            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", openSections.has("holder") && "rotate-180")} />
           </div>
-        )}
+        </CollapsibleTrigger>
         <Separator />
-        <div className="flex justify-between font-bold">
-          <span>Total</span>
-          <span>R$ {currentTotalAmount.toFixed(2).replace(".", ",")}</span>
-        </div>
-      </div>
+        <CollapsibleContent className="space-y-2 pt-3 px-1 pb-1 data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+          <Input
+            id="cpf"
+            name="cpf"
+            inputMode="numeric"
+            placeholder="CPF do titular"
+            value={formData.holderCpf}
+            onChange={(e) => { handleChange("holderCpf", e.target.value); setValidationErrors((p) => ({ ...p, holderCpf: "" })); }}
+            className={cn(validationErrors.holderCpf && "border-destructive")}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="Email"
+              value={formData.holderEmail}
+              onChange={(e) => { handleChange("holderEmail", e.target.value); setValidationErrors((p) => ({ ...p, holderEmail: "" })); }}
+              className={cn(validationErrors.holderEmail && "border-destructive")}
+            />
+            <Input
+              id="tel"
+              name="tel"
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder="Telefone"
+              value={formData.holderPhone}
+              onChange={(e) => { handleChange("holderPhone", e.target.value); setValidationErrors((p) => ({ ...p, holderPhone: "" })); }}
+              className={cn(validationErrors.holderPhone && "border-destructive")}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
-      <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+      {/* Seção: endereço de cobrança */}
+      <Collapsible open={openSections.has("address")} onOpenChange={() => toggleSection("address")}>
+        <CollapsibleTrigger className="w-full">
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2">
+              {addressComplete ? (
+                <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                  <Check className="h-3 w-3 text-primary-foreground" />
+                </div>
+              ) : (
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className={cn("text-sm font-semibold uppercase tracking-wider", addressComplete ? "text-primary" : "text-foreground")}>
+                Endereço de cobrança
+              </span>
+            </div>
+            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", openSections.has("address") && "rotate-180")} />
+          </div>
+        </CollapsibleTrigger>
+        <Separator />
+        <CollapsibleContent className="space-y-2 pt-3 px-1 pb-1 data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              id="postal-code"
+              name="postal-code"
+              autoComplete="postal-code"
+              inputMode="numeric"
+              placeholder="CEP"
+              maxLength={9}
+              value={formData.holderPostalCode}
+              onChange={(e) => { handleChange("holderPostalCode", e.target.value); setValidationErrors((p) => ({ ...p, holderPostalCode: "" })); }}
+              className={cn("font-mono", validationErrors.holderPostalCode && "border-destructive")}
+            />
+            <Input
+              id="address-number"
+              name="address-line2"
+              autoComplete="address-line2"
+              placeholder="Número"
+              value={formData.holderAddressNumber}
+              onChange={(e) => { handleChange("holderAddressNumber", e.target.value); setValidationErrors((p) => ({ ...p, holderAddressNumber: "" })); }}
+              className={cn(validationErrors.holderAddressNumber && "border-destructive")}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <p className="text-xs text-muted-foreground/70 text-center">
+        Ao confirmar, seu cartão será cobrado automaticamente todo {allowInstallments ? "ano" : "mês"} no valor da assinatura. Você pode cancelar a qualquer momento na tela de Assinatura.
+      </p>
+
+      <Button type="submit" className="w-full h-14 text-base font-bold" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
             Processando...
           </>
         ) : (
-          `Pagar R$ ${currentTotalAmount.toFixed(2).replace(".", ",")}`
+          `Pagar R$ ${amount.toFixed(2).replace(".", ",")} e ativar recorrência`
         )}
       </Button>
     </form>

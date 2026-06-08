@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy, Check, Loader2, Clock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Copy, Check, Loader2, Clock, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 interface PixPaymentViewProps {
@@ -9,6 +11,9 @@ interface PixPaymentViewProps {
   pixExpirationDate?: string;
   isLoading: boolean;
   onBack: () => void;
+  isRecurring?: boolean;
+  onRecurringChange?: (value: boolean) => void;
+  isRecurringSupported?: boolean;
 }
 
 export function PixPaymentView({
@@ -17,6 +22,9 @@ export function PixPaymentView({
   pixExpirationDate,
   isLoading,
   onBack,
+  isRecurring = true,
+  onRecurringChange,
+  isRecurringSupported = true,
 }: PixPaymentViewProps) {
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
@@ -104,6 +112,30 @@ export function PixPaymentView({
           <p className="text-center text-sm text-muted-foreground">
             Escaneie o QR Code com o app do seu banco
           </p>
+
+          {/* Pix Automático Toggle */}
+          {isRecurringSupported && onRecurringChange && (
+            <div className="w-full p-3 rounded-lg border bg-card space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary shrink-0" />
+                  <Label htmlFor="pix-recurring" className="text-sm font-medium cursor-pointer">
+                    Pix Automático
+                  </Label>
+                </div>
+                <Switch
+                  id="pix-recurring"
+                  checked={isRecurring}
+                  onCheckedChange={onRecurringChange}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {isRecurring
+                  ? "Ao escanear, você autoriza cobranças automáticas mensais via PIX direto na sua conta. Pode cancelar a qualquer momento na tela de Assinatura. Compatível com bancos que suportam Pix Automático."
+                  : "Você precisará pagar manualmente cada fatura via PIX."}
+              </p>
+            </div>
+          )}
 
           <div className="w-full space-y-2">
             <p className="text-xs text-muted-foreground text-center">

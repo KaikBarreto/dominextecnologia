@@ -11,12 +11,14 @@ import { useEffect, useState } from 'react';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MODULE_INFO } from '@/components/ModuleGateModal';
 import { formatBRL } from '@/utils/currency';
+import { CancelSubscriptionModal } from '@/components/billing/CancelSubscriptionModal';
 
 export default function Billing() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { modules, hasModule } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [showCancel, setShowCancel] = useState(false);
 
   const { data: company, isLoading } = useQuery({
     queryKey: ['my-company'],
@@ -361,6 +363,29 @@ export default function Billing() {
           </Card>
         </div>
       )}
+
+      {/* Cancelar assinatura */}
+      {!isTesting && (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowCancel(true)}
+            className="text-sm text-muted-foreground hover:text-destructive underline-offset-4 hover:underline transition-colors"
+          >
+            Cancelar assinatura
+          </button>
+          <p className="text-xs text-muted-foreground/70 text-center max-w-sm">
+            Ao cancelar, a renovação automática para e você mantém acesso até o vencimento.
+          </p>
+        </div>
+      )}
+
+      <CancelSubscriptionModal
+        open={showCancel}
+        onOpenChange={setShowCancel}
+        companyId={company.id}
+        subscriptionExpiresAt={company.subscription_expires_at}
+      />
     </div>
   );
 }

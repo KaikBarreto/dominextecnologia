@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState } from 'react';
 import CompanyFormModal from '@/components/admin/CompanyFormModal';
+import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { CompanyActivityTab } from '@/components/admin/CompanyActivityTab';
 import { SubscriptionHistoryTab } from '@/components/admin/SubscriptionHistoryTab';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,8 @@ export default function AdminCompanyDetail() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showCancelSubscriptionDialog, setShowCancelSubscriptionDialog] = useState(false);
+  const cancelSubscription = useCancelSubscription();
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -133,6 +136,16 @@ export default function AdminCompanyDetail() {
           <Button variant="edit-ghost" size={isMobile ? 'sm' : 'default'} className="gap-1.5" onClick={() => setShowEdit(true)}>
             <Edit className="h-4 w-4" /> {!isMobile && 'Editar'}
           </Button>
+          {company.subscription_status !== 'inactive' && (
+            <Button
+              variant="destructive-ghost"
+              size={isMobile ? 'sm' : 'default'}
+              className="gap-1.5"
+              onClick={() => setShowCancelSubscriptionDialog(true)}
+            >
+              <XCircle className="h-4 w-4" /> {!isMobile && 'Cancelar assinatura'}
+            </Button>
+          )}
           <Button variant="destructive-ghost" size={isMobile ? 'sm' : 'default'} className="gap-1.5" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="h-4 w-4" /> {!isMobile && 'Excluir'}
           </Button>
@@ -333,6 +346,60 @@ export default function AdminCompanyDetail() {
             >
               {deleteMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</> : 'Excluir Empresa'}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel subscription confirmation (admin) */}
+      <AlertDialog open={showCancelSubscriptionDialog} onOpenChange={(open) => { if (!cancelSubscription.isPending) setShowCancelSubscriptionDialog(open); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" /> Cancelar Assinatura
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-left">
+              <p className="text-sm">
+                Cancelar a assinatura de <strong className="text-foreground">{company.name}</strong>?
+              </p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 space-y-1.5 text-sm">
+                <p className="font-medium text-destructive">Esta ação irá:</p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                  <li>Cancelar a renovação automática (Asaas)</li>
+                  <li>Cancelar cobranças futuras em aberto</li>
+                  <li>Manter o acesso da empresa até o vencimento já pago</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelSubscription.isPending}>Voltar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={cancelSubscription.isPending}
+              onClick={() => {
+                if (!id) return;
+                cancelSubscription.mutate(
+                  { companyId: id, reason: 'Cancelamento pelo painel administrativo' },
+                  {
+                    onSuccess: () => {
+                      toast({ title: 'Assinatura cancelada', description: 'A renovação automática foi cancelada. O acesso segue até o vencimento.' });
+                      setShowCancelSubscriptionDialog(false);
+                      refetch();
+                    },
+                    onError: (error: unknown) => {
+                      console.error('Erro ao cancelar assinatura:', error);
+                      toast({ variant: 'destructive', title: 'Erro ao cancelar assinatura' });
+                    },
+                  },
+                );
+              }}
+            >
+              {cancelSubscription.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelando...</>
+              ) : (
+                'Confirmar Cancelamento'
+              )}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

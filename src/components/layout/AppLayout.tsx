@@ -20,6 +20,7 @@ import { MobileSidebar } from './MobileSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
+import { SubscriptionGate } from '@/components/SubscriptionGate';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
 import { HeaderClock } from '@/components/layout/HeaderClock';
 import {
@@ -88,13 +89,15 @@ export function AppLayout() {
   return (
     <>
       <VersionUpdateNotification />
-      {isCompactViewport ? (
-        <MobileTabletShell isAdminUser={isAdminUser} />
-      ) : useTopbar ? (
-        <TopbarShell />
-      ) : (
-        <SidebarShell />
-      )}
+      <SubscriptionGate>
+        {isCompactViewport ? (
+          <MobileTabletShell isAdminUser={isAdminUser} />
+        ) : useTopbar ? (
+          <TopbarShell />
+        ) : (
+          <SidebarShell />
+        )}
+      </SubscriptionGate>
     </>
   );
 }
