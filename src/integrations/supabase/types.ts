@@ -429,6 +429,7 @@ export type Database = {
           pending_subscription_value: number | null
           phone: string | null
           salesperson_id: string | null
+          sdr_id: string | null
           segment: string | null
           state: string | null
           subscription_expires_at: string | null
@@ -468,6 +469,7 @@ export type Database = {
           pending_subscription_value?: number | null
           phone?: string | null
           salesperson_id?: string | null
+          sdr_id?: string | null
           segment?: string | null
           state?: string | null
           subscription_expires_at?: string | null
@@ -507,6 +509,7 @@ export type Database = {
           pending_subscription_value?: number | null
           phone?: string | null
           salesperson_id?: string | null
+          sdr_id?: string | null
           segment?: string | null
           state?: string | null
           subscription_expires_at?: string | null
@@ -528,6 +531,20 @@ export type Database = {
           {
             foreignKeyName: "companies_salesperson_id_fkey"
             columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople_basic"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_sdr_id_fkey"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "salespeople"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_sdr_id_fkey"
+            columns: ["sdr_id"]
             isOneToOne: false
             referencedRelation: "salespeople_basic"
             referencedColumns: ["id"]

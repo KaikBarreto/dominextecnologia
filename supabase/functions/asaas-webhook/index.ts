@@ -392,21 +392,30 @@ async function processConfirmedPayment(
       // closer informa no diálogo Registrar Venda). NÃO multiplicamos por 12 no anual
       // — o diálogo usa o valor informado direto, então mantemos paridade.
       //
-      // SDR: companies NÃO tem coluna sdr_id (o SDR só é escolhido manualmente no
-      // diálogo do painel master). Numa venda automática via Asaas não há SDR
-      // associado → 100% closer. Se o admin quiser dividir com um SDR, edita a
-      // venda no painel master depois.
+      // SDR: companies.sdr_id é capturado na ORIGEM (link de teste/venda ou form do
+      // painel master). Se a empresa tem sdr_id → comissão dividida 50/50; senão,
+      // 100% closer. O closer é SEMPRE company.salesperson_id.
       const isYearly = company.billing_cycle === "yearly";
       const totalRate = isYearly ? 0.20 : 0.50;
       const commissionBase = Number(company.subscription_value || paymentAmount);
       const total = Math.round(commissionBase * totalRate * 100) / 100;
-      // Sem SDR no contexto do webhook → closer fica com tudo.
-      const closerCommission = total;
-      const sdrCommission = 0;
+
+      const sdrId: string | null = company.sdr_id ?? null;
+      let closerCommission: number;
+      let sdrCommission: number;
+      if (sdrId) {
+        // 50/50 centavo-safe: closer leva metade arredondada, SDR leva o resto
+        // (total - metade) pra não perder/ganhar 1 centavo na divisão ímpar.
+        closerCommission = Math.round((total / 2) * 100) / 100;
+        sdrCommission = Math.round((total - closerCommission) * 100) / 100;
+      } else {
+        closerCommission = total;
+        sdrCommission = 0;
+      }
 
       await supabase.from("salesperson_sales").insert({
         salesperson_id: company.salesperson_id, // closer
-        sdr_id: null,
+        sdr_id: sdrId,
         company_id: companyId,
         customer_name: company.name,
         customer_origin: company.origin,
@@ -419,7 +428,9 @@ async function processConfirmedPayment(
       });
       console.log(
         `[salesperson] venda registrada p/ ${company.name}: comissão total R$ ${total} ` +
-          `(closer R$ ${closerCommission} / sdr R$ ${sdrCommission}, sem SDR via webhook)`,
+          (sdrId
+            ? `(50/50 → closer R$ ${closerCommission} / sdr R$ ${sdrCommission})`
+            : `(100% closer R$ ${closerCommission})`),
       );
     }
   }
@@ -434,7 +445,7 @@ async function processConfirmedPayment(
 /** Colunas da company necessárias em todo caminho de ativação. */
 const COMPANY_COLS =
   "id, name, subscription_status, subscription_plan, subscription_value, subscription_expires_at, " +
-  "billing_cycle, ltv, origin, salesperson_id, asaas_customer_id, asaas_subscription_id, " +
+  "billing_cycle, ltv, origin, salesperson_id, sdr_id, asaas_customer_id, asaas_subscription_id, " +
   "pending_subscription_value, custom_price, custom_price_months, custom_price_payments_made, " +
   "custom_price_permanent";
 

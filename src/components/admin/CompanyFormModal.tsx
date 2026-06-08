@@ -104,7 +104,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     queryFn: async () => {
       const { data, error } = await supabase
         .from('salespeople_basic')
-        .select('id, name, email')
+        .select('id, name, email, role')
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
@@ -112,12 +112,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     },
   });
 
+  // SDRs = vendedores ativos com role 'sdr'. Closer mostra TODOS (inclusive sdr).
+  const sdrs = salespeople.filter((s: any) => s.role === 'sdr');
+
   // ========== Form state ==========
   const [formData, setFormData] = useState({
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
     subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '',
-    origin: '', salesperson_id: '', segment: '',
+    origin: '', salesperson_id: '', sdr_id: '', segment: '',
     admin_email: '', admin_password: '',
     use_custom_price: false,
     custom_price_permanent: true,
@@ -159,6 +162,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         notes: company.notes || '',
         origin: company.origin || '',
         salesperson_id: company.salesperson_id || '',
+        sdr_id: company.sdr_id || '',
         segment: company.segment || '',
         admin_email: '',
         admin_password: '',
@@ -173,7 +177,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
         subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
-        notes: '', origin: '', salesperson_id: '', segment: '',
+        notes: '', origin: '', salesperson_id: '', sdr_id: '', segment: '',
         admin_email: '', admin_password: '',
         use_custom_price: false, custom_price_permanent: true, custom_price_months: '3',
       });
@@ -236,6 +240,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           notes: formData.notes || null,
           origin: formData.origin || null,
           salesperson_id: formData.salesperson_id || null,
+          sdr_id: formData.sdr_id || null,
           segment: formData.segment || null,
           custom_price: customPriceVal,
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
@@ -268,6 +273,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             max_users: parseInt(formData.max_users) || 5,
             origin: formData.origin || null,
             salesperson_id: formData.salesperson_id || null,
+            sdr_id: formData.sdr_id || null,
             segment: formData.segment || null,
             custom_price: customPriceVal,
             custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
@@ -627,7 +633,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Origem</Label>
                 <Select value={formData.origin || 'none'} onValueChange={v => updateField('origin', v === 'none' ? '' : v)}>
@@ -667,13 +673,29 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 </Select>
               </div>
 
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Vendedor</Label>
+                <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Closer (Quem fechou)</Label>
                 <Select value={formData.salesperson_id || 'none'} onValueChange={v => updateField('salesperson_id', v === 'none' ? '' : v)}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum</SelectItem>
                     {salespeople.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />SDR (Quem agendou - Opcional)</Label>
+                <Select value={formData.sdr_id || 'none'} onValueChange={v => updateField('sdr_id', v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {sdrs.map((s: any) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>

@@ -32,7 +32,8 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
 
   const [selectedOrigin, setSelectedOrigin] = useState('');
-  const [selectedSalesperson, setSelectedSalesperson] = useState('');
+  const [selectedSalesperson, setSelectedSalesperson] = useState(''); // Closer (quem fechou)
+  const [selectedSdr, setSelectedSdr] = useState(''); // SDR (quem agendou - opcional)
   const [linkType, setLinkType] = useState<'teste' | 'venda'>('teste');
   const [trialDays, setTrialDays] = useState(14);
   const [generatedLink, setGeneratedLink] = useState('');
@@ -63,13 +64,16 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('salespeople_basic')
-        .select('id, name, referral_code')
+        .select('id, name, referral_code, role')
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
       return data || [];
     },
   });
+
+  // SDRs = vendedores ativos com role 'sdr'. Closer mostra TODOS (inclusive sdr).
+  const sdrs = salespeople.filter((s: any) => s.role === 'sdr');
 
   const { data: plans = [] } = useQuery({
     queryKey: ['subscription-plans-link'],
@@ -94,6 +98,10 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     if (selectedSalesperson) {
       const sp = salespeople.find((s: any) => s.id === selectedSalesperson);
       params.append('vendedor', sp?.referral_code || selectedSalesperson);
+    }
+    if (selectedSdr) {
+      const sdr = salespeople.find((s: any) => s.id === selectedSdr);
+      params.append('sdr', sdr?.referral_code || selectedSdr);
     }
     params.append('tipo', linkType);
     if (linkType === 'teste' && trialDays !== 14) params.append('dias', String(trialDays));
@@ -128,6 +136,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const handleClose = () => {
     setSelectedOrigin('');
     setSelectedSalesperson('');
+    setSelectedSdr('');
     setLinkType('teste');
     setTrialDays(14);
     setGeneratedLink('');
@@ -228,13 +237,29 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>Vendedor (opcional)</Label>
+            <Label>Closer (Quem fechou)</Label>
             <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
-              <SelectTrigger><SelectValue placeholder="Selecione um vendedor" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Selecione o closer" /></SelectTrigger>
               <SelectContent>
                 {salespeople.map((s: any) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>SDR (Quem agendou - Opcional)</Label>
+            <Select value={selectedSdr} onValueChange={setSelectedSdr}>
+              <SelectTrigger><SelectValue placeholder="Selecione o SDR" /></SelectTrigger>
+              <SelectContent>
+                {sdrs.length === 0 ? (
+                  <SelectItem value="__none__" disabled>Nenhum SDR cadastrado</SelectItem>
+                ) : (
+                  sdrs.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -441,7 +466,8 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
               <div className="text-xs text-muted-foreground space-y-0.5">
                 <p>• Tipo: {linkType === 'teste' ? `Teste (${trialDays} dias)` : 'Venda direta'}</p>
                 {selectedOrigin && <p>• Origem: {selectedOrigin}</p>}
-                {selectedSalesperson && <p>• Vendedor: {salespeople.find((s: any) => s.id === selectedSalesperson)?.name}</p>}
+                {selectedSalesperson && <p>• Closer: {salespeople.find((s: any) => s.id === selectedSalesperson)?.name}</p>}
+                {selectedSdr && <p>• SDR: {salespeople.find((s: any) => s.id === selectedSdr)?.name}</p>}
                 {planMode === 'plano' && selectedPlan && (
                   <>
                     <p>• Plano: {selectedPlan.name} ({billingCycle === 'yearly' ? 'Anual' : 'Mensal'})</p>

@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
     const billingCycle = (raw.billing_cycle === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
     const promoMonths = typeof raw.promo_months === 'number' && raw.promo_months > 0 ? raw.promo_months : null;
     const trialDaysOverride = typeof raw.trial_days === 'number' && raw.trial_days > 0 ? raw.trial_days : null;
-    const referralCode = trim(raw.referral_code, 50);
+    const referralCode = trim(raw.referral_code, 50); // closer (vendedor que fechou)
+    const sdrReferralCode = trim(raw.sdr_referral_code, 50); // SDR que agendou (opcional)
 
     if (!company_name || !contact_name || !company_email || !password) {
       return new Response(
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
       expirationDate.setDate(expirationDate.getDate() + trialDays);
     }
 
-    // Lookup salesperson via referral_code
+    // Lookup do CLOSER (salesperson_id) via referral_code
     let salespersonId: string | null = null;
     if (referralCode) {
       const { data: sp } = await supabaseAdmin
@@ -116,6 +117,20 @@ Deno.serve(async (req) => {
         .eq('is_active', true)
         .maybeSingle();
       if (sp?.id) salespersonId = sp.id;
+    }
+
+    // Lookup do SDR (sdr_id) via referral_code — opcional. Aceita qualquer vendedor
+    // ativo cujo referral_code bata (a regra de "ser SDR" é aplicada na origem do link;
+    // aqui só resolvemos o id). Se não vier ou não bater → sdr_id permanece null.
+    let sdrId: string | null = null;
+    if (sdrReferralCode) {
+      const { data: sdr } = await supabaseAdmin
+        .from('salespeople')
+        .select('id')
+        .eq('referral_code', sdrReferralCode)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (sdr?.id) sdrId = sdr.id;
     }
 
     // Create company
@@ -136,6 +151,7 @@ Deno.serve(async (req) => {
         max_users: planDefaults.max_users,
         trial_days: isSale ? 0 : (trialDaysOverride || 14),
         salesperson_id: salespersonId,
+        sdr_id: sdrId,
         custom_price: lockedPrice && lockedPrice !== planPrice ? lockedPrice : null,
         custom_price_permanent: lockedPrice ? !promoMonths : true,
         custom_price_months: promoMonths || null,

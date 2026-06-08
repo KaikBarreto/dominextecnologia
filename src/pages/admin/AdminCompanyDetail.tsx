@@ -77,6 +77,23 @@ export default function AdminCompanyDetail() {
     enabled: !!company?.origin,
   });
 
+  // Closer (salesperson_id) + SDR (sdr_id) — nomes via view enxuta.
+  const { data: salesTeam } = useQuery({
+    queryKey: ['company-sales-team', company?.salesperson_id, company?.sdr_id],
+    queryFn: async () => {
+      const ids = [company?.salesperson_id, company?.sdr_id].filter(Boolean) as string[];
+      if (ids.length === 0) return {} as Record<string, string>;
+      const { data } = await supabase.from('salespeople_basic').select('id, name').in('id', ids);
+      const map: Record<string, string> = {};
+      (data || []).forEach((s: any) => { if (s?.id) map[s.id] = s.name; });
+      return map;
+    },
+    enabled: !!company && (!!company.salesperson_id || !!company.sdr_id),
+  });
+
+  const closerName = company?.salesperson_id ? (salesTeam?.[company.salesperson_id] || null) : null;
+  const sdrName = company?.sdr_id ? (salesTeam?.[company.sdr_id] || null) : null;
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('companies').delete().eq('id', id!);
@@ -227,6 +244,18 @@ export default function AdminCompanyDetail() {
                   ) : (
                     <p className="font-medium">{company.origin || 'N/A'}</p>
                   )}
+                </div>
+              </div>
+            </div>
+            <div className="border-t pt-3 mt-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Closer (Quem fechou)</span>
+                  <p className="font-medium">{closerName || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">SDR (Quem agendou)</span>
+                  <p className="font-medium">{sdrName || 'N/A'}</p>
                 </div>
               </div>
             </div>

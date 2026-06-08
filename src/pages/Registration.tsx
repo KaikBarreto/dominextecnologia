@@ -55,7 +55,8 @@ export default function Registration() {
   const lockedCycle = (searchParams.get('ciclo') as 'monthly' | 'yearly' | null) || null;
   const promoMonths = searchParams.get('meses_promo');
   const trialDaysParam = searchParams.get('dias');
-  const referrer = searchParams.get('vendedor'); // referral_code
+  const referrer = searchParams.get('vendedor'); // referral_code do closer
+  const sdrReferrer = searchParams.get('sdr'); // referral_code do SDR (opcional)
   const isSale = linkType === 'venda';
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export default function Registration() {
           promo_months: promoMonths ? parseInt(promoMonths) : null,
           trial_days: trialDaysParam ? parseInt(trialDaysParam) : null,
           referral_code: referrer || null,
+          sdr_referral_code: sdrReferrer || null,
         },
       });
 
