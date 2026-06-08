@@ -166,6 +166,95 @@ Deno.serve(async (req) => {
       .single();
     if (companyError || !company) throw new ValidationError("Empresa não encontrada.");
 
+    // ===================================================================
+    // VALIDAÇÃO SERVER-SIDE DO VALOR (FURO 3)
+    // -------------------------------------------------------------------
+    // Não confiar cegamente no `amount` do front. Recalculamos o valor ESPERADO a
+    // partir do plano/empresa no banco e rejeitamos divergências grosseiras.
+    //
+    // Base mensal:
+    //  - Renovação (status NÃO testing/trial): valor EFETIVO da empresa — custom_price
+    //    se houver promoção ativa (custom_price_payments_made < custom_price_months),
+    //    senão subscription_value. NUNCA pending_subscription_value (é o PRÓXIMO valor).
+    //    Fallback: price do plano.
+    //  - Primeira venda (testing/trial): price do plano (subscription_plans.price).
+    //
+    // Esperado por método (regra B9):
+    //  - Cartão: SEMPRE mensal (base).
+    //  - PIX/boleto anual à vista: round(base × 12 × 0,8) (−20%).
+    //  - PIX/boleto mensal: base.
+    //
+    // Tolerância: aceitamos divergência de até max(2% do esperado, R$ 0,02) pra absorver
+    // arredondamento. Acima disso → 400 PT-BR. Se o esperado não for computável (sem plano
+    // e sem subscription_value), aplicamos só um PISO: rejeita amount < 50% do price do
+    // plano (quando houver plano); sem nenhuma referência, deixamos passar pra não
+    // quebrar fluxo legítimo desconhecido.
+    {
+      const isFirstSaleForPricing =
+        company.subscription_status === "testing" ||
+        company.subscription_status === "Testando" ||
+        company.subscription_status === "trial";
+
+      // price do plano (subscription_plans.price pelo code em companies.subscription_plan)
+      let planPrice = 0;
+      if (company.subscription_plan) {
+        const { data: planRow } = await supabase
+          .from("subscription_plans")
+          .select("price")
+          .eq("code", company.subscription_plan)
+          .maybeSingle();
+        planPrice = Number(planRow?.price) || 0;
+      }
+
+      // Valor efetivo da empresa (renovação): custom_price ativo, senão subscription_value.
+      const cp = Number(company.custom_price) || 0;
+      const cpMonths = Number(company.custom_price_months) || 0;
+      const cpMade = Number(company.custom_price_payments_made) || 0;
+      const hasActiveCustomPrice = cp > 0 && cpMonths > 0 && cpMade < cpMonths;
+      const effectiveCompanyValue = hasActiveCustomPrice
+        ? cp
+        : Number(company.subscription_value) || 0;
+
+      // Base mensal esperada.
+      let monthlyBase: number;
+      if (isFirstSaleForPricing) {
+        monthlyBase = planPrice || effectiveCompanyValue;
+      } else {
+        monthlyBase = effectiveCompanyValue || planPrice;
+      }
+
+      if (monthlyBase > 0) {
+        // Esperado por método/ciclo.
+        let expected: number;
+        if (billing_type === "CREDIT_CARD") {
+          expected = monthlyBase; // cartão é sempre mensal
+        } else if (billing_cycle === "yearly") {
+          expected = Math.round(monthlyBase * 12 * 0.8); // anual à vista −20%
+        } else {
+          expected = monthlyBase;
+        }
+
+        const tolerance = Math.max(expected * 0.02, 0.02);
+        if (Math.abs(amount - expected) > tolerance) {
+          console.error(
+            `[valor] divergência: amount=${amount} esperado=${expected} ` +
+              `(base=${monthlyBase}, método=${billing_type}, ciclo=${billing_cycle}, ` +
+              `firstSale=${isFirstSaleForPricing}, customPrice=${hasActiveCustomPrice})`,
+          );
+          throw new ValidationError("Valor de cobrança inválido.");
+        }
+      } else if (planPrice > 0) {
+        // Sem base efetiva, mas há plano: aplica só o piso de segurança (50% do plano).
+        if (amount < planPrice * 0.5) {
+          console.error(
+            `[valor] abaixo do piso: amount=${amount} planPrice=${planPrice} (piso 50%)`,
+          );
+          throw new ValidationError("Valor de cobrança inválido.");
+        }
+      }
+      // Sem plano e sem subscription_value → sem referência confiável; não bloqueamos.
+    }
+
     // --- CPF/CNPJ: da request, senão da empresa ---
     const providedCpfCnpj = cpf_cnpj?.replace(/\D/g, "") || "";
     const companyCpfCnpj = company.cnpj?.replace(/\D/g, "") || "";

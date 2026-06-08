@@ -221,7 +221,15 @@ async function processConfirmedPayment(
     return { processed: false, reason: "valor inválido" };
   }
 
-  // Mutex idempotente: tenta ganhar a corrida do crédito de LTV.
+  // ===== GATING DE IDEMPOTÊNCIA (FURO 1) =====
+  // A Asaas envia PAYMENT_RECEIVED **e** PAYMENT_CONFIRMED pro MESMO pay_*. Sem portão,
+  // a EXTENSÃO de subscription_expires_at rodaria 2x (cliente ganharia mês grátis).
+  // credit_ltv_once_for_payment é o MUTEX: TRUE = 1ª vez (winner), FALSE = já processado.
+  // A RPC dedup por CICLO (mesma company + amount + due_date), então RECEIVED/CONFIRMED
+  // do mesmo pagamento reivindicam a MESMA linha → só 1 ganha. TUDO que NÃO é
+  // naturalmente idempotente (extensão de vencimento via compute_next_expiration,
+  // company_payments, salesperson_sales) fica ABAIXO deste portão. Se FALSE → no-op
+  // total e resposta 200. Garantia: o vencimento estende NO MÁXIMO 1x por asaas_payment_id.
   const { data: ltvClaimed, error: ltvError } = await supabase.rpc("credit_ltv_once_for_payment", {
     p_asaas_payment_id: opts.asaasPaymentId,
     p_company_id: companyId,
@@ -233,9 +241,12 @@ async function processConfirmedPayment(
     return { processed: false, reason: "erro no mutex de LTV" };
   }
   if (!ltvClaimed) {
+    // FALSE = já processado (outra confirmação do mesmo ciclo já creditou). PULA TODOS
+    // os efeitos colaterais — em especial a extensão de subscription_expires_at.
     console.log(`[process] ${opts.asaasPaymentId} já processado (LTV já creditado). No-op.`);
     return { processed: false, reason: "já processado" };
   }
+  // A partir daqui somos o WINNER: extensão de vencimento + lançamentos rodam 1x só.
 
   // Tipo: primeira venda vs renovação.
   const isFirstSale = await detectIsFirstSale(supabase, companyId, company.ltv);
@@ -357,6 +368,11 @@ async function processConfirmedPayment(
   );
 
   // salesperson_sales — SÓ na primeira venda e SÓ se houver vendedor.
+  // FONTE DA VERDADE DA COMISSÃO (FURO 2): a comissão é criada EXCLUSIVAMENTE aqui no
+  // webhook (gatilho confiável de pagamento). O confirm-sale-payment NÃO cria comissão
+  // — assim não há duplicação. Este bloco já está GATED pelo mutex: processConfirmedPayment
+  // retorna cedo (linha do `if (!ltvClaimed) return`) quando o pagamento já foi processado,
+  // então a comissão também roda no máximo 1x por pagamento.
   if (isFirstSale && company.salesperson_id) {
     const { data: existingSale } = await supabase
       .from("salesperson_sales")

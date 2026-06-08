@@ -9,7 +9,21 @@
 //    processado (webhook ou chamada anterior) → no-op.
 //  - admin_financial_transactions.asaas_transaction_id UNIQUE → UPSERT ON CONFLICT.
 //
-// NÃO emite NFS-e (fora de escopo). NÃO cria comissão em renovação (só primeira venda).
+// FURO 1 (gating de efeitos não-idempotentes):
+//  Todo efeito que NÃO é naturalmente idempotente — em especial a EXTENSÃO de
+//  subscription_expires_at (compute_next_expiration) e o INSERT em company_payments —
+//  só pode rodar quando o mutex retorna TRUE (winner). A RPC só dá TRUE quando há um
+//  asaas_payment_id real apontando uma subscription_payments com ltv_credited_at NULL,
+//  então SEM payment_id NÃO há mutex confiável e ESTES efeitos são PULADOS (no-op,
+//  resposta 200). Isso garante que o vencimento estenda no máximo 1x por pagamento e
+//  nunca seja estendido por uma confirmação sem id (que o webhook resolverá).
+//
+// FURO 2 (comissão fora daqui):
+//  A comissão/venda em salesperson_sales é criada EXCLUSIVAMENTE pelo asaas-webhook
+//  (gatilho confiável). Esta função NÃO toca salesperson_sales — evita duplicar e o
+//  cálculo anual errado que existia antes. Aqui ficam só: ativação + LTV + financeiro.
+//
+// NÃO emite NFS-e (fora de escopo).
 //
 // Auth: super_admin (regra-lei Dominex #6 — Authorization + has_role server-side).
 //
@@ -177,9 +191,13 @@ Deno.serve(async (req) => {
     }
 
     // ===== 5) Ganha a corrida do crédito de LTV (mutex idempotente) =====
-    // Sem payment_id não há linha-mutex; garantimos idempotência via UNIQUE asaas_transaction_id.
+    // GATING (FURO 1): SEM payment_id NÃO há linha-mutex confiável (a RPC usa
+    // subscription_payments.asaas_payment_id como chave de reivindicação). Nesse caso
+    // NÃO somos winner e PULAMOS todo efeito não-idempotente (extensão de vencimento e
+    // company_payments). O webhook chegará com o pay_* real e aplicará a renovação 1x.
+    // COM payment_id: só é winner quem ganha a reivindicação atômica do LTV (TRUE).
     const idempotencyKey = payment_id ?? `link_${company_id}_${new Date().toISOString().split("T")[0]}`;
-    let isWinner = true;
+    let isWinner = false;
     if (payment_id) {
       const { data: claimed, error: ltvError } = await supabase.rpc("credit_ltv_once_for_payment", {
         p_asaas_payment_id: payment_id,
@@ -191,6 +209,13 @@ Deno.serve(async (req) => {
         return json({ error: "Erro ao confirmar pagamento." }, 500);
       }
       isWinner = !!claimed;
+    } else {
+      // Sem payment_id: marcamos status (idempotente) e devolvemos sucesso, mas NÃO
+      // estendemos o vencimento — o webhook é a fonte da verdade da renovação.
+      console.log(
+        `[confirm-sale] sem payment_id para company ${company_id}: ` +
+          `extensão de vencimento DELEGADA ao webhook (no-op idempotente aqui).`,
+      );
     }
     if (!isWinner) {
       return json({ success: true, already_processed: true, company_id });
@@ -324,33 +349,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ===== 11) salesperson_sales (só primeira venda + tem vendedor) =====
-    if (isFirstSale && company.salesperson_id) {
-      const { data: existingSale } = await supabase
-        .from("salesperson_sales")
-        .select("id")
-        .eq("company_id", company_id)
-        .limit(1)
-        .maybeSingle();
-      if (!existingSale) {
-        // ⚠️ REGRA DE COMISSÃO REPLICADA DO ECOSISTEMA — REVISAR (briefing).
-        const isYearly = company.billing_cycle === "yearly";
-        const commissionRate = isYearly ? 0.20 : 0.50;
-        const monthlyBase = Number(company.subscription_value || paymentAmount);
-        const commissionBaseAmount = isYearly ? Math.round(monthlyBase * 12 * 0.8) : monthlyBase;
-        const commissionAmount = Math.round(commissionBaseAmount * commissionRate * 100) / 100;
-        await supabase.from("salesperson_sales").insert({
-          salesperson_id: company.salesperson_id,
-          company_id,
-          customer_name: company.name,
-          customer_origin: company.origin,
-          amount: commissionBaseAmount,
-          paid_amount: company.subscription_value ?? paymentAmount,
-          commission_amount: commissionAmount,
-          billing_cycle: isYearly ? "annual" : "monthly",
-        });
-      }
-    }
+    // ===== 11) salesperson_sales — REMOVIDO (FURO 2) =====
+    // A criação de comissão/venda foi REMOVIDA desta função. A fonte da verdade da
+    // comissão é EXCLUSIVAMENTE o asaas-webhook (gatilho confiável de pagamento), que
+    // calcula com a base mensal correta (× 0,50 mensal / × 0,20 anual, modelo SDR/closer).
+    // Manter aqui duplicava a comissão que o webhook já cria e usava um cálculo anual
+    // errado (× 12 × 0,8 antes da taxa, ~9,6x maior). Esta função NÃO toca
+    // salesperson_sales.
 
     return json({
       success: true,
