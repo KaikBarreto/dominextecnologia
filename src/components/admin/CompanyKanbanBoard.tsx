@@ -10,6 +10,10 @@ interface CompanyKanbanBoardProps {
   companies: any[];
   origins: any[] | undefined;
   masterUserMap: Map<string, string>;
+  /** Mapa salesperson_id → { name, photo_url } repassado ao card. */
+  salespersonMap?: Map<string, { name: string; photo_url: string | null }>;
+  /** Gate financeiro: quando false, oculta somatório R$ por coluna e Valor Mensal dos cards. */
+  canSeeTotals?: boolean;
   onEdit: (company: any) => void;
   onDelete: (company: any) => void;
 }
@@ -20,7 +24,7 @@ const COLUMNS = [
   { id: 'inactive', title: 'INATIVOS', status: 'inactive', color: 'bg-rose-500' },
 ];
 
-export function CompanyKanbanBoard({ companies, origins, masterUserMap, onEdit, onDelete }: CompanyKanbanBoardProps) {
+export function CompanyKanbanBoard({ companies, origins, masterUserMap, salespersonMap, canSeeTotals = true, onEdit, onDelete }: CompanyKanbanBoardProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [draggedCompanyId, setDraggedCompanyId] = useState<string | null>(null);
@@ -97,7 +101,10 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, onEdit, 
                 <h3 className="font-bold text-sm tracking-wide text-foreground">{column.title}</h3>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">{colCompanies.length} {colCompanies.length === 1 ? 'empresa' : 'empresas'}</span>
-                  <span className="text-xs font-medium text-foreground">{formatCurrency(totalValue)}</span>
+                  {/* Gate de totais R$: somatório da coluna oculto para vendedor restrito. */}
+                  {canSeeTotals && (
+                    <span className="text-xs font-medium text-foreground">{formatCurrency(totalValue)}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -121,6 +128,8 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, onEdit, 
                         <CompanyKanbanCard
                           company={company}
                           origins={origins}
+                          salespersonMap={salespersonMap}
+                          canSeeTotals={canSeeTotals}
                           onEdit={onEdit}
                           onDelete={onDelete}
                           isDragging={draggedCompanyId === company.id}

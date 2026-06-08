@@ -1,12 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Edit, Trash2, MessageCircle } from 'lucide-react';
+import { Edit, Trash2, MessageCircle, User } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { getSegment } from '@/utils/companySegments';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 
 const PLAN_LABELS: Record<string, string> = {
   starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise',
@@ -15,12 +16,20 @@ const PLAN_LABELS: Record<string, string> = {
 interface CompanyKanbanCardProps {
   company: any;
   origins: any[] | undefined;
+  /** Mapa salesperson_id → { name, photo_url } (vindo de salespeople_basic). */
+  salespersonMap?: Map<string, { name: string; photo_url: string | null }>;
+  /**
+   * Gate financeiro: quando false, oculta o "Valor Mensal" do card.
+   * Vendedores restritos (sem admin_financeiro_totais) não veem R$.
+   * Default true para não regredir o painel master / super_admin.
+   */
+  canSeeTotals?: boolean;
   onEdit: (company: any) => void;
   onDelete: (company: any) => void;
   isDragging?: boolean;
 }
 
-export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDragging = false }: CompanyKanbanCardProps) {
+export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTotals = true, onEdit, onDelete, isDragging = false }: CompanyKanbanCardProps) {
   const navigate = useNavigate();
 
   const getExpirationInfo = (expirationDate: string | null) => {
@@ -37,6 +46,8 @@ export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDraggi
 
   const originData = origins?.find(o => o.name === company.origin) || null;
   const segmentData = getSegment(company.segment);
+  // Vendedor resolvido pelo mapa (companies.salesperson_id → salespeople_basic).
+  const salesperson = company.salesperson_id ? salespersonMap?.get(company.salesperson_id) ?? null : null;
   const expirationInfo = getExpirationInfo(company.subscription_expires_at);
   const formatCurrency = (v: number | null) => !v ? 'R$ 0,00' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getInitials = (name: string) => name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
@@ -61,10 +72,13 @@ export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDraggi
       </div>
 
       <div className="px-2.5 sm:px-3 pb-2 space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Valor Mensal:</span>
-          <span className="text-sm font-semibold text-foreground">{formatCurrency(company.subscription_value)}</span>
-        </div>
+        {/* Gate de totais R$: oculto para vendedor restrito (canSeeTotals=false). */}
+        {canSeeTotals && (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Valor Mensal:</span>
+            <span className="text-sm font-semibold text-foreground">{formatCurrency(company.subscription_value)}</span>
+          </div>
+        )}
         {originData && (
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Origem:</span>
@@ -80,6 +94,20 @@ export function CompanyKanbanCard({ company, origins, onEdit, onDelete, isDraggi
               <segmentData.icon className="h-3 w-3 shrink-0" />
               <span className="truncate">{segmentData.label}</span>
             </Badge>
+          </div>
+        )}
+        {/* Vendedor — espelha o EcoSistema: avatar + nome (truncate). Mobile + desktop. */}
+        {salesperson && (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Vendedor:</span>
+            <div className="flex items-center gap-1.5 max-w-[60%] min-w-0">
+              {salesperson.photo_url ? (
+                <SalespersonAvatar name={salesperson.name} photoUrl={salesperson.photo_url} size="sm" />
+              ) : (
+                <User className="h-3 w-3 shrink-0 text-muted-foreground" />
+              )}
+              <span className="text-xs font-medium text-foreground truncate">{salesperson.name}</span>
+            </div>
           </div>
         )}
       </div>

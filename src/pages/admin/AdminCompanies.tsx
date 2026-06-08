@@ -45,6 +45,7 @@ import { CompanyTable } from '@/components/admin/CompanyTable';
 import { CompanyKanbanBoard } from '@/components/admin/CompanyKanbanBoard';
 import { differenceInDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
@@ -96,6 +97,16 @@ export default function AdminCompanies() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  // -----------------------------------------------------------------
+  // Gate de totais R$ (tarefa: vendedor restrito não vê valores em R$).
+  // canSeeCompanyTotals = super_admin OU function permission admin_financeiro_totais.
+  // Quando false: oculta o somatório R$ por coluna do kanban e o "Valor Mensal"
+  // de cada card (gate aplicado dentro de CompanyKanbanBoard/CompanyKanbanCard).
+  // NOTA: os stats do topo desta tela são apenas contadores (Ativas/Trial/
+  // Bloqueadas/Vencidas) — não há somatório R$ agregado no topo para ocultar.
+  // -----------------------------------------------------------------
+  const { hasMasterAccess: isSuperAdmin, hasFunctionAccess } = useAdminPermissions();
+  const canSeeCompanyTotals = isSuperAdmin || hasFunctionAccess('admin_financeiro_totais');
   const [search, setSearch] = useState('');
   // Filtros multi-select: array vazio = filtro inativo (mostra todos).
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -548,6 +559,8 @@ export default function AdminCompanies() {
             companies={filtered}
             origins={origins || undefined}
             masterUserMap={masterUserMap}
+            salespersonMap={salespersonMap}
+            canSeeTotals={canSeeCompanyTotals}
             onEdit={handleEdit}
             onDelete={handleDeleteFromKanban}
           />
@@ -651,6 +664,8 @@ export default function AdminCompanies() {
             companies={filtered}
             origins={origins || undefined}
             masterUserMap={masterUserMap}
+            salespersonMap={salespersonMap}
+            canSeeTotals={canSeeCompanyTotals}
             onEdit={handleEdit}
             onDelete={handleDeleteFromKanban}
           />
@@ -660,6 +675,7 @@ export default function AdminCompanies() {
             masterUserMap={masterUserMap}
             origins={origins || undefined}
             salespersonMap={salespersonMap}
+            canSeeTotals={canSeeCompanyTotals}
             onEdit={handleEdit}
             onRefetch={() => refetch()}
           />
