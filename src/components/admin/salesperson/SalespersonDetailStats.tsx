@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, Target, DollarSign, Wallet } from 'lucide-react';
-import type { Salesperson, SalespersonSale, SalespersonAdvance } from '@/hooks/useSalespersonData';
+import { type Salesperson, type SalespersonSale, type SalespersonAdvance, commissionForPerson } from '@/hooks/useSalespersonData';
 
 interface Props {
   salesperson: Salesperson;
@@ -16,7 +16,8 @@ export function SalespersonDetailStats({ salesperson, sales, advances, totalSale
   const periodSalesCount = sales.length;
   const goal = salesperson.monthly_goal || 30;
   const goalPercent = Math.min((periodSalesCount / goal) * 100, 100);
-  const totalCommission = sales.reduce((s, x) => s + (x.commission_amount || 0), 0);
+  // Comissão do vendedor-dono em cada venda (parcela de closer OU de SDR).
+  const totalCommission = sales.reduce((s, x) => s + commissionForPerson(x, salesperson.id), 0);
   const totalAdvances = advances.reduce((s, x) => s + (x.amount || 0), 0);
   const balance = (Number(salesperson.salary) || 0) + totalCommission - totalAdvances;
 

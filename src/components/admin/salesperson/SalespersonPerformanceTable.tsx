@@ -7,7 +7,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useTableSort } from '@/hooks/useTableSort';
-import type { Salesperson, SalespersonSale, SalespersonAdvance } from '@/hooks/useSalespersonData';
+import { type Salesperson, type SalespersonSale, type SalespersonAdvance, salesForPerson, commissionForPerson } from '@/hooks/useSalespersonData';
 
 interface Props {
   salespeople: Salesperson[];
@@ -27,9 +27,10 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
   // comparar campos que dependem de cross-references entre arrays.
   const rows = useMemo(() => {
     return salespeople.map((p) => {
-      const s = sales.filter((x) => x.salesperson_id === p.id);
+      // Vendas em que p participou (closer OU SDR); comissão = parcela dele.
+      const s = salesForPerson(sales, p.id);
       const a = advances.filter((x) => x.salesperson_id === p.id);
-      const totalCommission = s.reduce((sum, x) => sum + (x.commission_amount || 0), 0);
+      const totalCommission = s.reduce((sum, x) => sum + commissionForPerson(x, p.id), 0);
       const totalAdvances = a.reduce((sum, x) => sum + (x.amount || 0), 0);
       const totalSales = s.length;
       const salary = Number(p.salary) || 0;

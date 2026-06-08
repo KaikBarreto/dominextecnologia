@@ -47,6 +47,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     no_commission: false,
     notes: '',
     user_id: 'none' as string,
+    role: 'closer' as 'sdr' | 'closer',
   });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -80,10 +81,11 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         no_commission: editingSalesperson.no_commission ?? false,
         notes: editingSalesperson.notes || '',
         user_id: (editingSalesperson as any).user_id || 'none',
+        role: ((editingSalesperson as any).role as 'sdr' | 'closer') || 'closer',
       });
       setPhotoUrl(editingSalesperson.photo_url || null);
     } else {
-      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: 30, is_active: true, no_commission: false, notes: '', user_id: 'none' });
+      setFormData({ name: '', email: '', phone: '', salary: 0, monthly_goal: 30, is_active: true, no_commission: false, notes: '', user_id: 'none', role: 'closer' });
       setPhotoUrl(null);
     }
   }, [editingSalesperson, open]);
@@ -217,6 +219,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         no_commission: formData.no_commission,
         notes: formData.notes.trim() || null,
         user_id: formData.user_id === 'none' ? null : formData.user_id,
+        role: formData.role,
       } as any);
 
       // Modo criação com foto pendente: sobe a foto agora que temos o id.
@@ -310,6 +313,17 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           <div className="space-y-2">
             <Label htmlFor="sp-goal">Meta Mensal (vendas)</Label>
             <Input id="sp-goal" type="number" min="0" value={formData.monthly_goal} onChange={(e) => setFormData({ ...formData, monthly_goal: parseInt(e.target.value) || 0 })} />
+          </div>
+          <div className="sm:col-span-2 space-y-2">
+            <Label>Tipo</Label>
+            <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as 'sdr' | 'closer' })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="closer">Closer (fecha a venda)</SelectItem>
+                <SelectItem value="sdr">SDR (qualifica o lead)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">Define o papel do vendedor no funil. Comissões dividem entre SDR e Closer quando ambos atuam na venda.</p>
           </div>
           <div className="sm:col-span-2 space-y-2">
             <Label>Vincular a usuário admin (opcional)</Label>

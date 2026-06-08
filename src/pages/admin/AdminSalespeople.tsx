@@ -16,7 +16,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
   useSalespeople, useAllSalespersonSales, useAllSalespersonAdvances,
-  useDeleteSalesperson, type Salesperson,
+  useDeleteSalesperson, salesForPerson, commissionForPerson, type Salesperson,
 } from '@/hooks/useSalespersonData';
 import { SalespersonFormDialog } from '@/components/admin/salesperson/SalespersonFormDialog';
 import { SalespersonDashboardStats } from '@/components/admin/salesperson/SalespersonDashboardStats';
@@ -109,9 +109,10 @@ export default function AdminSalespeople() {
 
   // Helper para stats por vendedor (igual à tabela desktop).
   const perSellerStats = (id: string, salary: number) => {
-    const s = sales.filter((x) => x.salesperson_id === id);
+    // Inclui vendas onde o vendedor é closer OU SDR; comissão = parcela dele.
+    const s = salesForPerson(sales, id);
     const a = advances.filter((x) => x.salesperson_id === id);
-    const totalCommissionSeller = s.reduce((sum, x) => sum + (x.commission_amount || 0), 0);
+    const totalCommissionSeller = s.reduce((sum, x) => sum + commissionForPerson(x, id), 0);
     const totalAdvances = a.reduce((sum, x) => sum + (x.amount || 0), 0);
     return {
       totalSalesSeller: s.length,

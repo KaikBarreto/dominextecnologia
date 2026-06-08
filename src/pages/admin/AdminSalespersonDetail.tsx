@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
@@ -14,6 +14,7 @@ import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFi
 import { SalespersonDetailStats } from '@/components/admin/salesperson/SalespersonDetailStats';
 import { SalespersonDetailCharts } from '@/components/admin/salesperson/SalespersonDetailCharts';
 import { SalespersonSalesList } from '@/components/admin/salesperson/SalespersonSalesList';
+import { RegistrarVendaDialog } from '@/components/admin/salesperson/RegistrarVendaDialog';
 import { SalespersonAdvanceForm } from '@/components/admin/salesperson/SalespersonAdvanceForm';
 import { SalespersonAdvancesList } from '@/components/admin/salesperson/SalespersonAdvancesList';
 import { SalespersonPaymentControl } from '@/components/admin/salesperson/SalespersonPaymentControl';
@@ -31,6 +32,7 @@ export default function AdminSalespersonDetail() {
   // Vê seus dados mas NÃO pode trocar o vendedor selecionado nem registrar vales (ações de admin).
   const isRestrictedSelfView = !canSeeAllSalespeople && isViewingOwnRecord;
   const [activeTab, setActiveTab] = useState('overview');
+  const [saleDialogOpen, setSaleDialogOpen] = useState(false);
 
   // Guard: vendedor admin restrito tentando acessar outro vendedor pela URL é
   // redirecionado pro próprio registro. (Defesa em profundidade — a RLS de
@@ -145,7 +147,15 @@ export default function AdminSalespersonDetail() {
         </TabsContent>
 
         <TabsContent value="sales" className="space-y-4">
-          <SalespersonSalesList sales={filteredSales} />
+          {/* Registrar venda é ação administrativa: vendedor restrito só visualiza. */}
+          {!isRestrictedSelfView && (
+            <div className="flex justify-end">
+              <Button onClick={() => setSaleDialogOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" /> Registrar Venda
+              </Button>
+            </div>
+          )}
+          <SalespersonSalesList sales={filteredSales} salespersonId={salesperson.id} />
         </TabsContent>
 
         <TabsContent value="advances" className="space-y-4">
@@ -166,6 +176,14 @@ export default function AdminSalespersonDetail() {
           />
         </TabsContent>
       </Tabs>
+
+      {!isRestrictedSelfView && (
+        <RegistrarVendaDialog
+          open={saleDialogOpen}
+          onOpenChange={setSaleDialogOpen}
+          prefill={{ closerId: salesperson.id }}
+        />
+      )}
     </div>
   );
 }

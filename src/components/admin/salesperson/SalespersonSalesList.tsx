@@ -2,21 +2,32 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, TrendingUp, ShoppingBag, Calendar } from 'lucide-react';
-import { type SalespersonSale, useDeleteSale } from '@/hooks/useSalespersonData';
+import { type SalespersonSale, useDeleteSale, commissionForPerson } from '@/hooks/useSalespersonData';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-interface Props { sales: SalespersonSale[]; }
+interface Props {
+  sales: SalespersonSale[];
+  /** Vendedor "dono" desta listagem — define qual parcela da comissão mostrar (closer vs SDR). */
+  salespersonId?: string;
+}
 
-export function SalespersonSalesList({ sales }: Props) {
+export function SalespersonSalesList({ sales, salespersonId }: Props) {
   const deleteSale = useDeleteSale();
   const isMobile = useIsMobile();
 
+  /** Comissão exibida: parcela do vendedor-dono se informado; senão o total. */
+  const commissionOf = (s: SalespersonSale) =>
+    salespersonId ? commissionForPerson(s, salespersonId) : (s.commission_amount || 0);
+  /** Indica que esta venda foi como SDR (o dono não é o closer). */
+  const isSdrRole = (s: SalespersonSale) =>
+    !!salespersonId && s.salesperson_id !== salespersonId && s.sdr_id === salespersonId;
+
   const totalValue = sales.reduce((acc, s) => acc + (s.paid_amount ?? s.amount), 0);
-  const totalCommission = sales.reduce((acc, s) => acc + s.commission_amount, 0);
+  const totalCommission = sales.reduce((acc, s) => acc + commissionOf(s), 0);
 
   return (
     <Card className="border-0 shadow-lg">
@@ -60,14 +71,19 @@ export function SalespersonSalesList({ sales }: Props) {
                       </div>
                     </div>
                   </div>
-                  <Badge variant={s.billing_cycle === 'annual' ? 'default' : 'secondary'} className="text-xs shrink-0">
-                    {s.billing_cycle === 'annual' ? 'Anual' : 'Mensal'}
-                  </Badge>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isSdrRole(s) && (
+                      <Badge variant="outline" className="text-[10px]">SDR</Badge>
+                    )}
+                    <Badge variant={s.billing_cycle === 'annual' ? 'default' : 'secondary'} className="text-xs">
+                      {s.billing_cycle === 'annual' ? 'Anual' : 'Mensal'}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <div>
                     <div className="font-bold">{fmt(s.paid_amount ?? s.amount)}</div>
-                    <div className="text-xs text-emerald-600 font-medium">+{fmt(s.commission_amount)} comissão</div>
+                    <div className="text-xs text-emerald-600 font-medium">+{fmt(commissionOf(s))} comissão</div>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => deleteSale.mutate(s.id)} disabled={deleteSale.isPending} className="h-8 w-8 hover:bg-destructive hover:text-white">
                     <Trash2 className="h-4 w-4" />
@@ -85,6 +101,9 @@ export function SalespersonSalesList({ sales }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold truncate">{s.customer_company || s.customer_name || '—'}</span>
+                      {isSdrRole(s) && (
+                        <Badge variant="outline" className="text-xs">SDR</Badge>
+                      )}
                       <Badge variant={s.billing_cycle === 'annual' ? 'default' : 'secondary'} className="text-xs">
                         {s.billing_cycle === 'annual' ? 'Anual' : 'Mensal'}
                       </Badge>
@@ -99,7 +118,7 @@ export function SalespersonSalesList({ sales }: Props) {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <div className="font-bold">{fmt(s.paid_amount ?? s.amount)}</div>
-                    <div className="text-xs text-emerald-600 font-medium">+{fmt(s.commission_amount)} comissão</div>
+                    <div className="text-xs text-emerald-600 font-medium">+{fmt(commissionOf(s))} comissão</div>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => deleteSale.mutate(s.id)} disabled={deleteSale.isPending} className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-white">
                     <Trash2 className="h-4 w-4" />

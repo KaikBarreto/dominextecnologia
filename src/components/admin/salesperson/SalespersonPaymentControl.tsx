@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { CheckCircle, Calendar, DollarSign } from 'lucide-react';
 import {
   type Salesperson, type SalespersonSale, type SalespersonAdvance, type SalespersonPayment,
-  useCreatePayment, useSaveSalesperson,
+  useCreatePayment, useSaveSalesperson, commissionForPerson, salesForPerson,
 } from '@/hooks/useSalespersonData';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -39,7 +39,8 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
     const start = startOfMonth(month);
     const end = endOfMonth(month);
     const monthStr = format(month, 'yyyy-MM-01');
-    const sales = allSales.filter((s) => {
+    // Inclui vendas onde X é closer OU SDR; a comissão é a parcela dele em cada uma.
+    const sales = salesForPerson(allSales, salesperson.id).filter((s) => {
       const d = new Date(s.created_at);
       return d >= start && d <= end;
     });
@@ -48,7 +49,7 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
       return d >= start && d <= end;
     });
     const isPaid = payments.some((p) => p.reference_month?.startsWith(format(month, 'yyyy-MM')));
-    const totalCommission = sales.reduce((s, x) => s + (x.commission_amount || 0), 0);
+    const totalCommission = sales.reduce((s, x) => s + commissionForPerson(x, salesperson.id), 0);
     const totalAdvances = advances.reduce((s, x) => s + (x.amount || 0), 0);
     const salary = Number(salesperson.salary) || 0;
     const totalToReceive = salary + totalCommission - totalAdvances;
