@@ -8,9 +8,10 @@ import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAva
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { Building2, Check, CalendarClock } from 'lucide-react';
+import { Building2, Check, CalendarClock, MessageCircle } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { buildWhatsAppLink } from '@/utils/shareLinks';
 
 interface TaskCardProps {
   task: AdminTask;
@@ -34,6 +35,7 @@ export function TaskCard({ task, isDragging, onClick, onQuickResolve, assignee }
     isBefore(parseISO(task.due_date), startOfDay(new Date()));
 
   const leadName = task.crm_lead?.company_name || task.crm_lead?.contact_name || task.crm_lead?.title;
+  const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone);
 
   return (
     <div
@@ -69,11 +71,6 @@ export function TaskCard({ task, isDragging, onClick, onQuickResolve, assignee }
         <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full', priorityConfig.className)}>
           {priorityConfig.label}
         </span>
-        {isFollowup && task.followup_step != null && (
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-            Follow up {task.followup_step}/10
-          </span>
-        )}
       </div>
 
       {isFollowup && leadName && (
@@ -95,22 +92,40 @@ export function TaskCard({ task, isDragging, onClick, onQuickResolve, assignee }
         )}
       </div>
 
-      {onQuickResolve && task.status !== 'resolvido' && (
-        <div className="mt-2 pt-2 border-t flex items-center justify-end">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
-              onQuickResolve(task.id);
-            }}
-            className="gap-1.5 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-colors"
-            title="Marcar como resolvido"
-          >
-            <Check className="h-4 w-4" />
-            <span className="hidden md:inline">Resolver</span>
-          </Button>
+      {(whatsappLink || (onQuickResolve && task.status !== 'resolvido')) && (
+        <div className="mt-2 pt-2 border-t flex items-center justify-end gap-2">
+          {whatsappLink && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(whatsappLink, '_blank', 'noopener,noreferrer');
+              }}
+              className="gap-1.5 border-[#25D366] text-[#128C7E] hover:bg-[#25D366] hover:text-white hover:border-[#25D366] transition-colors"
+              title="Abrir conversa no WhatsApp"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden md:inline">WhatsApp</span>
+            </Button>
+          )}
+          {onQuickResolve && task.status !== 'resolvido' && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickResolve(task.id);
+              }}
+              className="gap-1.5 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-colors"
+              title="Marcar como resolvido"
+            >
+              <Check className="h-4 w-4" />
+              <span className="hidden md:inline">Resolver</span>
+            </Button>
+          )}
         </div>
       )}
     </div>

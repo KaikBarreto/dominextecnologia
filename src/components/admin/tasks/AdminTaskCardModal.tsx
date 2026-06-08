@@ -10,8 +10,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Briefcase, CheckCircle2, Trash2 } from 'lucide-react';
+import { Briefcase, CheckCircle2, Trash2, MessageCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { buildWhatsAppLink } from '@/utils/shareLinks';
 import {
   AdminTask,
   AdminTaskStatus,
@@ -53,6 +54,7 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
   const isFollowup = task.type === 'follow-up';
   const leadName = task.crm_lead?.company_name || task.crm_lead?.contact_name || task.crm_lead?.title;
   const typeConfig = TASK_TYPE_CONFIG[task.type];
+  const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone);
 
   return (
     <ResponsiveModal
@@ -71,6 +73,15 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
             <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="h-4 w-4 mr-1" /> Excluir
             </Button>
+            {whatsappLink && (
+              <Button
+                size="sm"
+                className="bg-[#25D366] hover:bg-[#1da851] text-white"
+                onClick={() => window.open(whatsappLink, '_blank', 'noopener,noreferrer')}
+              >
+                <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
+              </Button>
+            )}
             {task.status !== 'resolvido' && (
               <Button
                 size="sm"
@@ -90,11 +101,6 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
           <span className={cn('text-[11px] font-medium px-2 py-0.5 rounded-full border', typeConfig.className)}>
             {typeConfig.label}
           </span>
-          {isFollowup && task.followup_step != null && (
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-              Follow up {task.followup_step}/10
-            </span>
-          )}
         </div>
 
         {/* Meta-info */}

@@ -4,7 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Plus, Search, ClipboardList, LayoutGrid, LayoutList,
   AlertCircle, Clock, CheckCircle2, ListTodo, CalendarClock,
+  MessageCircle, Check,
 } from 'lucide-react';
+import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,7 +42,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FABButton } from '@/components/mobile/FABButton';
-import { MobileListItem } from '@/components/mobile/MobileListItem';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 
 type ViewMode = 'kanban' | 'list';
@@ -294,15 +296,38 @@ export function AdminTasksTab() {
               const overdue = !!task.due_date && task.status !== 'resolvido'
                 && isBefore(parseISO(task.due_date), startOfDay(new Date()));
               const leadName = task.crm_lead?.company_name || task.crm_lead?.contact_name || task.crm_lead?.title;
+              const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone);
+
+              // Swipe revela WhatsApp (verde) + Resolver (verde). Resolver passa
+              // pelo interceptor de follow-up (abre CompleteTaskModal quando aplicável).
+              const actions: ItemAction[] = [];
+              if (whatsappLink) {
+                actions.push({
+                  key: 'whatsapp',
+                  label: 'WhatsApp',
+                  icon: <MessageCircle className="h-5 w-5" />,
+                  variant: 'whatsapp',
+                  onClick: () => window.open(whatsappLink, '_blank', 'noopener,noreferrer'),
+                });
+              }
+              if (task.status !== 'resolvido') {
+                actions.push({
+                  key: 'resolve',
+                  label: 'Resolver',
+                  icon: <Check className="h-5 w-5" />,
+                  variant: 'success',
+                  onClick: () => handleStatusChange(task.id, 'resolvido'),
+                });
+              }
+
               return (
                 <MobileListItem
                   key={task.id}
                   onClick={() => setSelectedTask(task)}
+                  actions={actions.length > 0 ? actions : undefined}
                   leading={
-                    <span className={cn('flex h-10 w-10 items-center justify-center rounded-full text-[10px] font-medium text-center leading-tight px-1', typeConfig.className)}>
-                      {task.type === 'follow-up' && task.followup_step != null
-                        ? `${task.followup_step}/10`
-                        : typeConfig.label.slice(0, 4)}
+                    <span className={cn('flex h-10 w-10 items-center justify-center rounded-full text-[11px] font-bold uppercase', typeConfig.className)}>
+                      {typeConfig.label.slice(0, 2)}
                     </span>
                   }
                   title={<span className="truncate">{task.title}</span>}

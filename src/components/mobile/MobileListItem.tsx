@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export type ItemActionVariant = 'default' | 'edit' | 'destructive';
+export type ItemActionVariant = 'default' | 'edit' | 'destructive' | 'whatsapp' | 'success';
 
 export interface ItemAction {
   key: string;
@@ -93,10 +93,12 @@ export function MobileListItem({
   const isMobile = useIsMobile();
   const instanceId = useId();
 
+  // Variants que ganham botão colorido no swipe (têm cor própria definida).
+  const SWIPE_VARIANTS: ItemActionVariant[] = ['edit', 'destructive', 'whatsapp', 'success'];
   const swipeActions = useMemo(
     () =>
       (actions ?? []).filter(
-        (a) => a.variant === 'edit' || a.variant === 'destructive',
+        (a) => a.variant != null && SWIPE_VARIANTS.includes(a.variant),
       ),
     [actions],
   );
@@ -216,6 +218,8 @@ export function MobileListItem({
                   'gap-2 cursor-pointer',
                   action.variant === 'destructive' && 'text-destructive focus:text-destructive',
                   action.variant === 'edit' && 'text-warning focus:text-warning',
+                  action.variant === 'success' && 'text-success focus:text-success',
+                  action.variant === 'whatsapp' && 'text-[#128C7E] focus:text-[#128C7E]',
                 )}
               >
                 <span className="shrink-0">{action.icon}</span>
@@ -261,6 +265,8 @@ export function MobileListItem({
               action.variant === 'edit' && 'bg-warning text-warning-foreground hover:bg-warning/90',
               action.variant === 'destructive' &&
                 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+              action.variant === 'success' && 'bg-success text-success-foreground hover:bg-success/90',
+              action.variant === 'whatsapp' && 'bg-[#25D366] text-white hover:bg-[#1da851]',
             )}
             style={{ width: SWIPE_BUTTON_WIDTH }}
           >
