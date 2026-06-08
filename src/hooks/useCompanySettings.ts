@@ -97,34 +97,9 @@ export function useCompanySettings() {
       if (error) throw error;
       const row = data?.[0];
 
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('company_id')
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
-          .single();
-        if (profile?.company_id) {
-          const companyUpdate: Record<string, any> = {};
-          if (input.name !== undefined) companyUpdate.name = input.name;
-          if (input.phone !== undefined) companyUpdate.phone = input.phone;
-          if (input.email !== undefined) companyUpdate.email = input.email;
-          if (input.logo_url !== undefined) companyUpdate.logo_url = input.logo_url;
-          if (input.document !== undefined) companyUpdate.cnpj = input.document;
-          // Sync structured address fields (used by Asaas and other integrations)
-          if (input.address !== undefined) companyUpdate.address = input.address;
-          if (input.address_number !== undefined) companyUpdate.address_number = input.address_number;
-          if (input.neighborhood !== undefined) companyUpdate.neighborhood = input.neighborhood;
-          if (input.complement !== undefined) companyUpdate.complement = input.complement;
-          if (input.city !== undefined) companyUpdate.city = input.city;
-          if (input.state !== undefined) companyUpdate.state = input.state;
-          if (input.zip_code !== undefined) companyUpdate.zip_code = input.zip_code;
-          if (Object.keys(companyUpdate).length > 0) {
-            await supabase.from('companies').update(companyUpdate).eq('id', profile.company_id);
-          }
-        }
-      } catch (syncErr) {
-        console.error('Error syncing to companies table:', syncErr);
-      }
+      // O espelhamento company_settings -> companies e feito server-side por
+      // trigger (SECURITY DEFINER), pois o RLS de UPDATE em `companies` exige
+      // is_admin_user e bloqueia o tenant comum. Nao tentar espelhar no client.
 
       return row as CompanySettings | undefined;
     },
