@@ -40,6 +40,33 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.2',
+    date: '09 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exporte suas movimentações em PDF e Excel',
+        description: 'Na tela de Movimentações, o botão de exportar agora deixa você baixar em PDF — um relatório pronto pra imprimir, com a logo e os dados da sua empresa — ou em Excel, pra trabalhar a planilha no computador.',
+        category: 'recurso',
+      },
+      {
+        title: 'Busca nas Contas a pagar e a receber',
+        description: 'Agora dá pra procurar uma conta pelo nome do cliente ou fornecedor, pela descrição ou pelo valor — mesmo que ela esteja em outro mês ou com outro status. Antes só era possível filtrar por categoria.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Filtro de categoria mais organizado no Financeiro',
+        description: 'O filtro de categoria virou um botão que abre as opções quando você clica, deixando a tela mais limpa em vez de mostrar todas as categorias abertas de uma vez.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção no lançamento de despesas parceladas no cartão',
+        description: 'Corrigimos um caso em que uma despesa parcelada no cartão podia ser registrada em duplicidade se você clicasse em salvar duas vezes seguidas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.1',
     date: '09 de junho de 2026',
     type: 'patch',

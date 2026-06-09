@@ -379,6 +379,12 @@ export function TransactionFormDialog({
   const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing });
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // Guard de reentrância SÍNCRONO. O state `submitting` só atualiza no próximo
+  // render — entre dois cliques rápidos (ou duplo-clique) o React ainda não
+  // re-renderizou com o botão desabilitado, então um 2º submit entra antes.
+  // Esse ref barra na hora e impede dois `.insert()` (bug do cartão parcelado
+  // que criava dois installment_group_id idênticos). Regra-lei #7.
+  const submitGuard = useRef(false);
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const uploadSharedMutation = useUploadTransactionAttachmentShared();
 
@@ -449,6 +455,11 @@ export function TransactionFormDialog({
   }, [isCardAccount, watchedDate, watchedAccountId, open]);
 
   const handleSubmit = async (data: TransactionFormData) => {
+    // Trava de reentrância: se já há um submit em andamento, ignora o 2º disparo.
+    // Cobre duplo-clique e o retry do react-hook-form, evitando dois inserts.
+    if (submitGuard.current) return;
+    submitGuard.current = true;
+
     // Transição "à vista → parcelada" OU mudança de forma de pagamento em edição:
     // Finance.tsx vai deletar a original (ou o grupo inteiro de parcelas) e
     // recriar do zero, porque o backend só faz UPDATE plano e não consegue
@@ -472,14 +483,14 @@ export function TransactionFormDialog({
         `${grupoInfo} e será recriada (${parcelasInfo}) com a nova forma de pagamento. ` +
         `Os anexos serão preservados. Continuar?`
       );
-      if (!ok) return;
+      if (!ok) { submitGuard.current = false; return; }
     } else if (wasOnePayment && willBeMultiple) {
       const ok = window.confirm(
         `Você está alterando esta despesa para ${data.installment_count} parcelas. ` +
         `A transação original será removida e ${data.installment_count} novas parcelas serão criadas no lugar. ` +
         `Os anexos serão preservados em todas as parcelas. Continuar?`
       );
-      if (!ok) return;
+      if (!ok) { submitGuard.current = false; return; }
     }
 
     setSubmitting(true);
@@ -550,6 +561,7 @@ export function TransactionFormDialog({
       onOpenChange(false);
     } finally {
       setSubmitting(false);
+      submitGuard.current = false;
     }
   };
 

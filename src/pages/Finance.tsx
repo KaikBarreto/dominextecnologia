@@ -311,6 +311,7 @@ export default function Finance() {
           {activeTab === 'contas' && (
             <FinanceContas
               transactions={contasTransactions}
+              allTransactions={transactions}
               isLoading={isLoading}
               onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
               dateRange={range}

@@ -1,7 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, X, Wallet, Landmark, CreditCard } from 'lucide-react';
+import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, X, Wallet, Landmark, CreditCard, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { generateMovimentacoesReportHtml, type MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
+import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
 import { useTransactionAttachmentsCounts } from '@/hooks/useTransactionAttachments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,6 +105,8 @@ export function TransactionListPanel({
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
   const { accounts: allAccounts, balances: accountBalances } = useFinancialAccounts();
+  const { settings: companySettings } = useCompanySettings();
+  const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -229,23 +238,35 @@ export function TransactionListPanel({
     setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map((t) => t.id)));
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Valor', 'Status', 'Conta', 'Parcela'];
-    const rows = filtered.map((t) => [
-      t.transaction_date,
-      t.transaction_type === 'entrada' ? 'Receita' : 'Despesa',
-      `"${(t.description || '').replace(/"/g, '""')}"`,
-      t.category || '',
-      Number(t.amount).toFixed(2).replace('.', ','),
-      t.is_paid ? 'Pago' : 'Pendente',
-      (t as any).account?.name || '',
-      (t as any).installment_number ? `${(t as any).installment_number}/${(t as any).installment_total}` : '',
-    ]);
-    const csv = [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `${title.toLowerCase()}.csv`; a.click();
-    URL.revokeObjectURL(url);
+  // Monta as linhas do export a partir do conjunto exibido (respeita período +
+  // busca + filtros vigentes). Mesma data exibida na tabela: quando a transação
+  // é parcela de cartão, usa a data da fatura (credit_card_bill_date).
+  const buildExportRows = (): MovimentacaoReportRow[] =>
+    filtered.map((t) => ({
+      date: (t as any).credit_card_bill_date ?? t.transaction_date,
+      type: t.transaction_type === 'entrada' ? 'entrada' : 'saida',
+      description: t.description || '',
+      category: t.category || '',
+      account: (t as any).account?.name || '',
+      amount: Number(t.amount),
+      isPaid: !!t.is_paid,
+    }));
+
+  const handleExportPDF = () => {
+    generateMovimentacoesReportHtml({
+      company: companySettings,
+      whiteLabel: whiteLabelEnabled,
+      title,
+      rows: buildExportRows(),
+    });
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      await generateMovimentacoesExcel({ title, rows: buildExportRows() });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao gerar Excel', description: getErrorMessage(e) });
+    }
   };
 
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
@@ -322,9 +343,27 @@ export function TransactionListPanel({
                 <Trash2 className="mr-2 h-4 w-4" /> Excluir {selectedIds.size}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1 min-h-11 rounded-xl">
-              <FileDown className="h-4 w-4" /> CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1 min-h-11 rounded-xl">
+                  <FileDown className="h-4 w-4" /> Exportar <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  onClick={handleExportPDF}
+                  className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
+                >
+                  <FileText className="h-4 w-4" /> PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportExcel}
+                  className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white"
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {onNew && (
               <Button onClick={onNew} className={cn('min-h-11 rounded-xl', buttonColor)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -346,9 +385,27 @@ export function TransactionListPanel({
               <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir {selectedIds.size}
             </Button>
           ) : (
-            <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleExportCSV}>
-              <FileDown className="h-3.5 w-3.5" /> CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1">
+                  <FileDown className="h-3.5 w-3.5" /> Exportar <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  onClick={handleExportPDF}
+                  className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
+                >
+                  <FileText className="h-4 w-4" /> PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportExcel}
+                  className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white"
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       )}

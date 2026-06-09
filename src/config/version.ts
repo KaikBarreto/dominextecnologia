@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.1";
+export const APP_VERSION = "1.11.2";
 
-export const VERSION_NOTES = "Agora, ao lado do QR Code de cada equipamento, você tem dois botões: \"Abrir link\" e \"Copiar link\". Assim dá pra compartilhar com o seu cliente o acesso direto ao histórico daquele equipamento no portal, sem precisar escanear o código. Para clientes que ainda não têm portal ativo, os botões aparecem indisponíveis com um aviso.";
+export const VERSION_NOTES = "Agora você exporta suas movimentações financeiras em PDF (um relatório pronto pra imprimir, com a logo e os dados da sua empresa) ou em Excel. Ficou mais fácil achar uma conta nas Contas a pagar e a receber — é só buscar pelo nome do cliente, descrição ou valor, mesmo que esteja em outro mês. O filtro de categoria ficou mais organizado, e corrigimos um caso em que uma despesa parcelada no cartão podia ser salva em duplicidade ao clicar duas vezes seguidas.";

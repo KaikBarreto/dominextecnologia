@@ -13,15 +13,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Filter } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search } from 'lucide-react';
+import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
-import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -63,17 +63,27 @@ type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 type PayrollTxn = FinancialTransaction & { customer?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
 
 interface FinanceContasProps {
+  /** Transações já filtradas pelo período selecionado no parent. */
   transactions: PayrollTxn[];
+  /**
+   * Dataset COMPLETO (sem filtro de período), usado só pela busca textual
+   * universal — pra achar a conta mesmo em outro mês. Opcional: se ausente,
+   * a busca cai pra `transactions` (comportamento period-bound).
+   */
+  allTransactions?: PayrollTxn[];
   isLoading: boolean;
   onMarkAsPaid: (params: any) => Promise<any>;
   dateRange?: { from?: Date; to?: Date };
 }
 
-export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange }: FinanceContasProps) {
+export function FinanceContas({ transactions, allTransactions, isLoading, onMarkAsPaid, dateRange }: FinanceContasProps) {
   const [subTab, setSubTab] = useState<SubTab>('pagar');
   const [filter, setFilter] = useState<FilterStatus>('pendentes');
   // Filtro multi-select: vazio = todas as categorias. Pattern FilterCheckboxGroup.
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  // Busca textual UNIVERSAL: quando há texto, procura no dataset inteiro do subTab
+  // (pagar OU receber) IGNORANDO status/categoria/período. Pattern tela de OS (v1.9.40).
+  const [search, setSearch] = useState('');
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -214,7 +224,42 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
     });
   }, [allBills, cardAccountMap, subTab, filter, today, dateRange]);
 
+  const searchActive = search.trim().length > 0;
+
+  // Casa o termo de busca contra os campos relevantes da conta: descrição,
+  // contraparte (cliente/funcionário), categoria e o valor como texto.
+  const matchesSearch = (t: PayrollTxn): boolean => {
+    if (!searchActive) return true;
+    return (
+      fuzzyIncludes(t.description, search)
+      || fuzzyIncludes(t.category, search)
+      || fuzzyIncludes(t.customer?.name, search)
+      || fuzzyIncludes(t.employee?.name, search)
+      || fuzzyIncludes(String(Number(t.amount)), search)
+      || fuzzyIncludes(formatCurrency(Number(t.amount)), search)
+    );
+  };
+
+  // Base da busca universal: usa o dataset COMPLETO (allTransactions, sem filtro
+  // de período) aplicando só a regra de tipo do subTab (+ exclui despesas de
+  // cartão em 'pagar', que viram linhas-de-fatura). Cai pra `transactions` se o
+  // parent não passar o dataset completo.
+  const searchBase = useMemo(() => {
+    const pool = allTransactions ?? transactions;
+    return pool.filter((t) => {
+      const correctType = subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada';
+      if (!correctType) return false;
+      if (subTab === 'pagar' && t.credit_card_bill_date) return false;
+      return true;
+    });
+  }, [allTransactions, transactions, subTab]);
+
   const filtered = useMemo(() => {
+    // Busca UNIVERSAL: com texto digitado, varre o dataset inteiro do subTab
+    // (searchBase, todos os meses) IGNORANDO status/categoria/período — só texto.
+    if (searchActive) {
+      return searchBase.filter(matchesSearch);
+    }
     return baseFiltered.filter((t) => {
       if (filter === 'todas') { /* pass */ }
       else if (filter === 'pagas') { if (!t.is_paid) return false; }
@@ -228,7 +273,8 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
       }
       return true;
     });
-  }, [baseFiltered, filter, today, categoryFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseFiltered, searchBase, filter, today, categoryFilter, searchActive, search]);
 
   // Summary: somar TODAS as fontes (txns + faturas) pra refletir "movimento total"
   // — pendente/vencido/7dias/pago. Caso contrário o card "Pago" zeraria pra clientes
@@ -392,20 +438,20 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
             { value: 'receber', label: 'A Receber', icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
           ]}
           activeTab={subTab}
-          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter([]); }}
+          onTabChange={(v) => { setSubTab(v as SubTab); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
         />
       ) : (
         <div className="flex gap-2">
           <Button
             variant={subTab === 'pagar' ? 'default' : 'outline'}
-            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter([]); }}
+            onClick={() => { setSubTab('pagar'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
             className={cn('min-h-11 rounded-xl', subTab === 'pagar' && 'bg-destructive hover:bg-destructive/90 text-white')}
           >
             A Pagar
           </Button>
           <Button
             variant={subTab === 'receber' ? 'default' : 'outline'}
-            onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter([]); }}
+            onClick={() => { setSubTab('receber'); setFilter('pendentes'); setCategoryFilter([]); setSearch(''); }}
             className={cn('min-h-11 rounded-xl', subTab === 'receber' && 'bg-success hover:bg-success/90 text-white')}
           >
             A Receber
@@ -510,8 +556,21 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
         </div>
       )}
 
-      {/* Filters status — pillTabs em mobile, botões em desktop */}
-      {isMobile ? (
+      {/* Busca textual UNIVERSAL — quando preenchida, ignora status/categoria/período
+          e procura no dataset inteiro do subTab. Mesmo visual da busca de Movimentações. */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome, descrição, categoria ou valor..."
+          className="pl-10"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Filters status — pillTabs em mobile, botões em desktop.
+          Escondidos durante a busca textual (busca é universal, ignora status). */}
+      {searchActive ? null : isMobile ? (
         <MobilePillTabs
           tabs={filters.map(f => ({ value: f.key, label: f.label }))}
           activeTab={filter}
@@ -532,22 +591,17 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
         </div>
       )}
 
-      {/* Filtro de categoria — aparece quando há categorias disponíveis.
-          Multi-select (FilterCheckboxGroup): vazio = todas; marcar 1+ filtra. */}
-      {availableCategories.length > 0 && (
+      {/* Filtro de categoria — dropdown (Popover) com checkboxes. Vazio = todas;
+          marcar 1+ filtra. Escondido durante a busca textual (busca é universal). */}
+      {!searchActive && availableCategories.length > 0 && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <div className="w-full sm:max-w-[320px]">
-              <FilterCheckboxGroup
-                label="Categoria"
-                selected={categoryFilter}
-                onChange={setCategoryFilter}
-                emptyLabel="Todas as categorias"
-                options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
-              />
-            </div>
-          </div>
+          <FilterCheckboxDropdown
+            label="Categoria"
+            selected={categoryFilter}
+            onChange={setCategoryFilter}
+            emptyLabel="Todas as categorias"
+            options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
+          />
 
           {/* Resumo das categorias ativas */}
           {categorySummary && (
@@ -571,7 +625,7 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
           Cada linha é destacada (border colorido + ícone cartão + badge
           de quantidade de despesas). Click abre detalhe, "Pagar Fatura" abre modal
           (bloqueado até o fechamento). v1.9.15. */}
-      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && categoryFilter.length === 0 && (
+      {!isLoading && subTab === 'pagar' && cardInvoices.length > 0 && categoryFilter.length === 0 && !searchActive && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
@@ -604,15 +658,17 @@ export function FinanceContas({ transactions, isLoading, onMarkAsPaid, dateRange
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}
         </div>
-      ) : filtered.length === 0 && (cardInvoices.length === 0 || categoryFilter.length > 0) ? (
+      ) : filtered.length === 0 && (searchActive || cardInvoices.length === 0 || categoryFilter.length > 0) ? (
         <EmptyState
           icon={<DollarSign className="h-12 w-12" />}
           title="Nenhuma conta encontrada"
-          description={categoryFilter.length === 1
-            ? `Nenhum registro na categoria "${categoryFilter[0]}"`
-            : categoryFilter.length > 1
-              ? 'Nenhum registro nas categorias selecionadas'
-              : 'Nenhum registro para o filtro selecionado'}
+          description={searchActive
+            ? `Nada encontrado para "${search.trim()}"`
+            : categoryFilter.length === 1
+              ? `Nenhum registro na categoria "${categoryFilter[0]}"`
+              : categoryFilter.length > 1
+                ? 'Nenhum registro nas categorias selecionadas'
+                : 'Nenhum registro para o filtro selecionado'}
         />
       ) : filtered.length === 0 ? (
         // Só faturas (visíveis) — não mostra empty state nem a tabela vazia abaixo.
