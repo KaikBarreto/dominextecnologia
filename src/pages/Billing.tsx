@@ -12,6 +12,7 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MODULE_INFO } from '@/components/ModuleGateModal';
 import { formatBRL } from '@/utils/currency';
 import { CancelSubscriptionModal } from '@/components/billing/CancelSubscriptionModal';
+import { ModulesManagementCard } from '@/components/billing/ModulesManagementCard';
 
 export default function Billing() {
   const navigate = useNavigate();
@@ -208,6 +209,9 @@ export default function Billing() {
           </div>
         </div>
       )}
+
+      {/* Gerenciar plano (só fora do trial — no trial o fluxo é o checkout). */}
+      {!isTesting && <ModulesManagementCard />}
 
       {/* Active Modules */}
       <div className="space-y-4">
