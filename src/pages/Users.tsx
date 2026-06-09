@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Plus } from 'lucide-react';
+import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Plus, LayoutList, LayoutGrid, Users as UsersIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
@@ -10,14 +10,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
 import { useUserPermissions, usePermissionPresets, getAllPermissionKeys, type PermissionPreset } from '@/hooks/usePermissions';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
+import { UserLimitModal } from '@/components/UserLimitModal';
 import { useEmployees } from '@/hooks/useEmployees';
 import { PermissionPresetDialog } from '@/components/users/PermissionPresetDialog';
 import { UserListMobile } from '@/components/users/UserListMobile';
@@ -31,6 +34,7 @@ export default function Users() {
   const { users, isLoading, updateUserRole, canManageRoles, currentUserRole } = useUsers();
   const { userPermissions, upsertPermissions, toggleActive } = useUserPermissions();
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
+  const { maxUsers, currentUserCount, canAddUser } = useCompanyModules();
   const { user } = useAuth();
   const { toast } = useToast();
   const { employees } = useEmployees();
@@ -43,6 +47,29 @@ export default function Users() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deletingPreset, setDeletingPreset] = useState<PermissionPreset | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
+  const [userLimitOpen, setUserLimitOpen] = useState(false);
+  // View mode (lista é o default) — persistido em localStorage, igual EcoSistema.
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('users-view-mode') : null;
+    return saved === 'cards' || saved === 'list' ? saved : 'list';
+  });
+  const handleViewModeChange = (value: string) => {
+    if (value === 'list' || value === 'cards') {
+      setViewMode(value);
+      localStorage.setItem('users-view-mode', value);
+    }
+  };
+
+  // Inicia criação de usuário respeitando o limite do plano. No limite → modal de
+  // "Contratar mais usuários" (que leva ao Gerenciar Meu Plano focado em extras).
+  const startCreateUser = () => {
+    if (!canAddUser) {
+      setUserLimitOpen(true);
+      return;
+    }
+    setEditingUser(null);
+    setUserFormOpen(true);
+  };
 
   const filteredUsers = users.filter(u =>
     fuzzyIncludes(u.full_name, searchQuery) ||
@@ -305,7 +332,7 @@ export default function Users() {
       <div className={cn('space-y-4 min-w-0 w-full max-w-full overflow-x-hidden pb-24')}>
         <MobilePageHeader
           title="Usuários"
-          subtitle={`${users.length} usuários • ${activeCount} ativos`}
+          subtitle={`${currentUserCount}/${maxUsers} usuários • ${activeCount} ativos`}
           icon={ShieldCheck}
         />
 
@@ -362,7 +389,7 @@ export default function Users() {
           <FABButton
             icon={<Plus className="h-5 w-5" />}
             label="Usuário"
-            onClick={() => { setEditingUser(null); setUserFormOpen(true); }}
+            onClick={startCreateUser}
           />
         )}
         {canManageRoles && activeTab === 'presets' && (
@@ -438,6 +465,13 @@ export default function Users() {
           open={!!previewPhoto}
           onClose={() => setPreviewPhoto(null)}
         />
+
+        <UserLimitModal
+          open={userLimitOpen}
+          onOpenChange={setUserLimitOpen}
+          currentUserCount={currentUserCount}
+          maxUsers={maxUsers}
+        />
       </div>
     );
   }
@@ -455,16 +489,20 @@ export default function Users() {
             Usuários e Permissões
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {users.length} usuários • {activeCount} ativos
+            {currentUserCount}/{maxUsers} usuários • {activeCount} ativos
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange}>
+            <ToggleGroupItem value="list" aria-label="Lista"><LayoutList className="h-4 w-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="cards" aria-label="Cards"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
+          </ToggleGroup>
           <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
             Configurações
           </Button>
           {canManageRoles && (
-            <Button size="sm" onClick={() => { setEditingUser(null); setUserFormOpen(true); }}>
+            <Button size="sm" onClick={startCreateUser}>
               <UserPlus className="h-4 w-4 mr-2" />
               Criar Usuário
             </Button>
@@ -473,6 +511,29 @@ export default function Users() {
       </div>
 
       <div className="space-y-4">
+          {/* Aviso de limite atingido: convida a contratar mais usuários */}
+          {!canAddUser && canManageRoles && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <UsersIcon className="h-5 w-5 text-amber-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    Limite de usuários atingido ({currentUserCount}/{maxUsers})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Para cadastrar novos usuários, adicione usuários extras ao seu plano.
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" className="shrink-0" onClick={() => setUserLimitOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Contratar mais usuários
+              </Button>
+            </div>
+          )}
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -510,7 +571,7 @@ export default function Users() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className={viewMode === 'cards' ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3' : 'space-y-3'}>
               {filteredUsers.map((userProfile) => {
                 const perm = getUserPermission(userProfile.user_id);
                 const isActive = !perm || perm.is_active;
@@ -521,7 +582,12 @@ export default function Users() {
                 return (
                   <Card key={userProfile.id} className={`hover:shadow-md transition-shadow ${!isActive ? 'opacity-60' : ''}`}>
                     <CardContent className="p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className={cn(
+                        'flex justify-between gap-3',
+                        viewMode === 'cards'
+                          ? 'flex-col'
+                          : 'flex-col sm:flex-row sm:items-center',
+                      )}>
                         {/* Avatar + Info */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div
@@ -560,7 +626,10 @@ export default function Users() {
 
                         {/* Actions */}
                         {canManageRoles && (
-                          <div className="flex gap-2 shrink-0 self-end sm:self-center">
+                          <div className={cn(
+                            'flex gap-2 shrink-0',
+                            viewMode === 'cards' ? 'justify-end pt-1 border-t mt-1' : 'self-end sm:self-center',
+                          )}>
                             <Button
                               variant="edit-ghost"
                               size="sm"
@@ -661,6 +730,13 @@ export default function Users() {
         alt={previewPhoto?.alt}
         open={!!previewPhoto}
         onClose={() => setPreviewPhoto(null)}
+      />
+
+      <UserLimitModal
+        open={userLimitOpen}
+        onOpenChange={setUserLimitOpen}
+        currentUserCount={currentUserCount}
+        maxUsers={maxUsers}
       />
     </div>
   );

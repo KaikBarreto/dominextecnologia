@@ -207,6 +207,7 @@ function ModuleRoute({ moduleKey, children }: { moduleKey: ModuleCode; children:
           moduleName={info?.name || moduleKey}
           moduleDescription={info?.description}
           modulePrice={info?.price}
+          moduleCode={moduleKey}
         />
       </>
     );

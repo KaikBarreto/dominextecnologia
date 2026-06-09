@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -51,7 +51,26 @@ const getPlanIconBg = (code: string) => {
   }
 };
 
-export function ModulesManagementCard() {
+interface ModulesManagementCardProps {
+  /** Abre o modal automaticamente ao montar (deep-link de ?addModule/?addUsers). */
+  autoOpen?: boolean;
+  /** Aba inicial quando aberto via deep-link. */
+  initialTab?: 'plans' | 'custom';
+  /** Module_code a pré-marcar na aba Personalizado (deep-link ?addModule). */
+  preselectModule?: string | null;
+  /** Quando true, garante ao menos 1 usuário extra e rola o foco pra seção de usuários. */
+  focusUsers?: boolean;
+  /** Disparado depois que o autoOpen consumiu os params (pra limpar a query string). */
+  onAutoOpenConsumed?: () => void;
+}
+
+export function ModulesManagementCard({
+  autoOpen = false,
+  initialTab,
+  preselectModule = null,
+  focusUsers = false,
+  onAutoOpenConsumed,
+}: ModulesManagementCardProps = {}) {
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
 
@@ -112,6 +131,8 @@ export function ModulesManagementCard() {
   const [customModules, setCustomModules] = useState<string[]>([]);
   const [customExtraUsers, setCustomExtraUsers] = useState(0);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const usersSectionRef = useRef<HTMLDivElement | null>(null);
+  const autoOpenConsumed = useRef(false);
 
   const currentBillingCycle = (company?.billing_cycle as 'monthly' | 'yearly') || 'monthly';
 
@@ -130,13 +151,27 @@ export function ModulesManagementCard() {
   const baseModule = catalogModules.find((m) => m.code === BASE_MODULE);
 
   // Inicializa estado ao abrir: módulos atuais + extras atuais + ciclo atual.
-  const handleOpenChange = (next: boolean) => {
+  // `opts` permite deep-link (?addModule / ?addUsers) pré-configurar o modal.
+  const handleOpenChange = (
+    next: boolean,
+    opts?: { tab?: 'plans' | 'custom'; preselectModule?: string | null; focusUsers?: boolean },
+  ) => {
     if (next) {
-      setCustomModules(moduleCodes.filter((c) => c !== 'extra_user'));
-      setCustomExtraUsers(extraUsers);
+      const baseModules = moduleCodes.filter((c) => c !== 'extra_user');
+      // Pré-marca o módulo do deep-link (sem duplicar e ignorando basic/extra_user).
+      const withPreselect =
+        opts?.preselectModule &&
+        opts.preselectModule !== BASE_MODULE &&
+        opts.preselectModule !== 'extra_user' &&
+        !baseModules.includes(opts.preselectModule)
+          ? [...baseModules, opts.preselectModule]
+          : baseModules;
+      setCustomModules(withPreselect);
+      // Quando o foco é usuários e ainda não há extras, sobe pra 1 (sugestão).
+      setCustomExtraUsers(opts?.focusUsers && extraUsers === 0 ? 1 : extraUsers);
       setSelectedPlan(null);
       setBillingCycle(currentBillingCycle);
-      setActiveTab('plans');
+      setActiveTab(opts?.tab ?? 'plans');
     }
     setOpen(next);
   };
@@ -144,6 +179,31 @@ export function ModulesManagementCard() {
   useEffect(() => {
     if (company?.billing_cycle) setBillingCycle(company.billing_cycle as 'monthly' | 'yearly');
   }, [company?.billing_cycle]);
+
+  // Deep-link: abre o modal já na aba Personalizado, com o módulo pré-marcado ou
+  // o foco em usuários, quando vier de /assinatura?addModule=... ou ?addUsers=1.
+  // Espera o catálogo carregar pra o pré-marque/foco refletir corretamente.
+  useEffect(() => {
+    if (!autoOpen || autoOpenConsumed.current || isLoading) return;
+    autoOpenConsumed.current = true;
+    handleOpenChange(true, {
+      tab: initialTab ?? 'custom',
+      preselectModule,
+      focusUsers,
+    });
+    onAutoOpenConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen, isLoading]);
+
+  // Rola até a seção de usuários quando o deep-link foca em usuários.
+  useEffect(() => {
+    if (open && focusUsers && activeTab === 'custom') {
+      const t = setTimeout(() => {
+        usersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250);
+      return () => clearTimeout(t);
+    }
+  }, [open, focusUsers, activeTab]);
 
   // Preço mensal do personalizado: basic (sempre) + módulos escolhidos + extras × 50.
   const customMonthly = useMemo(() => {
@@ -473,7 +533,7 @@ export function ModulesManagementCard() {
             </div>
 
             {/* Usuários extras */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" ref={usersSectionRef}>
               <h4 className="font-medium text-sm">Usuários adicionais:</h4>
               <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-muted/30">
                 <div className="min-w-0">

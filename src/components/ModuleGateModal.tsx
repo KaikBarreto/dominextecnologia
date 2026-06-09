@@ -1,4 +1,4 @@
-import { Lock, Sparkles, ArrowRight } from 'lucide-react';
+import { Lock, Sparkles, ArrowRight, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,12 @@ interface ModuleGateModalProps {
   moduleName: string;
   moduleDescription?: string;
   modulePrice?: number;
+  /**
+   * Código do módulo (ex: 'crm', 'rh'). Quando informado, exibe o CTA
+   * "Adicionar módulo" que leva direto pra /assinatura?addModule=<code>, abrindo
+   * o "Gerenciar Meu Plano" na aba Personalizado com ESTE módulo pré-marcado.
+   */
+  moduleCode?: string;
 }
 
 export function ModuleGateModal({
@@ -18,6 +24,7 @@ export function ModuleGateModal({
   moduleName,
   moduleDescription,
   modulePrice,
+  moduleCode,
 }: ModuleGateModalProps) {
   const navigate = useNavigate();
 
@@ -52,21 +59,49 @@ export function ModuleGateModal({
           Seu plano atual não inclui este recurso. Faça upgrade para desbloqueá-lo.
         </p>
 
-        <div className="flex gap-3 w-full">
-          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-            Voltar
-          </Button>
-          <Button
-            className="flex-1 gap-2"
-            onClick={() => {
-              onOpenChange(false);
-              navigate('/assinatura');
-            }}
-          >
-            Contratar Agora
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* CTA principal: adicionar ESTE módulo direto ao plano (aba Personalizado
+            pré-marcada). Fallback pra "Contratar Agora" quando não há código. */}
+        {moduleCode ? (
+          <div className="flex flex-col gap-2 w-full">
+            <Button
+              className="w-full gap-2"
+              onClick={() => {
+                onOpenChange(false);
+                navigate(`/assinatura?addModule=${encodeURIComponent(moduleCode)}`);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar módulo
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/assinatura');
+              }}
+            >
+              Ver planos
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-3 w-full">
+            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+              Voltar
+            </Button>
+            <Button
+              className="flex-1 gap-2"
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/assinatura');
+              }}
+            >
+              Contratar Agora
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </ResponsiveModal>
   );

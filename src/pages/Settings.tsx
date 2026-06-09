@@ -682,6 +682,7 @@ export default function Settings() {
                 moduleName={MODULE_INFO.white_label.name}
                 moduleDescription={MODULE_INFO.white_label.description}
                 modulePrice={MODULE_INFO.white_label.price}
+                moduleCode="white_label"
               />
               </>
               )}

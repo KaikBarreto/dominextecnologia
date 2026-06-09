@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Clock, ArrowRight, Sparkles, Zap, Users, Package, Lock, Receipt } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,28 @@ import { useSubscriptionPaymentHistory } from '@/hooks/useSubscriptionPaymentHis
 
 export default function Billing() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { modules, hasModule } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [showCancel, setShowCancel] = useState(false);
+
+  // Deep-link vindo do ModuleGateModal / UserLimitModal:
+  //   ?addModule=<code> → abre "Gerenciar Meu Plano" na aba Personalizado com o módulo pré-marcado.
+  //   ?addUsers=1        → abre na aba Personalizado focando em usuários extras.
+  // Capturamos uma única vez (no mount) para o card auto-abrir; depois limpamos a query.
+  const [deepLink] = useState(() => ({
+    addModule: searchParams.get('addModule'),
+    addUsers: searchParams.get('addUsers') === '1',
+  }));
+  const wantsDeepLink = !!deepLink.addModule || deepLink.addUsers;
+
+  const clearDeepLinkParams = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('addModule');
+    next.delete('addUsers');
+    setSearchParams(next, { replace: true });
+  };
 
   const { data: company, isLoading } = useQuery({
     queryKey: ['my-company'],
@@ -216,7 +234,15 @@ export default function Billing() {
       )}
 
       {/* Gerenciar plano (só fora do trial — no trial o fluxo é o checkout). */}
-      {!isTesting && <ModulesManagementCard />}
+      {!isTesting && (
+        <ModulesManagementCard
+          autoOpen={wantsDeepLink}
+          initialTab={wantsDeepLink ? 'custom' : undefined}
+          preselectModule={deepLink.addModule}
+          focusUsers={deepLink.addUsers}
+          onAutoOpenConsumed={clearDeepLinkParams}
+        />
+      )}
 
       {/* Active Modules */}
       <div className="space-y-4">
