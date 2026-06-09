@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Wallet, TrendingUp, TrendingDown, History, LayoutDashboard, BarChart3, FileText, Settings2, Plus } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, History, LayoutDashboard, BarChart3, FileText, Settings2, Plus, Scale } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { FinancialMovementSection } from '@/components/admin/financial/Financial
 import { FinancialDRESection } from '@/components/admin/financial/FinancialDRESection';
 import { FinancialSettingsSection } from '@/components/admin/financial/FinancialSettingsSection';
 import { FinancialTransactionList } from '@/components/admin/financial/FinancialTransactionList';
+import { ReconciliationSection } from '@/components/admin/financial/ReconciliationSection';
 import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -40,6 +41,7 @@ export default function AdminFinancial() {
     ...(canSeeTotals ? [
       { value: 'charts', label: 'Gráficos', icon: BarChart3, group: 'Análise' },
       { value: 'dre', label: 'Resultado (DRE)', icon: FileText, group: 'Análise' },
+      { value: 'reconciliation', label: 'Conciliação', icon: Scale, group: 'Análise' },
     ] : []),
     { value: 'settings', label: 'Configurações', icon: Settings2, group: 'Sistema' },
   ];
@@ -124,6 +126,8 @@ export default function AdminFinancial() {
         return <FinancialCharts transactions={transactions} categories={categories} />;
       case 'dre':
         return <FinancialDRESection transactions={transactions} categories={categories} periodLabel={periodLabel} />;
+      case 'reconciliation':
+        return <ReconciliationSection />;
       case 'settings':
         return <FinancialSettingsSection />;
       default: return null;
