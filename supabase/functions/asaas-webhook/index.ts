@@ -251,7 +251,9 @@ async function processConfirmedPayment(
   // Tipo: primeira venda vs renovação.
   const isFirstSale = await detectIsFirstSale(supabase, companyId, company.ltv);
   const paymentType = isFirstSale ? "primeira_venda" : "renovacao";
-  const financialCategory = isFirstSale ? "first_sale" : "renewal";
+  // "sale" e "renewal" existem em admin_financial_categories (labels "Vendas"/"Renovações").
+  // NÃO usar "first_sale" aqui: foi consolidado em "sale" e a UI exibiria o name cru.
+  const financialCategory = isFirstSale ? "sale" : "renewal";
   const financialDescription = isFirstSale
     ? `Primeira Venda - ${company.name} (Asaas ${opts.asaasPaymentId}) [${opts.matchedBy}]`
     : `Renovação - ${company.name} (Asaas ${opts.asaasPaymentId}) [${opts.matchedBy}]`;
