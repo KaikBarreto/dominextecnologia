@@ -16,7 +16,7 @@ import {
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Edit, LayoutGrid, List, Image } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -102,6 +102,7 @@ export default function EquipmentDetail() {
       ? `${window.location.origin}/portal/${portalToken}?eq=${equipment.id}`
       : `EQ-${equipment.identifier || equipment.id}`
     : '';
+  const hasPortalLink = !!portalToken;
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
@@ -249,9 +250,28 @@ export default function EquipmentDetail() {
                   <div className="space-y-2">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
                     <p className="text-sm text-muted-foreground">QR Code do equipamento</p>
-                    <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
-                      <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
+                        <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!hasPortalLink}
+                        onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
+                      >
+                        <ExternalLink className="mr-2 h-3.5 w-3.5" />Abrir link
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!hasPortalLink}
+                        onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: 'Link copiado!' }); }}
+                      >
+                        <Copy className="mr-2 h-3.5 w-3.5" />Copiar link
+                      </Button>
+                    </div>
+                    {!hasPortalLink && <p className="text-xs text-muted-foreground">Cliente sem portal ativo</p>}
                   </div>
                 </div>
               </div>

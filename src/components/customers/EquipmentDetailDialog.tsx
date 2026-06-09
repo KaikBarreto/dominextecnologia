@@ -11,11 +11,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag } from 'lucide-react';
+import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag, ExternalLink, Copy } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/types/database';
@@ -40,6 +41,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(equipment?.id);
   const { settings: companySettings } = useCompanySettings();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
+  const { toast } = useToast();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
@@ -67,6 +69,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
       ? `${window.location.origin}/portal/${portalToken}?eq=${equipment.id}`
       : `EQ-${equipment.identifier || equipment.id}`
     : '';
+  const hasPortalLink = !!portalToken;
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -178,10 +181,31 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                   <p className="text-sm font-mono font-medium">{equipment.identifier}</p>
                 )}
                 <p className="text-xs text-muted-foreground">QR Code do equipamento</p>
-                <Button size="sm" variant="outline" className="mt-2" onClick={() => setLabelDialogOpen(true)}>
-                  <Tag className="mr-2 h-3.5 w-3.5" />
-                  Gerar Etiqueta
-                </Button>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
+                    <Tag className="mr-2 h-3.5 w-3.5" />
+                    Gerar Etiqueta
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!hasPortalLink}
+                    onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
+                  >
+                    <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                    Abrir link
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!hasPortalLink}
+                    onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: 'Link copiado!' }); }}
+                  >
+                    <Copy className="mr-2 h-3.5 w-3.5" />
+                    Copiar link
+                  </Button>
+                </div>
+                {!hasPortalLink && <p className="text-xs text-muted-foreground">Cliente sem portal ativo</p>}
               </div>
             </div>
 

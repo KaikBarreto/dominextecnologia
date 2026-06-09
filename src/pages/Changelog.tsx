@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.1',
+    date: '09 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Copie ou abra o link do equipamento sem escanear o QR Code',
+        description: 'Ao lado do QR Code de cada equipamento agora há dois botões: "Abrir link" e "Copiar link". Assim você compartilha com o seu cliente o acesso direto ao histórico daquele equipamento no portal, sem precisar escanear o código. Para clientes que ainda não têm portal ativo, os botões aparecem indisponíveis com um aviso.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.0',
     date: '08 de junho de 2026',
     type: 'minor',
