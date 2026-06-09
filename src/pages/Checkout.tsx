@@ -269,6 +269,11 @@ export default function Checkout() {
     const amount = getEffectiveFinalPrice(method);
     const description = `Assinatura Dominex - ${currentPlan.name}`;
     const purpose = isRenewal ? "renewal" : undefined;
+    // Primeira venda: o cliente ESCOLHE o plano aqui, então enviamos o
+    // `plan_code` selecionado pra validação server-side bater contra o preço
+    // desse plano (e não contra o plano antigo guardado na empresa). Na
+    // renovação não enviamos — a validação usa o valor efetivo da empresa.
+    const planCode = isRenewal ? undefined : (selectedPlan ?? undefined);
 
     try {
       if (method === "pix") {
@@ -277,6 +282,7 @@ export default function Checkout() {
           billingCycle,
           description,
           purpose,
+          planCode,
         });
         setPaymentData(data);
         if (data.payment_id) startPolling(data.payment_id, () => activateAndRedirect(data.payment_id ?? null));
@@ -285,6 +291,7 @@ export default function Checkout() {
           billingCycle,
           description,
           purpose,
+          planCode,
         });
         setPaymentData(data);
         if (data.payment_id) startPolling(data.payment_id, () => activateAndRedirect(data.payment_id ?? null));
@@ -296,6 +303,7 @@ export default function Checkout() {
           billingCycle: "monthly",
           description,
           purpose,
+          planCode,
         });
         setPaymentData(data);
         if (data.status === "CONFIRMED") {

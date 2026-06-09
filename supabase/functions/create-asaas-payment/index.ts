@@ -40,6 +40,10 @@ interface CreatePaymentRequest {
   cpf_cnpj?: string;
   pix_recurring?: boolean;
   billing_cycle?: "monthly" | "yearly";
+  // Primeira venda: code do plano que o cliente SELECIONOU no checkout. Usado
+  // pra validar o `amount` contra o preço desse plano (e não contra o plano
+  // antigo guardado na empresa). Ausente em renovação.
+  plan_code?: string;
   // Cartão
   card_holder_name?: string;
   card_holder_email?: string;
@@ -69,7 +73,7 @@ Deno.serve(async (req) => {
     assertAsaasConfigured();
 
     const body: CreatePaymentRequest = await req.json();
-    const { company_id, billing_type, amount, description, cpf_cnpj, pix_recurring, billing_cycle } = body;
+    const { company_id, billing_type, amount, description, cpf_cnpj, pix_recurring, billing_cycle, plan_code } = body;
 
     if (!company_id) throw new ValidationError("company_id é obrigatório.");
     if (!billing_type) throw new ValidationError("Forma de pagamento é obrigatória.");
@@ -170,43 +174,49 @@ Deno.serve(async (req) => {
     // VALIDAÇÃO SERVER-SIDE DO VALOR (FURO 3)
     // -------------------------------------------------------------------
     // Não confiar cegamente no `amount` do front. Recalculamos o valor ESPERADO a
-    // partir do plano/empresa no banco e rejeitamos divergências grosseiras.
+    // partir do(s) candidato(s) de base mensal no banco e rejeitamos divergências
+    // grosseiras. O `amount` é aceito se bater com QUALQUER base legítima:
     //
-    // Base mensal:
-    //  - Renovação (status NÃO testing/trial): valor EFETIVO da empresa — custom_price
-    //    se houver promoção ativa (custom_price_payments_made < custom_price_months),
-    //    senão subscription_value. NUNCA pending_subscription_value (é o PRÓXIMO valor).
-    //    Fallback: price do plano.
-    //  - Primeira venda (testing/trial): price do plano (subscription_plans.price).
+    //  - PLANO SELECIONADO (primeira venda): quando o front envia `plan_code` — o
+    //    cliente escolheu o plano no checkout, então o preço esperado vem de
+    //    subscription_plans.price[plan_code]. NÃO usamos o plano antigo guardado na
+    //    empresa (companies.subscription_plan), que numa primeira venda ainda não
+    //    reflete a escolha e causava rejeição falsa.
+    //  - PLANO GUARDADO da empresa: subscription_plans.price[company.subscription_plan]
+    //    (fallback / coerência).
+    //  - VALOR EFETIVO da empresa (renovação): custom_price se houver promoção ativa
+    //    (custom_price_payments_made < custom_price_months), senão subscription_value.
+    //    NUNCA pending_subscription_value (é o PRÓXIMO valor).
     //
-    // Esperado por método (regra B9):
+    // Esperado por método (regra B9), aplicado a CADA base candidata:
     //  - Cartão: SEMPRE mensal (base).
     //  - PIX/boleto anual à vista: round(base × 12 × 0,8) (−20%).
     //  - PIX/boleto mensal: base.
     //
     // Tolerância: aceitamos divergência de até max(2% do esperado, R$ 0,02) pra absorver
-    // arredondamento. Acima disso → 400 PT-BR. Se o esperado não for computável (sem plano
-    // e sem subscription_value), aplicamos só um PISO: rejeita amount < 50% do price do
-    // plano (quando houver plano); sem nenhuma referência, deixamos passar pra não
-    // quebrar fluxo legítimo desconhecido.
+    // arredondamento. Basta UMA base bater. Se NENHUMA base for computável, aplicamos
+    // só um PISO: rejeita amount < 50% do maior price de plano disponível; sem nenhuma
+    // referência, deixamos passar pra não quebrar fluxo legítimo desconhecido.
     {
-      const isFirstSaleForPricing =
-        company.subscription_status === "testing" ||
-        company.subscription_status === "Testando" ||
-        company.subscription_status === "trial";
-
-      // price do plano (subscription_plans.price pelo code em companies.subscription_plan)
-      let planPrice = 0;
-      if (company.subscription_plan) {
+      // price do plano por code (subscription_plans.price)
+      const planPriceByCode = async (code?: string | null): Promise<number> => {
+        if (!code) return 0;
         const { data: planRow } = await supabase
           .from("subscription_plans")
           .select("price")
-          .eq("code", company.subscription_plan)
+          .eq("code", code)
           .maybeSingle();
-        planPrice = Number(planRow?.price) || 0;
-      }
+        return Number(planRow?.price) || 0;
+      };
 
-      // Valor efetivo da empresa (renovação): custom_price ativo, senão subscription_value.
+      // Base candidata 1: plano SELECIONADO no checkout (primeira venda).
+      const selectedPlanPrice = await planPriceByCode(plan_code);
+      // Base candidata 2: plano guardado da empresa.
+      const storedPlanPrice = company.subscription_plan && company.subscription_plan !== plan_code
+        ? await planPriceByCode(company.subscription_plan)
+        : 0;
+
+      // Base candidata 3: valor efetivo da empresa (renovação).
       const cp = Number(company.custom_price) || 0;
       const cpMonths = Number(company.custom_price_months) || 0;
       const cpMade = Number(company.custom_price_payments_made) || 0;
@@ -215,44 +225,44 @@ Deno.serve(async (req) => {
         ? cp
         : Number(company.subscription_value) || 0;
 
-      // Base mensal esperada.
-      let monthlyBase: number;
-      if (isFirstSaleForPricing) {
-        monthlyBase = planPrice || effectiveCompanyValue;
+      // Esperado por método/ciclo a partir de uma base mensal (regra B9).
+      const expectedFor = (monthlyBase: number): number => {
+        if (billing_type === "CREDIT_CARD") return monthlyBase; // cartão sempre mensal
+        if (billing_cycle === "yearly") return Math.round(monthlyBase * 12 * 0.8); // anual −20%
+        return monthlyBase;
+      };
+
+      // Bases candidatas legítimas (> 0).
+      const candidateBases = [selectedPlanPrice, storedPlanPrice, effectiveCompanyValue]
+        .filter((b) => b > 0);
+
+      if (candidateBases.length > 0) {
+        const matches = candidateBases.some((base) => {
+          const expected = expectedFor(base);
+          const tolerance = Math.max(expected * 0.02, 0.02);
+          return Math.abs(amount - expected) <= tolerance;
+        });
+
+        if (!matches) {
+          console.error(
+            `[valor] divergência: amount=${amount} ` +
+              `bases=[${candidateBases.join(",")}] esperados=[${candidateBases.map(expectedFor).join(",")}] ` +
+              `(método=${billing_type}, ciclo=${billing_cycle}, plan_code=${plan_code ?? "-"}, ` +
+              `customPrice=${hasActiveCustomPrice})`,
+          );
+          throw new ValidationError("Valor de cobrança inválido.");
+        }
       } else {
-        monthlyBase = effectiveCompanyValue || planPrice;
-      }
-
-      if (monthlyBase > 0) {
-        // Esperado por método/ciclo.
-        let expected: number;
-        if (billing_type === "CREDIT_CARD") {
-          expected = monthlyBase; // cartão é sempre mensal
-        } else if (billing_cycle === "yearly") {
-          expected = Math.round(monthlyBase * 12 * 0.8); // anual à vista −20%
-        } else {
-          expected = monthlyBase;
-        }
-
-        const tolerance = Math.max(expected * 0.02, 0.02);
-        if (Math.abs(amount - expected) > tolerance) {
+        // Nenhuma base efetiva. Tenta um piso de segurança contra qualquer plano.
+        const anyPlanPrice = Math.max(selectedPlanPrice, storedPlanPrice);
+        if (anyPlanPrice > 0 && amount < anyPlanPrice * 0.5) {
           console.error(
-            `[valor] divergência: amount=${amount} esperado=${expected} ` +
-              `(base=${monthlyBase}, método=${billing_type}, ciclo=${billing_cycle}, ` +
-              `firstSale=${isFirstSaleForPricing}, customPrice=${hasActiveCustomPrice})`,
+            `[valor] abaixo do piso: amount=${amount} planPrice=${anyPlanPrice} (piso 50%)`,
           );
           throw new ValidationError("Valor de cobrança inválido.");
         }
-      } else if (planPrice > 0) {
-        // Sem base efetiva, mas há plano: aplica só o piso de segurança (50% do plano).
-        if (amount < planPrice * 0.5) {
-          console.error(
-            `[valor] abaixo do piso: amount=${amount} planPrice=${planPrice} (piso 50%)`,
-          );
-          throw new ValidationError("Valor de cobrança inválido.");
-        }
+        // Sem plano e sem subscription_value → sem referência confiável; não bloqueamos.
       }
-      // Sem plano e sem subscription_value → sem referência confiável; não bloqueamos.
     }
 
     // --- CPF/CNPJ: da request, senão da empresa ---

@@ -91,7 +91,7 @@ export function useAsaasPayment() {
       companyId: string,
       amount: number,
       cpfCnpj?: string,
-      options?: { recurring?: boolean; billingCycle?: BillingCycle; description?: string; purpose?: string },
+      options?: { recurring?: boolean; billingCycle?: BillingCycle; description?: string; purpose?: string; planCode?: string },
     ): Promise<PaymentResult> => {
       setIsCreating(true);
       try {
@@ -105,6 +105,7 @@ export function useAsaasPayment() {
             pix_recurring: options?.recurring ?? true,
             billing_cycle: options?.billingCycle ?? "monthly",
             purpose: options?.purpose,
+            plan_code: options?.planCode,
           },
         });
         if (error) throw new Error(await extractErrorMessage(error, data, "Erro ao gerar PIX."));
@@ -127,7 +128,7 @@ export function useAsaasPayment() {
       companyId: string,
       amount: number,
       cpfCnpj?: string,
-      options?: { billingCycle?: BillingCycle; description?: string; purpose?: string },
+      options?: { billingCycle?: BillingCycle; description?: string; purpose?: string; planCode?: string },
     ): Promise<PaymentResult> => {
       setIsCreating(true);
       try {
@@ -140,6 +141,7 @@ export function useAsaasPayment() {
             cpf_cnpj: cpfCnpj?.replace(/\D/g, ""),
             billing_cycle: options?.billingCycle ?? "monthly",
             purpose: options?.purpose,
+            plan_code: options?.planCode,
           },
         });
         if (error) throw new Error(await extractErrorMessage(error, data, "Erro ao gerar boleto."));
@@ -163,7 +165,7 @@ export function useAsaasPayment() {
       amount: number,
       cardData: CardData,
       cpfCnpj?: string,
-      options?: { billingCycle?: BillingCycle; description?: string; purpose?: string },
+      options?: { billingCycle?: BillingCycle; description?: string; purpose?: string; planCode?: string },
     ): Promise<PaymentResult> => {
       setIsCreating(true);
       try {
@@ -176,6 +178,7 @@ export function useAsaasPayment() {
             cpf_cnpj: cpfCnpj?.replace(/\D/g, ""),
             billing_cycle: options?.billingCycle ?? "monthly",
             purpose: options?.purpose,
+            plan_code: options?.planCode,
             card_holder_name: cardData.holderName,
             card_holder_email: cardData.holderEmail,
             card_number: cardData.number,
