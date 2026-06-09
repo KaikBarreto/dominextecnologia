@@ -11,6 +11,7 @@ import { generateDreHtml } from '@/utils/dreHtmlGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -31,10 +32,18 @@ export function FinanceDRE({ transactions: rawTransactions }: FinanceDREProps) {
   const { categories: financialCategories } = useFinancialCategories();
   const isMobile = useIsMobile();
 
-  // Filter out inter-account transfers, unpaid transactions, and credit card bill payments from DRE
-  // (bill payments are balance sheet items, not P&L)
+  // Filter out inter-account transfers, unpaid transactions, credit card bill
+  // payments AND balance adjustments from DRE. Transfers/bill payments são itens
+  // de balanço (não P&L); o "Ajuste de saldo" é conciliação de caixa (neutro) —
+  // entra no extrato da conta mas NÃO é receita/despesa real, então não pode
+  // inflar/distorcer o resultado do DRE.
   const transactions = useMemo(
-    () => rawTransactions.filter(t => !t.transfer_pair_id && t.is_paid && t.category !== 'Pagamento de Fatura'),
+    () => rawTransactions.filter(t =>
+      !t.transfer_pair_id &&
+      t.is_paid &&
+      t.category !== 'Pagamento de Fatura' &&
+      t.category !== ADJUSTMENT_CATEGORY
+    ),
     [rawTransactions]
   );
   const [showImpostos, setShowImpostos] = useState(false);

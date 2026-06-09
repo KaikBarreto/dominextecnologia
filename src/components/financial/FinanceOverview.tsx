@@ -279,7 +279,7 @@ export function FinanceOverview({ transactions, summary, onNavigate, onNewReceit
                 ? (balance > 0 ? 'text-destructive' : 'text-muted-foreground')
                 : (balance >= 0 ? 'text-success' : 'text-destructive');
               return (
-                <Card key={a.id} className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('bancos')}>
+                <Card key={a.id} className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => onNavigate('historico')}>
                   <CardContent className="p-3 flex items-center gap-3">
                     <div className="rounded-full p-2 shrink-0" style={{ backgroundColor: a.color }}>
                       <Icon className="h-4 w-4 text-white" />

@@ -5,10 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { FinanceOverview } from '@/components/financial/FinanceOverview';
-import { TransactionListPanel } from '@/components/financial/TransactionListPanel';
+import { FinanceMovimentacoes } from '@/components/financial/FinanceMovimentacoes';
 import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
-import { FinanceBanks } from '@/components/financial/FinanceBanks';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { isTransactionInDateRange } from '@/lib/finance-date';
 import {
@@ -16,7 +15,6 @@ import {
   LayoutDashboard,
   History as HistoryIcon,
   CalendarClock,
-  Landmark,
   FileBarChart,
 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -26,16 +24,16 @@ import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSi
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
-// Aliases /financeiro/categorias e /financeiro/configuracoes ficam mapeados pra
-// 'bancos' — é lá que vive o botão "Gerenciar Categorias" agora (v1.9.22).
-// Quem cair nessas URLs antigas vai pra "Contas e Cartões" sem aviso ruidoso.
+// As telas "Movimentações" e "Contas e Cartões" foram fundidas numa só:
+// "Movimentações Financeiras" (aba 'historico'). As URLs antigas de contas/
+// cartões e categorias caem todas nessa aba sem aviso ruidoso.
 const ROUTE_TAB_MAP: Record<string, string> = {
   '/financeiro': 'visao-geral',
   '/financeiro/movimentacoes': 'historico',
   '/financeiro/contas': 'contas',
-  '/financeiro/caixas-bancos': 'bancos',
-  '/financeiro/categorias': 'bancos',
-  '/financeiro/configuracoes': 'bancos',
+  '/financeiro/caixas-bancos': 'historico',
+  '/financeiro/categorias': 'historico',
+  '/financeiro/configuracoes': 'historico',
   '/financeiro/dre': 'dre',
 };
 
@@ -43,7 +41,6 @@ const TAB_ROUTE_MAP: Record<string, string> = {
   'visao-geral': '/financeiro',
   'historico': '/financeiro/movimentacoes',
   'contas': '/financeiro/contas',
-  'bancos': '/financeiro/caixas-bancos',
   'dre': '/financeiro/dre',
 };
 
@@ -53,7 +50,8 @@ export default function Finance() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const activeTab = ROUTE_TAB_MAP[location.pathname] || 'visao-geral';
-  // Deep-link de "Contas e Cartões" → "Movimentações" pré-filtrada por conta.
+  // Deep-link `?account=ID` → seleciona a conta no sidebar de "Movimentações
+  // Financeiras". Após consumir, limpamos o param pra não "travar" o sidebar.
   const accountFilterParam = searchParams.get('account');
   const clearAccountFilterParam = () => {
     if (!searchParams.get('account')) return;
@@ -71,13 +69,13 @@ export default function Finance() {
 
   // Lista completa de abas + filtragem por módulo. Abas marcadas com
   // requiresAdvanced só aparecem se o tenant tem finance_advanced.
-  // Categorias deixou de ser aba em v1.9.22 — gestão vive dentro de
-  // "Contas e Cartões" (botão "Gerenciar Categorias") e no TransactionFormDialog.
+  // "Movimentações Financeiras" (historico) funde o antigo "Movimentações"
+  // com "Contas e Cartões": sidebar de contas/cartões + extrato. Gestão de
+  // categorias vive dentro dela (botão "Categorias") e no TransactionFormDialog.
   const TABS: Array<SettingsTab & { requiresAdvanced?: boolean }> = [
     { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
-    { value: 'historico', label: 'Movimentações', icon: HistoryIcon },
+    { value: 'historico', label: 'Movimentações Financeiras', icon: HistoryIcon },
     { value: 'contas', label: 'Contas a Pagar/Receber', icon: CalendarClock, requiresAdvanced: true },
-    { value: 'bancos', label: 'Contas e Cartões', icon: Landmark, requiresAdvanced: true },
     { value: 'dre', label: 'DRE - Resultado', icon: FileBarChart, requiresAdvanced: true },
   ];
 
@@ -258,7 +256,7 @@ export default function Finance() {
 
   // No mobile, tabs que tem FAB (movimentações, contas) precisam de padding extra
   // pra última linha não ficar coberta pelo botão.
-  const tabHasFab = activeTab === 'historico' || activeTab === 'contas' || activeTab === 'bancos';
+  const tabHasFab = activeTab === 'historico' || activeTab === 'contas';
 
   return (
     // min-h-[100dvh] garante que empty states + transição de aba ocupem toda
@@ -294,17 +292,15 @@ export default function Finance() {
           )}
 
           {activeTab === 'historico' && (
-            <TransactionListPanel
-              title="Movimentações"
-              type="all"
+            <FinanceMovimentacoes
               transactions={filteredTransactions}
               isLoading={isLoading}
               onNew={() => handleNew('entrada')}
               onEdit={handleEdit}
               onDelete={(id) => deleteTransaction.mutateAsync(id)}
               onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
-              initialAccountFilter={accountFilterParam}
-              onClearAccountFilter={clearAccountFilterParam}
+              initialAccountId={accountFilterParam}
+              onConsumeInitialAccount={clearAccountFilterParam}
             />
           )}
 
@@ -317,8 +313,6 @@ export default function Finance() {
               dateRange={range}
             />
           )}
-
-          {activeTab === 'bancos' && <FinanceBanks />}
 
           {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
         </div>

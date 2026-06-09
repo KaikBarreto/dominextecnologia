@@ -8,6 +8,10 @@ export interface SettingsTab {
   label: string;
   icon: LucideIcon;
   group?: string;
+  /** Texto menor abaixo do label (ex: saldo da conta). Só no desktop. */
+  sublabel?: string;
+  /** Slot à direita da aba (ex: menu de 3 pontinhos). Só no desktop; aparece no hover/active. */
+  rightElement?: React.ReactNode;
 }
 
 interface SettingsSidebarLayoutProps {
@@ -15,6 +19,8 @@ interface SettingsSidebarLayoutProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   children: React.ReactNode;
+  /** Conteúdo fixo no rodapé do sidebar (ex: botões "Nova Conta"/"Novo Cartão"). Só no desktop. */
+  sidebarFooter?: React.ReactNode;
 }
 
 export function SettingsSidebarLayout({
@@ -22,6 +28,7 @@ export function SettingsSidebarLayout({
   activeTab,
   onTabChange,
   children,
+  sidebarFooter,
 }: SettingsSidebarLayoutProps) {
   const isMobile = useIsMobile();
 
@@ -65,26 +72,52 @@ export function SettingsSidebarLayout({
                 {group.items.map((tab) => {
                   const IconComponent = tab.icon;
                   const isActive = activeTab === tab.value;
-                  
+
                   return (
-                    <button
+                    <div
                       key={tab.value}
-                      onClick={() => onTabChange(tab.value)}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2 text-[13px] font-normal rounded-lg transition-all duration-200 text-left",
+                        "group/tab relative w-full flex items-center gap-3 px-3 py-2 text-[13px] font-normal rounded-lg transition-all duration-200 text-left cursor-pointer",
                         isActive
                           ? "bg-primary text-primary-foreground shadow-sm font-medium"
                           : "text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:font-medium"
                       )}
+                      onClick={() => onTabChange(tab.value)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTabChange(tab.value); } }}
                     >
                       <IconComponent className="h-4 w-4 flex-shrink-0" />
-                      <span>{tab.label}</span>
-                    </button>
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate">{tab.label}</span>
+                        {tab.sublabel && (
+                          <span
+                            className={cn(
+                              "block truncate text-[11px] leading-tight tabular-nums",
+                              isActive ? "text-primary-foreground/80" : "text-muted-foreground/80 group-hover/tab:text-primary-foreground/80"
+                            )}
+                          >
+                            {tab.sublabel}
+                          </span>
+                        )}
+                      </div>
+                      {tab.rightElement && (
+                        <div
+                          className={cn(
+                            "flex-shrink-0 transition-opacity",
+                            isActive ? "opacity-100" : "opacity-0 group-hover/tab:opacity-100"
+                          )}
+                        >
+                          {tab.rightElement}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
             </div>
           ))}
+          {sidebarFooter && <div className="pt-1">{sidebarFooter}</div>}
         </div>
       </nav>
       <div className="flex-1 min-w-0">

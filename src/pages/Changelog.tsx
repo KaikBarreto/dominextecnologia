@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.3',
+    date: '09 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ajuste o saldo da conta sem criar despesa ou receita',
+        description: 'Na conta, em "Ajustar saldo", você digita o valor que ela deveria ter e o sistema cria sozinho um lançamento de ajuste pra bater o saldo — sem precisar inventar uma despesa ou receita. Esse ajuste aparece no extrato da conta, mas não entra no seu resultado (DRE).',
+        category: 'recurso',
+      },
+      {
+        title: 'Financeiro mais organizado: tudo da conta num lugar só',
+        description: 'As telas "Movimentações" e "Contas e Cartões" viraram uma só. Agora tem um menu com cada conta e cartão — é só clicar pra ver o extrato daquela conta na hora, editar, excluir ou transferir, tudo no mesmo lugar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.2',
     date: '09 de junho de 2026',
     type: 'patch',
