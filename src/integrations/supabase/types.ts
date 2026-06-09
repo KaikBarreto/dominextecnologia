@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_sessions: {
@@ -3077,6 +3052,78 @@ export type Database = {
           },
         ]
       }
+      ledger_asaas: {
+        Row: {
+          admin_financial_transaction_id: string | null
+          amount: number
+          asaas_event_type: string | null
+          asaas_payment_id: string | null
+          asaas_transaction_id: string | null
+          category: string | null
+          company_id: string | null
+          created_at: string
+          description: string | null
+          direction: string
+          id: string
+          occurred_at: string
+          raw_payload: Json | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_financial_transaction_id?: string | null
+          amount: number
+          asaas_event_type?: string | null
+          asaas_payment_id?: string | null
+          asaas_transaction_id?: string | null
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          direction: string
+          id?: string
+          occurred_at: string
+          raw_payload?: Json | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_financial_transaction_id?: string | null
+          amount?: number
+          asaas_event_type?: string | null
+          asaas_payment_id?: string | null
+          asaas_transaction_id?: string | null
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          direction?: string
+          id?: string
+          occurred_at?: string
+          raw_payload?: Json | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_asaas_admin_financial_transaction_id_fkey"
+            columns: ["admin_financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "admin_financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_asaas_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_config: {
         Row: {
           created_at: string
@@ -5951,9 +5998,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],
