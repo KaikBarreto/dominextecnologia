@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Clock, ArrowRight, Sparkles, Zap, Users, Package, Lock } from 'lucide-react';
+import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Clock, ArrowRight, Sparkles, Zap, Users, Package, Lock, Receipt } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,8 @@ import { MODULE_INFO } from '@/components/ModuleGateModal';
 import { formatBRL } from '@/utils/currency';
 import { CancelSubscriptionModal } from '@/components/billing/CancelSubscriptionModal';
 import { ModulesManagementCard } from '@/components/billing/ModulesManagementCard';
+import { PaymentHistoryList } from '@/components/billing/PaymentHistoryList';
+import { useSubscriptionPaymentHistory } from '@/hooks/useSubscriptionPaymentHistory';
 
 export default function Billing() {
   const navigate = useNavigate();
@@ -51,6 +53,9 @@ export default function Billing() {
       return data || [];
     },
   });
+
+  const { data: paymentHistory = [], isLoading: isLoadingHistory } =
+    useSubscriptionPaymentHistory({ companyId: company?.id ?? null });
 
   useEffect(() => {
     if (company?.subscription_expires_at) {
@@ -375,6 +380,24 @@ export default function Billing() {
           </Card>
         </div>
       )}
+
+      {/* Histórico de pagamentos */}
+      <Card className="border">
+        <CardHeader className="p-4 md:p-6">
+          <CardTitle className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85 flex items-center gap-2">
+            <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-primary shrink-0">
+              <Receipt className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
+            </div>
+            <span>Histórico de pagamentos</span>
+          </CardTitle>
+          <CardDescription className="mt-2 text-xs md:text-sm">
+            Cobranças e pagamentos da sua assinatura.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 md:p-6 pt-0">
+          <PaymentHistoryList payments={paymentHistory} isLoading={isLoadingHistory} />
+        </CardContent>
+      </Card>
 
       {/* Cancelar assinatura */}
       {!isTesting && (
