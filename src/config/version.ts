@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.5";
+export const APP_VERSION = "1.11.6";
 
-export const VERSION_NOTES = "O Financeiro ficou mais organizado: o menu agora abre três telas separadas — Relatório Financeiro, Contas a Pagar/Receber e Movimentações Financeiras — sem telas empilhadas no celular, e o carrossel de contas aparece na cor de cada conta. O relatório de movimentações exporta um PDF em páginas A4, com botão de voltar no celular, respeitando o filtro que estiver na tela. E ao lançar as parcelas de um contrato dá pra definir conta, categoria e cliente de uma vez, com a opção de aplicar a todas as parcelas — além de uma aba \"Financeiro\" dentro do próprio contrato.";
+export const VERSION_NOTES = "Agora você pode desativar um usuário em vez de excluir: ele perde o acesso na hora e libera uma vaga no seu plano, mas continua na lista e pode ser reativado depois (se houver vaga). E ao reduzir de plano, o sistema avisa e deixa você escolher quais usuários ficam — os outros só são desativados, nunca apagados.";

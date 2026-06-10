@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.6',
+    date: '10 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Desative usuários sem excluir',
+        description: 'Agora dá pra desativar um usuário em vez de excluir de vez: ele perde o acesso na hora e libera uma vaga no seu plano, mas continua na lista e pode ser reativado quando você quiser (se houver vaga). A exclusão definitiva continua como uma opção separada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ao reduzir o plano, você escolhe quem fica',
+        description: 'Se você baixar para um plano com menos usuários do que tem hoje, o sistema avisa e deixa você escolher quais usuários continuam — os demais são apenas desativados (reativáveis depois), nunca excluídos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.5',
     date: '09 de junho de 2026',
     type: 'patch',
