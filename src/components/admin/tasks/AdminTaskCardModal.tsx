@@ -173,12 +173,28 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
           </MetaField>
 
           <MetaField label="Data limite">
-            <Input
-              type="date"
-              className="h-9 text-sm"
-              value={task.due_date ?? ''}
-              onChange={(e) => onUpdate({ id: task.id, due_date: e.target.value || null })}
-            />
+            {isFollowup ? (
+              <>
+                {/* Follow-up: data definida pela cadência automática — somente leitura. */}
+                <Input
+                  type="text"
+                  readOnly
+                  disabled
+                  className="h-9 text-sm cursor-not-allowed bg-muted/50"
+                  value={task.due_date ? format(parseISO(task.due_date), 'dd/MM/yyyy') : 'Sem data'}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Data definida pela cadência automaticamente
+                </p>
+              </>
+            ) : (
+              <Input
+                type="date"
+                className="h-9 text-sm"
+                value={task.due_date ?? ''}
+                onChange={(e) => onUpdate({ id: task.id, due_date: e.target.value || null })}
+              />
+            )}
           </MetaField>
         </div>
 
