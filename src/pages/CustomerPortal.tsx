@@ -105,6 +105,20 @@ const OS_STATUS_LABELS: Record<string, { label: string; color: string; badgeClas
 
 const ACTIVE_STATUSES = ['em_andamento', 'a_caminho', 'pendente'];
 
+// Status terminais (read-only): OS concluída ou cancelada não recebe "Preencher OS".
+const TERMINAL_STATUSES = ['concluida', 'cancelada'];
+
+// Payload da RPC get_portal_data. `access`/`viewer_can_fill` são opcionais —
+// se a RPC ainda não os devolver, caímos no comportamento atual (fallback gracioso).
+interface PortalPayload {
+  access?: 'granted' | 'denied';
+  viewer_can_fill?: boolean;
+  customer: Customer;
+  company_settings: CompanySettings | null;
+  equipment: Equipment[];
+  service_orders: ServiceOrder[];
+}
+
 export default function CustomerPortal() {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
@@ -117,6 +131,10 @@ export default function CustomerPortal() {
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Acesso negado pelo SERVIDOR (portal privado + visitante sem permissão).
+  const [accessDenied, setAccessDenied] = useState(false);
+  // Quem abre é um usuário logado da empresa dona (técnico/admin) → pode preencher OS.
+  const [viewerCanFill, setViewerCanFill] = useState(false);
 
   // Ticket form
   const [showTicketForm, setShowTicketForm] = useState(false);
@@ -158,6 +176,7 @@ export default function CustomerPortal() {
   const loadPortalData = async () => {
     setLoading(true);
     setError(null);
+    setAccessDenied(false);
     try {
       const { data, error: rpcError } = await supabase
         .rpc('get_portal_data', { p_token: token! });
@@ -168,13 +187,18 @@ export default function CustomerPortal() {
         return;
       }
 
-      const payload = data as {
-        customer: Customer;
-        company_settings: CompanySettings | null;
-        equipment: Equipment[];
-        service_orders: ServiceOrder[];
-      };
+      const payload = data as PortalPayload;
 
+      // Acesso negado pelo servidor: portal privado e visitante sem permissão.
+      // O payload NÃO traz dados nesse caso — só renderizamos a tela "portal privado".
+      if (payload.access === 'denied') {
+        setAccessDenied(true);
+        setViewerCanFill(false);
+        setLoading(false);
+        return;
+      }
+
+      setViewerCanFill(payload.viewer_can_fill === true);
       setCustomer(payload.customer);
       setCompanySettings(payload.company_settings ?? null);
       setEquipment(payload.equipment ?? []);
@@ -244,6 +268,30 @@ export default function CustomerPortal() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Portal privado: o servidor negou acesso a quem não está logado na empresa
+  // dona (ou está logado em outra empresa). A tela só REAGE — nenhum dado é
+  // exibido. Mandamos pro login preservando o retorno pro próprio portal.
+  if (accessDenied) {
+    const portalPath = `/portal/${token}`;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-center">
+        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+          <Package className="h-6 w-6 text-primary" />
+        </div>
+        <h1 className="text-xl font-bold mb-2">Portal privado</h1>
+        <p className="text-muted-foreground max-w-sm mb-1">
+          Este portal é restrito e exige que você entre com a conta da empresa.
+        </p>
+        <p className="text-xs text-muted-foreground/70 max-w-sm mb-6">
+          Se você já está conectado e ainda vê esta mensagem, sua conta não tem acesso a este portal.
+        </p>
+        <a href={`/login?redirect=${encodeURIComponent(portalPath)}`}>
+          <Button>Fazer login</Button>
+        </a>
       </div>
     );
   }
@@ -401,6 +449,18 @@ export default function CustomerPortal() {
                               </p>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
+                              {viewerCanFill && !TERMINAL_STATUSES.includes(os.status) && (
+                                <a
+                                  href={`${window.location.origin}/os-tecnico/${os.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Preencher OS"
+                                >
+                                  <Button size="sm" variant="default" className="gap-1 text-xs">
+                                    Preencher OS
+                                  </Button>
+                                </a>
+                              )}
                               <a
                               href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`}
                                 target="_blank"
@@ -495,6 +555,18 @@ export default function CustomerPortal() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className={cn('text-xs', statusCfg.color)}>{statusCfg.label}</Badge>
+                                {viewerCanFill && !TERMINAL_STATUSES.includes(os.status) && (
+                                  <a
+                                    href={`${window.location.origin}/os-tecnico/${os.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Preencher OS"
+                                  >
+                                    <Button size="sm" variant="default" className="h-7 gap-1 text-xs">
+                                      Preencher OS
+                                    </Button>
+                                  </a>
+                                )}
                                 <a href={`${window.location.origin}/os-tecnico/${os.id}?modo=cliente`} target="_blank" rel="noopener noreferrer">
                                   <Button variant="ghost" size="icon" className="h-7 w-7">
                                     <ExternalLink className="h-3.5 w-3.5" />

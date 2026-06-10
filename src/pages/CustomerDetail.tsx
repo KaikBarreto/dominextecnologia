@@ -47,6 +47,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useQueryClient } from '@tanstack/react-query';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
 
@@ -84,6 +86,8 @@ export default function CustomerDetail() {
   const [editingContact, setEditingContact] = useState<typeof contacts[0] | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
   const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [portalIsPublic, setPortalIsPublic] = useState(true);
+  const [updatingPortalVisibility, setUpdatingPortalVisibility] = useState(false);
   const [contractFormOpen, setContractFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -163,16 +167,38 @@ export default function CustomerDetail() {
     let active = true;
     supabase
       .from('customer_portals')
-      .select('token')
+      .select('token, is_public')
       .eq('customer_id', id)
       .eq('is_active', true)
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        if (active && data) setPortalLink(`${window.location.origin}/portal/${(data as any).token}`);
+        if (active && data) {
+          setPortalLink(`${window.location.origin}/portal/${(data as any).token}`);
+          // is_public default = ligado (true) quando ainda não carregou / coluna ausente.
+          setPortalIsPublic((data as any).is_public !== false);
+        }
       });
     return () => { active = false; };
   }, [id]);
+
+  const handleTogglePortalPublic = async (next: boolean) => {
+    if (!id) return;
+    const prev = portalIsPublic;
+    setPortalIsPublic(next); // otimista
+    setUpdatingPortalVisibility(true);
+    const { error } = await supabase
+      .from('customer_portals')
+      .update({ is_public: next } as any)
+      .eq('customer_id', id);
+    setUpdatingPortalVisibility(false);
+    if (error) {
+      setPortalIsPublic(prev);
+      toast({ variant: 'destructive', title: 'Erro ao atualizar portal', description: getErrorMessage(error) });
+      return;
+    }
+    toast({ title: next ? 'Portal público ativado' : 'Portal agora exige login' });
+  };
 
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -258,7 +284,32 @@ export default function CustomerDetail() {
             )}
           </div>
         </div>
-        <div className="ml-auto shrink-0">
+        <div className="ml-auto shrink-0 flex items-center gap-2 sm:gap-3">
+          {hasPortal && portalLink && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
+                      Portal Público
+                    </span>
+                    <Switch
+                      checked={portalIsPublic}
+                      disabled={updatingPortalVisibility}
+                      onCheckedChange={handleTogglePortalPublic}
+                      aria-label="Portal Público"
+                    />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[260px]">
+                  <p>
+                    Ligado: qualquer pessoa com o link vê o portal (somente leitura).
+                    Desligado: o link exige login da sua empresa.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <RowActionsMenu
             label="Ações"
             triggerClassName="border border-border px-3"

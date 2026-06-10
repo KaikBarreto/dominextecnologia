@@ -1433,6 +1433,7 @@ export type Database = {
           customer_id: string
           id: string
           is_active: boolean
+          is_public: boolean
           token: string
         }
         Insert: {
@@ -1440,6 +1441,7 @@ export type Database = {
           customer_id: string
           id?: string
           is_active?: boolean
+          is_public?: boolean
           token?: string
         }
         Update: {
@@ -1447,6 +1449,7 @@ export type Database = {
           customer_id?: string
           id?: string
           is_active?: boolean
+          is_public?: boolean
           token?: string
         }
         Relationships: [
