@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag, ExternalLink, Copy, Loader2 } from 'lucide-react';
+import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag, ExternalLink, Copy, Loader2, Package } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
@@ -172,53 +172,92 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
         {/* Geral tab */}
         {activeTab === 'geral' && (
           <div className="space-y-4">
-            {/* QR Code section */}
-            <div className="flex items-start gap-4 p-4 rounded-lg border bg-muted/30">
-              <div className="shrink-0">
-                {portalTokenPending ? (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-md bg-muted">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : qrValue ? (
-                  <QRCodeSVG value={qrValue} size={80} />
-                ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-md bg-muted">
-                    <QrCode className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 space-y-1">
-                {equipment.identifier && (
-                  <p className="text-sm font-mono font-medium">{equipment.identifier}</p>
-                )}
-                <p className="text-xs text-muted-foreground">QR Code do equipamento</p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
-                    <Tag className="mr-2 h-3.5 w-3.5" />
-                    Gerar Etiqueta
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!hasPortalLink}
-                    onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
-                  >
-                    <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                    Abrir link
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!hasPortalLink}
-                    onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: 'Link copiado!' }); }}
-                  >
-                    <Copy className="mr-2 h-3.5 w-3.5" />
-                    Copiar link
-                  </Button>
+            {/* Hero card: foto + QR/ID + ações */}
+            <div className="rounded-2xl border bg-card overflow-hidden">
+              <div className="grid gap-0 sm:grid-cols-2">
+                {/* Foto */}
+                <div className="bg-muted/40 p-4 flex items-center justify-center">
+                  {equipment.photo_url ? (
+                    <img
+                      src={equipment.photo_url}
+                      alt={equipment.name}
+                      className="aspect-[4/3] w-full max-w-[280px] rounded-xl object-cover shadow-sm"
+                    />
+                  ) : (
+                    <div
+                      className="aspect-[4/3] w-full max-w-[280px] rounded-xl flex flex-col items-center justify-center gap-2 text-white"
+                      style={{ backgroundColor: equipment.category?.color || 'hsl(var(--muted))' }}
+                    >
+                      <Package className={cn('h-10 w-10', !equipment.category?.color && 'text-muted-foreground')} />
+                      <span className={cn('text-xs font-medium', !equipment.category?.color && 'text-muted-foreground')}>
+                        Sem foto
+                      </span>
+                    </div>
+                  )}
                 </div>
-                {!portalTokenPending && !hasPortalLink && (
-                  <p className="text-xs text-muted-foreground">Equipamento sem cliente vinculado</p>
-                )}
+
+                {/* QR + ID + ações */}
+                <div className="p-4 flex flex-col items-center gap-4 sm:border-l">
+                  {/* Mini-preview de etiqueta */}
+                  <div className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 px-6 py-4 w-full">
+                    {portalTokenPending ? (
+                      <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg bg-muted">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : qrValue ? (
+                      <div className="rounded-lg bg-white p-2 shadow-sm">
+                        <QRCodeSVG value={qrValue} size={116} />
+                      </div>
+                    ) : (
+                      <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg bg-muted">
+                        <QrCode className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    {equipment.identifier && (
+                      <p className="text-lg font-mono font-bold tracking-wide text-foreground">
+                        {equipment.identifier}
+                      </p>
+                    )}
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      QR Code do equipamento
+                    </p>
+                    {!portalTokenPending && !hasPortalLink && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        Equipamento sem cliente vinculado
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Ações */}
+                  <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
+                    <Button
+                      variant="outline"
+                      className="h-11 w-full justify-center sm:h-9"
+                      onClick={() => setLabelDialogOpen(true)}
+                    >
+                      <Tag className="mr-2 h-4 w-4" />
+                      Gerar Etiqueta
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-11 w-full justify-center sm:h-9"
+                      disabled={!hasPortalLink}
+                      onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Abrir link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-11 w-full justify-center sm:h-9"
+                      disabled={!hasPortalLink}
+                      onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: 'Link copiado!' }); }}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copiar link
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
 
