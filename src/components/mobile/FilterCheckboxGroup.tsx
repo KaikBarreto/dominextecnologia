@@ -1,6 +1,13 @@
+import { useEffect, useRef, useState } from 'react';
+import { Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+
+/** Normaliza para busca: ignora acentos e caixa. */
+const normalize = (s: string) =>
+  s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
 export interface FilterCheckboxOption {
   value: string;
@@ -16,6 +23,8 @@ interface FilterCheckboxGroupProps {
   onChange: (next: string[]) => void;
   /** Texto exibido como hint quando nada selecionado (default "Todos"). */
   emptyLabel?: string;
+  /** A partir de quantas opções a lupa de busca aparece (default 6). */
+  searchThreshold?: number;
   className?: string;
 }
 
@@ -29,10 +38,35 @@ export function FilterCheckboxGroup({
   selected,
   onChange,
   emptyLabel = 'Todos',
+  searchThreshold = 6,
   className,
 }: FilterCheckboxGroupProps) {
   const allSelected = selected.length === options.length;
   const noneSelected = selected.length === 0;
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Lupa só vale a pena com listas longas.
+  const showSearch = options.length > searchThreshold;
+
+  // Foca o campo ao abrir.
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus();
+  }, [searchOpen]);
+
+  const openSearch = () => {
+    if (!searchOpen) setSearchOpen(true);
+  };
+
+  const toggleSearch = () => {
+    setSearchOpen((prev) => {
+      const next = !prev;
+      if (!next) setQuery(''); // reset ao fechar
+      return next;
+    });
+  };
 
   const toggle = (value: string) => {
     if (selected.includes(value)) {
@@ -42,8 +76,16 @@ export function FilterCheckboxGroup({
     }
   };
 
+  // "Todos" seleciona TODAS as opções do grupo (não só as filtradas).
   const selectAll = () => onChange(options.map((o) => o.value));
   const clearAll = () => onChange([]);
+
+  // Filtro puramente visual.
+  const normalizedQuery = normalize(query.trim());
+  const visibleOptions =
+    showSearch && searchOpen && normalizedQuery
+      ? options.filter((o) => normalize(o.label).includes(normalizedQuery))
+      : options;
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -57,6 +99,22 @@ export function FilterCheckboxGroup({
           )}
         </label>
         <div className="flex items-center gap-1">
+          {showSearch && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={searchOpen ? 'Fechar busca' : 'Buscar'}
+              className={cn(
+                'h-9 w-9 text-muted-foreground hover:text-foreground',
+                searchOpen && 'text-primary',
+              )}
+              onClick={toggleSearch}
+              onMouseEnter={openSearch}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          )}
           {!allSelected && (
             <Button
               type="button"
@@ -82,13 +140,29 @@ export function FilterCheckboxGroup({
         </div>
       </div>
 
+      {showSearch && searchOpen && (
+        <Input
+          ref={inputRef}
+          type="text"
+          inputMode="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar..."
+          className="h-9 text-sm"
+        />
+      )}
+
       <div className="rounded-xl border bg-card divide-y divide-border/60 max-h-[44vh] overflow-y-auto">
         {options.length === 0 ? (
           <div className="px-3 py-3 text-xs text-muted-foreground text-center">
             Nenhuma opção disponível
           </div>
+        ) : visibleOptions.length === 0 ? (
+          <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+            Nenhuma opção encontrada
+          </div>
         ) : (
-          options.map((opt) => {
+          visibleOptions.map((opt) => {
             const checked = selected.includes(opt.value);
             return (
               <button
