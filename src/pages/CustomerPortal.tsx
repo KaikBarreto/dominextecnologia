@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Package, ClipboardList, Plus, Clock, CheckCircle, AlertCircle, Loader2, Send, ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,36 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
+import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
+
+/**
+ * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
+ * Mesma função do PmocPublicPortal: tinge os `bg-primary`/`text-primary` do portal
+ * com a cor white-label do tenant, de forma escopada (sem tocar :root global).
+ */
+function hexToHsl(hex: string | null | undefined): string | null {
+  if (!hex) return null;
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const m = full.match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return null;
+  const r = parseInt(m[1], 16) / 255;
+  const g = parseInt(m[2], 16) / 255;
+  const b = parseInt(m[3], 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let H = 0, S = 0;
+  if (max !== min) {
+    const d = max - min;
+    S = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) H = ((g - b) / d + (g < b ? 6 : 0));
+    else if (max === g) H = ((b - r) / d + 2);
+    else H = ((r - g) / d + 4);
+    H /= 6;
+  }
+  return `${Math.round(H * 360)} ${Math.round(S * 100)}% ${Math.round(l * 100)}%`;
+}
 
 interface Customer {
   id: string;
@@ -58,6 +88,11 @@ interface CompanySettings {
   address: string | null;
   city: string | null;
   state: string | null;
+  // White-label (opcionais — RPC get_portal_data pode ainda não devolvê-los).
+  white_label_enabled?: boolean | null;
+  white_label_primary_color?: string | null;
+  white_label_logo_url?: string | null;
+  white_label_icon_url?: string | null;
 }
 
 const OS_STATUS_LABELS: Record<string, { label: string; color: string; badgeClass: string }> = {
@@ -180,6 +215,26 @@ export default function CustomerPortal() {
     }
   };
 
+  // White-label escopado: quando o tenant tem white-label ligado e cor válida,
+  // tinge `--primary`/`--primary-foreground` apenas no container do portal (sem
+  // tocar :root global, já que é página pública anon). Caso contrário, undefined
+  // mantém o tema padrão (verde).
+  const whiteLabelEnabled = !!companySettings?.white_label_enabled;
+  const themeOverride = useMemo<React.CSSProperties | undefined>(() => {
+    if (!whiteLabelEnabled) return undefined;
+    const hsl = hexToHsl(companySettings?.white_label_primary_color);
+    if (!hsl) return undefined;
+    return {
+      ['--primary' as any]: hsl,
+      ['--primary-foreground' as any]: '0 0% 100%',
+    };
+  }, [whiteLabelEnabled, companySettings?.white_label_primary_color]);
+
+  // Logo do header: prioriza o logo white-label quando ativo, senão o logo_url do tenant.
+  const headerLogo = whiteLabelEnabled
+    ? (companySettings?.white_label_logo_url || companySettings?.white_label_icon_url || companySettings?.logo_url)
+    : companySettings?.logo_url;
+
   const selectedEq = equipment.find(e => e.id === selectedEquipment);
   const equipmentOrders = selectedEquipment
     ? serviceOrders.filter(os => (os as any).equipment_id === selectedEquipment)
@@ -204,12 +259,12 @@ export default function CustomerPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground" style={themeOverride}>
       {/* Header with company info */}
       <header className="border-b bg-card px-4 py-4">
         <div className="mx-auto max-w-4xl flex items-center gap-3">
-          {companySettings?.logo_url ? (
-            <img src={companySettings.logo_url} alt="" className="h-10 w-10 rounded object-contain" />
+          {headerLogo ? (
+            <img src={headerLogo} alt="" className="h-10 w-10 rounded object-contain" />
           ) : (
             <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
               <Package className="h-5 w-5 text-primary" />
@@ -538,6 +593,23 @@ export default function CustomerPortal() {
           </Button>
         </div>
       </ResponsiveModal>
+
+      {/* Rodapé Dominex — só aparece pra tenants NÃO white-label */}
+      {!whiteLabelEnabled && (
+        <footer
+          className="mx-auto flex max-w-4xl flex-col items-center gap-1 px-4 pt-8 pb-2"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <img
+            src={dominexLogoWhite}
+            alt="Dominex"
+            className="h-5 object-contain invert dark:invert-0"
+          />
+          <span className="text-[10px] tracking-wide text-muted-foreground/80">
+            www.dominex.app
+          </span>
+        </footer>
+      )}
     </div>
   );
 }
