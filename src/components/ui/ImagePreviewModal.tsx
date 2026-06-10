@@ -1,5 +1,6 @@
 import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useSignedUrl, resolveStorageUrl } from '@/hooks/useSignedUrl';
 
 interface ImagePreviewModalProps {
@@ -62,7 +63,7 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
     }
   };
 
-  return (
+  const content = (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
@@ -116,4 +117,6 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
       />
     </div>
   );
+
+  return createPortal(content, document.body);
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { TaskFormDialog, TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -81,10 +83,21 @@ export default function CustomerDetail() {
   const [contractFormOpen, setContractFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const customer = customers.find(c => c.id === id);
+
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        value: c.id,
+        label: c.name,
+        sublabel: c.document || c.phone || undefined,
+      })),
+    [customers]
+  );
   const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
   const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
   const customerTransactions = transactions.filter(t => t.customer_id === id);
@@ -153,47 +166,101 @@ export default function CustomerDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/clientes')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          {customer.photo_url ? (
-            <img src={customer.photo_url} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover border shrink-0" />
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Seta de voltar própria da página: só no desktop (mobile/tablet usam a global do shell). */}
+        <Button variant="ghost" size="icon" className="shrink-0 hidden lg:flex" onClick={() => navigate('/clientes')}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        {customer.photo_url ? (
+          <img src={customer.photo_url} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover border shrink-0" />
+        ) : (
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <Package className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          {/* Desktop: nome vira gatilho de troca de cliente (select com busca). Mobile: título simples. */}
+          {!isMobile ? (
+            <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="group flex items-center gap-1.5 max-w-full text-left rounded-md -mx-1 px-1 hover:bg-accent/50 transition-colors"
+                  aria-label="Trocar de cliente"
+                >
+                  <h1 className="text-xl sm:text-2xl font-bold truncate">{customer.name}</h1>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar cliente..." />
+                  <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain">
+                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {customerOptions.map((opt) => (
+                        <CommandItem
+                          key={opt.value}
+                          value={`${opt.label} ${opt.sublabel ?? ''}`}
+                          onSelect={() => {
+                            setSwitcherOpen(false);
+                            if (opt.value !== id) navigate(`/clientes/${opt.value}`);
+                          }}
+                        >
+                          <div className="min-w-0">
+                            <span className="block truncate">{opt.label}</span>
+                            {opt.sublabel && (
+                              <span className="block text-xs text-muted-foreground truncate">{opt.sublabel}</span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           ) : (
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
-              <Package className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-bold truncate">{customer.name}</h1>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
-                {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
-              </Badge>
-              {customer.company_name && (
-                <span className="text-sm text-muted-foreground truncate">{customer.company_name}</span>
-              )}
-            </div>
+          )}
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
+              {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
+            </Badge>
+            {customer.company_name && (
+              <span className="text-sm text-muted-foreground truncate">{customer.company_name}</span>
+            )}
           </div>
         </div>
-        <div className="flex gap-2 shrink-0 flex-wrap pl-11 sm:pl-0 justify-center sm:justify-end w-full sm:w-auto">
-          {hasPortal && portalLink && (
-            <>
-              <Button variant="outline" size="sm" className="min-h-[44px]" onClick={() => { navigator.clipboard.writeText(portalLink); toast({ title: 'Link do portal copiado!' }); }}>
-                <Copy className="h-4 w-4 mr-1" /> Copiar link do portal
-              </Button>
-              <Button variant="outline" size="sm" className="min-h-[44px]" onClick={() => window.open(portalLink, '_blank', 'noopener,noreferrer')}>
-                <ExternalLink className="h-4 w-4 mr-1" /> Abrir portal
-              </Button>
-            </>
-          )}
-          <Button variant="edit-ghost" size="sm" className="min-h-[44px]" onClick={() => setEditCustomerOpen(true)}>
-            <Edit className="h-4 w-4 mr-1" /> Editar
-          </Button>
-          <Button variant="destructive-ghost" size="sm" className="min-h-[44px]" onClick={() => setDeleteConfirmOpen(true)}>
-            <Trash2 className="h-4 w-4 mr-1" /> Excluir
-          </Button>
+        <div className="ml-auto shrink-0">
+          <RowActionsMenu
+            actions={[
+              {
+                label: 'Copiar link do portal',
+                icon: Copy,
+                onClick: () => { if (portalLink) { navigator.clipboard.writeText(portalLink); toast({ title: 'Link do portal copiado!' }); } },
+                hidden: !hasPortal || !portalLink,
+              },
+              {
+                label: 'Abrir portal',
+                icon: ExternalLink,
+                onClick: () => { if (portalLink) window.open(portalLink, '_blank', 'noopener,noreferrer'); },
+                hidden: !hasPortal || !portalLink,
+              },
+              {
+                label: 'Editar',
+                icon: Edit,
+                variant: 'edit',
+                onClick: () => setEditCustomerOpen(true),
+              },
+              {
+                label: 'Excluir',
+                icon: Trash2,
+                variant: 'delete',
+                onClick: () => setDeleteConfirmOpen(true),
+              },
+            ]}
+          />
         </div>
       </div>
 

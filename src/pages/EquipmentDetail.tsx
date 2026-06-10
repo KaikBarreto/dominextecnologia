@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useRef, useCallback } from 'react';
 import { escapeHtml, safeImageUrl } from '@/utils/escapeHtml';
@@ -16,7 +17,7 @@ import {
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image, ChevronRight, ChevronDown, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -33,6 +34,9 @@ import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -74,6 +78,8 @@ export default function EquipmentDetail() {
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [selectedLabelSize, setSelectedLabelSize] = useState<string>('5x8');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [qrExpanded, setQrExpanded] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
@@ -183,11 +189,58 @@ export default function EquipmentDetail() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-3">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}>
+        {/* Seta de voltar própria: só no desktop (Sidebar não tem voltar global; mobile/tablet usam a do shell) */}
+        <Button variant="ghost" size="icon" className="shrink-0 hidden lg:flex" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{equipment.name}</h1>
+          {/* Desktop: nome vira gatilho de troca de equipamento (busca ancorada no nome). Mobile: título simples. */}
+          {!isMobile ? (
+            <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="group flex items-center gap-1.5 max-w-full text-left rounded-md -mx-1 px-1 hover:bg-accent/50 transition-colors"
+                  aria-label="Trocar equipamento"
+                >
+                  <h1 className="text-2xl font-bold truncate">{equipment.name}</h1>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar equipamento..." />
+                  <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain">
+                    <CommandEmpty>Nenhum equipamento encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {allEquipment.map((eq) => {
+                        const sublabel = [eq.identifier, (eq as any).customer?.name].filter(Boolean).join(' · ') || undefined;
+                        return (
+                          <CommandItem
+                            key={eq.id}
+                            value={`${eq.name} ${sublabel ?? ''}`}
+                            onSelect={() => {
+                              setSwitcherOpen(false);
+                              if (eq.id !== equipment.id) navigate(`/equipamentos/${eq.id}`);
+                            }}
+                          >
+                            <div className="min-w-0">
+                              <span className="block truncate">{eq.name}</span>
+                              {sublabel && (
+                                <span className="block text-xs text-muted-foreground truncate">{sublabel}</span>
+                              )}
+                            </div>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <h1 className="text-xl font-bold truncate">{equipment.name}</h1>
+          )}
           <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
             {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
             <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
@@ -195,25 +248,14 @@ export default function EquipmentDetail() {
             </Badge>
           </p>
         </div>
-        <div className="flex gap-1.5 sm:gap-2 shrink-0 ml-auto">
-          <Button
-            variant="edit-ghost"
-            size={isMobile ? 'icon' : 'sm'}
-            aria-label="Editar"
-            onClick={() => setEditEquipOpen(true)}
-          >
-            <Edit className="h-4 w-4 sm:mr-1" />
-            <span className="hidden sm:inline">Editar</span>
-          </Button>
-          <Button
-            variant="destructive-ghost"
-            size={isMobile ? 'icon' : 'sm'}
-            aria-label="Excluir"
-            onClick={() => setDeleteEquipOpen(true)}
-          >
-            <Trash2 className="h-4 w-4 sm:mr-1" />
-            <span className="hidden sm:inline">Excluir</span>
-          </Button>
+        <div className="shrink-0 ml-auto">
+          <RowActionsMenu
+            ariaLabel="Ações do equipamento"
+            actions={[
+              { label: 'Editar', icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
+              { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
+            ]}
+          />
         </div>
       </div>
 
@@ -243,24 +285,36 @@ export default function EquipmentDetail() {
       {/* Geral tab */}
       {activeTab === 'geral' && (
         <div className="space-y-6">
-          {/* Photo + QR row */}
+          {/* Photo + QR row — lado a lado (mobile e desktop), grupo centralizado no card */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+              <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-start lg:justify-center">
+                {/* Foto */}
                 {equipment.photo_url && (
-                  <img
-                    src={equipment.photo_url}
-                    alt={equipment.name}
-                    className="h-48 w-48 sm:h-56 sm:w-56 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => setPreviewImage(equipment.photo_url!)}
-                  />
+                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <img
+                      src={equipment.photo_url}
+                      alt={equipment.name}
+                      className="h-32 w-32 sm:h-48 sm:w-48 lg:h-56 lg:w-56 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setPreviewImage(equipment.photo_url!)}
+                    />
+                    <p className="text-xs text-muted-foreground">Foto do equipamento</p>
+                  </div>
                 )}
-                <div className={cn('flex flex-1 w-full flex-col items-center sm:flex-row sm:items-start gap-4', equipment.photo_url ? 'sm:justify-end' : 'sm:justify-start')}>
-                  <div className="shrink-0"><QRCodeSVG value={qrValue} size={100} /></div>
-                  <div className="w-full sm:w-auto space-y-2 text-center sm:text-left">
+                {/* QR + ações */}
+                <div className="flex flex-col items-center gap-3 lg:items-start">
+                  <button
+                    type="button"
+                    onClick={() => setQrExpanded(true)}
+                    className="shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                    aria-label="Ampliar QR Code"
+                  >
+                    <QRCodeSVG value={qrValue} size={100} />
+                  </button>
+                  <div className="w-full space-y-2 text-center lg:text-left">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
                     <p className="text-sm text-muted-foreground">QR Code do equipamento</p>
-                    <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+                    <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-center lg:justify-start">
                       <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setLabelDialogOpen(true)}>
                         <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
                       </Button>
@@ -290,93 +344,80 @@ export default function EquipmentDetail() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(() => {
-              const category = categories.find(c => c.id === equipment.category_id);
-              return category ? (
-                <Card><CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Categoria</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
-                    <p className="text-sm font-medium">{category.name}</p>
-                  </div>
-                </CardContent></Card>
-              ) : null;
-            })()}
-            {(equipment as any).customer?.name && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
-                <p className="text-sm font-medium mt-1">{(equipment as any).customer.name}</p>
-              </CardContent></Card>
-            )}
-            {equipment.brand && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Marca</p>
-                <p className="text-sm font-medium mt-1">{equipment.brand}</p>
-              </CardContent></Card>
-            )}
-            {equipment.model && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Modelo</p>
-                <p className="text-sm font-medium mt-1">{equipment.model}</p>
-              </CardContent></Card>
-            )}
-            {equipment.serial_number && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Nº de Série</p>
-                <p className="text-sm font-medium mt-1">{equipment.serial_number}</p>
-              </CardContent></Card>
-            )}
-            {equipment.capacity && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Descrição</p>
-                <p className="text-sm font-medium mt-1">{equipment.capacity}</p>
-              </CardContent></Card>
-            )}
-            {equipment.location && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Local</p>
-                <p className="text-sm font-medium mt-1">{equipment.location}</p>
-              </CardContent></Card>
-            )}
-            {(equipment as any).install_date && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Data de Instalação</p>
-                <p className="text-sm font-medium mt-1">{format(new Date((equipment as any).install_date), 'dd/MM/yyyy', { locale: ptBR })}</p>
-              </CardContent></Card>
-            )}
-            {(equipment as any).warranty_until && (
-              <Card><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Garantia até</p>
-                <p className="text-sm font-medium mt-1">{format(new Date((equipment as any).warranty_until), 'dd/MM/yyyy', { locale: ptBR })}</p>
-              </CardContent></Card>
-            )}
-          </div>
-          {/* Custom fields */}
+          {/* Card único "Informações" — rótulo → valor */}
           {(() => {
+            const category = categories.find(c => c.id === equipment.category_id);
             const customFields = (equipment as any).custom_fields as Record<string, any> | null;
-            if (!customFields || Object.keys(customFields).length === 0) return null;
-            const visibleFields = fieldConfigs.filter(f => f.is_visible && customFields[f.field_key] != null && customFields[f.field_key] !== '');
-            if (visibleFields.length === 0) return null;
+            const visibleCustomFields = (customFields
+              ? fieldConfigs.filter(f => f.is_visible && customFields[f.field_key] != null && customFields[f.field_key] !== '')
+              : []);
+
+            type InfoRow = { label: string; node: React.ReactNode };
+            const rows: InfoRow[] = [];
+
+            if (category) {
+              rows.push({
+                label: 'Categoria',
+                node: (
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                    <span className="text-sm font-medium">{category.name}</span>
+                  </div>
+                ),
+              });
+            }
+            if ((equipment as any).customer?.name && equipment.customer_id) {
+              rows.push({
+                label: 'Cliente',
+                node: (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/clientes/${equipment.customer_id}`)}
+                    className="group flex items-center gap-1 text-left text-sm font-medium text-primary hover:underline cursor-pointer"
+                  >
+                    <span className="truncate">{(equipment as any).customer.name}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ),
+              });
+            } else if ((equipment as any).customer?.name) {
+              rows.push({ label: 'Cliente', node: <span className="text-sm font-medium">{(equipment as any).customer.name}</span> });
+            }
+            if (equipment.brand) rows.push({ label: 'Marca', node: <span className="text-sm font-medium">{equipment.brand}</span> });
+            if (equipment.model) rows.push({ label: 'Modelo', node: <span className="text-sm font-medium">{equipment.model}</span> });
+            if (equipment.serial_number) rows.push({ label: 'Nº de Série', node: <span className="text-sm font-medium">{equipment.serial_number}</span> });
+            if (equipment.capacity) rows.push({ label: 'Descrição', node: <span className="text-sm font-medium">{equipment.capacity}</span> });
+            if (equipment.location) rows.push({ label: 'Local', node: <span className="text-sm font-medium">{equipment.location}</span> });
+            if ((equipment as any).install_date) rows.push({ label: 'Data de Instalação', node: <span className="text-sm font-medium">{format(new Date((equipment as any).install_date), 'dd/MM/yyyy', { locale: ptBR })}</span> });
+            if ((equipment as any).warranty_until) rows.push({ label: 'Garantia até', node: <span className="text-sm font-medium">{format(new Date((equipment as any).warranty_until), 'dd/MM/yyyy', { locale: ptBR })}</span> });
+
+            visibleCustomFields.forEach(field => {
+              let displayValue = String(customFields![field.field_key]);
+              if (field.field_type === 'boolean') displayValue = customFields![field.field_key] ? 'Sim' : 'Não';
+              if (field.field_type === 'date' && customFields![field.field_key]) {
+                try { displayValue = format(new Date(customFields![field.field_key]), 'dd/MM/yyyy', { locale: ptBR }); } catch { /* keep raw */ }
+              }
+              rows.push({ label: field.label, node: <span className="text-sm font-medium">{displayValue}</span> });
+            });
+
+            if (rows.length === 0) return null;
             return (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visibleFields.map(field => {
-                  let displayValue = String(customFields[field.field_key]);
-                  if (field.field_type === 'boolean') displayValue = customFields[field.field_key] ? 'Sim' : 'Não';
-                  if (field.field_type === 'date' && customFields[field.field_key]) {
-                    try { displayValue = format(new Date(customFields[field.field_key]), 'dd/MM/yyyy', { locale: ptBR }); } catch { /* keep raw */ }
-                  }
-                  return (
-                    <Card key={field.id}><CardContent className="p-4">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">{field.label}</p>
-                      <p className="text-sm font-medium mt-1">{displayValue}</p>
-                    </CardContent></Card>
-                  );
-                })}
-              </div>
+              <Card>
+                <CardContent className="p-4 sm:p-6">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">Informações</h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {rows.map((row, i) => (
+                      <div key={i} className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-xs text-muted-foreground">{row.label}</span>
+                        {row.node}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             );
           })()}
-          {/* Notes after custom fields */}
+          {/* Observações em card próprio */}
           {equipment.notes && (
             <Card><CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Observações</p>
@@ -738,6 +779,30 @@ export default function EquipmentDetail() {
         open={!!previewImage}
         onClose={() => setPreviewImage(null)}
       />
+
+      {/* QR expandido — overlay centralizado via portal */}
+      {qrExpanded && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setQrExpanded(false)}
+        >
+          <button
+            className="absolute top-4 right-4 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+            onClick={() => setQrExpanded(false)}
+            aria-label="Fechar"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div
+            className="flex flex-col items-center gap-4 rounded-2xl bg-white p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QRCodeSVG value={qrValue} size={280} />
+            {equipment.identifier && <p className="text-lg font-mono font-medium text-black">{equipment.identifier}</p>}
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* Edit Equipment Dialog */}
       <EquipmentFormDialog
