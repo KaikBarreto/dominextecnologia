@@ -24,6 +24,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
+import QRCode from "https://esm.sh/qrcode@1.5.4";
 import { drawCapaPage } from "../_shared/pmoc-templates/capa.ts";
 import { drawTermoRtPage } from "../_shared/pmoc-templates/termo-rt.ts";
 import { drawCertificadoPage } from "../_shared/pmoc-templates/certificado.ts";
@@ -46,6 +47,11 @@ const corsHeaders = {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Portal PMOC público — mesma base/rota usada em generate-pmoc-qr-pdf e em
+// buildPmocPortalUrl no frontend (`/contrato/unidade/<token>`).
+const APP_DOMAIN = "https://dominex.app";
+const PORTAL_PATH = "/contrato/unidade";
 
 // =============================================================================
 // Erro padronizado (Onda G): code + message PT-BR + field + action.
@@ -221,6 +227,9 @@ Deno.serve(async (req) => {
           "frequency_value",
           // Onda H+ — usado pra `contrato.criado_{dia,mes,ano}` no termo/cert.
           "created_at",
+          // Link + QR do Portal PMOC na capa (preenchido pela trigger
+          // ensure_pmoc_token quando is_pmoc=true).
+          "public_pmoc_token",
         ].join(","),
       )
       .eq("id", contractId)
@@ -440,6 +449,35 @@ Deno.serve(async (req) => {
     const dossieHeaderLogoSize =
       ((companySettings as unknown as Record<string, unknown>)?.report_header_logo_size as number | null) ?? null;
 
+    // ---- 6.9 Portal PMOC: URL pública + QR Code pra capa (canto inf. direito).
+    //      Token vem de contracts.public_pmoc_token (mesma fonte do portal e do
+    //      generate-pmoc-qr-pdf). Sem token → não renderiza o bloco.
+    const portalToken = (contract as { public_pmoc_token?: string | null })
+      .public_pmoc_token ?? null;
+    let portalUrl: string | null = null;
+    let portalQrPng: Uint8Array | null = null;
+    if (portalToken) {
+      portalUrl = `${APP_DOMAIN}${PORTAL_PATH}/${portalToken}`;
+      try {
+        const qrPngDataUrl = await QRCode.toDataURL(portalUrl, {
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: 400,
+          color: { dark: "#000000", light: "#FFFFFF" },
+        });
+        portalQrPng = Uint8Array.from(
+          atob(qrPngDataUrl.replace(/^data:image\/png;base64,/, "")),
+          (c) => c.charCodeAt(0),
+        );
+      } catch (e) {
+        // QR best-effort — capa segue sem o bloco do portal se falhar.
+        console.warn("[generate-pmoc-dossie-pdf] qr generation failed", {
+          message: (e as Error)?.message ?? String(e),
+        });
+        portalUrl = null;
+      }
+    }
+
     // ---- 7. Monta TemplateContext
     const ctx: TemplateContext = {
       empresa: {
@@ -487,6 +525,8 @@ Deno.serve(async (req) => {
       },
       cidade,
       generated_at_extenso: dateToExtenso(new Date()),
+      portal_url: portalUrl,
+      portal_qr_png: portalQrPng,
     };
 
     // ---- 7.5 (Onda H) PmocVariableContext — chaves "ponto" pra substituir
@@ -586,8 +626,12 @@ Deno.serve(async (req) => {
     //    passou a viver DENTRO do Dossiê. A janela de meses + as OSs
     //    (números/datas/status ordenados) entram no hash pra o cache invalidar
     //    quando o cronograma mudar.
+    //    Onda M (v1.11.x): bump pra dossie_v10 — a capa passou a desenhar o
+    //    link + QR Code do Portal PMOC no canto inferior direito. O portal_url
+    //    (derivado do token) entra no hash pra invalidar PDFs cacheados sem o
+    //    QR e regenerar quando o token mudar.
     const hashInput = JSON.stringify({
-      v: "dossie_v9",
+      v: "dossie_v10",
       tenant: {
         name: tenantName,
         cnpj,
@@ -613,6 +657,8 @@ Deno.serve(async (req) => {
       },
       customer: ctx.customer,
       contract: ctx.contract,
+      // Onda M — link/QR do Portal PMOC na capa.
+      portal_url: portalUrl,
       termo: customDocs?.termo_rt_content ?? null,
       cert: customDocs?.certificado_content ?? null,
       vars: variableContext,

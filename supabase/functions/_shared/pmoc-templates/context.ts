@@ -60,6 +60,17 @@ export interface TemplateContext {
   contract: TemplateContextContract;
   cidade: string;
   generated_at_extenso: string;
+  /**
+   * URL pública do Portal PMOC da unidade (`/contrato/unidade/<token>`).
+   * Quando presente, a capa desenha link + QR Code no canto inferior direito.
+   * Ausente (sem token) → capa não renderiza o bloco do portal.
+   */
+  portal_url?: string | null;
+  /**
+   * QR Code do `portal_url` já rasterizado em PNG (bytes). Gerado na edge
+   * function via `QRCode.toDataURL` pra manter o template livre de import de QR.
+   */
+  portal_qr_png?: Uint8Array | null;
 }
 
 // -----------------------------------------------------------------------------

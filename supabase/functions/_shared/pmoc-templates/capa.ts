@@ -144,6 +144,60 @@ export async function drawCapaPage(
     drawTenantName(page, helvBold, ctx.empresa.razao_social, logoY);
   }
 
+  // -- Portal PMOC: QR Code + link no canto inferior direito (discreto).
+  //    Só renderiza quando há token (portal_url + portal_qr_png presentes).
+  if (ctx.portal_url && ctx.portal_qr_png) {
+    try {
+      const qrImg = await pdf.embedPng(ctx.portal_qr_png);
+      const qrSize = 72; // ~2.5cm — discreto
+      const pad = 32; // margem da borda da página
+      const qrX = A4_W - pad - qrSize;
+      const qrY = pad + 22; // deixa espaço pro texto abaixo do QR
+
+      // Moldura branca atrás do QR (QR é preto/branco; sobre fundo preto precisa
+      // de área clara pra leitura).
+      const frame = 6;
+      page.drawRectangle({
+        x: qrX - frame,
+        y: qrY - frame,
+        width: qrSize + frame * 2,
+        height: qrSize + frame * 2,
+        color: WHITE,
+      });
+      page.drawImage(qrImg, {
+        x: qrX,
+        y: qrY,
+        width: qrSize,
+        height: qrSize,
+      });
+
+      // Rótulo + URL abaixo do QR, alinhados à direita (terminam na borda do QR).
+      const labelSize = 7;
+      const label = "Portal PMOC da unidade";
+      const labelW = helv.widthOfTextAtSize(label, labelSize);
+      const rightEdge = qrX + qrSize + frame;
+      page.drawText(label, {
+        x: rightEdge - labelW,
+        y: qrY - frame - 12,
+        size: labelSize,
+        font: helv,
+        color: WHITE,
+      });
+
+      const urlSize = 7;
+      const urlW = helv.widthOfTextAtSize(ctx.portal_url, urlSize);
+      page.drawText(ctx.portal_url, {
+        x: rightEdge - urlW,
+        y: qrY - frame - 22,
+        size: urlSize,
+        font: helv,
+        color: WHITE,
+      });
+    } catch {
+      // QR é best-effort — se falhar o embed, a capa continua válida sem ele.
+    }
+  }
+
   return page;
 }
 
