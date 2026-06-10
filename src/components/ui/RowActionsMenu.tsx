@@ -26,6 +26,11 @@ interface RowActionsMenuProps {
   align?: 'start' | 'end' | 'center';
   triggerClassName?: string;
   ariaLabel?: string;
+  /**
+   * Quando passado, o trigger vira um botão com texto ao lado do ícone (visível
+   * só no desktop). Ausente = comportamento padrão (ícone-only, size="icon").
+   */
+  label?: string;
 }
 
 const variantClasses: Record<RowActionVariant, string> = {
@@ -48,6 +53,7 @@ export function RowActionsMenu({
   align = 'end',
   triggerClassName,
   ariaLabel = 'Ações',
+  label,
 }: RowActionsMenuProps) {
   const visible = actions.filter((a) => !a.hidden);
   const [open, setOpen] = useState(false);
@@ -79,14 +85,19 @@ export function RowActionsMenu({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className={cn('h-8 w-8 active:scale-95 transition-transform', triggerClassName)}
+          size={label ? 'sm' : 'icon'}
+          className={cn(
+            'active:scale-95 transition-transform',
+            label ? 'h-8 gap-1.5 px-2' : 'h-8 w-8',
+            triggerClassName,
+          )}
           aria-label={ariaLabel}
           onClick={(e) => e.stopPropagation()}
           onPointerEnter={(e) => { if (e.pointerType === 'mouse') scheduleOpen(); }}
           onPointerLeave={(e) => { if (e.pointerType === 'mouse') scheduleClose(); }}
         >
           <MoreVertical className="h-4 w-4" />
+          {label && <span className="hidden sm:inline">{label}</span>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

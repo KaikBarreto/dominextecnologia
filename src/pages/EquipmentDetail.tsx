@@ -194,20 +194,19 @@ export default function EquipmentDetail() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0 flex-1">
-          {/* Desktop: nome vira gatilho de troca de equipamento (busca ancorada no nome). Mobile: título simples. */}
-          {!isMobile ? (
-            <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+          {/* Nome vira gatilho de troca de equipamento (busca ancorada no nome) — mobile e desktop. */}
+          <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   className="group flex items-center gap-1.5 max-w-full text-left rounded-md -mx-1 px-1 hover:bg-accent/50 transition-colors"
                   aria-label="Trocar equipamento"
                 >
-                  <h1 className="text-2xl font-bold truncate">{equipment.name}</h1>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <h1 className="text-xl sm:text-2xl font-bold truncate">{equipment.name}</h1>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0" align="start">
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Buscar equipamento..." />
                   <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain">
@@ -238,9 +237,6 @@ export default function EquipmentDetail() {
                 </Command>
               </PopoverContent>
             </Popover>
-          ) : (
-            <h1 className="text-xl font-bold truncate">{equipment.name}</h1>
-          )}
           <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
             {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
             <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
@@ -251,6 +247,8 @@ export default function EquipmentDetail() {
         <div className="shrink-0 ml-auto">
           <RowActionsMenu
             ariaLabel="Ações do equipamento"
+            label="Ações"
+            triggerClassName="border border-border px-3"
             actions={[
               { label: 'Editar', icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
               { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
@@ -288,7 +286,7 @@ export default function EquipmentDetail() {
           {/* Photo + QR row — lado a lado (mobile e desktop), grupo centralizado no card */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-start lg:justify-center">
+              <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-between">
                 {/* Foto */}
                 {equipment.photo_url && (
                   <div className="flex flex-col items-center gap-1.5 shrink-0">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { FABButton } from '@/components/mobile/FABButton';
+import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { useCustomers } from '@/hooks/useCustomers';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -73,6 +74,8 @@ export default function CustomerDetail() {
   const { activeOrigins } = useCustomerOrigins();
 
   const [equipFormOpen, setEquipFormOpen] = useState(false);
+  const [editingEquipment, setEditingEquipment] = useState<any | null>(null);
+  const [equipmentToDelete, setEquipmentToDelete] = useState<any | null>(null);
   const [osFormOpen, setOsFormOpen] = useState(false);
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -88,6 +91,24 @@ export default function CustomerDetail() {
   const queryClient = useQueryClient();
 
   const customer = customers.find(c => c.id === id);
+
+  const getCategoryName = (categoryId?: string | null) =>
+    categoryId ? categories.find(c => c.id === categoryId)?.name : undefined;
+  const getCategoryColor = (categoryId?: string | null) =>
+    categoryId ? categories.find(c => c.id === categoryId)?.color : undefined;
+
+  const handleEditEquipment = (eq: any) => { setEditingEquipment(eq); setEquipFormOpen(true); };
+  const handleDeleteEquipment = async () => {
+    if (!equipmentToDelete) return;
+    const { error } = await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(error) });
+    } else {
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      toast({ title: 'Equipamento excluído!' });
+    }
+    setEquipmentToDelete(null);
+  };
 
   const customerOptions = useMemo(
     () =>
@@ -179,9 +200,8 @@ export default function CustomerDetail() {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          {/* Desktop: nome vira gatilho de troca de cliente (select com busca). Mobile: título simples. */}
-          {!isMobile ? (
-            <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+          {/* Nome vira gatilho de troca de cliente (select com busca) — mobile e desktop. */}
+          <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
@@ -189,10 +209,10 @@ export default function CustomerDetail() {
                   aria-label="Trocar de cliente"
                 >
                   <h1 className="text-xl sm:text-2xl font-bold truncate">{customer.name}</h1>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-0" align="start">
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Buscar cliente..." />
                   <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain">
@@ -220,9 +240,6 @@ export default function CustomerDetail() {
                 </Command>
               </PopoverContent>
             </Popover>
-          ) : (
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{customer.name}</h1>
-          )}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
               {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
@@ -234,6 +251,8 @@ export default function CustomerDetail() {
         </div>
         <div className="ml-auto shrink-0">
           <RowActionsMenu
+            label="Ações"
+            triggerClassName="border border-border px-3"
             actions={[
               {
                 label: 'Copiar link do portal',
@@ -481,7 +500,7 @@ export default function CustomerDetail() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               Equipamentos do Cliente
             </h2>
-            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setEquipFormOpen(true)}>
+            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingEquipment(null); setEquipFormOpen(true); }}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Equipamento
             </Button>
@@ -494,59 +513,143 @@ export default function CustomerDetail() {
               <p className="text-base font-medium leading-tight">Nenhum equipamento</p>
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed">Cadastre o primeiro equipamento deste cliente</p>
             </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {customerEquipment.map((eq) => (
-                <Card
-                  key={eq.id}
-                  className={cn(
-                    'cursor-pointer overflow-hidden transition-all',
-                    isMobile
-                      ? 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform duration-100'
-                      : 'hover:shadow-md'
-                  )}
-                  onClick={() => navigate(`/equipamentos/${eq.id}`, { state: { from: 'customer', customerId: id } })}
-                >
-                  {eq.photo_url && (
-                    <div className="h-32 w-full bg-muted">
-                      <img
-                        src={eq.photo_url}
-                        alt={eq.name}
-                        className="h-full w-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    </div>
-                  )}
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-center justify-between min-h-[44px]">
-                      <p className="font-medium truncate leading-tight">{eq.name}</p>
-                      <Badge variant={eq.status === 'active' ? 'default' : 'secondary'} className="text-xs shrink-0">
+          ) : isMobile ? (
+            <div className="rounded-xl border bg-card overflow-hidden">
+              {customerEquipment.map((eq) => {
+                const categoryColor = getCategoryColor(eq.category_id);
+                const categoryName = getCategoryName(eq.category_id);
+                const itemActions: ItemAction[] = [
+                  {
+                    key: 'edit',
+                    label: 'Editar',
+                    icon: <Pencil className="h-4 w-4" />,
+                    variant: 'edit' as const,
+                    onClick: () => handleEditEquipment(eq),
+                  },
+                  {
+                    key: 'delete',
+                    label: 'Excluir',
+                    icon: <Trash2 className="h-4 w-4" />,
+                    variant: 'destructive' as const,
+                    onClick: () => setEquipmentToDelete(eq),
+                  },
+                ];
+                return (
+                  <MobileListItem
+                    key={eq.id}
+                    onClick={() => navigate(`/equipamentos/${eq.id}`, { state: { from: 'customer', customerId: id } })}
+                    actions={itemActions}
+                    leading={
+                      eq.photo_url ? (
+                        <img src={eq.photo_url} alt={eq.name} className="h-10 w-10 rounded-lg object-cover" />
+                      ) : (
+                        <div
+                          className="h-10 w-10 rounded-lg flex items-center justify-center text-white"
+                          style={{ backgroundColor: categoryColor || 'hsl(var(--muted))' }}
+                        >
+                          <Package className={cn('h-5 w-5', !categoryColor && 'text-muted-foreground')} />
+                        </div>
+                      )
+                    }
+                    title={
+                      <span className="truncate">
+                        {eq.name}
+                        {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
+                      </span>
+                    }
+                    subtitle={
+                      <span className="inline-flex items-center gap-1.5 flex-wrap">
+                        {categoryName && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: categoryColor }} />
+                            {categoryName}
+                          </span>
+                        )}
+                        {!categoryName && (eq.identifier || '—')}
+                      </span>
+                    }
+                    trailing={
+                      <Badge variant={eq.status === 'active' ? 'default' : 'secondary'} className="text-[10px] px-2 py-0.5">
                         {eq.status === 'active' ? 'Ativo' : 'Inativo'}
                       </Badge>
-                    </div>
-                    {(eq.brand || eq.model) && (
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {[eq.brand, eq.model].filter(Boolean).join(' - ')}
-                      </p>
-                    )}
-                    {eq.identifier && (
-                      <p className="text-xs font-mono text-muted-foreground">ID: {eq.identifier}</p>
-                    )}
-                    {eq.location && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />{eq.location}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    }
+                  />
+                );
+              })}
             </div>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableCell className="w-[60px] text-xs uppercase tracking-wider font-medium text-muted-foreground">Foto</TableCell>
+                        <TableCell className="text-xs uppercase tracking-wider font-medium text-muted-foreground">Nome</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">Local</TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">Categoria</TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs uppercase tracking-wider font-medium text-muted-foreground">Status</TableCell>
+                        <TableCell className="w-[100px] text-xs uppercase tracking-wider font-medium text-muted-foreground">Ações</TableCell>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {customerEquipment.map((eq) => (
+                        <TableRow
+                          key={eq.id}
+                          className="cursor-pointer"
+                          onClick={() => navigate(`/equipamentos/${eq.id}`, { state: { from: 'customer', customerId: id } })}
+                        >
+                          <TableCell>
+                            {eq.photo_url ? (
+                              <img src={eq.photo_url} alt={eq.name} className="h-10 w-10 rounded object-cover" />
+                            ) : (
+                              <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{eq.name}</p>
+                              {eq.identifier && (
+                                <p className="text-xs text-muted-foreground font-mono">{eq.identifier}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <span className="text-sm">{eq.location || '-'}</span>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {getCategoryName(eq.category_id) || '-'}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <Badge variant={eq.status === 'active' ? 'default' : 'secondary'}>
+                              {eq.status === 'active' ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <RowActionsMenu
+                                actions={[
+                                  { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => handleEditEquipment(eq) },
+                                  { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => setEquipmentToDelete(eq) },
+                                ]}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           )}
           {isMobile && (
             <FABButton
               icon={<Plus className="h-5 w-5" />}
               label="Equipamento"
-              onClick={() => setEquipFormOpen(true)}
+              onClick={() => { setEditingEquipment(null); setEquipFormOpen(true); }}
             />
           )}
         </div>
@@ -857,15 +960,47 @@ export default function CustomerDetail() {
       {/* Equipment Form Dialog */}
       <EquipmentFormDialog
         open={equipFormOpen}
-        onOpenChange={setEquipFormOpen}
-        equipment={null}
+        onOpenChange={(open) => { setEquipFormOpen(open); if (!open) setEditingEquipment(null); }}
+        equipment={editingEquipment}
         onSubmit={async (data: any) => {
-          await createEquipment.mutateAsync({ ...data, customer_id: id });
+          if (editingEquipment) {
+            const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
+            if (error) {
+              toast({ variant: 'destructive', title: 'Erro ao atualizar', description: getErrorMessage(error) });
+              return;
+            }
+            queryClient.invalidateQueries({ queryKey: ['equipment'] });
+            toast({ title: 'Equipamento atualizado!' });
+          } else {
+            await createEquipment.mutateAsync({ ...data, customer_id: id });
+          }
+          setEditingEquipment(null);
         }}
         customers={customer ? [customer] : []}
         categories={categories}
         isLoading={createEquipment.isPending}
       />
+
+      {/* Delete Equipment Confirmation */}
+      <AlertDialog open={!!equipmentToDelete} onOpenChange={(open) => { if (!open) setEquipmentToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir equipamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir "{equipmentToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteEquipment}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* OS Form Dialog - pre-filled with this customer */}
       <ServiceOrderFormDialog
