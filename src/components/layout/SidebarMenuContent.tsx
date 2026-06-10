@@ -87,12 +87,12 @@ const tenantMenuItems: MenuItem[] = [
     title: 'Gestão',
     icon: FolderOpen,
     children: [
-      { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
+      { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
-      { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
-      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
+      { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
+      { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
       // 'Responsáveis Técnicos' removido do menu (Onda UI-1). A tela e a rota
       // `/responsaveis-tecnicos` continuam acessíveis por URL direta até o
       // quick-create vir pelo modal de contrato (parallel work — Cliente PMOC).
