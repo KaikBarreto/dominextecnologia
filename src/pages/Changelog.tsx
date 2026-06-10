@@ -40,6 +40,28 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.4',
+    date: '09 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Gerencie seu plano direto pelo sistema',
+        description: 'Na tela de Assinatura, em "Gerenciar Meu Plano", você troca de plano (Start, Avançado ou Master) ou monta um plano personalizado escolhendo os módulos e a quantidade de usuários que precisa, no ciclo mensal ou anual. Subir de plano vale já na próxima cobrança; descer passa a valer no fim do período que você já pagou.',
+        category: 'recurso',
+      },
+      {
+        title: 'Histórico de pagamentos na sua Assinatura',
+        description: 'A tela de Assinatura agora mostra o histórico dos seus pagamentos — data, valor, forma de pagamento e situação (pago, pendente, vencido) — com paginação.',
+        category: 'recurso',
+      },
+      {
+        title: 'Adicione módulos e usuários na hora que precisar',
+        description: 'Quando você abrir uma tela que depende de um módulo que seu plano não inclui, dá pra adicionar aquele módulo direto pela tela de planos. E na tela de Usuários, ao chegar no limite, você pode contratar mais usuários — além de alternar a visualização entre lista e cards.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.3',
     date: '09 de junho de 2026',
     type: 'patch',
