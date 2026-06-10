@@ -219,7 +219,12 @@ export function SidebarMenuContent() {
     ? adminMenuItems
     : adminMenuItems.filter(item => !item.masterOnly && item.screenKey && hasAdminScreenAccess(item.screenKey));
 
-  const adminHomePath = filteredAdminMenu[0]?.path ?? '/admin/dashboard';
+  // Home do painel admin = Empresas (alinhado ao destino pós-login); cai no
+  // primeiro item acessível se o usuário não tiver acesso a Empresas.
+  const adminHomePath =
+    filteredAdminMenu.find((m) => m.path === '/admin/empresas')?.path ??
+    filteredAdminMenu[0]?.path ??
+    '/admin/empresas';
 
   const activeMenu = isAdminUser
     ? filteredAdminMenu

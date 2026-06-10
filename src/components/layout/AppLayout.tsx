@@ -266,9 +266,9 @@ function MobileTabletHeader({ isAdminUser }: { isAdminUser: boolean }) {
     setSheetOpen(false);
   }, [location.pathname]);
 
-  const adminTarget = isAdminUser ? '/admin/dashboard' : '/dashboard';
+  const adminTarget = isAdminUser ? '/admin/empresas' : '/dashboard';
   // Esconde back na home (não tem pra onde voltar) e em rotas técnico (fluxo próprio).
-  const homePaths = ['/dashboard', '/admin/dashboard'];
+  const homePaths = ['/dashboard', '/admin/empresas'];
   const showBackButton =
     !homePaths.includes(location.pathname) &&
     !location.pathname.startsWith('/os-tecnico/') &&

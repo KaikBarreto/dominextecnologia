@@ -83,7 +83,7 @@ export default function Auth() {
           .eq('role', 'super_admin')
           .maybeSingle();
         if (roleData) {
-          navigate('/admin/dashboard', { replace: true });
+          navigate('/admin/empresas', { replace: true });
           return;
         }
         // Check company status
@@ -176,7 +176,7 @@ export default function Auth() {
       .maybeSingle();
 
     if (roleData) {
-      navigate('/admin/dashboard');
+      navigate('/admin/empresas');
       loginInProgressRef.current = false;
       return;
     }

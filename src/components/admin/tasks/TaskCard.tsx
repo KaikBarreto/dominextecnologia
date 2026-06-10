@@ -8,11 +8,11 @@ import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAva
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { Building2, Check, CalendarClock, MessageCircle } from 'lucide-react';
+import { Building2, Check, CalendarClock } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { getFollowupMessage } from '@/utils/followupMessages';
+import { WhatsAppButton } from '@/components/admin/shared/WhatsAppButton';
 
 interface TaskCardProps {
   task: AdminTask;
@@ -39,7 +39,9 @@ export function TaskCard({ task, isDragging, onClick, onQuickResolve, assignee }
   // Follow-up: abre o WhatsApp com a mensagem do passo já pré-preenchida.
   // Outros tipos (ou passo fora de 1–10): abre sem texto.
   const followupMessage = getFollowupMessage(task.type, (task as any).followup_step);
-  const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone, followupMessage);
+  // O botão de WhatsApp aparece sempre que a tarefa tem lead vinculado — mesmo
+  // sem telefone (fica disabled com tooltip). Sem lead, não há quem chamar.
+  const hasLead = !!task.crm_lead;
 
   return (
     <div
@@ -96,23 +98,14 @@ export function TaskCard({ task, isDragging, onClick, onQuickResolve, assignee }
         )}
       </div>
 
-      {(whatsappLink || (onQuickResolve && task.status !== 'resolvido')) && (
+      {(hasLead || (onQuickResolve && task.status !== 'resolvido')) && (
         <div className="mt-2 pt-2 border-t flex items-center justify-end gap-2">
-          {whatsappLink && (
-            <Button
-              type="button"
+          {hasLead && (
+            <WhatsAppButton
+              phone={task.crm_lead?.phone}
+              message={followupMessage}
               size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(whatsappLink, '_blank', 'noopener,noreferrer');
-              }}
-              className="gap-1.5 border-[#25D366] text-[#128C7E] hover:bg-[#25D366] hover:text-white hover:border-[#25D366] transition-colors"
-              title="Abrir conversa no WhatsApp"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden md:inline">WhatsApp</span>
-            </Button>
+            />
           )}
           {onQuickResolve && task.status !== 'resolvido' && (
             <Button

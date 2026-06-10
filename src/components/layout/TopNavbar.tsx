@@ -175,7 +175,12 @@ export const TopNavbar = memo(() => {
   const isSubmenuActive = (children?: MenuItem['children']) =>
     children?.some((c) => c.path && (location.pathname === c.path || location.pathname.startsWith(c.path + '/'))) ?? false;
 
-  const adminHomePath = filteredAdminMenu[0]?.path ?? '/admin/dashboard';
+  // Home do painel admin = Empresas (alinhado ao destino pós-login); cai no
+  // primeiro item acessível se o usuário não tiver acesso a Empresas.
+  const adminHomePath =
+    filteredAdminMenu.find((m) => m.path === '/admin/empresas')?.path ??
+    filteredAdminMenu[0]?.path ??
+    '/admin/empresas';
   const logoTarget = isAdminUser ? adminHomePath : '/dashboard';
 
   return (
