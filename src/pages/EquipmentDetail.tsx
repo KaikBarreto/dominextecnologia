@@ -182,27 +182,37 @@ export default function EquipmentDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{equipment.name}</h1>
-            <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
-              {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
-              <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
-                {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
-              </Badge>
-            </p>
-          </div>
+      <div className="flex items-center gap-2 sm:gap-3">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navState?.from === 'customer' && navState?.customerId ? navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } }) : navigate('/equipamentos')}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">{equipment.name}</h1>
+          <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
+            {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
+            <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
+              {equipment.status === 'active' ? 'Ativo' : 'Inativo'}
+            </Badge>
+          </p>
         </div>
-        <div className="flex gap-2 shrink-0 pl-11 sm:pl-0 justify-center sm:justify-end w-full sm:w-auto">
-          <Button variant="edit-ghost" size="sm" onClick={() => setEditEquipOpen(true)}>
-            <Edit className="h-4 w-4 mr-1" /> Editar
+        <div className="flex gap-1.5 sm:gap-2 shrink-0 ml-auto">
+          <Button
+            variant="edit-ghost"
+            size={isMobile ? 'icon' : 'sm'}
+            aria-label="Editar"
+            onClick={() => setEditEquipOpen(true)}
+          >
+            <Edit className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Editar</span>
           </Button>
-          <Button variant="destructive-ghost" size="sm" onClick={() => setDeleteEquipOpen(true)}>
-            <Trash2 className="h-4 w-4 mr-1" /> Excluir
+          <Button
+            variant="destructive-ghost"
+            size={isMobile ? 'icon' : 'sm'}
+            aria-label="Excluir"
+            onClick={() => setDeleteEquipOpen(true)}
+          >
+            <Trash2 className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Excluir</span>
           </Button>
         </div>
       </div>
@@ -236,27 +246,28 @@ export default function EquipmentDetail() {
           {/* Photo + QR row */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row items-start gap-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 {equipment.photo_url && (
                   <img
                     src={equipment.photo_url}
                     alt={equipment.name}
-                    className="h-40 w-40 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                    className="h-48 w-48 sm:h-56 sm:w-56 rounded-lg object-cover shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => setPreviewImage(equipment.photo_url!)}
                   />
                 )}
-                <div className="flex items-start gap-4">
+                <div className={cn('flex flex-1 w-full flex-col items-center sm:flex-row sm:items-start gap-4', equipment.photo_url ? 'sm:justify-end' : 'sm:justify-start')}>
                   <div className="shrink-0"><QRCodeSVG value={qrValue} size={100} /></div>
-                  <div className="space-y-2">
+                  <div className="w-full sm:w-auto space-y-2 text-center sm:text-left">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
                     <p className="text-sm text-muted-foreground">QR Code do equipamento</p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setLabelDialogOpen(true)}>
+                    <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+                      <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setLabelDialogOpen(true)}>
                         <Tag className="mr-2 h-3.5 w-3.5" />Gerar Etiqueta
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         disabled={!hasPortalLink}
                         onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
                       >
@@ -265,6 +276,7 @@ export default function EquipmentDetail() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         disabled={!hasPortalLink}
                         onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: 'Link copiado!' }); }}
                       >
