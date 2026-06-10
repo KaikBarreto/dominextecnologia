@@ -349,13 +349,13 @@ function CrmTab() {
         {/* Header — mobile compacto, desktop inline original */}
         {isMobile ? (
           <MobilePageHeader
-            title="CRM Comercial"
+            title="CRM/Tarefas"
             subtitle="Pipeline de vendas da Dominex"
             icon={TrendingUp}
           />
         ) : (
           <div>
-            <h1 className="text-xl lg:text-2xl font-bold text-foreground">CRM Comercial</h1>
+            <h1 className="text-xl lg:text-2xl font-bold text-foreground">CRM/Tarefas</h1>
             <p className="text-sm text-muted-foreground">Pipeline de vendas da Dominex</p>
           </div>
         )}
