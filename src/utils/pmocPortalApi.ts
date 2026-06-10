@@ -32,9 +32,25 @@ function shouldUseMock(token: string): boolean {
 }
 
 /**
+ * Erro específico: a empresa dona NÃO tem o módulo "Portal do Cliente" na
+ * assinatura. Distinto de `portal_not_found` (token inválido) — a edge devolve
+ * HTTP 200 com `{ error: 'module_unavailable', company_name }`. Carrega o nome
+ * da empresa pra exibir discretamente na tela neutra.
+ */
+export class PortalModuleUnavailableError extends Error {
+  readonly companyName: string | null;
+  constructor(companyName: string | null) {
+    super('module_unavailable');
+    this.name = 'PortalModuleUnavailableError';
+    this.companyName = companyName;
+  }
+}
+
+/**
  * Busca o payload público de um portal PMOC.
  *
  * Erros:
+ *  - `PortalModuleUnavailableError` — módulo "Portal do Cliente" fora da assinatura.
  *  - `portal_not_found` — token inválido / contrato não-PMOC / contrato cancelado.
  *  - `portal_network_error` — falha de rede / edge function indisponível.
  */
@@ -64,9 +80,21 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
       throw new Error('portal_network_error');
     }
 
-    const data = (await res.json()) as PortalPayload;
-    return data;
+    const data = (await res.json()) as
+      | PortalPayload
+      | { error: 'module_unavailable'; company_name?: string | null };
+
+    // Módulo fora da assinatura: HTTP 200, mas o corpo sinaliza indisponível.
+    // Lança erro tipado próprio — NÃO é "token inválido" nem erro de rede.
+    if (data && typeof data === 'object' && (data as any).error === 'module_unavailable') {
+      throw new PortalModuleUnavailableError(
+        (data as { company_name?: string | null }).company_name ?? null,
+      );
+    }
+
+    return data as PortalPayload;
   } catch (err) {
+    if (err instanceof PortalModuleUnavailableError) throw err;
     if (err instanceof Error && err.message === 'portal_not_found') throw err;
     throw new Error('portal_network_error');
   }

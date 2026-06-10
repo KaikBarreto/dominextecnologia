@@ -234,6 +234,52 @@ Deno.serve(async (req) => {
     }
 
     // -------------------------------------------------------------------------
+    // 1.5) GATE DE MÓDULO (2026-06): o Portal PMOC é uma feature gateada pelo
+    //      módulo 'customer_portal'. Se a empresa dona do contrato não tem o
+    //      módulo (plano não inclui, sem addon, sem trial ativo), NÃO entregamos
+    //      o portal. Retornamos HTTP 200 com um sinal explícito pro frontend
+    //      DISTINGUIR de token inválido (404) ou erro de rede — exigência do
+    //      contrato: { error: 'module_unavailable', company_name: <string|null> }.
+    // -------------------------------------------------------------------------
+    const { data: hasModule, error: moduleErr } = await supabase.rpc(
+      "company_has_module",
+      { p_company_id: contract.company_id, p_module_code: "customer_portal" },
+    );
+
+    if (moduleErr) {
+      console.error("[pmoc-portal-share] company_has_module error", {
+        token: maskToken(token),
+        message: moduleErr.message,
+      });
+      return jsonResponse({ error: "internal_error" }, 500);
+    }
+
+    if (hasModule !== true) {
+      // Nome da empresa: company_settings.name (fallback companies.name; null).
+      let gateCompanyName: string | null = null;
+      const { data: gateSettings } = await supabase
+        .from("company_settings")
+        .select("name")
+        .eq("company_id", contract.company_id)
+        .maybeSingle();
+      gateCompanyName = (gateSettings?.name ?? "").trim() || null;
+      if (!gateCompanyName) {
+        const { data: gateCompany } = await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", contract.company_id)
+          .maybeSingle();
+        gateCompanyName = (gateCompany?.name ?? "").trim() || null;
+      }
+      // HTTP 200 (não 4xx) — o front usa o status pra separar "módulo indisponível"
+      // de token inválido/erro. Não vaza nenhum dado do portal.
+      return jsonResponse(
+        { error: "module_unavailable", company_name: gateCompanyName },
+        200,
+      );
+    }
+
+    // -------------------------------------------------------------------------
     // 2) Joins explícitos (projeção campo-a-campo). NÃO usar select * em
     //    nenhuma tabela. Cada campo retornado está autorizado em §3.2 da
     //    portal-rls-rules.

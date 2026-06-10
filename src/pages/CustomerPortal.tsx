@@ -23,6 +23,7 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 import DarkVeil from '@/components/ui/DarkVeil';
+import PortalUnavailable from '@/components/portal/PortalUnavailable';
 
 /**
  * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
@@ -111,9 +112,12 @@ const TERMINAL_STATUSES = ['concluida', 'cancelada'];
 
 // Payload da RPC get_portal_data. `access`/`viewer_can_fill` são opcionais —
 // se a RPC ainda não os devolver, caímos no comportamento atual (fallback gracioso).
+// `access: 'module_unavailable'` → a empresa dona não tem o módulo "Portal do
+// Cliente" na assinatura; o payload NÃO traz dados (só `company_name`, opcional).
 interface PortalPayload {
-  access?: 'granted' | 'denied';
+  access?: 'granted' | 'denied' | 'module_unavailable';
   viewer_can_fill?: boolean;
+  company_name?: string | null;
   customer: Customer;
   company_settings: CompanySettings | null;
   equipment: Equipment[];
@@ -134,6 +138,10 @@ export default function CustomerPortal() {
   const [error, setError] = useState<string | null>(null);
   // Acesso negado pelo SERVIDOR (portal privado + visitante sem permissão).
   const [accessDenied, setAccessDenied] = useState(false);
+  // Módulo "Portal do Cliente" não está na assinatura da empresa dona. Tela
+  // neutra pro cliente final (sem dados, sem CTA de upgrade).
+  const [moduleUnavailable, setModuleUnavailable] = useState(false);
+  const [unavailableCompanyName, setUnavailableCompanyName] = useState<string | null>(null);
   // Quem abre é um usuário logado da empresa dona (técnico/admin) → pode preencher OS.
   const [viewerCanFill, setViewerCanFill] = useState(false);
 
@@ -178,6 +186,7 @@ export default function CustomerPortal() {
     setLoading(true);
     setError(null);
     setAccessDenied(false);
+    setModuleUnavailable(false);
     try {
       const { data, error: rpcError } = await supabase
         .rpc('get_portal_data', { p_token: token! });
@@ -189,6 +198,15 @@ export default function CustomerPortal() {
       }
 
       const payload = data as PortalPayload;
+
+      // Módulo "Portal do Cliente" fora da assinatura da empresa dona. O payload
+      // NÃO traz dados — só renderizamos a tela neutra "portal indisponível".
+      if (payload.access === 'module_unavailable') {
+        setModuleUnavailable(true);
+        setUnavailableCompanyName(payload.company_name ?? null);
+        setLoading(false);
+        return;
+      }
 
       // Acesso negado pelo servidor: portal privado e visitante sem permissão.
       // O payload NÃO traz dados nesse caso — só renderizamos a tela "portal privado".
@@ -271,6 +289,13 @@ export default function CustomerPortal() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // Módulo "Portal do Cliente" fora da assinatura da empresa dona: tela neutra
+  // pro cliente final, sem dados nem CTA de upgrade. Tratado ANTES do erro
+  // genérico de token (que continua válido logo abaixo).
+  if (moduleUnavailable) {
+    return <PortalUnavailable companyName={unavailableCompanyName} />;
   }
 
   // Portal privado: o servidor negou acesso a quem não está logado na empresa

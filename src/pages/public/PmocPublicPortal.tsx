@@ -34,7 +34,9 @@ import { cn } from '@/lib/utils';
 import {
   fetchPmocPortal,
   buildPmocPortalUrl,
+  PortalModuleUnavailableError,
 } from '@/utils/pmocPortalApi';
+import PortalUnavailable from '@/components/portal/PortalUnavailable';
 import type {
   PortalHealthStatus,
   PortalOsStatus,
@@ -227,6 +229,8 @@ export default function PmocPublicPortal() {
     queryKey: ['pmoc-portal', token],
     enabled: !!token,
     retry: (failureCount, err) => {
+      // Não re-tenta estados terminais: token inválido e módulo fora da assinatura.
+      if (err instanceof PortalModuleUnavailableError) return false;
       if (err instanceof Error && err.message === 'portal_not_found') return false;
       return failureCount < 2;
     },
@@ -236,6 +240,11 @@ export default function PmocPublicPortal() {
   if (isLoading) return <PortalSkeleton />;
 
   if (isError) {
+    // Módulo "Portal do Cliente" fora da assinatura da empresa dona: tela neutra
+    // pro cliente final. Tratado ANTES de "token inválido" — é um estado próprio.
+    if (error instanceof PortalModuleUnavailableError) {
+      return <PortalUnavailable companyName={error.companyName} />;
+    }
     const isNotFound = error instanceof Error && error.message === 'portal_not_found';
     return isNotFound ? <PortalNotFound /> : <PortalNetworkError onRetry={() => refetch()} retrying={isFetching} />;
   }
