@@ -8,6 +8,7 @@ import { AdminTopClientsLTV } from '@/components/admin/AdminTopClientsLTV';
 import { AdminClientsByPlanChart } from '@/components/admin/AdminClientsByPlanChart';
 import { AdminBrazilMapChart } from '@/components/admin/AdminBrazilMapChart';
 import { AdminSegmentDistributionChart } from '@/components/admin/AdminSegmentDistributionChart';
+import { AdminCrmLeadsFunnelChart } from '@/components/admin/AdminCrmLeadsFunnelChart';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 export default function AdminDashboard() {
@@ -78,6 +79,9 @@ export default function AdminDashboard() {
 
       {/* 3. Funil de Retenção */}
       <AdminDashboardCharts companies={companies} transactions={transactions} startDate={startDate} endDate={endDate} sections={['funnel']} />
+
+      {/* 3.1 Funil de Leads por Origem (CRM) */}
+      <AdminCrmLeadsFunnelChart startDate={startDate} endDate={endDate} />
 
       {/* 4. Mapa do Brasil */}
       <AdminBrazilMapChart companies={companies} />
