@@ -108,8 +108,8 @@ const tenantMenuItems: MenuItem[] = [
       // escondia a aba dentro da página); Relatório (Visão Geral + DRE) e
       // Movimentações são base. A aba DRE dentro do Relatório é gateada inline.
       { title: 'Relatório Financeiro', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
-      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
       { title: 'Movimentações Financeiras', icon: HistoryIcon, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
+      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
     ],
   },
 ];

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { Search, Plus, Check, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, X, Wallet, Landmark, CreditCard, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -23,8 +23,6 @@ import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
-import { formatBRL } from '@/utils/currency';
-import { ReceivePaymentModal } from './ReceivePaymentModal';
 import { RelatedTransactionsDialog } from './RelatedTransactionsDialog';
 import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRelatedTransactions';
 import { useQueryClient } from '@tanstack/react-query';
@@ -67,24 +65,22 @@ interface TransactionListPanelProps {
   onNew?: () => void;
   onEdit: (t: FinancialTransaction) => void;
   onDelete: (id: string) => Promise<any>;
-  onMarkAsPaid: (params: any) => Promise<any>;
   buttonColor?: string;
   /** Pré-aplica o filtro de conta (deep-link a partir da tela "Contas e Cartões"). */
   initialAccountFilter?: string | null;
   /** Chamado quando o usuário remove o filtro de conta vindo do deep-link. */
   onClearAccountFilter?: () => void;
-}
-
-function getAccIcon(type: string) {
-  if (type === 'caixa') return Wallet;
-  if (type === 'cartao') return CreditCard;
-  return Landmark;
+  /**
+   * Esconde a coluna CONTA (desktop) e o badge de conta (mobile). Usado quando
+   * uma única conta está selecionada — redundante, toda linha é da mesma conta.
+   */
+  hideAccountColumn?: boolean;
 }
 
 export function TransactionListPanel({
   title, type = 'all', transactions, isLoading,
-  onNew, onEdit, onDelete, onMarkAsPaid, buttonColor,
-  initialAccountFilter, onClearAccountFilter,
+  onNew, onEdit, onDelete, buttonColor,
+  initialAccountFilter, onClearAccountFilter, hideAccountColumn,
 }: TransactionListPanelProps) {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -101,11 +97,10 @@ export function TransactionListPanel({
     if (initialAccountFilter) setAccountFilter([initialAccountFilter]);
   }, [initialAccountFilter]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
-  const [receivingTxn, setReceivingTxn] = useState<(FinancialTransaction & { customer?: any }) | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
-  const { accounts: allAccounts, balances: accountBalances } = useFinancialAccounts();
+  const { accounts: allAccounts } = useFinancialAccounts();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const queryClient = useQueryClient();
@@ -145,11 +140,6 @@ export function TransactionListPanel({
     onClearAccountFilter?.();
   };
 
-  const clearAccountFilterOnly = () => {
-    setAccountFilter([]);
-    onClearAccountFilter?.();
-  };
-
   const filtered = transactions
     .filter((t) => (type === 'all'
       ? (typeFilter.length === 0 || typeFilter.includes(t.transaction_type))
@@ -158,35 +148,6 @@ export function TransactionListPanel({
     .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.is_paid ? 'paid' : 'unpaid'))
     .filter((t) => accountFilter.length === 0 || accountFilter.includes((t as any).account_id))
     .filter((t) => fuzzyIncludes(t.description, search) || fuzzyIncludes(t.category, search));
-
-  // Resumo financeiro da conta filtrada (visível só quando há filtro ativo de conta).
-  // Considera apenas as transações já filtradas (respeita período, tipo, categoria, status).
-  // - Entradas no período: somatório de receitas pagas;
-  // - Saídas no período: somatório de despesas pagas;
-  // - Saldo inicial: vem do cadastro da conta;
-  // - Saldo atual: usa o cálculo global do hook (atemporal — todas as transações pagas).
-  // Resumo da conta só faz sentido quando exatamente UMA conta está filtrada
-  // (com várias contas selecionadas o card de saldo único seria ambíguo).
-  const filteredAccount = accountFilter.length === 1
-    ? allAccounts.find((a) => a.id === accountFilter[0]) ?? null
-    : null;
-
-  const accountSummary = useMemo(() => {
-    if (!filteredAccount) return null;
-    let entradas = 0;
-    let saidas = 0;
-    filtered.forEach((t) => {
-      if (!t.is_paid) return;
-      if (t.transaction_type === 'entrada') entradas += Number(t.amount);
-      else saidas += Number(t.amount);
-    });
-    return {
-      initialBalance: Number(filteredAccount.initial_balance),
-      entradas,
-      saidas,
-      currentBalance: accountBalances[filteredAccount.id] ?? Number(filteredAccount.initial_balance),
-    };
-  }, [filtered, filteredAccount, accountBalances]);
 
   // Contagem de anexos da nova tabela — pra exibir paperclip quando há anexos
   const visibleIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
@@ -466,55 +427,6 @@ export function TransactionListPanel({
         </FilterButton>
       </div>
 
-      {filteredAccount && accountSummary && (
-        <Card className="border-primary/30 bg-primary/5 rounded-2xl shadow-sm">
-          <CardContent className="p-3 sm:p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className="rounded-full p-1.5 shrink-0"
-                  style={{ backgroundColor: filteredAccount.color }}
-                >
-                  {(() => { const Icon = getAccIcon(filteredAccount.type); return <Icon className="h-3.5 w-3.5 text-white" />; })()}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground leading-tight">Filtrado por conta</p>
-                  <p className="font-semibold text-sm truncate">{filteredAccount.name}</p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1 text-xs rounded-lg"
-                onClick={clearAccountFilterOnly}
-              >
-                <X className="h-3.5 w-3.5" /> Remover filtro
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs">
-              <div>
-                <p className="text-muted-foreground">Saldo inicial</p>
-                <p className="font-semibold tabular-nums">{formatBRL(accountSummary.initialBalance)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Entradas no período</p>
-                <p className="font-semibold text-success tabular-nums">+ {formatBRL(accountSummary.entradas)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Saídas no período</p>
-                <p className="font-semibold text-destructive tabular-nums">− {formatBRL(accountSummary.saidas)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Saldo atual</p>
-                <p className={`font-semibold tabular-nums ${accountSummary.currentBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {formatBRL(accountSummary.currentBalance)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {isLoading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}</div>
       ) : filtered.length === 0 ? (
@@ -535,12 +447,6 @@ export function TransactionListPanel({
             {pagination.paginatedItems.map((t) => {
               const isEntrada = t.transaction_type === 'entrada';
               const itemActions: ItemAction[] = [
-                ...(!t.is_paid ? [{
-                  key: 'mark-paid',
-                  label: isEntrada ? 'Marcar recebido' : 'Marcar pago',
-                  icon: <Check className="h-4 w-4" />,
-                  onClick: () => isEntrada ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id }),
-                }] : []),
                 {
                   key: 'edit',
                   label: 'Editar',
@@ -584,9 +490,9 @@ export function TransactionListPanel({
                   subtitle={
                     <div className="flex items-center gap-2 flex-wrap">
                       <span>{renderTransactionDate(t)}</span>
-                      {(t as any).account && (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: (t as any).account.color }} />
+                      {!hideAccountColumn && (t as any).account && (
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
                           {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
                         </span>
                       )}
@@ -629,7 +535,9 @@ export function TransactionListPanel({
                     {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
                     <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Categoria</SortableTableHead>
-                    <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Conta</SortableTableHead>
+                    {!hideAccountColumn && (
+                      <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Conta</SortableTableHead>
+                    )}
                     <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
                     <SortableTableHead sortKey="is_paid" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
                     <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">Ações</SortableTableHead>
@@ -663,16 +571,20 @@ export function TransactionListPanel({
                       <TableCell className="hidden md:table-cell">
                         {t.category && <Badge variant="outline">{t.category}</Badge>}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {(t as any).account && (
-                          <Badge variant="secondary" className="text-[10px] flex items-center gap-1 w-fit">
-                            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
-                            {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
-                          </Badge>
-                        )}
-                      </TableCell>
+                      {!hideAccountColumn && (
+                        <TableCell className="hidden lg:table-cell">
+                          {(t as any).account && (
+                            <Badge variant="secondary" className="text-[10px] flex items-center gap-1 w-fit whitespace-nowrap">
+                              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
+                              <span className="whitespace-nowrap">
+                                {(t as any).account.type === 'caixa' ? `${(t as any).account.name} (dinheiro)` : (t as any).account.name}
+                              </span>
+                            </Badge>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
-                        <span className={`font-medium tabular-nums ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
+                        <span className={`font-medium tabular-nums whitespace-nowrap ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                           {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                         </span>
                       </TableCell>
@@ -680,12 +592,6 @@ export function TransactionListPanel({
                       <TableCell>
                         <RowActionsMenu
                           actions={[
-                            {
-                              label: t.transaction_type === 'entrada' ? 'Marcar como recebido' : 'Marcar como pago',
-                              icon: Check,
-                              onClick: () => t.transaction_type === 'entrada' ? setReceivingTxn(t) : onMarkAsPaid({ id: t.id }),
-                              hidden: t.is_paid,
-                            },
                             { label: 'Editar', icon: Pencil, variant: 'edit', onClick: () => onEdit(t) },
                             { label: 'Excluir', icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id) },
                           ] satisfies RowAction[]}
@@ -730,33 +636,6 @@ export function TransactionListPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ReceivePaymentModal
-        open={!!receivingTxn}
-        onOpenChange={(v) => { if (!v) setReceivingTxn(null); }}
-        amount={Number(receivingTxn?.amount ?? 0)}
-        amountReceived={Number((receivingTxn as any)?.amount_received ?? 0)}
-        allowPartial
-        installmentTotal={receivingTxn?.installment_total ?? 1}
-        currentDueDate={receivingTxn?.due_date}
-        title="Como foi recebido?"
-        description={receivingTxn?.description}
-        onConfirm={async (payment) => {
-          if (!receivingTxn) return;
-          await onMarkAsPaid({
-            id: receivingTxn.id,
-            account_id: payment.account_id,
-            payment_method: payment.payment_method,
-            paid_date: payment.paid_date,
-            fee_amount: payment.fee_amount,
-            notes: payment.notes,
-            customer_id: (receivingTxn as any).customer_id,
-            amountReceived: payment.amount_received,
-            newDueDate: payment.new_due_date,
-          });
-          setReceivingTxn(null);
-        }}
-      />
 
       {/* FAB mobile (fora do header). Desktop usa o botão inline acima. */}
       {isMobile && onNew && (

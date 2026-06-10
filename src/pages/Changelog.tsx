@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.10',
+    date: '10 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de Movimentações Financeiras mais clara e organizada',
+        description: 'Reorganizamos a tela de movimentações: agora há uma aba "Visão Geral" que mostra de uma vez o saldo das suas contas e o total das faturas dos cartões. Ao escolher uma conta ou cartão, ele fica destacado na própria cor e a lista exibe só as movimentações daquela conta — mais limpa e direta. E os botões para adicionar conta e cartão ficaram junto de cada seção, mais fáceis de achar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.9',
     date: '10 de junho de 2026',
     type: 'minor',

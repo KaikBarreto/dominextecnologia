@@ -20,6 +20,12 @@ export interface SettingsTab {
    * na cor) em vez do primary. Opt-in: abas sem `accentColor` seguem o padrão.
    */
   accentColor?: string;
+  /**
+   * Quando true (e com `accentColor`), o ativo/hover usa o estilo do EcoSistema:
+   * fundo SATURADO na cor da conta + texto e ícone BRANCOS. Opt-in — sem isso,
+   * `accentColor` mantém o estilo sutil e abas sem cor mantêm o primary.
+   */
+  useColorBackground?: boolean;
 }
 
 /** Converte hex (#RRGGBB) em `r, g, b` pra usar em rgba(). Fallback: null. */
@@ -38,6 +44,12 @@ interface SettingsSidebarLayoutProps {
   children: React.ReactNode;
   /** Conteúdo fixo no rodapé do sidebar (ex: botões "Nova Conta"/"Novo Cartão"). Só no desktop. */
   sidebarFooter?: React.ReactNode;
+  /**
+   * Conteúdo renderizado logo ABAIXO do último item de um grupo (chave = nome do
+   * grupo). Ex: botão "+ Nova Conta" ao fim do grupo "Contas Bancárias". Só no
+   * desktop. Opt-in — grupos sem entrada aqui não mudam.
+   */
+  groupFooters?: Record<string, React.ReactNode>;
 }
 
 export function SettingsSidebarLayout({
@@ -46,6 +58,7 @@ export function SettingsSidebarLayout({
   onTabChange,
   children,
   sidebarFooter,
+  groupFooters,
 }: SettingsSidebarLayoutProps) {
   const isMobile = useIsMobile();
 
@@ -91,11 +104,22 @@ export function SettingsSidebarLayout({
                   const isActive = activeTab === tab.value;
                   const rgb = hexToRgbTriplet(tab.accentColor);
                   const accented = !!rgb;
+                  // EcoSistema style (opt-in): ativo/hover = fundo SATURADO na cor
+                  // da conta + texto/ícone BRANCOS. Sem `useColorBackground`,
+                  // `accentColor` segue o estilo sutil de sempre.
+                  const colorBg = accented && !!tab.useColorBackground;
 
-                  // Aba com cor própria (conta financeira): ativo = fundo
-                  // translúcido + texto na cor; hover (inativo) = fundo bem
-                  // sutil. Sem cor → mantém o padrão primary de sempre.
-                  const accentStyle: React.CSSProperties = accented
+                  // Estilo da aba acentuada:
+                  // - colorBg (saturado): ativo = bg cheio + branco; hover via classes.
+                  // - sutil: ativo = bg translúcido + texto na cor; hover bem leve.
+                  // - sem cor: primary de sempre.
+                  const accentStyle: React.CSSProperties = colorBg
+                    ? ({
+                        ['--tab-accent' as any]: `rgb(${rgb})`,
+                        backgroundColor: isActive ? `rgb(${rgb})` : undefined,
+                        color: isActive ? '#fff' : undefined,
+                      } as React.CSSProperties)
+                    : accented
                     ? ({
                         ['--tab-accent' as any]: `rgb(${rgb})`,
                         ['--tab-accent-active-bg' as any]: `rgba(${rgb}, 0.16)`,
@@ -111,7 +135,11 @@ export function SettingsSidebarLayout({
                       style={accentStyle}
                       className={cn(
                         "group/tab relative w-full flex items-center gap-3 px-3 py-2 text-[13px] font-normal rounded-lg transition-all duration-200 text-left cursor-pointer",
-                        accented
+                        colorBg
+                          ? isActive
+                            ? "font-medium shadow-sm"
+                            : "text-muted-foreground hover:font-medium hover:[background-color:var(--tab-accent)] hover:text-white"
+                          : accented
                           ? isActive
                             ? "font-medium shadow-sm"
                             : "text-muted-foreground hover:font-medium hover:[background-color:var(--tab-accent-hover-bg)] hover:[color:var(--tab-accent)]"
@@ -124,8 +152,8 @@ export function SettingsSidebarLayout({
                       tabIndex={0}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTabChange(tab.value); } }}
                     >
-                      {/* Indicador vertical na cor da conta (só quando acentuada). */}
-                      {accented && isActive && (
+                      {/* Indicador vertical na cor da conta (só no estilo sutil). */}
+                      {accented && !colorBg && isActive && (
                         <span
                           className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full"
                           style={{ backgroundColor: `rgb(${rgb})` }}
@@ -138,7 +166,9 @@ export function SettingsSidebarLayout({
                           <span
                             className={cn(
                               "block truncate text-[11px] leading-tight tabular-nums",
-                              accented
+                              colorBg
+                                ? isActive ? "text-white/90" : "text-muted-foreground/80 group-hover/tab:text-white/90"
+                                : accented
                                 ? isActive ? "opacity-80" : "text-muted-foreground/80"
                                 : isActive ? "text-primary-foreground/80" : "text-muted-foreground/80 group-hover/tab:text-primary-foreground/80"
                             )}
@@ -160,6 +190,10 @@ export function SettingsSidebarLayout({
                     </div>
                   );
                 })}
+                {/* Footer do grupo (ex: "+ Nova Conta" ao fim das Contas Bancárias). */}
+                {groupFooters?.[group.group] && (
+                  <div className="pt-1">{groupFooters[group.group]}</div>
+                )}
               </div>
             </div>
           ))}

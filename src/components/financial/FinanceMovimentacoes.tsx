@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   MoreVertical, Pencil, Trash2, ArrowLeftRight, Tags, Plus, CreditCard,
-  Landmark, Wallet, History as HistoryIcon, Calculator, Loader2, SlidersHorizontal,
+  Landmark, Wallet, LayoutDashboard, Calculator, Loader2, SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/utils/currency';
@@ -41,7 +41,12 @@ interface FinanceMovimentacoesProps {
   onNew: () => void;
   onEdit: (t: FinancialTransaction) => void;
   onDelete: (id: string) => Promise<any>;
-  onMarkAsPaid: (params: any) => Promise<any>;
+  /**
+   * Mantido por compatibilidade com a tela pai (Finance.tsx ainda passa), mas
+   * NÃO usado aqui: marcar como pago/recebido vive só na tela Contas a
+   * Pagar/Receber. Movimentações só edita/exclui.
+   */
+  onMarkAsPaid?: (params: any) => Promise<any>;
   /** Deep-link `?account=ID` — pré-seleciona a conta no sidebar uma vez. */
   initialAccountId?: string | null;
   /** Chamado após consumir o deep-link (limpa o param na URL). */
@@ -55,7 +60,7 @@ interface FinanceMovimentacoesProps {
  * extrato filtrado; cada cartão mostra suas faturas.
  */
 export function FinanceMovimentacoes({
-  transactions, isLoading, onNew, onEdit, onDelete, onMarkAsPaid,
+  transactions, isLoading, onNew, onEdit, onDelete,
   initialAccountId, onConsumeInitialAccount,
 }: FinanceMovimentacoesProps) {
   const isMobile = useIsMobile();
@@ -95,12 +100,18 @@ export function FinanceMovimentacoes({
   const cashBankAccounts = useMemo(() => accounts.filter(a => a.type !== 'cartao'), [accounts]);
   const cardAccounts = useMemo(() => accounts.filter(a => a.type === 'cartao'), [accounts]);
 
-  // Saldo Total = soma dos saldos de todas as contas/caixa (cartão fica de fora,
-  // não tem "saldo de conta"). Reapareceu da antiga "Contas e Cartões": a Visão
-  // Geral lista o saldo POR conta, mas não consolida o total — então não duplica.
+  // Saldo em contas = soma dos saldos de todas as contas/caixa (cartão fica de
+  // fora, não tem "saldo de conta"). Alimenta o card consolidado da Visão Geral.
   const totalBalance = useMemo(
     () => cashBankAccounts.reduce((sum, a) => sum + (balances[a.id] ?? Number(a.initial_balance ?? 0)), 0),
     [cashBankAccounts, balances]
+  );
+
+  // Total das faturas ABERTAS dos cartões. REGRA: nunca somar fatura de cartão
+  // dentro do saldo de caixa — é uma figura distinta no card da Visão Geral.
+  const totalCardBills = useMemo(
+    () => cardAccounts.reduce((sum, a) => sum + (cardBillTotals[a.id] ?? 0), 0),
+    [cardAccounts, cardBillTotals]
   );
 
   const openNewAccount = (initialType: string) => {
@@ -141,11 +152,13 @@ export function FinanceMovimentacoes({
             variant="ghost"
             className={cn(
               'h-6 w-6 pointer-events-auto',
-              // Aba ativa agora usa a cor da conta (não primary): o botão herda
-              // currentColor (a cor da conta) e hover só dá um leve realce.
+              // Aba ativa usa fundo saturado da conta + texto branco: o botão
+              // herda currentColor (branco) e hover só dá um leve realce.
+              // Inativa: cinza, mas no hover da aba o fundo fica colorido →
+              // herda branco via currentColor.
               activeTab === a.id
-                ? 'text-current hover:bg-foreground/10 hover:text-current'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'text-current hover:bg-white/20 hover:text-current'
+                : 'text-muted-foreground group-hover/tab:text-current hover:bg-white/20'
             )}
             onClick={(e) => e.stopPropagation()}
             aria-label={`Ações de ${a.name}`}
@@ -194,7 +207,8 @@ export function FinanceMovimentacoes({
   // Monta as abas do sidebar: "Todas" + grupo Contas Bancárias + grupo Cartões.
   const tabs: SettingsTab[] = useMemo(() => {
     const result: SettingsTab[] = [
-      { value: ALL_TAB, label: 'Todas', icon: HistoryIcon },
+      // Visão Geral: aba neutra (sem cor) — card consolidado + todas as movimentações.
+      { value: ALL_TAB, label: 'Visão Geral', icon: LayoutDashboard },
     ];
     for (const a of cashBankAccounts) {
       const balance = balances[a.id] ?? a.initial_balance;
@@ -207,8 +221,9 @@ export function FinanceMovimentacoes({
         // No mobile a pill mostra só o saldo (cabe ao lado do nome).
         mobileSublabel: formatBRL(balance),
         rightElement: renderRightMenu(a),
-        // Aba/pill assume a cor da conta no ativo/hover (sutil).
+        // Ativo/hover usa a cor da conta com fundo SATURADO + texto branco (estilo EcoSistema).
         accentColor: a.color || undefined,
+        useColorBackground: !!a.color,
       });
     }
     for (const a of cardAccounts) {
@@ -225,8 +240,9 @@ export function FinanceMovimentacoes({
         // Pill mobile: só a fatura (o "Disp." fica longo demais pra pill).
         mobileSublabel: formatBRL(billTotal),
         rightElement: renderRightMenu(a),
-        // Cartão também assume sua cor no ativo/hover.
+        // Cartão também assume sua cor no ativo/hover (fundo saturado + branco).
         accentColor: a.color || undefined,
+        useColorBackground: !!a.color,
       });
     }
     return result;
@@ -353,89 +369,96 @@ export function FinanceMovimentacoes({
     </div>
   );
 
-  // Rodapé do sidebar (desktop) — atalho pra criar conta/cartão sem subir ao topo.
-  const sidebarFooter = !isMobile ? (
-    <div className="space-y-1.5 pt-2 border-t">
-      <button
-        onClick={() => openNewAccount('banco')}
-        className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-        Nova Conta
-      </button>
-      <button
-        onClick={() => openNewAccount('cartao')}
-        className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-        Novo Cartão
-      </button>
-    </div>
-  ) : undefined;
+  // Botão tracejado de "adicionar" no fim de cada seção do sidebar (desktop).
+  const addButton = (label: string, onClick: () => void) => (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-colors"
+    >
+      <Plus className="h-4 w-4" />
+      {label}
+    </button>
+  );
+
+  // Footer POR GRUPO: "+ Nova Conta" ao fim das Contas Bancárias e "+ Novo Cartão"
+  // ao fim dos Cartões (desktop). Só renderiza os grupos que existem nas abas.
+  const groupFooters = !isMobile ? {
+    'Contas Bancárias': addButton('Nova Conta', () => openNewAccount('banco')),
+    'Cartões': addButton('Novo Cartão', () => openNewAccount('cartao')),
+  } : undefined;
 
   return (
     <div className="space-y-4">
       {isMobile ? (
-        /* Mobile: topo compacto — Saldo Total inline com o "+" Adicionar, numa
-           única faixa (sem título grande, sem card separado), pra a lista subir. */
-        <div className="flex items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="rounded-full bg-primary/10 p-1.5 shrink-0">
-              <Wallet className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <div className="min-w-0 leading-tight">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Saldo Total</p>
-              <p className={cn('text-base font-bold tabular-nums', totalBalance >= 0 ? 'text-success' : 'text-destructive')}>
-                R$ {formatBRL(totalBalance)}
-              </p>
-            </div>
-          </div>
+        /* Mobile: faixa compacta — título + "+" Adicionar (o consolidado de saldo
+           agora vive no card da aba Visão Geral, não mais aqui no topo). */
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-bold">Movimentações</h2>
           {globalActions}
         </div>
       ) : (
-        <>
-          {/* Barra de ações globais */}
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-lg font-bold">Movimentações Financeiras</h2>
-            {globalActions}
-          </div>
-
-          {/* Saldo Total consolidado de todas as contas/caixa (cartão fica de fora). */}
-          {cashBankAccounts.length > 0 && (
-            <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="rounded-full bg-primary/10 p-2 shrink-0">
-                  <Wallet className="h-4 w-4 text-primary" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Saldo Total
-                </span>
-              </div>
-              <span className={cn('text-lg font-bold tabular-nums shrink-0', totalBalance >= 0 ? 'text-success' : 'text-destructive')}>
-                R$ {formatBRL(totalBalance)}
-              </span>
-            </div>
-          )}
-        </>
+        /* Barra de ações globais (o card "Saldo Total" saiu do topo — virou o
+           card consolidado da aba Visão Geral). */
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-bold">Movimentações Financeiras</h2>
+          {globalActions}
+        </div>
       )}
 
       <SettingsSidebarLayout
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        sidebarFooter={sidebarFooter}
+        groupFooters={groupFooters}
       >
         {activeTab === ALL_TAB ? (
-          <TransactionListPanel
-            title="Movimentações"
-            type="all"
-            transactions={transactions}
-            isLoading={isLoading}
-            onNew={onNew}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onMarkAsPaid={onMarkAsPaid}
-          />
+          <div className="space-y-4">
+            {/* Card consolidado: saldo em contas/caixa e, DISTINTO, total das
+                faturas abertas dos cartões. Nunca somar fatura no saldo de caixa. */}
+            {(cashBankAccounts.length > 0 || cardAccounts.length > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {cashBankAccounts.length > 0 && (
+                  <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="rounded-full bg-primary/10 p-2 shrink-0">
+                        <Wallet className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Saldo em contas
+                      </span>
+                    </div>
+                    <span className={cn('text-lg font-bold tabular-nums shrink-0', totalBalance >= 0 ? 'text-success' : 'text-destructive')}>
+                      R$ {formatBRL(totalBalance)}
+                    </span>
+                  </div>
+                )}
+                {cardAccounts.length > 0 && (
+                  <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="rounded-full bg-primary/10 p-2 shrink-0">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Faturas de cartão
+                      </span>
+                    </div>
+                    <span className={cn('text-lg font-bold tabular-nums shrink-0', totalCardBills > 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                      R$ {formatBRL(totalCardBills)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            <TransactionListPanel
+              title="Movimentações"
+              type="all"
+              transactions={transactions}
+              isLoading={isLoading}
+              onNew={onNew}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          </div>
         ) : selectedAccount ? (
           selectedAccount.type === 'cartao' ? (
             <div className="space-y-4">
@@ -457,8 +480,8 @@ export function FinanceMovimentacoes({
                 onNew={onNew}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                onMarkAsPaid={onMarkAsPaid}
                 initialAccountFilter={selectedAccount.id}
+                hideAccountColumn
               />
             </div>
           )
@@ -471,7 +494,6 @@ export function FinanceMovimentacoes({
             onNew={onNew}
             onEdit={onEdit}
             onDelete={onDelete}
-            onMarkAsPaid={onMarkAsPaid}
           />
         )}
       </SettingsSidebarLayout>
