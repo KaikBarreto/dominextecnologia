@@ -3,10 +3,12 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 import DarkVeil from "@/components/ui/DarkVeil";
+import { useAuth } from "@/contexts/AuthContext";
 
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAdminUser } = useAuth();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
@@ -33,7 +35,7 @@ const NotFound = () => {
           </p>
         </div>
         <Button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate(isAdminUser ? "/admin/empresas" : "/dashboard")}
           size="lg"
           className="mt-4 gap-2"
         >

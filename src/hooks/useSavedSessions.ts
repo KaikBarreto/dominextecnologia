@@ -158,8 +158,21 @@ export const useSavedSessions = () => {
           console.warn("[useSavedSessions] forceRefresh falhou, prosseguindo:", e);
         }
 
+        // Destino depende do papel da conta que acabou de logar: super_admin
+        // vai pro painel master Auctus, demais vão pro dashboard do tenant.
+        // Sem isso, o super_admin caía no /dashboard (ele TEM acesso, então
+        // os guards não o expulsam) e ficava preso no app de tenant.
+        let dest = "/dashboard";
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "super_admin")
+          .maybeSingle();
+        if (roleData) dest = "/admin/empresas";
+
         // Full reload pra refetch tudo (modules, permissions, queries, etc.)
-        window.location.replace("/dashboard");
+        window.location.replace(dest);
         return;
       }
 

@@ -39,7 +39,7 @@ export function DomiflixLayout() {
 
   const { data: titles = [] } = useDomiflixTitles();
   const { data: allEpisodesData } = useDomiflixAllEpisodes();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, isAdminUser } = useAuth();
   const { avatarUrl: domiflixAvatarUrl } = useDomiflixAvatar();
   const { displayName: domiflixDisplayName } = useDomiflixDisplayName();
 
@@ -144,7 +144,8 @@ export function DomiflixLayout() {
     if (window.opener) {
       window.close();
     } else {
-      window.location.href = "/dashboard";
+      // Super_admin volta pro painel master Auctus; tenant volta pro dashboard.
+      window.location.href = isAdminUser ? "/admin/empresas" : "/dashboard";
     }
   }
 
