@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.9',
+    date: '10 de junho de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Portal do cliente automático + QR da etiqueta abre o portal',
+        description: 'Cada cliente já tem o portal pronto automaticamente — não precisa mais "gerar". E o QR Code da etiqueta de identificação do equipamento, ao ser escaneado, abre direto o portal do cliente já naquele equipamento (antes o código só levava a uma busca na internet). Na ficha do cliente é só copiar ou abrir o link do portal.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.11.8',
     date: '10 de junho de 2026',
     type: 'patch',
