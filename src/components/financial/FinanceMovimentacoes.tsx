@@ -202,6 +202,8 @@ export function FinanceMovimentacoes({
         icon: getTypeIcon(a.type),
         group: 'Contas Bancárias',
         sublabel: formatBRL(balance),
+        // No mobile a pill mostra só o saldo (cabe ao lado do nome).
+        mobileSublabel: formatBRL(balance),
         rightElement: renderRightMenu(a),
       });
     }
@@ -216,6 +218,8 @@ export function FinanceMovimentacoes({
         sublabel: availableLimit !== null
           ? `Fatura ${formatBRL(billTotal)} · Disp. ${formatBRL(availableLimit)}`
           : `Fatura ${formatBRL(billTotal)}`,
+        // Pill mobile: só a fatura (o "Disp." fica longo demais pra pill).
+        mobileSublabel: formatBRL(billTotal),
         rightElement: renderRightMenu(a),
       });
     }
@@ -303,20 +307,42 @@ export function FinanceMovimentacoes({
     );
   };
 
-  // Botões globais do topo da tela (Categorias, Nova Conta, Novo Cartão).
-  const globalActions = (
+  // Botões globais do topo da tela. No mobile vira um único "+" com menu
+  // (Nova Conta / Novo Cartão / Categorias) pra não poluir o topo; no desktop
+  // mantém os 3 botões com rótulo.
+  const globalActions = isMobile ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" className="gap-1.5 shrink-0" aria-label="Adicionar">
+          <Plus className="h-4 w-4" />
+          Adicionar
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openNewAccount('banco')}>
+          <Landmark className="h-4 w-4" /> Nova Conta
+        </DropdownMenuItem>
+        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openNewAccount('cartao')}>
+          <CreditCard className="h-4 w-4" /> Novo Cartão
+        </DropdownMenuItem>
+        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setCategoriesOpen(true)}>
+          <Tags className="h-4 w-4" /> Categorias
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : (
     <div className="flex items-center gap-2 flex-wrap justify-end">
       <Button variant="outline" size="sm" className="gap-2" onClick={() => setCategoriesOpen(true)}>
         <Tags className="h-4 w-4" />
-        <span className="hidden sm:inline">Categorias</span>
+        Categorias
       </Button>
       <Button variant="outline" size="sm" className="gap-2" onClick={() => openNewAccount('banco')}>
         <Plus className="h-4 w-4" />
-        <span className="hidden sm:inline">Nova Conta</span>
+        Nova Conta
       </Button>
       <Button size="sm" className="gap-2" onClick={() => openNewAccount('cartao')}>
         <Plus className="h-4 w-4" />
-        <span className="hidden sm:inline">Novo Cartão</span>
+        Novo Cartão
       </Button>
     </div>
   );
@@ -343,27 +369,48 @@ export function FinanceMovimentacoes({
 
   return (
     <div className="space-y-4">
-      {/* Barra de ações globais */}
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-bold hidden sm:block">Movimentações Financeiras</h2>
-        {globalActions}
-      </div>
-
-      {/* Saldo Total consolidado de todas as contas/caixa (cartão fica de fora). */}
-      {cashBankAccounts.length > 0 && (
-        <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="rounded-full bg-primary/10 p-2 shrink-0">
-              <Wallet className="h-4 w-4 text-primary" />
+      {isMobile ? (
+        /* Mobile: topo compacto — Saldo Total inline com o "+" Adicionar, numa
+           única faixa (sem título grande, sem card separado), pra a lista subir. */
+        <div className="flex items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="rounded-full bg-primary/10 p-1.5 shrink-0">
+              <Wallet className="h-3.5 w-3.5 text-primary" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Saldo Total
-            </span>
+            <div className="min-w-0 leading-tight">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Saldo Total</p>
+              <p className={cn('text-base font-bold tabular-nums', totalBalance >= 0 ? 'text-success' : 'text-destructive')}>
+                R$ {formatBRL(totalBalance)}
+              </p>
+            </div>
           </div>
-          <span className={cn('text-lg font-bold tabular-nums shrink-0', totalBalance >= 0 ? 'text-success' : 'text-destructive')}>
-            R$ {formatBRL(totalBalance)}
-          </span>
+          {globalActions}
         </div>
+      ) : (
+        <>
+          {/* Barra de ações globais */}
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-bold">Movimentações Financeiras</h2>
+            {globalActions}
+          </div>
+
+          {/* Saldo Total consolidado de todas as contas/caixa (cartão fica de fora). */}
+          {cashBankAccounts.length > 0 && (
+            <div className="rounded-xl border bg-card px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="rounded-full bg-primary/10 p-2 shrink-0">
+                  <Wallet className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Saldo Total
+                </span>
+              </div>
+              <span className={cn('text-lg font-bold tabular-nums shrink-0', totalBalance >= 0 ? 'text-success' : 'text-destructive')}>
+                R$ {formatBRL(totalBalance)}
+              </span>
+            </div>
+          )}
+        </>
       )}
 
       <SettingsSidebarLayout

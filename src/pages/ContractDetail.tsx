@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -34,6 +35,8 @@ import { useContracts, getFrequencyLabel, type ContractServiceOrder } from '@/ho
 import { osStatusLabels, type OsStatus } from '@/types/database';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
+import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -87,14 +90,16 @@ export default function ContractDetail() {
   const navigate = useNavigate();
   const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const { createTransaction } = useFinancial();
+  const { accounts } = useFinancialAccounts();
+  const { categories } = useFinancialCategories();
   const { settings: companySettings } = useCompanySettings();
 
-  // Aba ativa do contrato. PMOC tem 4 abas; contrato comum tem 2 (Visão Geral
-  // + Ocorrências). Default = visão geral. "Ocorrências" virou aba própria em
-  // TODO contrato (decisão do CEO).
-  const [pmocTab, setPmocTab] = useState<'overview' | 'ocorrencias' | 'documentos' | 'cronograma'>('overview');
+  // Aba ativa do contrato. PMOC tem 5 abas; contrato comum tem 3 (Visão Geral
+  // + Ocorrências + Financeiro). Default = visão geral. "Ocorrências" e
+  // "Financeiro" são abas próprias em TODO contrato (decisão do CEO).
+  const [pmocTab, setPmocTab] = useState<'overview' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
 
-  const { createContract, deleteContract } = useContracts();
+  const { createContract, deleteContract, applyFinancialLinksToContractParcels } = useContracts();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -110,7 +115,14 @@ export default function ContractDetail() {
   const [recDueDate, setRecDueDate] = useState('');
   const [recFrequency, setRecFrequency] = useState('unica');
   const [recInstallments, setRecInstallments] = useState('1');
+  const [recAccountId, setRecAccountId] = useState('');
+  const [recCategory, setRecCategory] = useState('');
   const [recSaving, setRecSaving] = useState(false);
+  // "Aplicar conta/categoria a todas as parcelas" (contratos antigos sem vínculo).
+  const [showApplyLinksModal, setShowApplyLinksModal] = useState(false);
+  const [applyAccountId, setApplyAccountId] = useState('');
+  const [applyCategory, setApplyCategory] = useState('');
+  const [applySaving, setApplySaving] = useState(false);
   const [eqPage, setEqPage] = useState(1);
   const [editingRecTransaction, setEditingRecTransaction] = useState<any>(null);
   const [showEditRecModal, setShowEditRecModal] = useState(false);
@@ -287,6 +299,23 @@ export default function ContractDetail() {
     }
   };
 
+  // Opções de conta bancária / caixa (todas ativas). SearchableSelect porque a
+  // lista de contas pode crescer.
+  const accountOptions = useMemo(
+    () => (accounts || [])
+      .filter((a: any) => a.is_active !== false)
+      .map((a: any) => ({ value: a.id, label: a.name, sublabel: a.bank_name || a.institution_name || undefined })),
+    [accounts],
+  );
+
+  // Categorias de RECEITA (contas a receber são entrada). Inclui as 'ambos'.
+  const receivableCategoryOptions = useMemo(
+    () => (categories || [])
+      .filter((c: any) => c.is_active !== false && (c.type === 'receita' || c.type === 'ambos'))
+      .map((c: any) => ({ value: c.name, label: c.name })),
+    [categories],
+  );
+
   const handleCreateReceivable = async () => {
     if (!recDescription || !recAmount || !contract) return;
     setRecSaving(true);
@@ -300,7 +329,9 @@ export default function ContractDetail() {
         const dueDate = addMonths(baseDate, i * (freqOption?.months || 0));
         const suffix = numInstallments > 1 ? ` (${i + 1}/${numInstallments})` : '';
         const monthLabel = numInstallments > 1 ? ` - ${format(dueDate, 'MMM/yyyy', { locale: ptBR })}` : '';
-        
+
+        // Grava conta + categoria em TODAS as parcelas (além de cliente/contrato),
+        // pra já sair validado no financeiro sem editar parcela a parcela.
         await createTransaction.mutateAsync({
           transaction_type: 'entrada',
           description: `${recDescription}${monthLabel}${suffix}`,
@@ -309,6 +340,8 @@ export default function ContractDetail() {
           due_date: format(dueDate, 'yyyy-MM-dd'),
           is_paid: false,
           customer_id: contract.customer_id,
+          account_id: recAccountId || null,
+          category: recCategory || undefined,
           notes: `Vinculado ao contrato: ${contract.name}`,
           contract_id: id,
         } as any);
@@ -320,8 +353,29 @@ export default function ContractDetail() {
       setRecDueDate('');
       setRecFrequency('unica');
       setRecInstallments('1');
+      // Conta/categoria escolhidas ficam memorizadas pro próximo lançamento.
     } finally {
       setRecSaving(false);
+    }
+  };
+
+  const handleApplyLinksToAllParcels = async () => {
+    if (!contract || !id) return;
+    if (!applyAccountId && !applyCategory) return;
+    setApplySaving(true);
+    try {
+      await applyFinancialLinksToContractParcels.mutateAsync({
+        contractId: id,
+        customerId: contract.customer_id,
+        accountId: applyAccountId || null,
+        category: applyCategory || null,
+      });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      setShowApplyLinksModal(false);
+      setApplyAccountId('');
+      setApplyCategory('');
+    } finally {
+      setApplySaving(false);
     }
   };
 
@@ -441,6 +495,15 @@ export default function ContractDetail() {
 
   const totalReceivable = (linkedTransactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
   const totalPaid = (linkedTransactions || []).filter(t => t.is_paid).reduce((sum, t) => sum + Number(t.amount), 0);
+  // Pendente = previsto - recebido. Atrasado = parcelas NÃO pagas cujo
+  // vencimento já passou (timezone Brasil: comparamos só a data, sem hora).
+  const totalPending = totalReceivable - totalPaid;
+  const todayLocal = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+  const overdueTransactions = (linkedTransactions || []).filter(
+    t => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal),
+  );
+  const totalOverdue = overdueTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+  const overdueCount = overdueTransactions.length;
 
   // Onda C — contexto pra pré-preencher templates rich dos docs PMOC.
   // Os campos abaixo vivem em colunas adicionadas pela Onda A/B (RT) — usamos
@@ -562,18 +625,20 @@ export default function ContractDetail() {
         contratos não-PMOC seguem direto pra "Visão Geral" sem nav.
       */}
       {(() => {
-        // Abas PMOC (4): Visão Geral, Ocorrências, Documentos, Cronograma.
+        // Abas PMOC (5): Visão Geral, Ocorrências, Financeiro, Documentos, Cronograma.
         const pmocSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
+          { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
           { value: 'documentos', label: 'Documentos', icon: FileText },
           { value: 'cronograma', label: 'Cronograma', icon: Calendar },
         ];
 
-        // Abas de contrato comum (2): Visão Geral + Ocorrências.
+        // Abas de contrato comum (3): Visão Geral + Ocorrências + Financeiro.
         const commonSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: 'Visão Geral', icon: Info },
           { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
+          { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
         ];
 
         const overviewContent = (
@@ -749,79 +814,6 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          {/* Receivables */}
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-            <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
-              <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
-                <DollarSign className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 break-words">Contas a Receber</span>
-              </CardTitle>
-              <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={showBillingInSchedule}
-                    onCheckedChange={handleToggleBillingInSchedule}
-                    id="billing-schedule-toggle"
-                  />
-                  <Label htmlFor="billing-schedule-toggle" className="text-xs cursor-pointer whitespace-nowrap">
-                    {showBillingInSchedule ? <Eye className="inline h-3.5 w-3.5 mr-1" /> : <EyeOff className="inline h-3.5 w-3.5 mr-1" />}
-                    Agenda
-                  </Label>
-                </div>
-                <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => {
-                  setRecDescription(`Mensalidade - ${contract.name}`);
-                  setShowReceivableModal(true);
-                }}>
-                  <Plus className="mr-1 h-4 w-4" /> Nova Receita
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="min-w-0">
-              {(linkedTransactions || []).length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">Nenhuma conta vinculada a este contrato</p>
-              ) : (
-                <div className="space-y-2 min-w-0">
-                  {recPagination.paginatedItems.map(t => (
-                    <div key={t.id} className="space-y-2 rounded-xl border p-3 text-sm min-w-0">
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{t.description}</p>
-                          <p className="break-words text-xs text-muted-foreground">
-                            {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
-                          </p>
-                        </div>
-                        <Badge variant={t.is_paid ? 'success' : 'outline'} className="shrink-0">{t.is_paid ? 'Pago' : 'Pendente'}</Badge>
-                      </div>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
-                        <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
-                          {!t.is_paid && (
-                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-success active:scale-90 transition-transform rounded-xl" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
-                              <Check className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-warning active:scale-90 transition-transform rounded-xl" title="Editar" onClick={() => handleOpenEditRec(t)}>
-                            <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-destructive active:scale-90 transition-transform rounded-xl" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
-                            <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex flex-col gap-1 border-t pt-2 text-sm sm:flex-row sm:justify-between">
-                    <span className="text-muted-foreground break-words">Total: R$ {formatBRL(totalReceivable)}</span>
-                    <span className="text-muted-foreground break-words">Recebido: R$ {formatBRL(totalPaid)}</span>
-                  </div>
-                  <div className="min-w-0 overflow-x-auto">
-                    <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
         </div>
 
         {/* Right column */}
@@ -854,24 +846,6 @@ export default function ContractDetail() {
               <Button variant="outline" className="mt-2 w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowRenewDialog(true)}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Renovar Contrato
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-            <CardHeader><CardTitle className="text-base break-words">Financeiro</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm min-w-0">
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <span className="text-muted-foreground">Total a receber</span>
-                <span className="min-w-0 break-words text-right font-medium text-success">R$ {formatBRL(totalReceivable)}</span>
-              </div>
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <span className="text-muted-foreground">Recebido</span>
-                <span className="min-w-0 break-words text-right font-medium">R$ {formatBRL(totalPaid)}</span>
-              </div>
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <span className="text-muted-foreground">Pendente</span>
-                <span className="min-w-0 break-words text-right font-medium text-warning">R$ {formatBRL(totalReceivable - totalPaid)}</span>
-              </div>
             </CardContent>
           </Card>
 
@@ -1031,16 +1005,154 @@ export default function ContractDetail() {
           </Card>
         );
 
-        // "Ocorrências" virou aba própria em TODO contrato. PMOC tem 4 abas;
-        // contrato comum tem 2 (Visão Geral + Ocorrências).
+        // Aba "Financeiro" (própria, em todo contrato). Recorte SÓ deste contrato
+        // (financial_transactions filtradas por contract_id). Mini-resumo no topo
+        // (previsto / recebido / pendente / atrasado) + lista das parcelas com
+        // status (pago/pendente/atrasado) + ações Nova Receita e Aplicar a todas.
+        // NÃO duplica a tela geral de Movimentações — é só o que toca o contrato.
+        const financialContent = (
+          <div className="space-y-6 min-w-0 w-full">
+            {/* Mini-resumo: 4 KPIs do contrato. Grid 2 colunas no mobile, 4 no desktop. */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">Previsto</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalReceivable)}</p>
+                </CardContent>
+              </Card>
+              <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">Recebido</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold text-success break-words tabular-nums">R$ {formatBRL(totalPaid)}</p>
+                </CardContent>
+              </Card>
+              <Card className="min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">Pendente</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold text-warning break-words tabular-nums">R$ {formatBRL(totalPending)}</p>
+                </CardContent>
+              </Card>
+              <Card className={cn(
+                'min-w-0 rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm',
+                overdueCount > 0 && 'border-destructive/40 bg-destructive/5',
+              )}>
+                <CardContent className="p-3 sm:p-4 min-w-0">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">
+                    Atrasado{overdueCount > 0 ? ` (${overdueCount})` : ''}
+                  </p>
+                  <p className={cn(
+                    'mt-1 text-base sm:text-lg font-bold break-words tabular-nums',
+                    overdueCount > 0 ? 'text-destructive' : 'text-muted-foreground',
+                  )}>R$ {formatBRL(totalOverdue)}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Lista das parcelas (contas a receber) deste contrato + ações. */}
+            <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+              <CardHeader className="flex flex-col items-start justify-between space-y-2 sm:flex-row sm:items-center sm:space-y-0">
+                <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
+                  <DollarSign className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 break-words">Contas a Receber</span>
+                </CardTitle>
+                <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={showBillingInSchedule}
+                      onCheckedChange={handleToggleBillingInSchedule}
+                      id="billing-schedule-toggle"
+                    />
+                    <Label htmlFor="billing-schedule-toggle" className="text-xs cursor-pointer whitespace-nowrap">
+                      {showBillingInSchedule ? <Eye className="inline h-3.5 w-3.5 mr-1" /> : <EyeOff className="inline h-3.5 w-3.5 mr-1" />}
+                      Agenda
+                    </Label>
+                  </div>
+                  {(linkedTransactions || []).length > 0 && (
+                    <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => {
+                      setApplyAccountId('');
+                      setApplyCategory('');
+                      setShowApplyLinksModal(true);
+                    }}>
+                      <RefreshCw className="mr-1 h-4 w-4" /> Aplicar a todas
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform rounded-xl" onClick={() => {
+                    setRecDescription(`Mensalidade - ${contract.name}`);
+                    setShowReceivableModal(true);
+                  }}>
+                    <Plus className="mr-1 h-4 w-4" /> Nova Receita
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="min-w-0">
+                {(linkedTransactions || []).length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">Nenhuma conta vinculada a este contrato</p>
+                ) : (
+                  <div className="space-y-2 min-w-0">
+                    {recPagination.paginatedItems.map(t => {
+                      // Status da parcela: pago (verde) > atrasado (vermelho) > pendente (neutro).
+                      const isOverdue = !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), todayLocal);
+                      return (
+                      <div key={t.id} className={cn(
+                        'space-y-2 rounded-xl border p-3 text-sm min-w-0',
+                        isOverdue && 'border-destructive/40 bg-destructive/5',
+                      )}>
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{t.description}</p>
+                            <p className={cn('break-words text-xs', isOverdue ? 'text-destructive' : 'text-muted-foreground')}>
+                              {t.due_date ? `Vence ${format(parseLocalDate(t.due_date), 'dd/MM/yyyy')}` : format(parseLocalDate(t.transaction_date), 'dd/MM/yyyy')}
+                            </p>
+                          </div>
+                          <Badge variant={t.is_paid ? 'success' : isOverdue ? 'destructive' : 'outline'} className="shrink-0">
+                            {t.is_paid ? 'Pago' : isOverdue ? 'Atrasado' : 'Pendente'}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
+                          <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
+                            {!t.is_paid && (
+                              <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-success active:scale-90 transition-transform rounded-xl" title="Marcar pago" onClick={() => { markTxPaid.mutateAsync(t.id).then(() => queryClient.invalidateQueries({ queryKey: ['contract-detail'] })); }}>
+                                <Check className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-warning active:scale-90 transition-transform rounded-xl" title="Editar" onClick={() => handleOpenEditRec(t)}>
+                              <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 sm:h-7 sm:w-7 sm:min-h-7 sm:min-w-7 text-destructive active:scale-90 transition-transform rounded-xl" title="Excluir" onClick={() => setDeletingRecId(t.id)}>
+                              <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      );
+                    })}
+                    <div className="flex flex-col gap-1 border-t pt-2 text-sm sm:flex-row sm:justify-between">
+                      <span className="text-muted-foreground break-words">Total: R$ {formatBRL(totalReceivable)}</span>
+                      <span className="text-muted-foreground break-words">Recebido: R$ {formatBRL(totalPaid)}</span>
+                    </div>
+                    <div className="min-w-0 overflow-x-auto">
+                      <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+        // "Ocorrências" e "Financeiro" viraram abas próprias em TODO contrato.
+        // PMOC tem 5 abas; contrato comum tem 3 (Visão Geral + Ocorrências +
+        // Financeiro).
         return (
           <SettingsSidebarLayout
             tabs={isPmoc ? pmocSidebarTabs : commonSidebarTabs}
             activeTab={pmocTab}
-            onTabChange={(v) => setPmocTab(v as 'overview' | 'ocorrencias' | 'documentos' | 'cronograma')}
+            onTabChange={(v) => setPmocTab(v as 'overview' | 'ocorrencias' | 'financeiro' | 'documentos' | 'cronograma')}
           >
             {pmocTab === 'overview' && overviewContent}
             {pmocTab === 'ocorrencias' && occurrencesContent}
+            {pmocTab === 'financeiro' && financialContent}
             {isPmoc && pmocTab === 'documentos' && id && (
               <PmocContractDocsTab
                 contractId={id}
@@ -1074,6 +1186,27 @@ export default function ContractDetail() {
             <Input type="number" step="0.01" value={recAmount} onChange={e => setRecAmount(e.target.value)} placeholder="0,00" />
           </div>
           <div>
+            <Label>Conta bancária / caixa</Label>
+            <SearchableSelect
+              options={accountOptions}
+              value={recAccountId}
+              onValueChange={setRecAccountId}
+              placeholder="Selecione a conta de recebimento"
+              searchPlaceholder="Buscar conta..."
+            />
+            <p className="text-xs text-muted-foreground mt-1">Conta para onde o dinheiro vai. Aplicada a todas as parcelas.</p>
+          </div>
+          <div>
+            <Label>Categoria</Label>
+            <SearchableSelect
+              options={receivableCategoryOptions}
+              value={recCategory}
+              onValueChange={setRecCategory}
+              placeholder="Selecione a categoria"
+              searchPlaceholder="Buscar categoria..."
+            />
+          </div>
+          <div>
             <Label>Data de Vencimento (1ª parcela)</Label>
             <Input type="date" value={recDueDate} onChange={e => setRecDueDate(e.target.value)} />
           </div>
@@ -1099,6 +1232,45 @@ export default function ContractDetail() {
           <Button className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={handleCreateReceivable} disabled={recSaving || !recDescription || !recAmount}>
             {recSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
             {recFrequency !== 'unica' ? `Criar ${recInstallments || 1} Parcelas` : 'Criar Conta a Receber'}
+          </Button>
+        </div>
+      </ResponsiveModal>
+
+      {/* Aplicar conta/categoria a TODAS as parcelas deste contrato.
+          Resolve contratos antigos cujas parcelas nasceram sem vínculo. */}
+      <ResponsiveModal open={showApplyLinksModal} onOpenChange={setShowApplyLinksModal} title="Aplicar a todas as parcelas">
+        <div className="space-y-4 p-1">
+          <p className="text-sm text-muted-foreground">
+            Define a conta bancária e/ou categoria em <strong>todas as {(linkedTransactions || []).length} parcelas</strong> deste
+            contrato de uma vez. Deixe um campo em branco para não alterá-lo.
+          </p>
+          <div>
+            <Label>Conta bancária / caixa</Label>
+            <SearchableSelect
+              options={accountOptions}
+              value={applyAccountId}
+              onValueChange={setApplyAccountId}
+              placeholder="Selecione a conta"
+              searchPlaceholder="Buscar conta..."
+            />
+          </div>
+          <div>
+            <Label>Categoria</Label>
+            <SearchableSelect
+              options={receivableCategoryOptions}
+              value={applyCategory}
+              onValueChange={setApplyCategory}
+              placeholder="Selecione a categoria"
+              searchPlaceholder="Buscar categoria..."
+            />
+          </div>
+          <Button
+            className="w-full min-h-11 active:scale-[0.98] transition-transform rounded-xl"
+            onClick={handleApplyLinksToAllParcels}
+            disabled={applySaving || (!applyAccountId && !applyCategory)}
+          >
+            {applySaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Aplicar a {(linkedTransactions || []).length} parcela{(linkedTransactions || []).length > 1 ? 's' : ''}
           </Button>
         </div>
       </ResponsiveModal>

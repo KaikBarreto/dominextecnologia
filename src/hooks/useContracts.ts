@@ -36,6 +36,10 @@ export interface Contract {
   // Cronograma). O gestor libera/oculta na aba Documentos do contrato.
   portal_documents_released: boolean;
   customers?: { id: string; name: string; document?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
+  // Alias singular do MESMO cliente do contrato (FK customer_id). Existe porque
+  // alguns consumidores (ex.: select "Contrato vinculado" no financeiro) leem
+  // `contract.customer?.name`. Sem este alias o label caía em "Sem cliente".
+  customer?: { id: string; name: string } | null;
   responsible_technicians?: { id: string; full_name: string; cft_crea: string | null; modality: string | null } | null;
   contract_items?: ContractItem[];
   // OSs do contrato — fonte única das "visitas". Embute via FK
@@ -130,6 +134,7 @@ export function useContracts() {
         .select(`
           *,
           customers (id, name, document, address, city, state),
+          customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, item_name, item_description, form_template_id, sort_order, equipment:equipment(id, name, brand, model)),
           service_orders (id, order_number, status, scheduled_date)
@@ -370,6 +375,53 @@ export function useContracts() {
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: getErrorMessage(e) }),
   });
 
+  /**
+   * Aplica conta bancária / categoria (e cliente, se faltar) a TODAS as parcelas
+   * (financial_transactions) de um contrato de uma vez. Resolve contratos antigos
+   * cujas parcelas nasceram sem vínculo de conta/categoria (ex.: "Daluz Galpão"
+   * com 48 parcelas). Idempotente: rodar de novo só reescreve os mesmos valores.
+   *
+   * - `account_id` e `category` só entram no update quando informados (não apaga
+   *   o que já existe se o gestor deixar em branco).
+   * - `customer_id` é sempre garantido (todas as parcelas do contrato são do
+   *   mesmo cliente do contrato).
+   */
+  const applyFinancialLinksToContractParcels = useMutation({
+    mutationFn: async (input: {
+      contractId: string;
+      customerId: string;
+      accountId?: string | null;
+      category?: string | null;
+    }) => {
+      const patch: Record<string, any> = { customer_id: input.customerId };
+      if (input.accountId) patch.account_id = input.accountId;
+      if (input.category) patch.category = input.category;
+
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .update(patch as any)
+        .eq('contract_id', input.contractId)
+        .select('id');
+
+      if (error) throw error;
+      return { updatedCount: (data || []).length };
+    },
+    onSuccess: ({ updatedCount }) => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      toast({
+        title: updatedCount > 0
+          ? `Vínculos aplicados a ${updatedCount} parcela${updatedCount > 1 ? 's' : ''}`
+          : 'Nenhuma parcela para atualizar',
+      });
+    },
+    onError: (e: Error) =>
+      toast({ variant: 'destructive', title: 'Erro ao aplicar vínculos', description: getErrorMessage(e) }),
+  });
+
   const updateContractStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase.from('contracts').update({ status } as any).eq('id', id);
@@ -583,6 +635,7 @@ export function useContracts() {
     createContract,
     updateContract,
     updateContractStatus,
+    applyFinancialLinksToContractParcels,
     setPortalDocumentsReleased,
     deleteContract,
     stats: {

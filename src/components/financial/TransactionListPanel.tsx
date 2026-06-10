@@ -7,7 +7,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
-import { generateMovimentacoesReportHtml, type MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
+import { type MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGenerator';
+import { generateMovimentacoesReportPdf } from '@/utils/movimentacoesPdfGenerator';
 import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
 import { useTransactionAttachmentsCounts } from '@/hooks/useTransactionAttachments';
 import { Button } from '@/components/ui/button';
@@ -252,13 +253,17 @@ export function TransactionListPanel({
       isPaid: !!t.is_paid,
     }));
 
-  const handleExportPDF = () => {
-    generateMovimentacoesReportHtml({
-      company: companySettings,
-      whiteLabel: whiteLabelEnabled,
-      title,
-      rows: buildExportRows(),
-    });
+  const handleExportPDF = async () => {
+    try {
+      await generateMovimentacoesReportPdf({
+        company: companySettings,
+        whiteLabel: whiteLabelEnabled,
+        title,
+        rows: buildExportRows(),
+      });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: getErrorMessage(e) });
+    }
   };
 
   const handleExportExcel = async () => {

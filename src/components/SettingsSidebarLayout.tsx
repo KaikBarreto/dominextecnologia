@@ -8,8 +8,10 @@ export interface SettingsTab {
   label: string;
   icon: LucideIcon;
   group?: string;
-  /** Texto menor abaixo do label (ex: saldo da conta). Só no desktop. */
+  /** Texto menor abaixo do label (ex: saldo da conta). Desktop. */
   sublabel?: string;
+  /** Versão compacta do sublabel pra pill no mobile (fallback: sublabel). */
+  mobileSublabel?: string;
   /** Slot à direita da aba (ex: menu de 3 pontinhos). Só no desktop; aparece no hover/active. */
   rightElement?: React.ReactNode;
 }
@@ -48,7 +50,7 @@ export function SettingsSidebarLayout({
     return (
       <div className="space-y-4">
         <MobilePillTabs
-          tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" /> }))}
+          tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" />, sublabel: t.mobileSublabel ?? t.sublabel }))}
           activeTab={activeTab}
           onTabChange={onTabChange}
         />

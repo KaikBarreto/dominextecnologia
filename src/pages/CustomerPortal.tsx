@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -523,17 +523,13 @@ export default function CustomerPortal() {
           {equipment.length > 0 && (
             <div>
               <Label>Equipamento (opcional)</Label>
-              <Select value={ticketEquipmentId || 'none'} onValueChange={v => setTicketEquipmentId(v === 'none' ? '' : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {equipment.map(eq => (
-                    <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={[{ value: 'none', label: 'Nenhum' }, ...equipment.map(eq => ({ value: eq.id, label: eq.name }))]}
+                value={ticketEquipmentId || 'none'}
+                onValueChange={v => setTicketEquipmentId(v === 'none' ? '' : v)}
+                placeholder="Selecione..."
+                searchPlaceholder="Buscar equipamento..."
+              />
             </div>
           )}
           <Button className="w-full" onClick={handleSubmitTicket} disabled={ticketSubmitting || !ticketDesc.trim()}>

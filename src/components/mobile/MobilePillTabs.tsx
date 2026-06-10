@@ -5,6 +5,8 @@ export interface PillTab {
   value: string;
   label: string;
   icon?: ReactNode;
+  /** Texto menor à direita do label (ex: saldo/fatura da conta). */
+  sublabel?: string;
 }
 
 interface MobilePillTabsProps {
@@ -40,6 +42,16 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className }: Mobi
             >
               {tab.icon}
               <span className="whitespace-nowrap">{tab.label}</span>
+              {tab.sublabel && (
+                <span
+                  className={cn(
+                    'whitespace-nowrap text-xs font-semibold tabular-nums',
+                    isActive ? 'text-primary-foreground/80' : 'text-muted-foreground/70',
+                  )}
+                >
+                  {tab.sublabel}
+                </span>
+              )}
             </button>
           );
         })}
