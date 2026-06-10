@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Link2, Copy, Loader2, FileText, Megaphone, CheckSquare, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -78,7 +78,6 @@ export default function CustomerDetail() {
   const [editingContact, setEditingContact] = useState<typeof contacts[0] | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
   const [portalLink, setPortalLink] = useState<string | null>(null);
-  const [generatingPortal, setGeneratingPortal] = useState(false);
   const [contractFormOpen, setContractFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -122,41 +121,22 @@ export default function CustomerDetail() {
     return allTabs;
   }, [canViewCustomerFinancial, hasPortal]);
 
-  // Load existing portal link
+  // Portal é criado automaticamente para todo cliente: apenas buscamos o token ativo existente.
   useEffect(() => {
     if (!id) return;
+    let active = true;
     supabase
       .from('customer_portals')
       .select('token')
       .eq('customer_id', id)
       .eq('is_active', true)
       .limit(1)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
-        if (data) setPortalLink(`${window.location.origin}/portal/${(data as any).token}`);
+        if (active && data) setPortalLink(`${window.location.origin}/portal/${(data as any).token}`);
       });
+    return () => { active = false; };
   }, [id]);
-
-  const handleGeneratePortal = async () => {
-    if (!id) return;
-    setGeneratingPortal(true);
-    try {
-      const { data, error } = await supabase
-        .from('customer_portals')
-        .insert({ customer_id: id } as any)
-        .select('token')
-        .single();
-      if (error) throw error;
-      const link = `${window.location.origin}/portal/${(data as any).token}`;
-      setPortalLink(link);
-      navigator.clipboard.writeText(link);
-      toast({ title: 'Link do portal gerado e copiado!' });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(err) });
-    } finally {
-      setGeneratingPortal(false);
-    }
-  };
 
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -198,16 +178,16 @@ export default function CustomerDetail() {
           </div>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap pl-11 sm:pl-0 justify-center sm:justify-end w-full sm:w-auto">
-          {hasPortal && (portalLink ? (
-            <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(portalLink); toast({ title: 'Link copiado!' }); }}>
-              <Copy className="h-4 w-4 mr-1" /> Portal
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleGeneratePortal} disabled={generatingPortal}>
-              {generatingPortal ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
-              Gerar Portal
-            </Button>
-          ))}
+          {hasPortal && portalLink && (
+            <>
+              <Button variant="outline" size="sm" className="min-h-[44px]" onClick={() => { navigator.clipboard.writeText(portalLink); toast({ title: 'Link do portal copiado!' }); }}>
+                <Copy className="h-4 w-4 mr-1" /> Copiar link do portal
+              </Button>
+              <Button variant="outline" size="sm" className="min-h-[44px]" onClick={() => window.open(portalLink, '_blank', 'noopener,noreferrer')}>
+                <ExternalLink className="h-4 w-4 mr-1" /> Abrir portal
+              </Button>
+            </>
+          )}
           <Button variant="edit-ghost" size="sm" className="min-h-[44px]" onClick={() => setEditCustomerOpen(true)}>
             <Edit className="h-4 w-4 mr-1" /> Editar
           </Button>

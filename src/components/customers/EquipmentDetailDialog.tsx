@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag, ExternalLink, Copy } from 'lucide-react';
+import { Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, QrCode, Download, Tag, ExternalLink, Copy, Loader2 } from 'lucide-react';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
@@ -49,7 +49,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
-  const { data: portalToken } = useQuery({
+  const { data: portalToken, isLoading: portalTokenLoading } = useQuery({
     queryKey: ['portalToken', equipment?.customer_id],
     queryFn: async () => {
       if (!equipment?.customer_id) return null;
@@ -64,12 +64,13 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
     enabled: !!equipment?.customer_id,
   });
 
-  const qrValue = equipment
-    ? portalToken
-      ? `${window.location.origin}/portal/${portalToken}?eq=${equipment.id}`
-      : `EQ-${equipment.identifier || equipment.id}`
+  // Todo cliente tem portal automático: o QR sempre aponta para o portal + deep-link do equipamento.
+  const qrValue = equipment && portalToken
+    ? `${window.location.origin}/portal/${portalToken}?eq=${equipment.id}`
     : '';
-  const hasPortalLink = !!portalToken;
+  // Aguardando o token: query habilitada (tem customer_id) e ainda carregando, ou sem token resolvido.
+  const portalTokenPending = !!equipment?.customer_id && portalTokenLoading;
+  const hasPortalLink = !!qrValue;
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -174,7 +175,17 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
             {/* QR Code section */}
             <div className="flex items-start gap-4 p-4 rounded-lg border bg-muted/30">
               <div className="shrink-0">
-                <QRCodeSVG value={qrValue} size={80} />
+                {portalTokenPending ? (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-md bg-muted">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : qrValue ? (
+                  <QRCodeSVG value={qrValue} size={80} />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-md bg-muted">
+                    <QrCode className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
               </div>
               <div className="flex-1 space-y-1">
                 {equipment.identifier && (
@@ -205,7 +216,9 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     Copiar link
                   </Button>
                 </div>
-                {!hasPortalLink && <p className="text-xs text-muted-foreground">Cliente sem portal ativo</p>}
+                {!portalTokenPending && !hasPortalLink && (
+                  <p className="text-xs text-muted-foreground">Equipamento sem cliente vinculado</p>
+                )}
               </div>
             </div>
 
@@ -443,7 +456,17 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                   {companySettings.email && <p className="text-[10px] text-muted-foreground">{companySettings.email}</p>}
                 </>
               )}
-              <QRCodeSVG value={qrValue} size={100} />
+              {portalTokenPending ? (
+                <div className="flex h-[100px] w-[100px] items-center justify-center rounded-md bg-muted">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : qrValue ? (
+                <QRCodeSVG value={qrValue} size={100} />
+              ) : (
+                <div className="flex h-[100px] w-[100px] items-center justify-center rounded-md bg-muted">
+                  <QrCode className="h-7 w-7 text-muted-foreground" />
+                </div>
+              )}
               <p className="text-[10px] text-muted-foreground">Nome do equipamento</p>
               <p className="text-xs font-bold">{equipment.name}</p>
               <p className="text-[10px] text-muted-foreground">Identificador</p>
