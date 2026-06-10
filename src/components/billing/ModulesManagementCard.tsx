@@ -19,6 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { usePlanChange } from '@/hooks/usePlanChange';
+import { useUsers } from '@/hooks/useUsers';
+import { UserExcessModal } from '@/components/billing/UserExcessModal';
 import { calculateYearlyPrice, calculateMonthlyEquivalent } from '@/utils/subscriptionPricing';
 
 const EXTRA_USER_PRICE = 50;
@@ -71,7 +73,7 @@ export function ModulesManagementCard({
   focusUsers = false,
   onAutoOpenConsumed,
 }: ModulesManagementCardProps = {}) {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const companyId = profile?.company_id ?? null;
 
   const {
@@ -87,6 +89,7 @@ export function ModulesManagementCard({
   } = useCompanyModules();
 
   const planChange = usePlanChange();
+  const { users } = useUsers();
 
   // Catálogo de módulos (preço + descrição). Read de catálogo — fronteira via hook
   // não é necessária; é leitura pública de billing.
@@ -131,6 +134,12 @@ export function ModulesManagementCard({
   const [customModules, setCustomModules] = useState<string[]>([]);
   const [customExtraUsers, setCustomExtraUsers] = useState(0);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  // Excesso de usuários no downgrade: guarda a mudança pendente até o cliente
+  // reduzir os usuários; só então aplica o plano.
+  const [excessOpen, setExcessOpen] = useState(false);
+  const [pendingChange, setPendingChange] = useState<
+    { planCode: string; monthlyValue: number; targetMaxUsers: number } | null
+  >(null);
   const usersSectionRef = useRef<HTMLDivElement | null>(null);
   const autoOpenConsumed = useRef(false);
 
@@ -227,7 +236,8 @@ export function ModulesManagementCard({
     return 'igual';
   };
 
-  const handleConfirm = (planCode: string, monthlyValue: number) => {
+  // Aplica de fato a mudança de plano via edge (após eventual redução de usuários).
+  const applyChange = (planCode: string, monthlyValue: number) => {
     if (!companyId) {
       toast.error('Empresa não encontrada.');
       return;
@@ -252,6 +262,30 @@ export function ModulesManagementCard({
         },
       },
     );
+  };
+
+  // Confirma a escolha do cliente. Se o plano alvo comporta MENOS usuários do que
+  // a empresa tem hoje, abre o UserExcessModal pra reduzir ANTES de aplicar.
+  const handleConfirm = (planCode: string, monthlyValue: number, targetMaxUsers: number) => {
+    if (!companyId) {
+      toast.error('Empresa não encontrada.');
+      return;
+    }
+    if (targetMaxUsers < currentUserCount) {
+      setPendingChange({ planCode, monthlyValue, targetMaxUsers });
+      setExcessOpen(true);
+      return;
+    }
+    applyChange(planCode, monthlyValue);
+  };
+
+  // Depois que os usuários excedentes foram removidos, segue com o downgrade.
+  const handleUsersReduced = () => {
+    setExcessOpen(false);
+    if (pendingChange) {
+      applyChange(pendingChange.planCode, pendingChange.monthlyValue);
+      setPendingChange(null);
+    }
   };
 
   // Aviso de upgrade/downgrade reutilizável.
@@ -470,8 +504,10 @@ export function ModulesManagementCard({
                 disabled={!selectedPlan || planChange.isPending}
                 onClick={() => {
                   if (!selectedPlan) return;
-                  const price = presetPlans.find((p) => p.code === selectedPlan)?.price ?? 0;
-                  handleConfirm(selectedPlan, price);
+                  const sel = presetPlans.find((p) => p.code === selectedPlan);
+                  const price = sel?.price ?? 0;
+                  const targetMaxUsers = sel?.max_users ?? 0;
+                  handleConfirm(selectedPlan, price, targetMaxUsers);
                 }}
               >
                 {planChange.isPending ? (
@@ -595,7 +631,7 @@ export function ModulesManagementCard({
               <Button
                 className="flex-1"
                 disabled={planChange.isPending || customMonthly <= 0}
-                onClick={() => handleConfirm('personalizado', customMonthly)}
+                onClick={() => handleConfirm('personalizado', customMonthly, BASE_USERS + customExtraUsers)}
               >
                 {planChange.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Atualizando...</>
@@ -607,6 +643,15 @@ export function ModulesManagementCard({
           </TabsContent>
         </Tabs>
       </ResponsiveModal>
+
+      <UserExcessModal
+        open={excessOpen}
+        onOpenChange={setExcessOpen}
+        users={users}
+        currentUserId={user?.id}
+        targetMaxUsers={pendingChange?.targetMaxUsers ?? maxUsers}
+        onReduced={handleUsersReduced}
+      />
     </>
   );
 }

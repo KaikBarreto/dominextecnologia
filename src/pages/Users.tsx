@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Plus, LayoutList, LayoutGrid, Users as UsersIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -32,11 +33,12 @@ import { getErrorMessage } from '@/utils/errorMessages';
 export default function Users() {
   const isMobile = useIsMobile();
   const { users, isLoading, updateUserRole, canManageRoles, currentUserRole } = useUsers();
-  const { userPermissions, upsertPermissions, toggleActive } = useUserPermissions();
+  const { userPermissions, upsertPermissions } = useUserPermissions();
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
   const { maxUsers, currentUserCount, canAddUser } = useCompanyModules();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { employees } = useEmployees();
   const [searchQuery, setSearchQuery] = useState('');
   const [userFormOpen, setUserFormOpen] = useState(false);
@@ -224,12 +226,36 @@ export default function Users() {
     }
   };
 
-  const handleToggleActive = async (userId: string, currentActive: boolean) => {
-    const perm = getUserPermission(userId);
-    if (perm) {
-      await toggleActive.mutateAsync({ user_id: userId, is_active: !currentActive });
-    } else {
-      await upsertPermissions.mutateAsync({ user_id: userId, permissions: [], is_active: false });
+  // Desativar conta (reversível): libera slot e derruba a sessão do usuário.
+  const handleDeactivateUser = async (userProfile: UserWithRole) => {
+    if (userProfile.user_id === user?.id) return; // não pode se desativar
+    try {
+      const { data: result, error } = await supabase.functions.invoke('manage-user', {
+        body: { action: 'deactivate_user', user_id: userProfile.user_id },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      toast({ title: 'Usuário desativado', description: 'O slot foi liberado. Você pode reativá-lo depois.' });
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await queryClient.invalidateQueries({ queryKey: ['company-user-count'] });
+    } catch (e: any) {
+      toast({ title: 'Erro ao desativar', description: getErrorMessage(e), variant: 'destructive' });
+    }
+  };
+
+  // Reativar conta: só funciona se houver slot livre (a edge valida server-side).
+  const handleReactivateUser = async (userProfile: UserWithRole) => {
+    try {
+      const { data: result, error } = await supabase.functions.invoke('manage-user', {
+        body: { action: 'reactivate_user', user_id: userProfile.user_id },
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      toast({ title: 'Usuário reativado!' });
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await queryClient.invalidateQueries({ queryKey: ['company-user-count'] });
+    } catch (e: any) {
+      toast({ title: 'Erro ao reativar', description: getErrorMessage(e), variant: 'destructive' });
     }
   };
 
@@ -281,10 +307,8 @@ export default function Users() {
 
   const isCurrentUser = (profile: UserWithRole) => profile.user_id === user?.id;
 
-  const activeCount = users.filter(u => {
-    const perm = getUserPermission(u.user_id);
-    return !perm || perm.is_active;
-  }).length;
+  // Conta ativos pelo status da CONTA (profiles.is_active). undefined = ativo.
+  const activeCount = users.filter(u => u.is_active !== false).length;
 
   // ---------------------------------------------------------------------------
   // Preset handlers (lista nas tabs mobile abre dialog em modo edit/create)
@@ -364,10 +388,12 @@ export default function Users() {
               searchQuery={searchQuery}
               currentUserId={user?.id}
               canManageRoles={canManageRoles}
+              canAddUser={canAddUser}
               userPermissions={userPermissions}
               presets={presets}
               onEdit={openEditUser}
-              onToggleActive={handleToggleActive}
+              onDeactivate={handleDeactivateUser}
+              onReactivate={handleReactivateUser}
               onDelete={(u) => setDeletingUser(u)}
               onPreviewPhoto={(src, alt) => setPreviewPhoto({ src, alt })}
             />
@@ -574,7 +600,7 @@ export default function Users() {
             <div className={viewMode === 'cards' ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3' : 'space-y-3'}>
               {filteredUsers.map((userProfile) => {
                 const perm = getUserPermission(userProfile.user_id);
-                const isActive = !perm || perm.is_active;
+                const isActive = userProfile.is_active !== false;
                 const permCount = perm?.permissions?.length || 0;
                 const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
                 const isAllPerms = permCount >= getAllPermissionKeys().length;
@@ -641,28 +667,32 @@ export default function Users() {
                             </Button>
                             {!isCurrentUser(userProfile) && (
                               <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleToggleActive(userProfile.user_id, isActive)}
-                                  title={isActive ? 'Desativar usuário' : 'Ativar usuário'}
-                                  className={isActive
-                                    ? 'hover:bg-orange-500 hover:text-white hover:border-orange-500'
-                                    : 'hover:bg-green-600 hover:text-white hover:border-green-600'
-                                  }
-                                >
-                                  {isActive ? (
-                                    <>
-                                      <UserX className="h-4 w-4 sm:mr-2" />
-                                      <span className="hidden sm:inline">Desativar</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="h-4 w-4 sm:mr-2" />
-                                      <span className="hidden sm:inline">Ativar</span>
-                                    </>
-                                  )}
-                                </Button>
+                                {isActive ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeactivateUser(userProfile)}
+                                    title="Desativar usuário (reversível)"
+                                    className="hover:bg-orange-500 hover:text-white hover:border-orange-500"
+                                  >
+                                    <UserX className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Desativar</span>
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReactivateUser(userProfile)}
+                                    disabled={!canAddUser}
+                                    title={canAddUser
+                                      ? 'Reativar usuário'
+                                      : 'Sem slot livre — faça upgrade ou desative outro'}
+                                    className="hover:bg-green-600 hover:text-white hover:border-green-600"
+                                  >
+                                    <UserCheck className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Reativar</span>
+                                  </Button>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="sm"

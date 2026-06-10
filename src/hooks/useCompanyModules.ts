@@ -157,8 +157,9 @@ export function useCompanyModules() {
     staleTime: 30 * 60 * 1000,
   });
 
-  // Contagem de usuários da empresa. No Dominex `profiles` não tem coluna de
-  // "ativo" — cada profile da empresa conta como um usuário ocupado.
+  // Contagem de usuários da empresa. Só usuários ATIVOS (profiles.is_active)
+  // ocupam slot: desativar um usuário (reversível) libera espaço sem excluí-lo,
+  // então a contagem que alimenta `canAddUser` ignora os desativados.
   const { data: currentUserCount = 0 } = useQuery({
     queryKey: ['company-user-count', companyId],
     queryFn: async () => {
@@ -166,7 +167,8 @@ export function useCompanyModules() {
       const { count, error } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)
+        .eq('is_active', true);
       if (error) throw error;
       return count || 0;
     },

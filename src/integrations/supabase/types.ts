@@ -3630,6 +3630,7 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          is_active: boolean
           navigation_style: string
           phone: string | null
           updated_at: string
@@ -3643,6 +3644,7 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
+          is_active?: boolean
           navigation_style?: string
           phone?: string | null
           updated_at?: string
@@ -3656,6 +3658,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          is_active?: boolean
           navigation_style?: string
           phone?: string | null
           updated_at?: string

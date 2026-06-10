@@ -52,6 +52,35 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Helper: confirma que o alvo pertence à MESMA empresa do solicitante.
+    // Mesma fronteira de isolamento usada implicitamente pelo delete (que só é
+    // exposto pra quem tem can_manage_users na própria empresa). Aqui tornamos
+    // explícito server-side: ninguém mexe em usuário de outro tenant.
+    const sameCompanyAsCaller = async (targetUserId: string): Promise<boolean> => {
+      const { data: callerProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', callerId)
+        .maybeSingle();
+      const { data: targetProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', targetUserId)
+        .maybeSingle();
+      // super_admin (sem company) pode tudo; senão exige mesma empresa não-nula.
+      if (!callerProfile?.company_id) {
+        const { data: isSuper } = await supabaseAdmin.rpc('has_role', {
+          _user_id: callerId,
+          _role: 'super_admin',
+        });
+        return !!isSuper;
+      }
+      return (
+        !!targetProfile?.company_id &&
+        targetProfile.company_id === callerProfile.company_id
+      );
+    };
+
     // GET user email
     if (action === 'get_email') {
       try {
@@ -101,8 +130,132 @@ Deno.serve(async (req) => {
       });
     }
 
+    // DEACTIVATE user (reversível — libera slot sem destruir o usuário)
+    if (action === 'deactivate_user') {
+      // Não pode desativar a si mesmo (evita o admin se trancar pra fora).
+      if (user_id === callerId) {
+        return new Response(
+          JSON.stringify({ error: 'Você não pode desativar a si mesmo.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      if (!(await sameCompanyAsCaller(user_id))) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden: usuário de outra empresa' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const { error: deactivateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ is_active: false })
+        .eq('user_id', user_id);
+      if (deactivateError) {
+        return new Response(JSON.stringify({ error: deactivateError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Encerra a sessão ativa do usuário (mesmo mecanismo do delete: apaga
+      // active_sessions → o realtime do useForcedLogout o desconecta na hora).
+      await supabaseAdmin.from('active_sessions').delete().eq('user_id', user_id);
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // REACTIVATE user (só se houver slot livre no plano da empresa)
+    if (action === 'reactivate_user') {
+      if (!(await sameCompanyAsCaller(user_id))) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden: usuário de outra empresa' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      // Empresa do alvo + limite efetivo de usuários.
+      const { data: targetProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user_id)
+        .maybeSingle();
+      const targetCompanyId = targetProfile?.company_id;
+
+      if (targetCompanyId) {
+        // Limite efetivo de usuários da empresa. Espelha EXATAMENTE o cálculo
+        // de useCompanyModules: plano 'personalizado' usa companies.max_users
+        // como total; demais somam max_users do plano + extra_users.
+        let maxUsers = 0;
+        const { data: company } = await supabaseAdmin
+          .from('companies')
+          .select('subscription_plan, max_users, extra_users')
+          .eq('id', targetCompanyId)
+          .maybeSingle();
+        const plan = company?.subscription_plan || 'start';
+        const extraUsers = company?.extra_users || 0;
+        if (plan === 'personalizado') {
+          maxUsers = company?.max_users || 0;
+        } else {
+          const { data: planDef } = await supabaseAdmin
+            .from('subscription_plans')
+            .select('max_users')
+            .eq('code', plan)
+            .maybeSingle();
+          const planMax = planDef?.max_users ?? company?.max_users ?? 0;
+          maxUsers = planMax + extraUsers;
+        }
+
+        // Usuários ATIVOS atuais da empresa.
+        const { count: activeCount } = await supabaseAdmin
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', targetCompanyId)
+          .eq('is_active', true);
+
+        if ((activeCount || 0) >= maxUsers) {
+          return new Response(
+            JSON.stringify({
+              error: 'Limite de usuários atingido; faça upgrade ou desative outro.',
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+      }
+
+      const { error: reactivateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ is_active: true })
+        .eq('user_id', user_id);
+      if (reactivateError) {
+        return new Response(JSON.stringify({ error: reactivateError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // DELETE user permanently
     if (action === 'delete_user') {
+      if (user_id === callerId) {
+        return new Response(
+          JSON.stringify({ error: 'Você não pode excluir a si mesmo.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      if (!(await sameCompanyAsCaller(user_id))) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden: usuário de outra empresa' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
       // Delete user_permissions
       await supabaseAdmin.from('user_permissions').delete().eq('user_id', user_id);
       // Delete user_roles

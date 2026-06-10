@@ -19,6 +19,10 @@ export interface Profile {
   company_id?: string | null;
   phone?: string;
   avatar_url?: string;
+  // Conta ativa (slot ocupado). Desativar é reversível e bloqueia o acesso ao
+  // app sem excluir o usuário. Default no banco é true (usuários existentes
+  // continuam ativos). Pode vir undefined em estados parciais — tratar como ativo.
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -17,10 +17,13 @@ interface UserListMobileProps {
   searchQuery: string;
   currentUserId?: string;
   canManageRoles: boolean;
+  /** Há slot livre no plano? Reativar só é oferecido quando true. */
+  canAddUser: boolean;
   userPermissions: UserPermission[];
   presets: PermissionPreset[];
   onEdit: (user: UserWithRole) => void;
-  onToggleActive: (userId: string, currentActive: boolean) => void;
+  onDeactivate: (user: UserWithRole) => void;
+  onReactivate: (user: UserWithRole) => void;
   onDelete: (user: UserWithRole) => void;
   onPreviewPhoto: (src: string, alt: string) => void;
 }
@@ -39,10 +42,12 @@ export function UserListMobile({
   searchQuery,
   currentUserId,
   canManageRoles,
+  canAddUser,
   userPermissions,
   presets,
   onEdit,
-  onToggleActive,
+  onDeactivate,
+  onReactivate,
   onDelete,
   onPreviewPhoto,
 }: UserListMobileProps) {
@@ -77,7 +82,8 @@ export function UserListMobile({
     <div className="rounded-xl border bg-card overflow-hidden">
       {users.map((userProfile) => {
         const perm = getUserPermission(userProfile.user_id);
-        const isActive = !perm || perm.is_active;
+        // Status da CONTA (slot/login): profiles.is_active. undefined = ativo.
+        const isActive = userProfile.is_active !== false;
         const permCount = perm?.permissions?.length || 0;
         const preset = perm?.preset_id
           ? presets.find((p) => p.id === perm.preset_id)
@@ -102,17 +108,22 @@ export function UserListMobile({
               },
               ...(!isSelf
                 ? [
-                    {
-                      key: 'toggle',
-                      label: isActive ? 'Desativar' : 'Ativar',
-                      icon: isActive ? (
-                        <UserX className="h-4 w-4" />
-                      ) : (
-                        <UserCheck className="h-4 w-4" />
-                      ),
-                      onClick: () =>
-                        onToggleActive(userProfile.user_id, isActive),
-                    } as ItemAction,
+                    isActive
+                      ? ({
+                          key: 'deactivate',
+                          label: 'Desativar',
+                          icon: <UserX className="h-4 w-4" />,
+                          // 'edit' pinta laranja/warning (cor semântica de desativar).
+                          variant: 'edit',
+                          onClick: () => onDeactivate(userProfile),
+                        } as ItemAction)
+                      : ({
+                          key: 'reactivate',
+                          label: canAddUser ? 'Reativar' : 'Reativar (sem slot)',
+                          icon: <UserCheck className="h-4 w-4" />,
+                          variant: 'success',
+                          onClick: () => onReactivate(userProfile),
+                        } as ItemAction),
                     {
                       key: 'delete',
                       label: 'Excluir',

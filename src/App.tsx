@@ -12,6 +12,7 @@ import { trackUsage } from "@/lib/trackUsage";
 import { getErrorMessage } from "@/utils/errorMessages";
 
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useToast } from "@/hooks/use-toast";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -131,9 +132,9 @@ function useDefaultRoute() {
   // Admin panel users (master + vendedores) land on the admin panel.
   if (isAdminUser) {
     const adminCandidates: Array<[string, string]> = [
+      ['admin_empresas', '/admin/empresas'],
       ['admin_dashboard', '/admin/dashboard'],
       ['admin_crm', '/admin/crm'],
-      ['admin_empresas', '/admin/empresas'],
       ['admin_vendedores', '/admin/vendedores'],
       ['admin_financeiro', '/admin/financeiro'],
       ['admin_configuracoes', '/admin/configuracoes'],
@@ -141,7 +142,7 @@ function useDefaultRoute() {
     for (const [key, path] of adminCandidates) {
       if (hasAdminScreenAccess(key)) return path;
     }
-    return '/admin/dashboard';
+    return '/admin/empresas';
   }
 
   if (hasScreenAccess('screen:dashboard')) return '/dashboard';
@@ -152,12 +153,36 @@ function useDefaultRoute() {
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, profile, roles, signOut } = useAuth();
+  const { toast } = useToast();
   useForcedLogout();
-  
+
+  // Bloqueio de conta desativada (profiles.is_active = false). A coluna tem
+  // default true no banco, então usuários existentes nunca caem aqui. Só
+  // bloqueamos quando o profile JÁ carregou e veio explicitamente false —
+  // `is_active` undefined/null (estado parcial) é tratado como ativo.
+  // super_admin nunca é bloqueado.
+  const isSuperAdmin = roles.includes('super_admin' as any);
+  const isDeactivated =
+    !!user && !!profile && profile.is_active === false && !isSuperAdmin;
+
+  React.useEffect(() => {
+    if (isDeactivated) {
+      toast({
+        variant: 'destructive',
+        title: 'Conta desativada',
+        description:
+          'Sua conta foi desativada. Fale com o administrador da empresa.',
+      });
+      signOut();
+    }
+  }, [isDeactivated, signOut, toast]);
+
   if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" replace />;
-  
+  // Enquanto o signOut da conta desativada não conclui, não renderiza o app.
+  if (isDeactivated) return <Navigate to="/login" replace />;
+
   return <>{children}</>;
 }
 
