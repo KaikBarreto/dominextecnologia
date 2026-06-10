@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export const ADMIN_SCREEN_PERMISSIONS = [
   { key: 'admin_dashboard', label: 'Dashboard' },
-  { key: 'admin_crm', label: 'CRM' },
+  { key: 'admin_crm', label: 'CRM/Tarefas' },
   { key: 'admin_empresas', label: 'Empresas' },
   { key: 'admin_vendedores', label: 'Vendedores' },
   { key: 'admin_financeiro', label: 'Financeiro' },

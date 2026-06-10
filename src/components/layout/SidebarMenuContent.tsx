@@ -116,7 +116,7 @@ const tenantMenuItems: MenuItem[] = [
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', screenKey: 'admin_dashboard' },
-  { title: 'CRM', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
+  { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },

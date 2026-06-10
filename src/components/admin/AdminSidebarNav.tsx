@@ -30,7 +30,7 @@ const ADMIN_MENU_ITEMS: {
   screenKey?: string;
 }[] = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, screenKey: 'admin_dashboard' },
-  { label: 'CRM', path: '/admin/crm', icon: Target, screenKey: 'admin_crm' },
+  { label: 'CRM/Tarefas', path: '/admin/crm', icon: Target, screenKey: 'admin_crm' },
   { label: 'Empresas', path: '/admin/empresas', icon: Building2, screenKey: 'admin_empresas' },
   { label: 'Vendedores', path: '/admin/vendedores', icon: Briefcase, screenKey: 'admin_vendedores' },
   { label: 'Financeiro', path: '/admin/financeiro', icon: Wallet, screenKey: 'admin_financeiro' },
