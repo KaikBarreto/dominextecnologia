@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
+import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -164,6 +165,25 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: `Erro ao criar empresa: ${companyError.message}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Provisiona o customer Asaas (find-or-create) e grava companies.asaas_customer_id.
+    // BEST-EFFORT: nunca bloqueia o cadastro — se falhar (chave ausente, sem CNPJ, erro
+    // Asaas), apenas registra o aviso. Checkout e backfill recuperam depois. Sem CNPJ a
+    // criação falha de propósito (Asaas exige documento); cobramos no checkout.
+    try {
+      const provision = await provisionAsaasCustomer(supabaseAdmin, {
+        id: company.id,
+        name: company.name,
+        email: company.email,
+        cnpj: company.cnpj,
+        asaas_customer_id: company.asaas_customer_id,
+      });
+      if (provision.outcome === 'failed') {
+        console.error('[self-register] Asaas customer não provisionado (não-fatal):', provision.error);
+      }
+    } catch (asaasErr) {
+      console.error('[self-register] Exceção ao provisionar customer Asaas (não-fatal):', asaasErr);
     }
 
     // Create auth user with email auto-confirmed

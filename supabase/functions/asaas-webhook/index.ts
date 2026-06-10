@@ -17,14 +17,19 @@
 //    DO NOTHING garante 1 lançamento financeiro por transação.
 //
 // Resolução de company (cascata): asaas_subscription_id → externalReference
-//  (=company_id) → asaas_customer_id.
+//  (=company_id) → asaas_customer_id → CPF/CNPJ (companies.cnpj). Sem match num
+//  pagamento confirmado, registramos como ÓRFÃO (ledger_asaas pending_categorization
+//  + admin_notifications), nunca silencioso.
 //
 // Eventos tratados:
-//  - PAYMENT_RECEIVED / PAYMENT_CONFIRMED               → ativação/renovação
-//  - PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED    → ativação/renovação (Pix Automático)
+//  - PAYMENT_RECEIVED / PAYMENT_CONFIRMED               → ativação/renovação (ÚNICO caminho de dinheiro)
+//  - PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED    → só CONFIRMA a recorrência (NÃO move dinheiro)
 //  - PAYMENT_CREATED                                    → linka pay_* à subscription_payments
 //  - PAYMENT_OVERDUE                                    → desativa só 1ª venda sem pagamento (ver nota past_due)
 //  - PAYMENT_REFUNDED / PAYMENT_CHARGEBACK_*            → registra estorno + alerta admin
+//
+// Downgrade agendado: na renovação confirmada (gated pelo mutex), se companies tem
+//  pending_plan_code, aplicamos plano/ciclo/max_users/módulos alvo e limpamos pending_*.
 //
 // Cliente Supabase: service_role (RLS bloqueia tenant; aqui é fluxo de sistema).
 // Responde 200 rápido em todos os caminhos pra Asaas não re-enfileirar.
@@ -156,6 +161,53 @@ async function activatePlanModules(supabase: any, companyId: string, planCode: s
     }
   } catch (e) {
     console.error("[modules] erro inesperado (engolido):", (e as Error).message);
+  }
+}
+
+/**
+ * Sincroniza company_modules EXATAMENTE para o conjunto `targetCodes` (downgrade).
+ * Diferente de activatePlanModules (aditivo), AQUI removemos módulos que não estão
+ * mais no plano-alvo — é o efeito real do downgrade. Idempotente: se já estiver
+ * sincronizado, vira no-op. Best-effort (erros logados, não-fatais) pra não travar
+ * o caminho de pagamento já gated pelo mutex.
+ */
+async function syncCompanyModulesExact(supabase: any, companyId: string, targetCodes: string[]) {
+  try {
+    const target = new Set(targetCodes);
+    const { data: existing } = await supabase
+      .from("company_modules")
+      .select("module_code")
+      .eq("company_id", companyId);
+    const existingSet = new Set((existing ?? []).map((m: any) => m.module_code));
+
+    // Remove os que sobraram (não estão no alvo).
+    const toRemove = [...existingSet].filter((code) => !target.has(code as string)) as string[];
+    if (toRemove.length > 0) {
+      const { error } = await supabase
+        .from("company_modules")
+        .delete()
+        .eq("company_id", companyId)
+        .in("module_code", toRemove);
+      if (error) console.error("[modules-sync] delete falhou (não-fatal):", error.message);
+      else console.log(`[modules-sync] removidos [${toRemove.join(", ")}] de ${companyId}`);
+    }
+
+    // Insere os que faltam.
+    const toInsert = targetCodes
+      .filter((code) => !existingSet.has(code))
+      .map((code) => ({
+        company_id: companyId,
+        module_code: code,
+        quantity: 1,
+        activated_at: new Date().toISOString(),
+      }));
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from("company_modules").insert(toInsert);
+      if (error) console.error("[modules-sync] insert falhou (não-fatal):", error.message);
+      else console.log(`[modules-sync] adicionados [${toInsert.map((m) => m.module_code).join(", ")}] em ${companyId}`);
+    }
+  } catch (e) {
+    console.error("[modules-sync] erro inesperado (engolido):", (e as Error).message);
   }
 }
 
@@ -299,10 +351,65 @@ async function processConfirmedPayment(
     }
   }
 
+  // ===== DOWNGRADE AGENDADO (MUDANÇA C) — gated pelo mutex (só roda no winner) =====
+  // Quando o cliente agenda um downgrade no painel, o alvo fica em pending_plan_code/
+  // pending_billing_cycle/pending_max_users/pending_modules (e o valor já vem por
+  // pending_subscription_value, aplicado acima). O downgrade só EFETIVA na próxima
+  // renovação confirmada — exatamente AQUI, abaixo do portão de idempotência.
+  // pendingModuleCodes (quando o downgrade aplica) define o conjunto-alvo de módulos.
+  let pendingModuleCodes: string[] | null = null;
+  const hasPendingDowngrade =
+    company.pending_plan_code !== null && company.pending_plan_code !== undefined;
+
+  if (hasPendingDowngrade) {
+    companyUpdate.subscription_plan = company.pending_plan_code;
+    if (company.pending_billing_cycle !== null && company.pending_billing_cycle !== undefined) {
+      companyUpdate.billing_cycle = company.pending_billing_cycle;
+    }
+    if (company.pending_max_users !== null && company.pending_max_users !== undefined) {
+      companyUpdate.max_users = company.pending_max_users;
+    }
+
+    // Conjunto-alvo de módulos: pending_modules explícito, senão os included do novo plano.
+    if (Array.isArray(company.pending_modules)) {
+      pendingModuleCodes = company.pending_modules.filter(
+        (m: unknown): m is string => typeof m === "string",
+      );
+    } else {
+      const { data: targetPlan } = await supabase
+        .from("subscription_plans")
+        .select("included_modules")
+        .eq("code", company.pending_plan_code)
+        .maybeSingle();
+      const inc: unknown = targetPlan?.included_modules;
+      pendingModuleCodes = Array.isArray(inc)
+        ? inc.filter((m): m is string => typeof m === "string")
+        : [];
+    }
+
+    // Limpa TODOS os pending_* nesta mesma atualização (downgrade consumido).
+    companyUpdate.pending_plan_code = null;
+    companyUpdate.pending_billing_cycle = null;
+    companyUpdate.pending_max_users = null;
+    companyUpdate.pending_modules = null;
+    companyUpdate.pending_subscription_value = null; // garante limpeza mesmo se valor não veio acima
+  }
+
   await supabase.from("companies").update(companyUpdate).eq("id", companyId);
 
-  // Ativa módulos do plano (idempotente; no-op se included_modules vazio).
-  await activatePlanModules(supabase, companyId, company.subscription_plan ?? null);
+  if (hasPendingDowngrade) {
+    // Sincroniza company_modules EXATAMENTE pro conjunto-alvo do downgrade:
+    // remove os que não fazem mais parte e insere os que faltam. Reduz acesso
+    // de verdade (diferente de activatePlanModules, que só adiciona).
+    await syncCompanyModulesExact(supabase, companyId, pendingModuleCodes ?? []);
+    console.log(
+      `[downgrade] aplicado p/ ${company.name}: plano '${company.pending_plan_code}', ` +
+        `módulos [${(pendingModuleCodes ?? []).join(", ")}]`,
+    );
+  } else {
+    // Sem downgrade pendente: mantém o comportamento aditivo (não remove extras pagos).
+    await activatePlanModules(supabase, companyId, company.subscription_plan ?? null);
+  }
 
   // company_payments — coluna canônica asaas_payment_id pra idempotência futura.
   await supabase.from("company_payments").insert({
@@ -446,12 +553,26 @@ async function processConfirmedPayment(
 
 /** Colunas da company necessárias em todo caminho de ativação. */
 const COMPANY_COLS =
-  "id, name, subscription_status, subscription_plan, subscription_value, subscription_expires_at, " +
+  "id, name, cnpj, subscription_status, subscription_plan, subscription_value, subscription_expires_at, " +
   "billing_cycle, ltv, origin, salesperson_id, sdr_id, asaas_customer_id, asaas_subscription_id, " +
-  "pending_subscription_value, custom_price, custom_price_months, custom_price_payments_made, " +
+  "pending_subscription_value, pending_plan_code, pending_billing_cycle, pending_modules, pending_max_users, " +
+  "custom_price, custom_price_months, custom_price_payments_made, " +
   "custom_price_permanent";
 
-/** Resolve a company por cascata: asaas_subscription_id → externalReference → asaas_customer_id. */
+/** Mantém só dígitos (normaliza CPF/CNPJ pra comparação tolerante a máscara). */
+function digitsOnly(v: unknown): string {
+  return typeof v === "string" ? v.replace(/\D/g, "") : "";
+}
+
+/**
+ * Resolve a company por cascata:
+ *   1) asaas_subscription_id → 2) externalReference (=company_id) →
+ *   3) asaas_customer_id → 4) CPF/CNPJ (companies.cnpj normalizado).
+ * O passo 4 (FM1) cobre pagamentos onde a Asaas não preencheu subscription/
+ * externalReference e a company ainda não tem asaas_customer_id linkado (ex.:
+ * cobrança avulsa/manual reconciliada pelo documento). Em match por CPF/CNPJ,
+ * faz backfill best-effort do asaas_customer_id quando vazio.
+ */
 async function resolveCompany(
   supabase: any,
   payment: any,
@@ -483,7 +604,106 @@ async function resolveCompany(
       .maybeSingle();
     if (data) return { company: data, matchedBy: "asaas_customer_id" };
   }
+  // 4) por CPF/CNPJ (fallback FM1). cpfCnpj pode vir no payment ou no customer embutido.
+  const docDigits = digitsOnly(
+    payment.cpfCnpj ?? payment.customerCpfCnpj ?? payment.customer?.cpfCnpj,
+  );
+  if (docDigits.length >= 11) {
+    // companies.cnpj pode estar mascarado no banco → normaliza ambos os lados.
+    // Sem coluna gerada de dígitos, casamos via regexp_replace no PostgREST.
+    const { data: candidates } = await supabase
+      .from("companies")
+      .select(COMPANY_COLS)
+      .not("cnpj", "is", null);
+    const match = (candidates ?? []).find(
+      (c: any) => digitsOnly(c.cnpj) === docDigits,
+    );
+    if (match) {
+      // Backfill best-effort do customer (só se a company ainda não tem e veio cus_*).
+      const incomingCustomer: string | null =
+        typeof payment.customer === "string" ? payment.customer : null;
+      if (!match.asaas_customer_id && incomingCustomer) {
+        await supabase
+          .from("companies")
+          .update({ asaas_customer_id: incomingCustomer })
+          .eq("id", match.id);
+        match.asaas_customer_id = incomingCustomer; // reflete pro caller
+        console.log(`[resolve] backfill asaas_customer_id=${incomingCustomer} em ${match.name} (match por CPF/CNPJ)`);
+      }
+      return { company: match, matchedBy: "cpf_cnpj" };
+    }
+  }
   return null;
+}
+
+/**
+ * Registra um pagamento ÓRFÃO (sem company resolvida) pra categorização manual.
+ * Proíbe órfão silencioso (FM1): grava no ledger_asaas + alerta o admin. Idempotente:
+ *   - ledger_asaas.asaas_transaction_id é UNIQUE → ON CONFLICT DO NOTHING.
+ *   - admin_notifications: checa antes pra não duplicar pro mesmo payment.id.
+ */
+async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void> {
+  const paymentId: string = payment.id;
+  const amount = Number(payment.value || 0);
+  const customer: string | null =
+    typeof payment.customer === "string" ? payment.customer : null;
+  const cpfCnpj =
+    payment.cpfCnpj ?? payment.customerCpfCnpj ?? payment.customer?.cpfCnpj ?? null;
+  const occurredAt =
+    payment.confirmedDate || payment.paymentDate || payment.dateCreated || new Date().toISOString();
+
+  try {
+    // 1) Ledger pendente de categorização (company_id NULL). ON CONFLICT DO NOTHING via upsert.
+    await supabase.from("ledger_asaas").upsert(
+      {
+        asaas_transaction_id: paymentId,
+        asaas_payment_id: paymentId,
+        direction: "credit",
+        amount: amount >= 0 ? amount : 0,
+        occurred_at: occurredAt,
+        status: "pending_categorization",
+        source: "webhook",
+        company_id: null,
+        description: `Pagamento Asaas não vinculado a empresa (${paymentId})`,
+        raw_payload: payment,
+      },
+      { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
+    );
+  } catch (e) {
+    console.error("[unmatched] ledger_asaas falhou (não-fatal):", (e as Error).message);
+  }
+
+  try {
+    // 2) Alerta ao admin — idempotente: só insere se não existe notificação pro mesmo payment.id.
+    const { data: existingNotif } = await supabase
+      .from("admin_notifications")
+      .select("id")
+      .eq("type", "unmatched_asaas_payment")
+      .eq("data->>payment_id", paymentId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingNotif) {
+      await supabase.from("admin_notifications").insert({
+        type: "unmatched_asaas_payment",
+        title: "Pagamento Asaas sem empresa vinculada",
+        message:
+          `Recebemos um pagamento de R$ ${amount.toFixed(2)} (${paymentId}) que não foi ` +
+          `associado a nenhuma empresa. Vincule manualmente na conciliação financeira.`,
+        data: {
+          payment_id: paymentId,
+          amount,
+          customer,
+          cpfCnpj,
+        },
+      });
+      console.log(`[unmatched] alerta criado p/ pagamento órfão ${paymentId} (R$ ${amount})`);
+    } else {
+      console.log(`[unmatched] alerta já existente p/ ${paymentId} — não duplicado.`);
+    }
+  } catch (e) {
+    console.error("[unmatched] admin_notifications falhou (não-fatal):", (e as Error).message);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -520,7 +740,8 @@ Deno.serve(async (req) => {
 
     // ==========================================================
     // PIX AUTOMÁTICO — autorização CRIADA (apenas informativo)
-    // O dinheiro/ativação chega depois no ACTIVATED e nos PAYMENT_RECEIVED.
+    // O dinheiro/ativação chega depois SOMENTE nos PAYMENT_RECEIVED/CONFIRMED
+    // (o ACTIVATED apenas confirma a recorrência, não move dinheiro — ver abaixo).
     // Aqui NÃO há processamento financeiro: nada de processConfirmedPayment,
     // nada de crédito de LTV. Só confirmamos o recebimento (200) pra não ficar
     // silenciosamente ignorado — paridade com o EcoSistema.
@@ -536,14 +757,26 @@ Deno.serve(async (req) => {
     }
 
     // ==========================================================
-    // PIX AUTOMÁTICO — autorização ativada (pagamento confirmado)
+    // PIX AUTOMÁTICO — autorização ATIVADA (apenas confirma a recorrência)
+    // ----------------------------------------------------------
+    // FM2-b (idempotência): este evento NÃO move dinheiro. Ele só sinaliza que
+    // o cliente autorizou o débito automático Pix. O dinheiro/renovação SEMPRE
+    // chega depois via PAYMENT_RECEIVED/PAYMENT_CONFIRMED com o pay_* REAL — a
+    // empresa tem asaas_subscription_id=aut_* (e asaas_customer_id), então esses
+    // eventos resolvem a company pela cascata (subscription → customer).
+    //
+    // Por que NÃO processamos aqui: o handler antigo usava o authId (aut_*) como
+    // fallback de asaas_payment_id e chamava processConfirmedPayment. Isso CEGAVA
+    // o mutex credit_ltv_once_for_payment (que casa por asaas_payment_id): o aut_*
+    // creditava LTV/estendia vencimento, e quando o pay_* real chegava ele creditava
+    // DE NOVO (chave diferente) → renovação dupla. Agora: log + 200, ZERO efeito
+    // financeiro, e NUNCA gravamos aut_* em subscription_payments.asaas_payment_id.
+    // A 1ª ativação da assinatura acontece no 1º PAYMENT_RECEIVED desse aut_*.
     // ==========================================================
     if (event === "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED") {
       const authorization = body.pixAutomatic || body.authorization || body;
       const authId: string | undefined =
         authorization?.id || authorization?.authorizationId;
-      const authValue = Number(authorization?.value || authorization?.scheduledValue || 0);
-      const netValue = Number(authorization?.netValue || 0);
 
       if (!authId) {
         return json({ received: true, ignored: "sem authorizationId" });
@@ -551,31 +784,16 @@ Deno.serve(async (req) => {
 
       const { data: companyByAuth } = await supabase
         .from("companies")
-        .select(COMPANY_COLS)
+        .select("id, name")
         .eq("asaas_subscription_id", authId)
         .maybeSingle();
 
-      if (!companyByAuth) {
-        console.log(`[pix-auto] nenhuma company para authorization ${authId}`);
-        return json({ received: true, matched: false });
-      }
-
-      // pay_* real, se vier no payload; senão usa o authId como id de idempotência.
-      const realPaymentId: string =
-        (authorization as any)?.payment?.id ||
-        (authorization as any)?.paymentId ||
-        authId;
-      const amount = authValue > 0 ? authValue : Number(companyByAuth.subscription_value || 0);
-
-      const result = await processConfirmedPayment(supabase, companyByAuth, {
-        asaasPaymentId: realPaymentId,
-        amount,
-        billingType: "PIX",
-        netValue,
-        customerId: companyByAuth.asaas_customer_id,
-        matchedBy: "pix_automatic_activated",
-      });
-      return json({ received: true, ...result });
+      console.log(
+        `[pix-auto] autorização ATIVADA (confirmação de recorrência) authId=${authId} ` +
+          `company=${companyByAuth?.name ?? "n/d"} — SEM processamento financeiro ` +
+          `(dinheiro vem nos PAYMENT_RECEIVED/CONFIRMED com pay_* real)`,
+      );
+      return json({ received: true, authorization_confirmed: true, matched: !!companyByAuth });
     }
 
     // ==========================================================
@@ -676,8 +894,10 @@ Deno.serve(async (req) => {
     if ((event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") && isBeingPaid) {
       const resolved = await resolveCompany(supabase, payment);
       if (!resolved?.company) {
-        console.log(`[payment] sem company para ${payment.id} (cascata falhou). Ignorado.`);
-        return json({ received: true, matched: false });
+        // PROIBIDO órfão silencioso (FM1): registra no ledger + alerta admin (idempotente).
+        console.log(`[payment] sem company para ${payment.id} (cascata falhou). Registrando como órfão.`);
+        await recordUnmatchedPayment(supabase, payment);
+        return json({ received: true, matched: false, unmatched_recorded: true });
       }
 
       const result = await processConfirmedPayment(supabase, resolved.company, {

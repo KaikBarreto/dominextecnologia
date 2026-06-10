@@ -192,11 +192,19 @@ Deno.serve(async (req) => {
     // DOWNGRADE (B2): agenda o valor menor pro próximo ciclo, preserva acesso.
     // ===================================================================
     if (isDowngrade) {
-      // Só agenda o VALOR. NÃO mexe em subscription_value, plano, módulos, max_users
-      // nem no Asaas — o cliente já pagou o ciclo atual e mantém o acesso integral.
+      // Agenda o ALVO completo (valor + plano + ciclo + módulos + max_users) nos campos
+      // pending_*. NÃO mexe em subscription_value, plano, módulos, max_users nem no Asaas —
+      // o cliente já pagou o ciclo atual e mantém o acesso integral. O webhook de renovação
+      // lê esses pending_* e aplica a troca quando o próximo ciclo virar.
       await supabase
         .from("companies")
-        .update({ pending_subscription_value: targetMonthlyValue })
+        .update({
+          pending_subscription_value: targetMonthlyValue,
+          pending_plan_code: plan_code,
+          pending_billing_cycle: cycleForDb,
+          pending_modules: targetModules,
+          pending_max_users: targetMaxUsers,
+        })
         .eq("id", company_id);
 
       // Registra a INTENÇÃO de downgrade (plano + módulos + usuários alvo) pra um
@@ -245,7 +253,12 @@ Deno.serve(async (req) => {
       extra_users: targetExtraUsers,
       billing_cycle: cycleForDb,
       subscription_value: targetMonthlyValue, // upgrade entra já; igual mantém o mesmo
-      pending_subscription_value: null, // limpa qualquer downgrade agendado anterior
+      // Limpa qualquer downgrade agendado anterior — o alvo aplica AGORA, não na renovação.
+      pending_subscription_value: null,
+      pending_plan_code: null,
+      pending_billing_cycle: null,
+      pending_modules: null,
+      pending_max_users: null,
     };
     const { error: updErr } = await supabase
       .from("companies")

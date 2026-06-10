@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -110,6 +111,25 @@ Deno.serve(async (req) => {
     if (companyError) {
       console.error('Error creating company:', companyError)
       throw new Error(`Erro ao criar empresa: ${companyError.message}`)
+    }
+
+    // 1b. Provisiona o customer Asaas (find-or-create) e grava companies.asaas_customer_id.
+    //     BEST-EFFORT: nunca bloqueia a criação da empresa — se falhar (chave ausente, sem
+    //     CNPJ, erro Asaas), apenas registra o aviso. Checkout e backfill recuperam depois.
+    try {
+      const provision = await provisionAsaasCustomer(supabaseAdmin, {
+        id: company.id,
+        name: company_name,
+        email: company_email || admin_email,
+        cnpj: company_cnpj || null,
+        asaas_customer_id: null,
+        address: company_address || null,
+      })
+      if (provision.outcome === 'failed') {
+        console.error('[create-company] Asaas customer não provisionado (não-fatal):', provision.error)
+      }
+    } catch (asaasErr) {
+      console.error('[create-company] Exceção ao provisionar customer Asaas (não-fatal):', asaasErr)
     }
 
     // 2. Create the master user

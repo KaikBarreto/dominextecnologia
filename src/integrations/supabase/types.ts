@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_sessions: {
@@ -288,6 +313,36 @@ export type Database = {
           },
         ]
       }
+      admin_notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean
+          message: string | null
+          title: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       admin_permissions: {
         Row: {
           created_at: string
@@ -401,6 +456,10 @@ export type Database = {
           notes: string | null
           origin: string | null
           payment_method: string | null
+          pending_billing_cycle: string | null
+          pending_max_users: number | null
+          pending_modules: Json | null
+          pending_plan_code: string | null
           pending_subscription_value: number | null
           phone: string | null
           salesperson_id: string | null
@@ -441,6 +500,10 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           payment_method?: string | null
+          pending_billing_cycle?: string | null
+          pending_max_users?: number | null
+          pending_modules?: Json | null
+          pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
           salesperson_id?: string | null
@@ -481,6 +544,10 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           payment_method?: string | null
+          pending_billing_cycle?: string | null
+          pending_max_users?: number | null
+          pending_modules?: Json | null
+          pending_plan_code?: string | null
           pending_subscription_value?: number | null
           phone?: string | null
           salesperson_id?: string | null
@@ -5664,6 +5731,16 @@ export type Database = {
       }
     }
     Functions: {
+      asaas_reconciliation_alert: { Args: never; Returns: number }
+      asaas_reconciliation_check: {
+        Args: never
+        Returns: {
+          description: string
+          detail: string
+          issue_type: string
+          ref: string
+        }[]
+      }
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
       can_bootstrap_admin: { Args: never; Returns: boolean }
@@ -5998,6 +6075,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_task_priority: ["baixa", "media", "alta", "urgente"],
