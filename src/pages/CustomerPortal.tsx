@@ -22,6 +22,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
+import DarkVeil from '@/components/ui/DarkVeil';
 
 /**
  * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
@@ -278,20 +279,32 @@ export default function CustomerPortal() {
   if (accessDenied) {
     const portalPath = `/portal/${token}`;
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-center">
-        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-          <Package className="h-6 w-6 text-primary" />
+      <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <DarkVeil hueShift={53} speed={0.5} />
         </div>
-        <h1 className="text-xl font-bold mb-2">Portal privado</h1>
-        <p className="text-muted-foreground max-w-sm mb-1">
-          Este portal é restrito e exige que você entre com a conta da empresa.
-        </p>
-        <p className="text-xs text-muted-foreground/70 max-w-sm mb-6">
-          Se você já está conectado e ainda vê esta mensagem, sua conta não tem acesso a este portal.
-        </p>
-        <a href={`/login?redirect=${encodeURIComponent(portalPath)}`}>
-          <Button>Fazer login</Button>
-        </a>
+        <div className="text-center space-y-6 px-6 relative z-10">
+          <div className="mx-auto h-16 w-16 rounded-full bg-white/10 flex items-center justify-center">
+            <Package className="h-8 w-8 text-white" />
+          </div>
+          <h1
+            className="text-5xl md:text-7xl font-black leading-none tracking-tighter text-white select-none"
+            style={{ fontFamily: "'Lufga', sans-serif", fontWeight: 900 }}
+          >
+            Portal privado
+          </h1>
+          <div className="space-y-2">
+            <p className="text-white/70 text-base max-w-md mx-auto">
+              Este portal é restrito e exige que você entre com a conta da empresa.
+            </p>
+            <p className="text-white/40 text-sm max-w-md mx-auto">
+              Se você já está conectado e ainda vê esta mensagem, sua conta não tem acesso a este portal.
+            </p>
+          </div>
+          <a href={`/login?redirect=${encodeURIComponent(portalPath)}`}>
+            <Button size="lg" className="mt-2">Fazer login</Button>
+          </a>
+        </div>
       </div>
     );
   }
@@ -312,14 +325,14 @@ export default function CustomerPortal() {
       <header className="border-b bg-card px-4 py-4">
         <div className="mx-auto max-w-4xl flex items-center gap-3">
           {headerLogo ? (
-            <img src={headerLogo} alt="" className="h-10 w-10 rounded object-contain" />
+            <img src={headerLogo} alt="" className="h-10 w-10 lg:h-14 lg:w-14 rounded object-contain" />
           ) : (
-            <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
-              <Package className="h-5 w-5 text-primary" />
+            <div className="h-10 w-10 lg:h-14 lg:w-14 rounded bg-primary/10 flex items-center justify-center">
+              <Package className="h-5 w-5 lg:h-7 lg:w-7 text-primary" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold truncate">{companySettings?.name || 'Portal do Cliente'}</h1>
+            <h1 className="text-lg lg:text-2xl font-bold truncate">{companySettings?.name || 'Portal do Cliente'}</h1>
             <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
               {companySettings?.phone && <span>{companySettings.phone}</span>}
               {companySettings?.email && <span>{companySettings.email}</span>}
