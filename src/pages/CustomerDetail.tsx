@@ -46,6 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useQueryClient } from '@tanstack/react-query';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos';
 
@@ -87,6 +88,7 @@ export default function CustomerDetail() {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -193,10 +195,17 @@ export default function CustomerDetail() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         {customer.photo_url ? (
-          <img src={customer.photo_url} alt="" className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover border shrink-0" />
+          <button
+            type="button"
+            onClick={() => setPreviewImage(customer.photo_url!)}
+            className="shrink-0 rounded-full transition-opacity hover:opacity-90 cursor-pointer"
+            aria-label="Ver foto do cliente"
+          >
+            <img src={customer.photo_url} alt={customer.name} className="h-12 w-12 sm:h-14 sm:w-14 rounded-full object-cover border" />
+          </button>
         ) : (
-          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <Package className="h-5 w-5 text-muted-foreground" />
+          <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <Package className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
         <div className="min-w-0 flex-1">
@@ -308,55 +317,96 @@ export default function CustomerDetail() {
 
       {activeTab === 'geral' && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {customer.photo_url && (
-            <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 flex justify-center">
-              <img src={customer.photo_url} alt={customer.name} className="h-32 w-32 rounded-full object-cover border" />
-            </CardContent></Card>
-          )}
-          {(customer as any).origin && (() => {
-            const originData = activeOrigins.find(o => o.name === (customer as any).origin);
-            const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
+          {/* Card único "Informações" — rótulo → valor */}
+          {(() => {
+            type InfoRow = { label: string; node: React.ReactNode };
+            const rows: InfoRow[] = [];
+
+            const originName = (customer as any).origin as string | undefined;
+            if (originName) {
+              const originData = activeOrigins.find(o => o.name === originName);
+              const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
+              rows.push({
+                label: 'Origem',
+                node: (
+                  <div className="flex items-center gap-2">
+                    {LucideIcon && originData && (
+                      <div className="h-5 w-5 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: originData.color }}>
+                        <LucideIcon className="h-3 w-3 text-white" />
+                      </div>
+                    )}
+                    <span className="text-sm font-medium leading-tight">{originName}</span>
+                  </div>
+                ),
+              });
+            }
+            if (customer.document) {
+              rows.push({ label: 'CPF/CNPJ', node: <span className="text-sm font-medium leading-tight">{customer.document}</span> });
+            }
+            if (customer.email) {
+              rows.push({
+                label: 'Email',
+                node: (
+                  <span className="text-sm font-medium flex items-center gap-1 leading-tight">
+                    <Mail className="h-3 w-3 shrink-0" />{customer.email}
+                  </span>
+                ),
+              });
+            }
+            if (customer.phone) {
+              const whatsappNumber = customer.phone.replace(/\D/g, '');
+              const whatsappUrl = `https://wa.me/55${whatsappNumber}`;
+              rows.push({
+                label: 'Telefone',
+                node: (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium flex items-center gap-1 leading-tight">
+                      <Phone className="h-3 w-3 shrink-0" />{customer.phone}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => window.open(whatsappUrl, '_blank', 'noopener,noreferrer')}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-accent active:scale-[0.98]"
+                      aria-label="Abrir WhatsApp do cliente"
+                      title="WhatsApp"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#25D366" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.71.306 1.263.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                    </button>
+                  </div>
+                ),
+              });
+            }
+            if (customer.birth_date) {
+              rows.push({
+                label: 'Data de Nascimento',
+                node: (
+                  <span className="text-sm font-medium flex items-center gap-1 leading-tight">
+                    <Calendar className="h-3 w-3 shrink-0" />
+                    {format(new Date(customer.birth_date), 'dd/MM/yyyy', { locale: ptBR })}
+                  </span>
+                ),
+              });
+            }
+
+            if (rows.length === 0) return null;
             return (
-              <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Origem</p>
-                <div className="flex items-center gap-2 mt-1">
-                  {LucideIcon && originData && (
-                    <div className="h-5 w-5 rounded flex items-center justify-center" style={{ backgroundColor: originData.color }}>
-                      <LucideIcon className="h-3 w-3 text-white" />
-                    </div>
-                  )}
-                  <p className="text-sm font-medium leading-tight">{(customer as any).origin}</p>
-                </div>
-              </CardContent></Card>
+              <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}>
+                <CardContent className="p-4 sm:p-6">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">Informações</h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {rows.map((row, i) => (
+                      <div key={i} className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-xs text-muted-foreground">{row.label}</span>
+                        {row.node}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             );
           })()}
-          {customer.document && (
-            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">CPF/CNPJ</p>
-              <p className="text-sm font-medium mt-1 leading-tight">{customer.document}</p>
-            </CardContent></Card>
-          )}
-          {customer.email && (
-            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Email</p>
-              <p className="text-sm font-medium mt-1 flex items-center gap-1 leading-tight"><Mail className="h-3 w-3" />{customer.email}</p>
-            </CardContent></Card>
-          )}
-          {customer.phone && (
-            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</p>
-              <p className="text-sm font-medium mt-1 flex items-center gap-1 leading-tight"><Phone className="h-3 w-3" />{customer.phone}</p>
-            </CardContent></Card>
-          )}
-          {customer.birth_date && (
-            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Data de Nascimento</p>
-              <p className="text-sm font-medium mt-1 flex items-center gap-1 leading-tight">
-                <Calendar className="h-3 w-3" />
-                {format(new Date(customer.birth_date), 'dd/MM/yyyy', { locale: ptBR })}
-              </p>
-            </CardContent></Card>
-          )}
           {(customer.address || customer.city) && (() => {
             const fullAddress = [
               customer.address && customer.address_number ? `${customer.address}, ${customer.address_number}` : customer.address,
@@ -1140,6 +1190,14 @@ export default function CustomerDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Preview da foto do cliente */}
+      <ImagePreviewModal
+        src={previewImage || ''}
+        alt={customer.name}
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }
