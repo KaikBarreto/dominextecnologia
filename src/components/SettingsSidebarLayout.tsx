@@ -14,6 +14,21 @@ export interface SettingsTab {
   mobileSublabel?: string;
   /** Slot à direita da aba (ex: menu de 3 pontinhos). Só no desktop; aparece no hover/active. */
   rightElement?: React.ReactNode;
+  /**
+   * Cor própria da aba (ex: cor da conta financeira). Quando presente, o ativo
+   * e o hover usam essa cor de forma SUTIL (fundo translúcido + texto/indicador
+   * na cor) em vez do primary. Opt-in: abas sem `accentColor` seguem o padrão.
+   */
+  accentColor?: string;
+}
+
+/** Converte hex (#RRGGBB) em `r, g, b` pra usar em rgba(). Fallback: null. */
+function hexToRgbTriplet(hex?: string): string | null {
+  if (!hex) return null;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const int = parseInt(m[1], 16);
+  return `${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}`;
 }
 
 interface SettingsSidebarLayoutProps {
@@ -50,7 +65,7 @@ export function SettingsSidebarLayout({
     return (
       <div className="space-y-4">
         <MobilePillTabs
-          tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" />, sublabel: t.mobileSublabel ?? t.sublabel }))}
+          tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" />, sublabel: t.mobileSublabel ?? t.sublabel, accentColor: t.accentColor }))}
           activeTab={activeTab}
           onTabChange={onTabChange}
         />
@@ -74,13 +89,33 @@ export function SettingsSidebarLayout({
                 {group.items.map((tab) => {
                   const IconComponent = tab.icon;
                   const isActive = activeTab === tab.value;
+                  const rgb = hexToRgbTriplet(tab.accentColor);
+                  const accented = !!rgb;
+
+                  // Aba com cor própria (conta financeira): ativo = fundo
+                  // translúcido + texto na cor; hover (inativo) = fundo bem
+                  // sutil. Sem cor → mantém o padrão primary de sempre.
+                  const accentStyle: React.CSSProperties = accented
+                    ? ({
+                        ['--tab-accent' as any]: `rgb(${rgb})`,
+                        ['--tab-accent-active-bg' as any]: `rgba(${rgb}, 0.16)`,
+                        ['--tab-accent-hover-bg' as any]: `rgba(${rgb}, 0.08)`,
+                        backgroundColor: isActive ? `rgba(${rgb}, 0.16)` : undefined,
+                        color: isActive ? `rgb(${rgb})` : undefined,
+                      } as React.CSSProperties)
+                    : {};
 
                   return (
                     <div
                       key={tab.value}
+                      style={accentStyle}
                       className={cn(
                         "group/tab relative w-full flex items-center gap-3 px-3 py-2 text-[13px] font-normal rounded-lg transition-all duration-200 text-left cursor-pointer",
-                        isActive
+                        accented
+                          ? isActive
+                            ? "font-medium shadow-sm"
+                            : "text-muted-foreground hover:font-medium hover:[background-color:var(--tab-accent-hover-bg)] hover:[color:var(--tab-accent)]"
+                          : isActive
                           ? "bg-primary text-primary-foreground shadow-sm font-medium"
                           : "text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:font-medium"
                       )}
@@ -89,6 +124,13 @@ export function SettingsSidebarLayout({
                       tabIndex={0}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTabChange(tab.value); } }}
                     >
+                      {/* Indicador vertical na cor da conta (só quando acentuada). */}
+                      {accented && isActive && (
+                        <span
+                          className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full"
+                          style={{ backgroundColor: `rgb(${rgb})` }}
+                        />
+                      )}
                       <IconComponent className="h-4 w-4 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate">{tab.label}</span>
@@ -96,7 +138,9 @@ export function SettingsSidebarLayout({
                           <span
                             className={cn(
                               "block truncate text-[11px] leading-tight tabular-nums",
-                              isActive ? "text-primary-foreground/80" : "text-muted-foreground/80 group-hover/tab:text-primary-foreground/80"
+                              accented
+                                ? isActive ? "opacity-80" : "text-muted-foreground/80"
+                                : isActive ? "text-primary-foreground/80" : "text-muted-foreground/80 group-hover/tab:text-primary-foreground/80"
                             )}
                           >
                             {tab.sublabel}

@@ -20,6 +20,9 @@ import {
   Boxes,
   ScrollText,
   Clock,
+  FileBarChart,
+  CalendarClock,
+  History as HistoryIcon,
   LogOut,
   ChevronsUpDown,
   Sun,
@@ -96,7 +99,19 @@ const tenantMenuItems: MenuItem[] = [
     ],
   },
   { title: 'CRM', icon: TrendingUp, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
-  { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
+  {
+    title: 'Financeiro',
+    icon: DollarSign,
+    children: [
+      // Mesma permissão de tela (screen:finance) em todos — não é módulo novo.
+      // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
+      // escondia a aba dentro da página); Relatório (Visão Geral + DRE) e
+      // Movimentações são base. A aba DRE dentro do Relatório é gateada inline.
+      { title: 'Relatório Financeiro', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
+      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Movimentações Financeiras', icon: HistoryIcon, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
+    ],
+  },
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [

@@ -302,13 +302,17 @@ const AppRoutes = () => (
       <Route path="/crm" element={<PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>} />
       <Route path="/orcamentos" element={<PermissionRoute screenKey="screen:quotes"><Quotes /></PermissionRoute>} />
       <Route path="/estoque" element={<PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>} />
-      <Route path="/financeiro" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
+      {/* "Financeiro" virou GRUPO com 3 telas próprias (cada uma com no máx. 1
+         nível de navegação). /financeiro entra na tela de Relatório. */}
+      <Route path="/financeiro" element={<Navigate to="/financeiro/relatorio" replace />} />
+      <Route path="/financeiro/relatorio" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/movimentacoes" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
       <Route path="/financeiro/contas" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
-      <Route path="/financeiro/caixas-bancos" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
-      <Route path="/financeiro/categorias" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
-      <Route path="/financeiro/configuracoes" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
-      <Route path="/financeiro/dre" element={<PermissionRoute screenKey="screen:finance"><Finance /></PermissionRoute>} />
+      {/* URLs antigas → redirecionam pra não dar 404. */}
+      <Route path="/financeiro/dre" element={<Navigate to="/financeiro/relatorio?tab=dre" replace />} />
+      <Route path="/financeiro/caixas-bancos" element={<Navigate to="/financeiro/movimentacoes" replace />} />
+      <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/movimentacoes" replace />} />
+      <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/pmoc" element={<PMOC />} />
       <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><Contracts /></PermissionRoute>} />
       <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ContractDetail /></PermissionRoute>} />

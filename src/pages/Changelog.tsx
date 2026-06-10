@@ -40,6 +40,38 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.5',
+    date: '09 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Financeiro reorganizado em telas separadas',
+        description: 'O menu "Financeiro" agora abre três telas: Relatório Financeiro (com Visão Geral e DRE), Contas a Pagar/Receber e Movimentações Financeiras. No celular ficou mais leve, sem telas empilhadas, e o carrossel de contas aparece na cor de cada conta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Relatório de movimentações em PDF',
+        description: 'Ao exportar as movimentações em PDF, agora sai um relatório em páginas A4 (tudo junto no arquivo), com a logo e os dados da sua empresa, botão de voltar no celular, e respeitando o filtro que estiver na tela (conta, período e busca).',
+        category: 'melhoria',
+      },
+      {
+        title: 'Contrato já sai vinculado no financeiro',
+        description: 'Ao lançar as parcelas de um contrato você define a conta, a categoria e o cliente de uma vez, e isso vale para todas as parcelas — com o botão "Aplicar a todas" para acertar contratos que já existem. O detalhe do contrato também ganhou uma aba "Financeiro" com o resumo do que foi previsto, recebido, pendente e em atraso.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Correção: contrato aparecia "Sem cliente"',
+        description: 'Ao vincular um contrato a um lançamento financeiro, o nome do cliente do contrato não aparecia. Corrigido — agora mostra o cliente certo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Busca nas listas grandes',
+        description: 'Campos de seleção com muitas opções (como equipamentos) agora têm busca, para você achar mais rápido sem rolar a lista inteira.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.4',
     date: '09 de junho de 2026',
     type: 'minor',

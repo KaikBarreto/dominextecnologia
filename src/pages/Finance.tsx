@@ -4,44 +4,31 @@ import { useFinancial } from '@/hooks/useFinancial';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
-import { FinanceOverview } from '@/components/financial/FinanceOverview';
+import { FinanceRelatorio } from '@/components/financial/FinanceRelatorio';
 import { FinanceMovimentacoes } from '@/components/financial/FinanceMovimentacoes';
-import { FinanceDRE } from '@/components/financial/FinanceDRE';
 import { FinanceContas } from '@/components/financial/FinanceContas';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { isTransactionInDateRange } from '@/lib/finance-date';
-import {
-  DollarSign,
-  LayoutDashboard,
-  History as HistoryIcon,
-  CalendarClock,
-  FileBarChart,
-} from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 
-// As telas "Movimentações" e "Contas e Cartões" foram fundidas numa só:
-// "Movimentações Financeiras" (aba 'historico'). As URLs antigas de contas/
-// cartões e categorias caem todas nessa aba sem aviso ruidoso.
-const ROUTE_TAB_MAP: Record<string, string> = {
-  '/financeiro': 'visao-geral',
-  '/financeiro/movimentacoes': 'historico',
-  '/financeiro/contas': 'contas',
-  '/financeiro/caixas-bancos': 'historico',
-  '/financeiro/categorias': 'historico',
-  '/financeiro/configuracoes': 'historico',
-  '/financeiro/dre': 'dre',
-};
+// "Financeiro" virou um GRUPO no menu com 3 telas próprias, cada uma com no
+// máximo 1 nível de navegação (acaba o duplo-carrossel no mobile):
+//   /financeiro/relatorio     → Relatório (Visão Geral + DRE em abas)
+//   /financeiro/contas        → Contas a Pagar/Receber
+//   /financeiro/movimentacoes → Movimentações (carrossel de contas)
+// As URLs antigas (/financeiro, /financeiro/dre, /caixas-bancos, /categorias,
+// /configuracoes) redirecionam no App.tsx pra não dar 404.
+type FinanceScreen = 'relatorio' | 'contas' | 'movimentacoes';
 
-const TAB_ROUTE_MAP: Record<string, string> = {
-  'visao-geral': '/financeiro',
-  'historico': '/financeiro/movimentacoes',
-  'contas': '/financeiro/contas',
-  'dre': '/financeiro/dre',
+const ROUTE_SCREEN_MAP: Record<string, FinanceScreen> = {
+  '/financeiro/relatorio': 'relatorio',
+  '/financeiro/contas': 'contas',
+  '/financeiro/movimentacoes': 'movimentacoes',
 };
 
 export default function Finance() {
@@ -49,8 +36,18 @@ export default function Finance() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
-  const activeTab = ROUTE_TAB_MAP[location.pathname] || 'visao-geral';
-  // Deep-link `?account=ID` → seleciona a conta no sidebar de "Movimentações
+  const screen: FinanceScreen = ROUTE_SCREEN_MAP[location.pathname] || 'relatorio';
+
+  // Aba interna do Relatório (Visão Geral / DRE) via `?tab=`.
+  const relatorioTab = searchParams.get('tab') || 'visao-geral';
+  const setRelatorioTab = (tab: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'visao-geral') next.delete('tab');
+    else next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
+
+  // Deep-link `?account=ID` → seleciona a conta no carrossel de "Movimentações
   // Financeiras". Após consumir, limpamos o param pra não "travar" o sidebar.
   const accountFilterParam = searchParams.get('account');
   const clearAccountFilterParam = () => {
@@ -67,26 +64,13 @@ export default function Finance() {
   const { toast } = useToast();
   const { hasModule } = useCompanyModules();
 
-  // Lista completa de abas + filtragem por módulo. Abas marcadas com
-  // requiresAdvanced só aparecem se o tenant tem finance_advanced.
-  // "Movimentações Financeiras" (historico) funde o antigo "Movimentações"
-  // com "Contas e Cartões": sidebar de contas/cartões + extrato. Gestão de
-  // categorias vive dentro dela (botão "Categorias") e no TransactionFormDialog.
-  const TABS: Array<SettingsTab & { requiresAdvanced?: boolean }> = [
-    { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
-    { value: 'historico', label: 'Movimentações Financeiras', icon: HistoryIcon },
-    { value: 'contas', label: 'Contas a Pagar/Receber', icon: CalendarClock, requiresAdvanced: true },
-    { value: 'dre', label: 'DRE - Resultado', icon: FileBarChart, requiresAdvanced: true },
-  ];
-
-  const visibleTabs = TABS.filter(t => !t.requiresAdvanced || hasModule('finance_advanced'));
-
-  // Se o usuário acessou uma rota que ele não tem permissão (deep-link expirado,
-  // downgrade de plano), redireciona pra Visão Geral sem aviso ruidoso.
+  // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
+  // escondia a aba). Acesso direto por URL sem o módulo → cai no Relatório.
   useEffect(() => {
-    const isVisible = visibleTabs.some(t => t.value === activeTab);
-    if (!isVisible) navigate('/financeiro', { replace: true });
-  }, [activeTab, visibleTabs, navigate]);
+    if (screen === 'contas' && !hasModule('finance_advanced')) {
+      navigate('/financeiro/relatorio', { replace: true });
+    }
+  }, [screen, hasModule, navigate]);
 
   const {
     transactions, isLoading,
@@ -138,9 +122,9 @@ export default function Finance() {
     return s;
   }, [summaryTransactions]);
 
-  const handleNavigate = (tab: string) => {
-    const route = TAB_ROUTE_MAP[tab];
-    if (route) navigate(route);
+  // Atalhos da Visão Geral (cards "A Pagar"/"A Receber"/contas) → telas próprias.
+  const handleNavigateShortcut = (target: 'historico' | 'contas') => {
+    navigate(target === 'contas' ? '/financeiro/contas' : '/financeiro/movimentacoes');
   };
 
   // Duplica linhas de `financial_transaction_attachments` da transação original
@@ -254,69 +238,71 @@ export default function Finance() {
     setFormOpen(true);
   };
 
-  // No mobile, tabs que tem FAB (movimentações, contas) precisam de padding extra
+  // No mobile, telas com FAB (movimentações, contas) precisam de padding extra
   // pra última linha não ficar coberta pelo botão.
-  const tabHasFab = activeTab === 'historico' || activeTab === 'contas';
+  const screenHasFab = screen === 'movimentacoes' || screen === 'contas';
+
+  // Subtítulo do header por tela (cada tela é própria agora).
+  const screenSubtitle =
+    screen === 'contas'
+      ? 'Contas a pagar e a receber'
+      : screen === 'movimentacoes'
+      ? 'Movimentações por conta'
+      : 'Gerencie suas finanças';
 
   return (
-    // min-h-[100dvh] garante que empty states + transição de aba ocupem toda
+    // min-h-[100dvh] garante que empty states + transição de tela ocupem toda
     // a viewport real (respeitando barras dinâmicas do iOS Safari).
-    <div className={cn('min-h-[100dvh] space-y-4 sm:space-y-6', isMobile && tabHasFab && 'pb-24')}>
+    <div className={cn('min-h-[100dvh] space-y-4 sm:space-y-6', isMobile && screenHasFab && 'pb-24')}>
       <MobilePageHeader
         title="Financeiro"
-        subtitle="Gerencie suas finanças"
+        subtitle={screenSubtitle}
         icon={DollarSign}
       />
 
-      <SettingsSidebarLayout
-        tabs={visibleTabs}
-        activeTab={activeTab}
-        onTabChange={handleNavigate}
-      >
-        <div className="space-y-4">
-          <DateRangeFilter
-            value={range}
-            preset={preset}
-            onPresetChange={setPreset}
-            onRangeChange={setRange}
+      <div className="space-y-4">
+        <DateRangeFilter
+          value={range}
+          preset={preset}
+          onPresetChange={setPreset}
+          onRangeChange={setRange}
+        />
+
+        {screen === 'relatorio' && (
+          <FinanceRelatorio
+            transactions={filteredTransactions}
+            summary={summary}
+            activeTab={relatorioTab}
+            onTabChange={setRelatorioTab}
+            onNavigateShortcut={handleNavigateShortcut}
+            onNewReceita={() => handleNew('entrada')}
+            onNewDespesa={() => handleNew('saida')}
           />
+        )}
 
-          {activeTab === 'visao-geral' && (
-            <FinanceOverview
-              transactions={filteredTransactions}
-              summary={summary}
-              onNavigate={handleNavigate}
-              onNewReceita={() => handleNew('entrada')}
-              onNewDespesa={() => handleNew('saida')}
-            />
-          )}
+        {screen === 'movimentacoes' && (
+          <FinanceMovimentacoes
+            transactions={filteredTransactions}
+            isLoading={isLoading}
+            onNew={() => handleNew('entrada')}
+            onEdit={handleEdit}
+            onDelete={(id) => deleteTransaction.mutateAsync(id)}
+            onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
+            initialAccountId={accountFilterParam}
+            onConsumeInitialAccount={clearAccountFilterParam}
+          />
+        )}
 
-          {activeTab === 'historico' && (
-            <FinanceMovimentacoes
-              transactions={filteredTransactions}
-              isLoading={isLoading}
-              onNew={() => handleNew('entrada')}
-              onEdit={handleEdit}
-              onDelete={(id) => deleteTransaction.mutateAsync(id)}
-              onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
-              initialAccountId={accountFilterParam}
-              onConsumeInitialAccount={clearAccountFilterParam}
-            />
-          )}
-
-          {activeTab === 'contas' && (
-            <FinanceContas
-              transactions={contasTransactions}
-              allTransactions={transactions}
-              isLoading={isLoading}
-              onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
-              dateRange={range}
-            />
-          )}
-
-          {activeTab === 'dre' && <FinanceDRE transactions={filteredTransactions} />}
-        </div>
-      </SettingsSidebarLayout>
+        {screen === 'contas' && (
+          <FinanceContas
+            transactions={contasTransactions}
+            allTransactions={transactions}
+            isLoading={isLoading}
+            onMarkAsPaid={(params) => markAsPaid.mutateAsync(params)}
+            dateRange={range}
+          />
+        )}
+      </div>
 
       <TransactionFormDialog
         open={formOpen}

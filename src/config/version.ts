@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.4";
+export const APP_VERSION = "1.11.5";
 
-export const VERSION_NOTES = "Agora você gerencia sua assinatura pelo próprio sistema: na tela de Assinatura, em \"Gerenciar Meu Plano\", dá pra trocar de plano ou montar um personalizado (escolhendo módulos e usuários), no ciclo mensal ou anual. Você também vê o histórico dos seus pagamentos, e quando uma tela pedir um módulo que seu plano não tem, dá pra adicionar na hora. A tela de Usuários ganhou a opção de ver em lista ou cards e de contratar mais usuários ao chegar no limite.";
+export const VERSION_NOTES = "O Financeiro ficou mais organizado: o menu agora abre três telas separadas — Relatório Financeiro, Contas a Pagar/Receber e Movimentações Financeiras — sem telas empilhadas no celular, e o carrossel de contas aparece na cor de cada conta. O relatório de movimentações exporta um PDF em páginas A4, com botão de voltar no celular, respeitando o filtro que estiver na tela. E ao lançar as parcelas de um contrato dá pra definir conta, categoria e cliente de uma vez, com a opção de aplicar a todas as parcelas — além de uma aba \"Financeiro\" dentro do próprio contrato.";

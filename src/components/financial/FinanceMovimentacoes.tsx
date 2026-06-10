@@ -141,9 +141,11 @@ export function FinanceMovimentacoes({
             variant="ghost"
             className={cn(
               'h-6 w-6 pointer-events-auto',
+              // Aba ativa agora usa a cor da conta (não primary): o botão herda
+              // currentColor (a cor da conta) e hover só dá um leve realce.
               activeTab === a.id
-                ? 'text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground'
-                : 'text-muted-foreground hover:text-primary-foreground'
+                ? 'text-current hover:bg-foreground/10 hover:text-current'
+                : 'text-muted-foreground hover:text-foreground'
             )}
             onClick={(e) => e.stopPropagation()}
             aria-label={`Ações de ${a.name}`}
@@ -205,6 +207,8 @@ export function FinanceMovimentacoes({
         // No mobile a pill mostra só o saldo (cabe ao lado do nome).
         mobileSublabel: formatBRL(balance),
         rightElement: renderRightMenu(a),
+        // Aba/pill assume a cor da conta no ativo/hover (sutil).
+        accentColor: a.color || undefined,
       });
     }
     for (const a of cardAccounts) {
@@ -221,6 +225,8 @@ export function FinanceMovimentacoes({
         // Pill mobile: só a fatura (o "Disp." fica longo demais pra pill).
         mobileSublabel: formatBRL(billTotal),
         rightElement: renderRightMenu(a),
+        // Cartão também assume sua cor no ativo/hover.
+        accentColor: a.color || undefined,
       });
     }
     return result;
