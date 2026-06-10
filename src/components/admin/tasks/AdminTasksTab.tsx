@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Plus, Search, ClipboardList, LayoutGrid, LayoutList,
   AlertCircle, Clock, CheckCircle2, ListTodo, CalendarClock,
-  MessageCircle, Check,
+  MessageCircle, Check, User,
 } from 'lucide-react';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { getFollowupMessage } from '@/utils/followupMessages';
@@ -54,6 +55,7 @@ function getInitials(name?: string | null) {
 
 export function AdminTasksTab() {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   // Fonte canônica dos responsáveis = usuários do admin Auctus (view
   // salespeople_basic), NÃO profiles globais (que incluem tenants clientes).
@@ -105,6 +107,19 @@ export function AdminTasksTab() {
     for (const a of admins) m.set(a.user_id, a);
     return m;
   }, [admins]);
+
+  // Default: ao abrir, filtra pelas tarefas do próprio usuário logado (quando ele
+  // é um responsável atribuível). Aplica UMA vez — depois disso, limpar o filtro
+  // de Responsável persiste (a ref impede re-aplicação do default).
+  const didInitResponsibleRef = useRef(false);
+  useEffect(() => {
+    if (didInitResponsibleRef.current) return;
+    if (admins.length === 0) return; // lista ainda carregando
+    didInitResponsibleRef.current = true;
+    if (user?.id && adminByUserId.has(user.id)) {
+      setFilters(prev => ({ ...prev, assigned_to: [user.id] }));
+    }
+  }, [admins, adminByUserId, user?.id]);
 
   const effectiveFilters: TaskFilters = useMemo(
     () => ({ ...filters, search }),
@@ -324,21 +339,35 @@ export function AdminTasksTab() {
                 });
               }
 
+              const responsible = task.assigned_to ? adminByUserId.get(task.assigned_to) ?? null : null;
+
               return (
                 <MobileListItem
                   key={task.id}
                   onClick={() => setSelectedTask(task)}
                   actions={actions.length > 0 ? actions : undefined}
                   leading={
-                    <span className={cn('flex h-10 w-10 items-center justify-center rounded-full text-[11px] font-bold uppercase', typeConfig.className)}>
-                      {typeConfig.label.slice(0, 2)}
-                    </span>
+                    responsible ? (
+                      <SalespersonAvatar name={responsible.full_name} photoUrl={responsible.photo_url} size="md" />
+                    ) : (
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        <User className="h-4 w-4" />
+                      </span>
+                    )
                   }
                   title={<span className="truncate">{task.title}</span>}
                   subtitle={
                     <span className="flex items-center gap-2 flex-wrap text-xs">
                       <span className={cn('px-1.5 py-0.5 rounded-full text-[10px]', typeConfig.className)}>{typeConfig.label}</span>
-                      {leadName && <span className="text-primary font-medium truncate max-w-[120px]">{leadName}</span>}
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <User className="h-3 w-3 shrink-0" />
+                        {responsible ? (
+                          <span className="font-medium text-foreground truncate max-w-[110px]">{responsible.full_name.split(' ')[0]}</span>
+                        ) : (
+                          <span className="italic">Sem responsável</span>
+                        )}
+                      </span>
+                      {leadName && <span className="text-primary font-medium truncate max-w-[110px]">{leadName}</span>}
                     </span>
                   }
                   trailing={

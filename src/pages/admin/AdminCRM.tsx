@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, ClipboardList } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Plus, Search, DollarSign, TrendingUp, Users, LayoutList, LayoutGrid, Filter, ClipboardList, User } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
@@ -19,7 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
-import { useProfiles } from '@/hooks/useProfiles';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
@@ -142,10 +142,10 @@ export default function AdminCRM() {
 }
 
 function CrmTab() {
+  const { user } = useAuth();
   const { leads, isLoading, updateLead } = useAdminLeads();
   const { stages, isLoading: stagesLoading } = useAdminCrmStages();
   const { origins } = useCompanyOrigins();
-  const { data: profiles } = useProfiles();
 
   // Mapa user_id -> vendedor (pra mostrar avatar do responsável no card quando o
   // lead tem responsible_id apontando pra um usuário vinculado a um vendedor).
@@ -184,21 +184,47 @@ function CrmTab() {
   // View mode mobile (kanban default, conforme briefing). Desktop sempre kanban.
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
-  // Filters — Origem/Segmento multi-select (array vazio = inativo); Data range fica single.
+  // Filters — Origem/Segmento/Responsável multi-select (array vazio = inativo); Data range fica single.
   const [filterOrigin, setFilterOrigin] = useState<string[]>([]);
   const [filterSegment, setFilterSegment] = useState<string[]>([]);
+  const [filterResponsible, setFilterResponsible] = useState<string[]>([]);
   const [filterDatePreset, setFilterDatePreset] = useState<DatePreset>('all');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
 
+  // Opções de Responsável = usuários do admin (salespeople_basic com user_id).
+  // value = user_id (= auth uid de responsible_id), label = nome.
+  const responsibleOptions = useMemo<FilterCheckboxOption[]>(
+    () => Array.from(salespersonByUserId.entries()).map(([userId, sp]) => ({
+      value: userId,
+      label: sp.name,
+    })),
+    [salespersonByUserId],
+  );
+
+  // Default: ao abrir, filtra pelos leads do próprio usuário logado (quando ele é
+  // um responsável atribuível). Aplica UMA vez — depois disso, limpar o filtro de
+  // Responsável persiste (a ref impede re-aplicação do default).
+  const didInitResponsibleRef = useRef(false);
+  useEffect(() => {
+    if (didInitResponsibleRef.current) return;
+    if (salespersonByUserId.size === 0) return; // lista ainda carregando
+    didInitResponsibleRef.current = true;
+    if (user?.id && salespersonByUserId.has(user.id)) {
+      setFilterResponsible([user.id]);
+    }
+  }, [salespersonByUserId, user?.id]);
+
   const activeFilterCount =
     (filterOrigin.length > 0 ? 1 : 0) +
     (filterSegment.length > 0 ? 1 : 0) +
+    (filterResponsible.length > 0 ? 1 : 0) +
     (filterDatePreset !== 'all' ? 1 : 0);
 
   const clearFilters = () => {
     setFilterOrigin([]);
     setFilterSegment([]);
+    setFilterResponsible([]);
     setFilterDatePreset('all');
     setFilterDateFrom('');
     setFilterDateTo('');
@@ -215,6 +241,7 @@ function CrmTab() {
       )) return false;
       if (filterOrigin.length > 0 && (!l.source || !filterOrigin.includes(l.source))) return false;
       if (filterSegment.length > 0 && (!l.segment || !filterSegment.includes(l.segment))) return false;
+      if (filterResponsible.length > 0 && (!l.responsible_id || !filterResponsible.includes(l.responsible_id))) return false;
       if (from || to) {
         const created = new Date(l.created_at);
         if (from && created < from) return false;
@@ -222,7 +249,7 @@ function CrmTab() {
       }
       return true;
     });
-  }, [leads, search, filterOrigin, filterSegment, filterDatePreset, filterDateFrom, filterDateTo]);
+  }, [leads, search, filterOrigin, filterSegment, filterResponsible, filterDatePreset, filterDateFrom, filterDateTo]);
 
   const getLeadsByStage = (stageId: string) => filteredLeads.filter(l => l.stage_id === stageId);
 
@@ -298,11 +325,6 @@ function CrmTab() {
     return origins.find(o => o.name === sourceName);
   };
 
-  const getOwnerProfile = (userId: string | null) => {
-    if (!userId || !profiles) return null;
-    return profiles.find(p => p.user_id === userId);
-  };
-
   const getInitials = (name: string) => {
     return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   };
@@ -334,6 +356,8 @@ function CrmTab() {
       origins={origins}
       filterOrigin={filterOrigin} setFilterOrigin={setFilterOrigin}
       filterSegment={filterSegment} setFilterSegment={setFilterSegment}
+      responsibleOptions={responsibleOptions}
+      filterResponsible={filterResponsible} setFilterResponsible={setFilterResponsible}
       filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
       filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
       filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
@@ -404,6 +428,8 @@ function CrmTab() {
                 origins={origins}
                 filterOrigin={filterOrigin} setFilterOrigin={setFilterOrigin}
                 filterSegment={filterSegment} setFilterSegment={setFilterSegment}
+                responsibleOptions={responsibleOptions}
+                filterResponsible={filterResponsible} setFilterResponsible={setFilterResponsible}
                 filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
                 filterDateFrom={filterDateFrom} setFilterDateFrom={setFilterDateFrom}
                 filterDateTo={filterDateTo} setFilterDateTo={setFilterDateTo}
@@ -432,6 +458,7 @@ function CrmTab() {
                 const stage = stages.find(s => s.id === lead.stage_id);
                 const originInfo = getOriginInfo(lead.source);
                 const value = Number(lead.value || 0);
+                const responsible = lead.responsible_id ? salespersonByUserId.get(lead.responsible_id) ?? null : null;
                 return (
                   <MobileListItem
                     key={lead.id}
@@ -452,16 +479,18 @@ function CrmTab() {
                     subtitle={
                       <div className="flex items-center gap-2 flex-wrap text-xs">
                         {lead.company_name && (
-                          <span className="text-primary font-medium truncate max-w-[150px]">
+                          <span className="text-primary font-medium truncate max-w-[130px]">
                             {lead.company_name}
                           </span>
                         )}
-                        {originInfo && (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: originInfo.color || '#6B7280' }} />
-                            {originInfo.name}
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <User className="h-3 w-3 shrink-0" />
+                          {responsible ? (
+                            <span className="font-medium text-foreground truncate max-w-[100px]">{responsible.name.split(' ')[0]}</span>
+                          ) : (
+                            <span className="italic">Sem responsável</span>
+                          )}
+                        </span>
                       </div>
                     }
                     trailing={
@@ -523,7 +552,6 @@ function CrmTab() {
                         ) : stageLeads.map(lead => {
                           const originInfo = getOriginInfo(lead.source);
                           const segmentData = getSegment(lead.segment);
-                          const owner = getOwnerProfile(lead.created_by);
                           const assignedSalesperson = lead.responsible_id
                             ? salespersonByUserId.get(lead.responsible_id) ?? null
                             : null;
@@ -553,23 +581,6 @@ function CrmTab() {
                                       <p className="text-primary text-sm font-medium truncate">{lead.company_name}</p>
                                     )}
                                   </div>
-                                  {assignedSalesperson && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="shrink-0">
-                                          <SalespersonAvatar
-                                            name={assignedSalesperson.name}
-                                            photoUrl={assignedSalesperson.photo_url}
-                                            size="sm"
-                                            className="border-2 border-background"
-                                          />
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="left" className="text-xs">
-                                        <p className="font-medium">Responsável: {assignedSalesperson.name}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
                                 </div>
                               </div>
 
@@ -600,22 +611,25 @@ function CrmTab() {
                                 )}
                               </div>
 
-                              <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 flex items-center justify-between border-t pt-2 mt-1">
-                                <div className="flex items-center gap-1.5">
-                                  {owner && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Avatar className="h-6 w-6 border-2 border-background">
-                                          <AvatarImage src={owner.avatar_url || undefined} />
-                                          <AvatarFallback className="text-[9px] bg-primary text-primary-foreground">
-                                            {getInitials(owner.full_name || 'U')}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="bottom" className="text-xs">
-                                        <p className="font-medium">{owner.full_name}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
+                              <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 flex items-center justify-between border-t pt-2 mt-1 gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {assignedSalesperson ? (
+                                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                                      <SalespersonAvatar
+                                        name={assignedSalesperson.name}
+                                        photoUrl={assignedSalesperson.photo_url}
+                                        size="sm"
+                                        className="border-2 border-background shrink-0"
+                                      />
+                                      <span className="text-xs font-medium text-foreground truncate max-w-[90px]">
+                                        {assignedSalesperson.name.split(' ')[0]}
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground italic">
+                                      <User className="h-3.5 w-3.5 shrink-0" />
+                                      Sem responsável
+                                    </span>
                                   )}
                                   {lead.phone && (
                                     <Tooltip>
@@ -686,6 +700,9 @@ interface FiltersFormProps {
   setFilterOrigin: (v: string[]) => void;
   filterSegment: string[];
   setFilterSegment: (v: string[]) => void;
+  responsibleOptions: FilterCheckboxOption[];
+  filterResponsible: string[];
+  setFilterResponsible: (v: string[]) => void;
   filterDatePreset: DatePreset;
   setFilterDatePreset: (v: DatePreset) => void;
   filterDateFrom: string;
@@ -699,6 +716,7 @@ interface FiltersFormProps {
 
 function FiltersForm({
   origins, filterOrigin, setFilterOrigin, filterSegment, setFilterSegment,
+  responsibleOptions, filterResponsible, setFilterResponsible,
   filterDatePreset, setFilterDatePreset,
   filterDateFrom, setFilterDateFrom, filterDateTo, setFilterDateTo,
   isMobile, viewMode, setViewMode,
@@ -757,6 +775,14 @@ function FiltersForm({
         emptyLabel="Todos"
       />
 
+      <FilterCheckboxGroup
+        label="Responsável"
+        options={responsibleOptions}
+        selected={filterResponsible}
+        onChange={setFilterResponsible}
+        emptyLabel="Todos"
+      />
+
       <div className="space-y-2">
         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de Geração</Label>
         <Select value={filterDatePreset} onValueChange={(v) => setFilterDatePreset(v as DatePreset)}>
@@ -797,6 +823,9 @@ interface DesktopFilterPopoverProps {
   setFilterOrigin: (v: string[]) => void;
   filterSegment: string[];
   setFilterSegment: (v: string[]) => void;
+  responsibleOptions: FilterCheckboxOption[];
+  filterResponsible: string[];
+  setFilterResponsible: (v: string[]) => void;
   filterDatePreset: DatePreset;
   setFilterDatePreset: (v: DatePreset) => void;
   filterDateFrom: string;
@@ -825,6 +854,8 @@ function DesktopFilterPopover(props: DesktopFilterPopoverProps) {
               origins={props.origins}
               filterOrigin={props.filterOrigin} setFilterOrigin={props.setFilterOrigin}
               filterSegment={props.filterSegment} setFilterSegment={props.setFilterSegment}
+              responsibleOptions={props.responsibleOptions}
+              filterResponsible={props.filterResponsible} setFilterResponsible={props.setFilterResponsible}
               filterDatePreset={props.filterDatePreset} setFilterDatePreset={props.setFilterDatePreset}
               filterDateFrom={props.filterDateFrom} setFilterDateFrom={props.setFilterDateFrom}
               filterDateTo={props.filterDateTo} setFilterDateTo={props.setFilterDateTo}

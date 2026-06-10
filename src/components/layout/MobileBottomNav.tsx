@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, CalendarDays, Users, Menu } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  CalendarDays,
+  Users,
+  Menu,
+  Target,
+  Building2,
+  Briefcase,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import { MoreMenuDrawer } from './MoreMenuDrawer';
 
 interface NavItem {
@@ -10,23 +20,40 @@ interface NavItem {
   path?: string;
   action?: 'openMore';
   special?: boolean;
+  /** Chave em admin_permissions (só itens admin). Sem chave = sempre visível. */
+  screenKey?: string;
 }
 
 /**
- * Bottom nav mobile (<1024px) — 5 slots fixos:
+ * Bottom nav mobile (<1024px) — 5 slots.
+ *
+ * Tenant (não-admin):
  *   Início | OS | Agenda(FAB) | Clientes | Menu
  *
- * Customização-chave vs EcoSistema: o FAB central NÃO abre um arco de quick
- * actions. Vira botão simples que navega pra `/agenda`. Decisão do Kaik.
+ * Admin (painel master Auctus):
+ *   Dashboard | CRM/Tarefas | Empresas(FAB) | Vendedores | Menu
  *
- * O slot Menu (último) abre o `<MoreMenuDrawer />` (bottom sheet) com tudo
- * o que não cabe nesta barra de 5 ícones.
+ * Customização-chave vs EcoSistema: o FAB central NÃO abre um arco de quick
+ * actions. Vira botão simples que navega direto. Decisão do Kaik.
+ *
+ * O slot Menu (último) abre o `<MoreMenuDrawer />`, que já diferencia
+ * admin/tenant internamente.
  */
-const navItems: NavItem[] = [
+const tenantNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Início', path: '/dashboard' },
   { icon: ClipboardList, label: 'OS', path: '/ordens-servico' },
   { icon: CalendarDays, label: 'Agenda', path: '/agenda', special: true },
   { icon: Users, label: 'Clientes', path: '/clientes' },
+  { icon: Menu, label: 'Menu', action: 'openMore' },
+];
+
+// Labels/paths/screenKeys/ícones espelham ADMIN_MENU_ITEMS de AdminSidebarNav.
+// FAB central = Empresas (admin_empresas). O slot Menu nunca tem screenKey.
+const adminNavItems: NavItem[] = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard', screenKey: 'admin_dashboard' },
+  { icon: Target, label: 'CRM/Tarefas', path: '/admin/crm', screenKey: 'admin_crm' },
+  { icon: Building2, label: 'Empresas', path: '/admin/empresas', special: true, screenKey: 'admin_empresas' },
+  { icon: Briefcase, label: 'Vendedores', path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { icon: Menu, label: 'Menu', action: 'openMore' },
 ];
 
@@ -37,6 +64,7 @@ const triggerHaptic = () => {
 export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAdminUser, hasAdminScreenAccess } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
 
   // Fecha o drawer ao trocar de rota.
@@ -48,6 +76,28 @@ export function MobileBottomNav() {
     if (!path) return false;
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
+
+  // Monta a lista de itens conforme o contexto.
+  let navItems: NavItem[];
+  if (isAdminUser) {
+    // Segurança/permissão: vendedor com permissões admin parciais só vê as
+    // telas a que tem acesso (mesma régua do AdminSidebarNav). O slot Menu não
+    // tem screenKey, então sempre permanece.
+    const filtered = adminNavItems
+      .filter((item) => !item.screenKey || hasAdminScreenAccess(item.screenKey))
+      .map((item) => ({ ...item })); // cópia: nunca mutar os objetos compartilhados
+    // Fallback do FAB: se Empresas (o `special` original) foi filtrado por falta
+    // de permissão, promovemos o primeiro item navegável que sobrou a FAB
+    // central pra barra nunca ficar sem botão de destaque.
+    const hasSpecial = filtered.some((item) => item.special);
+    if (!hasSpecial) {
+      const firstNav = filtered.find((item) => item.path);
+      if (firstNav) firstNav.special = true;
+    }
+    navItems = filtered;
+  } else {
+    navItems = tenantNavItems;
+  }
 
   return (
     <>
@@ -65,7 +115,7 @@ export function MobileBottomNav() {
                     navigate(item.path!);
                   }}
                   className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30 active:scale-90 transition-transform -translate-y-4"
-                  aria-label="Ir para Agenda"
+                  aria-label={`Ir para ${item.label}`}
                 >
                   <item.icon className="h-7 w-7 text-primary-foreground" />
                 </button>

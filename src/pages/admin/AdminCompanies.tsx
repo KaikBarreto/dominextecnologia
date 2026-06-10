@@ -339,7 +339,7 @@ export default function AdminCompanies() {
     },
     {
       key: 'testing',
-      label: 'Trial',
+      label: 'Testando',
       count: stats.testing,
       icon: <Clock className="h-4 w-4" />,
       accentColor: 'hsl(var(--warning))',
