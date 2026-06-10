@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.7',
+    date: '10 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Correção: remover a permissão de Agenda de um técnico não tira mais o acesso dele',
+        description: 'Quando o administrador desmarcava a permissão de "Agenda" de um técnico, ele acabava perdendo o acesso às demais telas (caía numa tela em branco). Corrigido: agora o técnico é levado para a primeira tela que tem permissão e continua acessando normalmente todas as suas funções.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.6',
     date: '10 de junho de 2026',
     type: 'minor',
