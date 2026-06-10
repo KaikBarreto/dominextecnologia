@@ -48,6 +48,24 @@ verify_jwt = false
 [functions.asaas-webhook]
 verify_jwt = false
 
+# backfill-asaas-customers: provisiona customer Asaas para empresas sem
+# asaas_customer_id. Autentica DENTRO da função por super_admin (Bearer JWT)
+# OU header x-cron-secret == CRON_SECRET (chamada do cron pg_cron como postgres).
+# verify_jwt=false porque o cron manda o secret no x-cron-secret, não um JWT —
+# com verify_jwt=true o gateway rejeitava com 401 UNAUTHORIZED_INVALID_JWT_FORMAT
+# antes de a função avaliar o x-cron-secret.
+[functions.backfill-asaas-customers]
+verify_jwt = false
+
+# sync-asaas-ledger: sincroniza o extrato Asaas (ledger) com o financeiro.
+# Autentica DENTRO da função por super_admin (Bearer JWT, botão "Sincronizar")
+# OU header x-cron-secret == CRON_SECRET (cron pg_cron horário como postgres).
+# verify_jwt=false porque o cron manda o secret no x-cron-secret e o CRON_SECRET
+# cru no Authorization (não um JWT) — com verify_jwt=true o gateway rejeitava com
+# 401 UNAUTHORIZED_INVALID_JWT_FORMAT antes de a função avaliar o x-cron-secret.
+[functions.sync-asaas-ledger]
+verify_jwt = false
+
 # Todas as outras funções usam verify_jwt = true (padrão)
 # create-user, manage-user, cep-lookup, og-image, os-share, create-company,
 # activate-subscription (super_admin), confirm-sale-payment (super_admin)
