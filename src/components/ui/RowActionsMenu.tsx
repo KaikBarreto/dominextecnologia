@@ -81,7 +81,10 @@ export function RowActionsMenu({
   };
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    // modal={false}: evita o `pointer-events: none` que o Radix aplica fora do
+    // conteúdo ao abrir — ele disparava um pointerleave falso no trigger,
+    // fechando e reabrindo o menu (o "piscar 2x" no hover).
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
