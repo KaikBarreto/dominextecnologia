@@ -55,7 +55,6 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
   });
 
   const [form, setForm] = useState({
-    title: '',
     company_name: '',
     contact_name: '',
     email: '',
@@ -76,7 +75,6 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
     if (!open) return;
     if (editingLead) {
       setForm({
-        title: editingLead.title || '',
         company_name: editingLead.company_name || '',
         contact_name: editingLead.contact_name || '',
         email: editingLead.email || '',
@@ -96,7 +94,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
       // linkedSalespersonId aponta pra salespeople.id; aqui guardamos auth.users.id.
       const defaultResponsible = linkedSalespersonId && user?.id ? user.id : '';
       setForm({
-        title: '', company_name: '', contact_name: '', email: '', phone: '',
+        company_name: '', contact_name: '', email: '', phone: '',
         value: '', source: '', segment: '', stage_id: firstStage?.id || '', expected_close_date: '', notes: '',
         loss_reason: '',
         responsible_id: defaultResponsible,
@@ -114,13 +112,11 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
   const isLostStage = !!selectedStage?.is_lost;
 
   const handleSubmit = () => {
-    if (!form.title.trim()) return;
     if (form.email && !validateEmail(form.email)) {
       setEmailError('E-mail inválido');
       return;
     }
     const payload: any = {
-      title: form.title.trim(),
       company_name: form.company_name || null,
       contact_name: form.contact_name || null,
       email: form.email || null,
@@ -151,15 +147,28 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
   const selectedResponsible = salespeople.find((s: any) => s.user_id === form.responsible_id);
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={isEditing ? 'Editar Lead' : 'Novo Lead'}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEditing ? 'Editar Lead' : 'Novo Lead'}
+      description="Preencha o essencial. Você pode complementar os dados depois."
+    >
       <div className="space-y-5">
-        {/* Seção Principal */}
+        {/* Seção Essenciais */}
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Informações Principais</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Essenciais</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <Label>Título da Negociação *</Label>
-              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Proposta Climatização Escritório" />
+              <Label>
+                Nome do contato
+                <span className="ml-1 text-xs font-normal text-muted-foreground">(opcional)</span>
+              </Label>
+              <Input
+                autoFocus
+                value={form.contact_name}
+                onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
+                placeholder="Ex: João Silva"
+              />
             </div>
             <div>
               <Label>Telefone</Label>
@@ -170,130 +179,6 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
               />
             </div>
             <div>
-              <Label>E-mail</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setEmailError(''); }}
-                placeholder="contato@empresa.com"
-                className={emailError ? 'border-destructive' : ''}
-              />
-              {emailError && <p className="text-xs text-destructive mt-1">{emailError}</p>}
-            </div>
-            <div>
-              <Label>Origem</Label>
-              <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
-                <SelectTrigger
-                  className={selectedOrigin ? 'text-white font-medium border-transparent' : ''}
-                  style={selectedOrigin ? { backgroundColor: selectedOrigin.color || '#6B7280' } : undefined}
-                >
-                  {selectedOrigin ? (
-                    <div className="flex items-center gap-2">
-                      <OriginIcon name={selectedOrigin.icon || 'Globe'} className="h-3.5 w-3.5 text-white" />
-                      <span>{selectedOrigin.name}</span>
-                    </div>
-                  ) : (
-                    <SelectValue placeholder="Selecione a origem" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {origins.map(o => (
-                    <SelectItem
-                      key={o.id}
-                      value={o.name}
-                      className="cursor-pointer rounded-md my-0.5 transition-colors hover:!text-white [&[data-highlighted]]:!text-white"
-                      style={{
-                        ['--origin-color' as any]: o.color || '#6B7280',
-                      }}
-                    >
-                      <div className="flex items-center gap-2 [div[data-highlighted]>&]:text-white">
-                        <div className="h-4 w-4 rounded flex items-center justify-center shrink-0 transition-colors" style={{ backgroundColor: o.color || '#6B7280' }}>
-                          <OriginIcon name={o.icon || 'Globe'} className="h-2.5 w-2.5 text-white" />
-                        </div>
-                        <span>{o.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Segmento</Label>
-              {(() => {
-                const selectedSeg = getSegment(form.segment);
-                return (
-                  <Select value={form.segment} onValueChange={v => setForm(f => ({ ...f, segment: v }))}>
-                    <SelectTrigger
-                      className={selectedSeg ? 'text-white font-medium border-transparent' : ''}
-                      style={selectedSeg ? { backgroundColor: selectedSeg.color } : undefined}
-                    >
-                      {selectedSeg ? (
-                        <div className="flex items-center gap-2">
-                          <selectedSeg.icon className="h-3.5 w-3.5 text-white" />
-                          <span className="truncate">{selectedSeg.label}</span>
-                        </div>
-                      ) : (
-                        <SelectValue placeholder="Selecione o segmento" />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMPANY_SEGMENTS.map(s => (
-                        <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
-                          <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>
-                              <s.icon className="h-2.5 w-2.5 text-white" />
-                            </div>
-                            <span>{s.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Seção Detalhes */}
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Detalhes da Negociação</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Empresa</Label>
-              <Input value={form.company_name} onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))} placeholder="Nome da empresa" />
-            </div>
-            <div>
-              <Label>Contato</Label>
-              <Input value={form.contact_name} onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))} placeholder="Nome do contato" />
-            </div>
-            <div>
-              <Label>Valor (R$)</Label>
-              <Input type="number" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} placeholder="0,00" />
-            </div>
-            <div>
-              <Label>Etapa</Label>
-              <Select value={form.stage_id} onValueChange={v => setForm(f => ({ ...f, stage_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {stages.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-                        {s.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Previsão de Fechamento</Label>
-              <Input type="date" value={form.expected_close_date} onChange={e => setForm(f => ({ ...f, expected_close_date: e.target.value }))} />
-            </div>
-            <div className="sm:col-span-2">
               <Label>Responsável</Label>
               <Select
                 value={form.responsible_id || UNASSIGNED}
@@ -338,6 +223,127 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Origem</Label>
+              <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
+                <SelectTrigger
+                  className={selectedOrigin ? 'text-white font-medium border-transparent' : ''}
+                  style={selectedOrigin ? { backgroundColor: selectedOrigin.color || '#6B7280' } : undefined}
+                >
+                  {selectedOrigin ? (
+                    <div className="flex items-center gap-2">
+                      <OriginIcon name={selectedOrigin.icon || 'Globe'} className="h-3.5 w-3.5 text-white" />
+                      <span>{selectedOrigin.name}</span>
+                    </div>
+                  ) : (
+                    <SelectValue placeholder="Selecione a origem" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {origins.map(o => (
+                    <SelectItem
+                      key={o.id}
+                      value={o.name}
+                      className="cursor-pointer rounded-md my-0.5 transition-colors hover:!text-white [&[data-highlighted]]:!text-white"
+                      style={{
+                        ['--origin-color' as any]: o.color || '#6B7280',
+                      }}
+                    >
+                      <div className="flex items-center gap-2 [div[data-highlighted]>&]:text-white">
+                        <div className="h-4 w-4 rounded flex items-center justify-center shrink-0 transition-colors" style={{ backgroundColor: o.color || '#6B7280' }}>
+                          <OriginIcon name={o.icon || 'Globe'} className="h-2.5 w-2.5 text-white" />
+                        </div>
+                        <span>{o.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Etapa</Label>
+              <Select value={form.stage_id} onValueChange={v => setForm(f => ({ ...f, stage_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {stages.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                        {s.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Seção Opcionais */}
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Mais detalhes</h3>
+          <p className="text-xs text-muted-foreground mb-3">Você pode preencher também:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label>Empresa</Label>
+              <Input value={form.company_name} onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))} placeholder="Nome da empresa" />
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setEmailError(''); }}
+                placeholder="contato@empresa.com"
+                className={emailError ? 'border-destructive' : ''}
+              />
+              {emailError && <p className="text-xs text-destructive mt-1">{emailError}</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Segmento</Label>
+              {(() => {
+                const selectedSeg = getSegment(form.segment);
+                return (
+                  <Select value={form.segment} onValueChange={v => setForm(f => ({ ...f, segment: v }))}>
+                    <SelectTrigger
+                      className={selectedSeg ? 'text-white font-medium border-transparent' : ''}
+                      style={selectedSeg ? { backgroundColor: selectedSeg.color } : undefined}
+                    >
+                      {selectedSeg ? (
+                        <div className="flex items-center gap-2">
+                          <selectedSeg.icon className="h-3.5 w-3.5 text-white" />
+                          <span className="truncate">{selectedSeg.label}</span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Selecione o segmento" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_SEGMENTS.map(s => (
+                        <SelectItem key={s.value} value={s.value} className="cursor-pointer rounded-md my-0.5">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: s.color }}>
+                              <s.icon className="h-2.5 w-2.5 text-white" />
+                            </div>
+                            <span>{s.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
+            </div>
+            <div>
+              <Label>Valor (R$)</Label>
+              <Input type="number" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} placeholder="0,00" />
+            </div>
+            <div>
+              <Label>Previsão de Fechamento</Label>
+              <Input type="date" value={form.expected_close_date} onChange={e => setForm(f => ({ ...f, expected_close_date: e.target.value }))} />
+            </div>
             <div className="sm:col-span-2">
               <Label>Observações</Label>
               <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Anotações sobre a negociação..." />
@@ -358,7 +364,7 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead }: Props) 
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={!form.title.trim() || isSaving}>
+          <Button onClick={handleSubmit} disabled={isSaving}>
             {isSaving ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar Lead'}
           </Button>
         </div>

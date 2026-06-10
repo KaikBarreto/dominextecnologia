@@ -136,7 +136,18 @@ export function useAdminLeads() {
 
   const createLead = useMutation({
     mutationFn: async (input: Partial<AdminLead>) => {
-      const { data, error } = await supabase.from('admin_leads' as any).insert(input).select().single();
+      // admin_leads.title é NOT NULL no banco, mas o formulário não pede mais
+      // título explícito (UX espelhada no EcoSistema). Auto-geramos a partir do
+      // que o usuário preencheu — sem migration. Se um caller futuro mandar um
+      // title explícito, ele tem prioridade.
+      const autoTitle =
+        (input.title?.trim?.() || '') ||
+        input.company_name?.trim() ||
+        input.contact_name?.trim() ||
+        input.phone?.trim() ||
+        'Lead sem identificação';
+      const payload = { ...input, title: autoTitle };
+      const { data, error } = await supabase.from('admin_leads' as any).insert(payload).select().single();
       if (error) throw error;
       return data;
     },
