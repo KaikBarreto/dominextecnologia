@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.8',
+    date: '10 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Numeração de equipamentos agora é automática e nunca repete',
+        description: 'O número de identificação de cada equipamento passou a ser gerado automaticamente de forma sequencial dentro da sua empresa (0001, 0002, 0003...). Corrigimos uma falha em que equipamentos diferentes podiam acabar com o mesmo número, e organizamos a numeração dos equipamentos já cadastrados.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.7',
     date: '10 de junho de 2026',
     type: 'patch',

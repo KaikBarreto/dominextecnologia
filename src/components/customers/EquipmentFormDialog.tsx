@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -65,12 +65,6 @@ export function EquipmentFormDialog({
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initializedContextRef = useRef<string | null>(null);
-
-  const autoIdentifier = useMemo(() => {
-    if (equipment?.identifier) return equipment.identifier;
-    const part1 = Math.floor(Math.random() * 9000000000000000) + 1000000000000000;
-    return String(part1);
-  }, [equipment]);
 
   const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
   const formContextKey = equipment?.id ?? `new:${defaultCustomerId || 'none'}`;
@@ -144,7 +138,7 @@ export function EquipmentFormDialog({
         customer_id: defaultCustomerId,
         name: equipment?.name ?? '',
         category_id: equipment?.category_id ?? '',
-        identifier: equipment?.identifier ?? autoIdentifier,
+        identifier: equipment?.identifier ?? '',
         brand: equipment?.brand ?? '',
         model: equipment?.model ?? '',
         serial_number: equipment?.serial_number ?? '',
@@ -167,7 +161,7 @@ export function EquipmentFormDialog({
 
     setPhotoFile(null);
     setPhotoPreview(equipment?.photo_url ?? null);
-  }, [open, formContextKey, form, defaultCustomerId, equipment, autoIdentifier]);
+  }, [open, formContextKey, form, defaultCustomerId, equipment]);
 
   const uploadPhoto = async (): Promise<string | null> => {
     if (!photoFile) return null;
@@ -330,7 +324,14 @@ export function EquipmentFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Identificador</FormLabel>
-                  <FormControl><Input placeholder="Gerado automaticamente" {...field} readOnly className="bg-muted" /></FormControl>
+                  <FormControl>
+                    <Input
+                      placeholder={equipment ? '' : 'Gerado automaticamente ao salvar'}
+                      {...field}
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

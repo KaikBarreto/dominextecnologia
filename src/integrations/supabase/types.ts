@@ -1453,7 +1453,7 @@ export type Database = {
           {
             foreignKeyName: "customer_portals_customer_id_fkey"
             columns: ["customer_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -2268,6 +2268,29 @@ export type Database = {
             foreignKeyName: "equipment_field_config_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_number_counters: {
+        Row: {
+          company_id: string
+          next_value: number
+        }
+        Insert: {
+          company_id: string
+          next_value?: number
+        }
+        Update: {
+          company_id?: string
+          next_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_number_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -5873,6 +5896,10 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      next_equipment_identifier: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       nth_business_day: {
         Args: {
           p_company_id?: string
