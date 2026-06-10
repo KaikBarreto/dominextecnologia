@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.11',
+    date: '10 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefas na agenda agora respeitam quem pode ver',
+        description: 'As tarefas da agenda passam a aparecer apenas para o responsável por elas e para quem tem acesso total à agenda. Criamos a permissão "Ver Toda a Agenda", que você liga ou desliga por usuário na tela de Usuários — assim cada pessoa vê só as tarefas que lhe dizem respeito, e quem precisa enxergar tudo continua enxergando.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Perfil "Acesso Total" passa a incluir novidades automaticamente',
+        description: 'Quem está no perfil de acesso "Acesso Total" agora recebe automaticamente as novas permissões sempre que lançamos um recurso novo — sem precisar reconfigurar usuário por usuário.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.10',
     date: '10 de junho de 2026',
     type: 'patch',

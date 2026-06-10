@@ -56,7 +56,7 @@ export default function Schedule() {
   const navigate = useNavigate();
   const { serviceTypes } = useServiceTypes();
   const { teamsWithMembers } = useTeams();
-  const { user, hasRole, hasPermission, isAdminOrGestor } = useAuth();
+  const { user, hasRole, hasPermission, isAdminOrGestor, roles, permissions, hasPermissionRecord } = useAuth();
   const { settings: companySettings } = useCompanySettings();
 
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
@@ -140,8 +140,29 @@ export default function Schedule() {
 
   const getAssignees = useOrderAssignees(allProfiles, teamsWithMembers);
 
+  // Acesso total à agenda: admin/super_admin OU quem tem a permissão dedicada
+  // (ou o curinga '*'). Lemos direto do array de permissões — e não via
+  // hasPermission — de propósito: hasPermission, sem registro de permissões,
+  // libera tudo pelo role. Aqui queremos o oposto para tarefas: sem o acesso
+  // explícito, a tarefa só aparece pra quem é responsável por ela.
+  const canViewAllSchedule =
+    roles.includes('admin') || roles.includes('super_admin') ||
+    (hasPermissionRecord && (permissions.includes('*') || permissions.includes('fn:view_all_schedule')));
+
   const filteredOrders = useMemo(() => {
     const osFiltered = serviceOrders.filter((order) => {
+      // Visibilidade de TAREFAS (entry_type === 'tarefa'): vale pra TODOS os
+      // viewers, não só técnico. Sem acesso total à agenda, uma tarefa só
+      // aparece pra quem é responsável (assignee/técnico legado) ou pro time
+      // dela. OS comuns (entry_type !== 'tarefa') não são afetadas.
+      if (order.entry_type === 'tarefa' && !canViewAllSchedule) {
+        const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
+        const isMine =
+          (!!user?.id && (assigneeIds?.includes(user.id) || order.technician_id === user.id)) ||
+          (!!order.team_id && myTeamIds.includes(order.team_id));
+        if (!isMine) return false;
+      }
+
       if (isTechnician && user?.id) {
         const assigneeIds = (order as any)._assignee_user_ids as string[] | undefined;
         const isAssignedToMe = assigneeIds?.includes(user.id) || order.technician_id === user.id;
@@ -223,7 +244,7 @@ export default function Schedule() {
     }
 
     return [...expanded, ...financialEvents];
-  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, searchTerm, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees]);
+  }, [serviceOrders, technicianFilter, customerFilter, statusFilter, searchTerm, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees, canViewAllSchedule]);
 
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));

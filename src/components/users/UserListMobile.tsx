@@ -88,7 +88,8 @@ export function UserListMobile({
         const preset = perm?.preset_id
           ? presets.find((p) => p.id === perm.preset_id)
           : null;
-        const isAllPerms = permCount >= getAllPermissionKeys().length;
+        // Curinga '*' (Acesso Total dinâmico) OU snapshot legado com todas as chaves.
+        const isAllPerms = (perm?.permissions?.includes('*') ?? false) || permCount >= getAllPermissionKeys().length;
         const isSelf = userProfile.user_id === currentUserId;
 
         const roleLabel = preset

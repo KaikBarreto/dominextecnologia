@@ -120,7 +120,8 @@ export function useUsers() {
     enabled: !!user?.id,
   });
 
-  const hasManageUsersPermission = userPerms?.includes('fn:manage_users') || (userPerms?.length || 0) >= 27;
+  // Curinga '*' = Acesso Total dinâmico (libera tudo, inclusive gerir usuários).
+  const hasManageUsersPermission = userPerms?.includes('*') || userPerms?.includes('fn:manage_users') || (userPerms?.length || 0) >= 27;
   const canManageRoles = currentUserRole === 'admin' || currentUserRole === 'gestor' || hasManageUsersPermission || !hasAdmin;
 
   const updateUserRole = useMutation({

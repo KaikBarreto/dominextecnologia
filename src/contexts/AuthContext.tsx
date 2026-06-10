@@ -269,13 +269,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   //   - Sem registro (legado) → mantém o fallback por role.
   const hasPermission = (key: string) => {
     if (hasRole('admin') || isFullAccess) return true;
-    if (hasPermissionRecord) return permissions.includes(key);
+    // Curinga '*' = "Acesso Total" dinâmico: libera toda permissão, inclusive futuras.
+    if (hasPermissionRecord) return permissions.includes('*') || permissions.includes(key);
     return roles.length > 0;
   };
 
   const hasScreenAccess = (screenKey: string) => {
     if (hasRole('admin') || isFullAccess) return true;
-    if (hasPermissionRecord) return permissions.includes(screenKey);
+    // Curinga '*' = "Acesso Total" dinâmico: libera toda tela, inclusive futuras.
+    if (hasPermissionRecord) return permissions.includes('*') || permissions.includes(screenKey);
     return roles.length > 0;
   };
 

@@ -83,10 +83,11 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   useEffect(() => {
     if (editingUser) {
       const allKeys = getAllPermissionKeys();
-      // "Acesso Total" = tem TODAS as permissões existentes hoje (mesmo as criadas depois)
-      const isAll = allKeys.every(k => editingUser.permissions.includes(k));
+      // "Acesso Total" = curinga '*' (dinâmico, pega perms futuras) OU tem TODAS as perms de hoje (snapshot legado)
+      const isAll = editingUser.permissions.includes('*') || allKeys.every(k => editingUser.permissions.includes(k));
       const presetMatch = editingUser.preset_id || null;
-      // Se for acesso total, sempre usa o conjunto completo atual (inclui novas perms criadas depois)
+      // Se for acesso total, exibe o conjunto completo atual com tudo marcado.
+      // O SAVE grava '*' (não a lista expandida) enquanto o perfil seguir em 'all'.
       const initialPermissions = isAll ? allKeys : (editingUser.permissions || []);
 
       setForm({
@@ -117,6 +118,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
       return;
     }
     if (presetId === 'all') {
+      // Exibe tudo marcado (UX). No SAVE, vira o curinga '*' (dinâmico) — ver handleSubmit.
       setForm(f => ({ ...f, preset_id: null, permissions: getAllPermissionKeys() }));
       return;
     }
@@ -128,13 +130,18 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
 
   const togglePermission = (key: string) => {
     setAccessProfile('custom');
-    setForm(f => ({
-      ...f,
-      preset_id: null,
-      permissions: f.permissions.includes(key)
-        ? f.permissions.filter(p => p !== key)
-        : [...f.permissions, key],
-    }));
+    setForm(f => {
+      // Ao sair do "Acesso Total" para personalizar, expande o curinga '*' nas chaves
+      // reais pra que o usuário possa desmarcar permissões individualmente.
+      const base = f.permissions.includes('*') ? getAllPermissionKeys() : f.permissions;
+      return {
+        ...f,
+        preset_id: null,
+        permissions: base.includes(key)
+          ? base.filter(p => p !== key)
+          : [...base, key],
+      };
+    });
   };
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,7 +163,11 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      await onSubmit(form);
+      // "Acesso Total" grava o curinga '*' (dinâmico): libera toda permissão, inclusive
+      // as criadas no futuro. As checkboxes ficam todas marcadas só pra exibição.
+      const payload: UserFormData =
+        accessProfile === 'all' ? { ...form, permissions: ['*'] } : form;
+      await onSubmit(payload);
       onOpenChange(false);
     } finally {
       setLoading(false);

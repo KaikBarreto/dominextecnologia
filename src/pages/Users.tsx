@@ -603,7 +603,8 @@ export default function Users() {
                 const isActive = userProfile.is_active !== false;
                 const permCount = perm?.permissions?.length || 0;
                 const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
-                const isAllPerms = permCount >= getAllPermissionKeys().length;
+                // Curinga '*' (Acesso Total dinâmico) OU snapshot legado com todas as chaves.
+                const isAllPerms = (perm?.permissions?.includes('*') ?? false) || permCount >= getAllPermissionKeys().length;
 
                 return (
                   <Card key={userProfile.id} className={`hover:shadow-md transition-shadow ${!isActive ? 'opacity-60' : ''}`}>
