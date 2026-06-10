@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +36,18 @@ function OriginIcon({ name, className }: { name: string; className?: string }) {
   const LucideIcon = (LucideIcons as any)[name];
   if (!LucideIcon) return null;
   return <LucideIcon className={className || 'h-3 w-3'} />;
+}
+
+// Timestamp armazenado em UTC, exibido sempre em America/Sao_Paulo (UTC-3).
+function formatBrDateTime(iso: string) {
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 interface Props {
@@ -316,14 +327,15 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
 
             <Separator />
 
-            {/* Interactions */}
+            {/* Comentários (interações registradas manualmente + comentários
+                automáticos gravados ao resolver um follow-up) */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <MessageCircle className="h-4 w-4" /> Interações ({interactions.length})
+                  <MessageCircle className="h-4 w-4" /> Comentários ({interactions.length})
                 </h3>
                 <Button size="sm" variant="outline" onClick={() => setShowForm(!showForm)}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Nova
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Novo
                 </Button>
               </div>
 
@@ -351,19 +363,20 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp }: Pro
                 {interactions.map(i => {
                   const typeInfo = ADMIN_INTERACTION_TYPES.find(t => t.value === i.interaction_type);
                   return (
-                    <div key={i.id} className="border rounded-lg p-3 text-sm space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{typeInfo?.icon} {typeInfo?.label || i.interaction_type}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(i.created_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
-                        </span>
+                    <div key={i.id} className="border rounded-lg p-3 text-sm space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate">{typeInfo?.icon} {typeInfo?.label || i.interaction_type}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{formatBrDateTime(i.created_at)}</span>
                       </div>
-                      {i.description && <p className="text-muted-foreground">{i.description}</p>}
+                      {i.description && <p className="text-muted-foreground whitespace-pre-wrap">{i.description}</p>}
+                      <p className="text-[11px] text-muted-foreground/70">
+                        por {i.author_name || 'Sistema'}
+                      </p>
                     </div>
                   );
                 })}
                 {interactions.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma interação registrada</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum comentário registrado</p>
                 )}
               </div>
             </div>

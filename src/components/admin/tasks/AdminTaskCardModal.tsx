@@ -10,7 +10,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Briefcase, CheckCircle2, Trash2, MessageCircle } from 'lucide-react';
+import { Briefcase, CheckCircle2, Trash2, MessageCircle, ArrowUpRight, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { getFollowupMessage } from '@/utils/followupMessages';
@@ -22,6 +22,8 @@ import {
   TASK_TYPE_CONFIG,
   TASK_TYPE_OPTIONS,
 } from '@/hooks/useAdminTasks';
+import { useAdminLead } from '@/hooks/useAdminCrm';
+import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import type { TaskAdminOption } from './TaskCreateDialog';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { cn } from '@/lib/utils';
@@ -49,6 +51,11 @@ function MetaField({ label, children }: { label: string; children: React.ReactNo
 export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelete, admins }: AdminTaskCardModalProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [descDraft, setDescDraft] = useState<string | null>(null);
+  const [leadDetailOpen, setLeadDetailOpen] = useState(false);
+
+  // Carrega o lead vinculado por id (só quando há crm_lead_id). Usado pra abrir
+  // o AdminLeadDetailModal direto da tarefa de follow-up.
+  const { lead: linkedLead, isLoading: leadLoading } = useAdminLead(task?.crm_lead_id ?? undefined);
 
   if (!task) return null;
 
@@ -61,6 +68,7 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
   const whatsappLink = buildWhatsAppLink(task.crm_lead?.phone, followupMessage);
 
   return (
+    <>
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
@@ -219,6 +227,20 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
                 </div>
               )}
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full mt-1 border-purple-300 text-purple-800 hover:bg-purple-100 dark:border-purple-700 dark:text-purple-200 dark:hover:bg-purple-900/40"
+              disabled={leadLoading || !linkedLead}
+              onClick={() => setLeadDetailOpen(true)}
+            >
+              {leadLoading ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <ArrowUpRight className="h-4 w-4 mr-1.5" />
+              )}
+              Ir para o lead
+            </Button>
           </div>
         )}
 
@@ -250,5 +272,15 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
         </AlertDialogContent>
       </AlertDialog>
     </ResponsiveModal>
+
+    {/* Detalhe do lead vinculado — aberto pelo botão "Ir para o lead". */}
+    {linkedLead && (
+      <AdminLeadDetailModal
+        open={leadDetailOpen}
+        onOpenChange={setLeadDetailOpen}
+        lead={linkedLead}
+      />
+    )}
+    </>
   );
 }

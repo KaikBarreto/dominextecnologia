@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +45,8 @@ export interface AdminLeadInteraction {
   next_action_date: string | null;
   created_by: string | null;
   created_at: string;
+  /** Nome de quem registrou (resolvido via profiles). Pode ser null (sistema). */
+  author_name?: string | null;
 }
 
 export const ADMIN_LEAD_SOURCES = [
@@ -183,6 +186,28 @@ export function useAdminLeads() {
   return { leads, isLoading: query.isLoading, createLead, updateLead, deleteLead, stats };
 }
 
+/**
+ * Carrega um único lead por id (pra abrir o AdminLeadDetailModal a partir de um
+ * contexto que não tem a lista completa em mãos — ex.: a tarefa de follow-up).
+ */
+export function useAdminLead(leadId?: string) {
+  const query = useQuery({
+    queryKey: ['admin-lead', leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_leads' as any)
+        .select('*')
+        .eq('id', leadId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as unknown as AdminLead) || null;
+    },
+    enabled: !!leadId,
+  });
+
+  return { lead: query.data ?? null, isLoading: query.isLoading };
+}
+
 export function useAdminLeadInteractions(leadId?: string) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -196,10 +221,42 @@ export function useAdminLeadInteractions(leadId?: string) {
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as AdminLeadInteraction[];
+      const rows = (data || []) as unknown as AdminLeadInteraction[];
+
+      // Resolve o nome de quem registrou (profiles.user_id → full_name).
+      // Inclui os comentários gravados pela trigger ao resolver um follow-up.
+      const userIds = [...new Set(rows.map(r => r.created_by).filter((v): v is string => !!v))];
+      if (userIds.length === 0) return rows;
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds);
+      const nameByUser = new Map<string, string>(
+        (profiles || []).map(p => [p.user_id, p.full_name]),
+      );
+      return rows.map(r => ({
+        ...r,
+        author_name: r.created_by ? nameByUser.get(r.created_by) ?? null : null,
+      }));
     },
     enabled: !!leadId,
   });
+
+  // Realtime: comentário gravado pela trigger (ou em outra aba) ao resolver um
+  // follow-up revalida a lista de interações deste lead na hora.
+  useEffect(() => {
+    if (!leadId) return;
+    const channel = supabase
+      .channel(`admin-lead-interactions-${leadId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'admin_lead_interactions', filter: `lead_id=eq.${leadId}` },
+        () => qc.invalidateQueries({ queryKey: ['admin-lead-interactions', leadId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [leadId, qc]);
 
   const createInteraction = useMutation({
     mutationFn: async (input: Partial<AdminLeadInteraction>) => {
