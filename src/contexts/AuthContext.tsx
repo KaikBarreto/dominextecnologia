@@ -21,6 +21,7 @@ interface AuthContextType {
   profile: Profile | null;
   roles: AppRole[];
   permissions: string[];
+  hasPermissionRecord: boolean;
   adminPermissions: string[];
   isAdminUser: boolean;
   loading: boolean;
@@ -42,6 +43,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
+  // Indica se o usuário POSSUI uma linha em `user_permissions` (mesmo que o
+  // array de permissões esteja vazio ou o registro esteja inativo). Distingue:
+  //   - true  → permissionamento explícito; respeitamos ESTRITAMENTE a lista
+  //             (vazio/inativo = sem acesso). Fecha o furo do default-allow.
+  //   - false → usuário legado (nunca teve registro); mantemos o fallback por
+  //             role pra não trancar técnicos antigos que dependem disso.
+  const [hasPermissionRecord, setHasPermissionRecord] = useState(false);
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
@@ -104,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null);
           setRoles([]);
           setPermissions([]);
+          setHasPermissionRecord(false);
           setAdminPermissions([]);
         }
 
@@ -161,6 +170,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (isStillCurrent()) {
+        // Existência da linha define o modo (estrito vs legado), independente de
+        // estar ativa. Registro inativo é "sem acesso" intencional, não legado.
+        setHasPermissionRecord(!!permData);
         if (permData && permData.is_active) {
           setPermissions((permData.permissions as any) || []);
         } else {
@@ -241,6 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setRoles([]);
     setPermissions([]);
+    setHasPermissionRecord(false);
     setAdminPermissions([]);
   };
 
@@ -250,20 +263,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // "Acesso total" = user has admin or super_admin role
   const isFullAccess = roles.includes('admin' as AppRole) || roles.includes('super_admin' as AppRole);
 
-  // Permission check: admin role or full access always has full access.
+  // Permission check: admin / acesso total sempre liberam tudo. Para os demais:
+  //   - Se há registro em user_permissions → respeita ESTRITAMENTE a lista
+  //     (vazio = sem acesso). Fecha o furo do default-allow por role.
+  //   - Sem registro (legado) → mantém o fallback por role.
   const hasPermission = (key: string) => {
     if (hasRole('admin') || isFullAccess) return true;
-    if (permissions.length > 0) return permissions.includes(key);
+    if (hasPermissionRecord) return permissions.includes(key);
     return roles.length > 0;
   };
 
   const hasScreenAccess = (screenKey: string) => {
     if (hasRole('admin') || isFullAccess) return true;
-    if (permissions.length > 0) return permissions.includes(screenKey);
-    // FIXME (fora de escopo, risco amplo): com permissions vazio liberamos TODA
-    // tela só por ter qualquer role. Mantido como está de propósito — mexer aqui
-    // afeta todos os fluxos de permissão. O loop de redirect do técnico foi
-    // resolvido em useDefaultRoute (App.tsx), não aqui.
+    if (hasPermissionRecord) return permissions.includes(screenKey);
     return roles.length > 0;
   };
 
@@ -283,6 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         roles,
         permissions,
+        hasPermissionRecord,
         adminPermissions,
         isAdminUser,
         loading,
