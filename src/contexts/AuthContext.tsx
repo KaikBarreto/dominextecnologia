@@ -260,6 +260,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasScreenAccess = (screenKey: string) => {
     if (hasRole('admin') || isFullAccess) return true;
     if (permissions.length > 0) return permissions.includes(screenKey);
+    // FIXME (fora de escopo, risco amplo): com permissions vazio liberamos TODA
+    // tela só por ter qualquer role. Mantido como está de propósito — mexer aqui
+    // afeta todos os fluxos de permissão. O loop de redirect do técnico foi
+    // resolvido em useDefaultRoute (App.tsx), não aqui.
     return roles.length > 0;
   };
 

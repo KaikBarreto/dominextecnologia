@@ -145,10 +145,27 @@ function useDefaultRoute() {
     return '/admin/empresas';
   }
 
-  if (roles.includes('tecnico')) return '/agenda';
-  if (hasScreenAccess('screen:dashboard')) return '/dashboard';
-  if (hasScreenAccess('screen:schedule')) return '/agenda';
-  if (hasScreenAccess('screen:service_orders')) return '/ordens-servico';
+  // Usuários do app (técnico, gestor restrito, etc.): o destino padrão é a
+  // PRIMEIRA tela que o usuário REALMENTE acessa. Nunca devolver um path fixo
+  // (ex: /agenda) sem checar permissão — senão, ao desabilitar a tela de destino
+  // de um técnico, o PermissionRoute redireciona pra uma rota negada e entra em
+  // loop de redirect / tela branca (incidente Domper). A agenda fica primeiro na
+  // lista por ser o destino histórico do técnico, mas é só uma preferência de
+  // ordem; se ela estiver negada, cai pra próxima tela permitida.
+  const appCandidates: Array<[string, string]> = [
+    ['screen:schedule', '/agenda'],
+    ['screen:service_orders', '/ordens-servico'],
+    ['screen:customers', '/clientes'],
+    ['screen:equipment', '/equipamentos'],
+    ['screen:dashboard', '/dashboard'],
+  ];
+  for (const [key, path] of appCandidates) {
+    if (hasScreenAccess(key)) return path;
+  }
+
+  // Fallback seguro: /perfil renderiza <Profile /> direto, fora de qualquer
+  // PermissionRoute/ModuleRoute — sempre acessível a qualquer usuário logado.
+  // Garante que NUNCA há loop de redirect, mesmo sem nenhuma tela liberada.
   return '/perfil';
 }
 
