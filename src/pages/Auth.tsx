@@ -167,15 +167,15 @@ export default function Auth() {
     trackUsage('login');
     toast({ title: 'Bem-vindo!', description: 'Login realizado com sucesso' });
 
-    // Check if super_admin → redirect to admin dashboard
-    const { data: roleData } = await supabase
+    // Fetch all roles to decide the post-login destination
+    const { data: rolesData } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'super_admin')
-      .maybeSingle();
+      .eq('user_id', userId);
+    const userRoles = (rolesData ?? []).map((r: any) => r.role as string);
 
-    if (roleData) {
+    // super_admin → redirect to admin panel
+    if (userRoles.includes('super_admin')) {
       navigate('/admin/empresas');
       loginInProgressRef.current = false;
       return;
@@ -205,7 +205,12 @@ export default function Auth() {
       }
     }
 
-    navigate('/dashboard');
+    // Técnico cai direto na agenda; demais papéis no dashboard
+    if (userRoles.includes('tecnico')) {
+      navigate('/agenda');
+    } else {
+      navigate('/dashboard');
+    }
     loginInProgressRef.current = false;
   };
 

@@ -127,7 +127,7 @@ const LoadingSpinner = () => <PageLoading />;
 
 // Determine the default authenticated route based on permissions
 function useDefaultRoute() {
-  const { hasScreenAccess, isAdminUser, hasAdminScreenAccess } = useAuth();
+  const { hasScreenAccess, isAdminUser, hasAdminScreenAccess, roles } = useAuth();
 
   // Admin panel users (master + vendedores) land on the admin panel.
   if (isAdminUser) {
@@ -145,6 +145,7 @@ function useDefaultRoute() {
     return '/admin/empresas';
   }
 
+  if (roles.includes('tecnico')) return '/agenda';
   if (hasScreenAccess('screen:dashboard')) return '/dashboard';
   if (hasScreenAccess('screen:schedule')) return '/agenda';
   if (hasScreenAccess('screen:service_orders')) return '/ordens-servico';
