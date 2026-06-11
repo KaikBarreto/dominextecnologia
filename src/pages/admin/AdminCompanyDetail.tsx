@@ -296,9 +296,13 @@ export default function AdminCompanyDetail() {
                   <Badge className={cn('text-xs text-white border-0',
                     company.subscription_status === 'active' ? 'bg-emerald-500 hover:bg-emerald-500'
                       : company.subscription_status === 'testing' ? 'bg-amber-500 hover:bg-amber-500'
+                      : company.subscription_status === 'pending_payment' ? 'bg-amber-500 hover:bg-amber-500'
                       : 'bg-rose-500 hover:bg-rose-500'
                   )}>
-                    {company.subscription_status === 'active' ? 'Ativo' : company.subscription_status === 'testing' ? 'Testando' : 'Desativado'}
+                    {company.subscription_status === 'active' ? 'Ativo'
+                      : company.subscription_status === 'testing' ? 'Testando'
+                      : company.subscription_status === 'pending_payment' ? 'Pagamento Pendente'
+                      : 'Desativado'}
                   </Badge>
                 </div>
               </div>

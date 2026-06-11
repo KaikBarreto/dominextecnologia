@@ -2,9 +2,10 @@ import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
@@ -171,8 +172,9 @@ function useDefaultRoute() {
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, profile, roles, signOut } = useAuth();
+  const { user, loading, profile, roles, signOut, isAdminUser } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   useForcedLogout();
 
   // Bloqueio de conta desativada (profiles.is_active = false). A coluna tem
@@ -183,6 +185,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isSuperAdmin = roles.includes('super_admin' as any);
   const isDeactivated =
     !!user && !!profile && profile.is_active === false && !isSuperAdmin;
+
+  // Status da assinatura da empresa do usuário logado. Espelha o EcoSistema:
+  // empresa com `pending_payment` (criada via link de venda, aguardando o 1º
+  // pagamento) fica travada no /checkout em QUALQUER navegação — não só no
+  // login. Admin Auctus (super_admin/vendedores) e qualquer usuário SEM empresa
+  // (company_id null) não têm assinatura de tenant: a query não roda e nunca
+  // redireciona. React Query revalida na próxima navegação / a cada 60s, então
+  // quando o webhook marca `active` o cliente é liberado sozinho.
+  const companyId = profile?.company_id;
+  const checkSubscription = !!user && !!companyId && !isAdminUser;
+  const { data: companyStatus, isLoading: companyLoading } = useQuery({
+    queryKey: ['protected-route-company-status', companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const { data, error } = await supabase
+        .from('companies')
+        .select('subscription_status')
+        .eq('id', companyId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: checkSubscription,
+    staleTime: 60 * 1000,
+  });
 
   React.useEffect(() => {
     if (isDeactivated) {
@@ -200,6 +227,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   // Enquanto o signOut da conta desativada não conclui, não renderiza o app.
   if (isDeactivated) return <Navigate to="/login" replace />;
+
+  // Espera a query da company carregar antes de decidir — evita piscar o app
+  // pra só depois redirecionar pro checkout. Com staleTime de 60s isso só pesa
+  // na 1ª navegação. Só bloqueia o render quando a query está REALMENTE ativa
+  // (usuário de tenant); admin/sem-empresa nunca segura aqui.
+  if (checkSubscription && companyLoading) return <LoadingSpinner />;
+
+  // Pagamento pendente → trava no /checkout (única rota liberada pro pendente).
+  if (
+    companyStatus?.subscription_status === 'pending_payment' &&
+    location.pathname !== '/checkout'
+  ) {
+    return <Navigate to="/checkout" replace />;
+  }
 
   return <>{children}</>;
 }

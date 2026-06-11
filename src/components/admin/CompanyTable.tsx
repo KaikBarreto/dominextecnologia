@@ -119,6 +119,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
       active: { label: 'Ativo', className: 'bg-green-500 hover:bg-green-600 text-white' },
       testing: { label: 'Testando', className: 'bg-orange-500 hover:bg-orange-600 text-white' },
       inactive: { label: 'Desativado', className: 'bg-red-500 hover:bg-red-600 text-white' },
+      pending_payment: { label: 'Pagamento Pendente', className: 'bg-amber-500 hover:bg-amber-600 text-white' },
     };
     const v = variants[status] || { label: status, className: 'bg-gray-500 text-white' };
     return <Badge className={v.className}>{v.label}</Badge>;

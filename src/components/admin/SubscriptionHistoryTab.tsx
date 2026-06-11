@@ -26,7 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
   testing: 'Testando',
   inactive: 'Desativado',
   cancelled: 'Cancelado',
-  pending_payment: 'Pagamento pendente',
+  pending_payment: 'Pagamento Pendente',
 };
 
 function formatStatus(status: string | null): string {
