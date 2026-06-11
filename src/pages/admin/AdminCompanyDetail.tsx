@@ -20,6 +20,7 @@ import CompanyFormModal from '@/components/admin/CompanyFormModal';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { CompanyActivityTab } from '@/components/admin/CompanyActivityTab';
 import { SubscriptionHistoryTab } from '@/components/admin/SubscriptionHistoryTab';
+import { CompanyPaymentsTab } from '@/components/admin/CompanyPaymentsTab';
 import { cn } from '@/lib/utils';
 import { cpfCnpjMask } from '@/utils/masks';
 
@@ -182,6 +183,7 @@ export default function AdminCompanyDetail() {
             tabs={[
               { value: 'info', label: 'Informações' },
               { value: 'plano', label: 'Plano e Histórico' },
+              { value: 'pagamentos', label: 'Pagamentos' },
               { value: 'atividade', label: 'Atividade' },
             ]}
             activeTab={activeTab}
@@ -191,6 +193,7 @@ export default function AdminCompanyDetail() {
           <TabsList>
             <TabsTrigger value="info">Informações</TabsTrigger>
             <TabsTrigger value="plano">Plano e Histórico</TabsTrigger>
+            <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
             <TabsTrigger value="atividade">Atividade</TabsTrigger>
           </TabsList>
         )}
@@ -345,6 +348,10 @@ export default function AdminCompanyDetail() {
 
         <TabsContent value="plano" className="mt-4">
           <SubscriptionHistoryTab companyId={id!} />
+        </TabsContent>
+
+        <TabsContent value="pagamentos" className="mt-4">
+          <CompanyPaymentsTab companyId={id!} company={company} />
         </TabsContent>
 
         <TabsContent value="atividade" className="mt-4">

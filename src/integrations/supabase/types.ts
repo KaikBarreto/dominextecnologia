@@ -975,6 +975,7 @@ export type Database = {
           notes: string | null
           pmoc_legal_compliance_text: string | null
           portal_documents_released: boolean
+          portal_is_public: boolean
           public_pmoc_token: string | null
           responsible_technician_id: string | null
           service_type_id: string | null
@@ -1003,6 +1004,7 @@ export type Database = {
           notes?: string | null
           pmoc_legal_compliance_text?: string | null
           portal_documents_released?: boolean
+          portal_is_public?: boolean
           public_pmoc_token?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
@@ -1031,6 +1033,7 @@ export type Database = {
           notes?: string | null
           pmoc_legal_compliance_text?: string | null
           portal_documents_released?: boolean
+          portal_is_public?: boolean
           public_pmoc_token?: string | null
           responsible_technician_id?: string | null
           service_type_id?: string | null
@@ -5775,6 +5778,10 @@ export type Database = {
       can_bootstrap_admin: { Args: never; Returns: boolean }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      company_has_module: {
+        Args: { p_company_id: string; p_module_code: string }
+        Returns: boolean
+      }
       compute_next_expiration: {
         Args: { p_current: string; p_cycle: string }
         Returns: string
@@ -5794,6 +5801,10 @@ export type Database = {
           p_company_id: string
         }
         Returns: boolean
+      }
+      delete_company_payment_with_rollback: {
+        Args: { p_payment_id: string }
+        Returns: undefined
       }
       generate_payroll_for_employee: {
         Args: { p_employee_id: string; p_lookahead_days?: number }
@@ -5930,6 +5941,20 @@ export type Database = {
       }
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
+        Returns: string
+      }
+      register_manual_company_payment: {
+        Args: {
+          p_amount: number
+          p_closer_id?: string
+          p_company_id: string
+          p_cpf_cnpj?: string
+          p_notes?: string
+          p_payment_date: string
+          p_payment_method: string
+          p_sdr_id?: string
+          p_type: string
+        }
         Returns: string
       }
       reset_system_audit_start: {
