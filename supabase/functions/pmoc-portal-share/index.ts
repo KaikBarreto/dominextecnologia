@@ -1,18 +1,26 @@
 // =============================================================================
-// pmoc-portal-share — Edge function PÚBLICA do Portal PMOC (Onda B, v1.9.1).
+// pmoc-portal-share — Edge function PÚBLICA do Portal do Contrato.
 // =============================================================================
-// Recebe GET ?token=<32 hex chars>, devolve JSON com payload MÍNIMO da unidade.
+// Recebe GET ?token=<32 hex chars>, devolve JSON com payload do contrato (PMOC
+// OU não-PMOC). Espelha a lógica do Portal do Cliente (RPC get_portal_data):
+//
+//   - anônimo                       → read-only (sem "Preencher OS").
+//   - usuário logado da empresa dona → viewer_can_fill=true (pode preencher OS).
+//   - portal_is_public=false + anônimo (ou de outra empresa) → access:'denied'.
 //
 // Regras vinculantes:
 //   - docs/planos/2026-05-23-pmoc-portal-rls-rules.md (§3)
 //   - docs/planos/2026-05-23-pmoc-onda-B-portal-publico.md (§3.2)
 //
 // Princípios:
-//   1. NUNCA retorna 401/403. Oracle blindado: tudo "inválido" vira 404 unificado.
+//   1. Token validado por regex ^[0-9a-f]{32}$ ANTES de tocar o banco.
 //   2. Roda como service_role mas a defesa é projeção campo-a-campo (não policy).
-//   3. Token validado por regex ^[0-9a-f]{32}$ ANTES de tocar o banco.
-//   4. Logs NÃO contêm o token completo — sempre mascarar.
-//   5. NÃO aceita Authorization header (ignora se vier).
+//   3. Logs NÃO contêm o token completo — sempre mascarar.
+//   4. O Authorization header é OPCIONAL: quando vier, detectamos o usuário
+//      logado pra decidir viewer_can_fill / respeitar portal privado.
+//   5. Estados terminais (token inválido / cancelado) continuam virando 404.
+//      Portal privado vira HTTP 200 { access:'denied' } (não 4xx) pra UI
+//      distinguir de token inválido — espelha get_portal_data.
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -206,6 +214,7 @@ Deno.serve(async (req) => {
           "is_pmoc",
           "status",
           "portal_documents_released",
+          "portal_is_public",
         ].join(","),
       )
       .eq("public_pmoc_token", token)
@@ -223,23 +232,24 @@ Deno.serve(async (req) => {
       return notFound();
     }
 
-    // Defesa-em-profundidade: ainda que o token só seja preenchido via trigger
-    // quando is_pmoc=true, blindamos explicitamente.
-    if (contract.is_pmoc !== true) {
-      return notFound();
-    }
+    // Portal do Contrato: aceita PMOC e não-PMOC. O token agora é gerado pra
+    // TODO contrato (não só PMOC) e nunca nulado — não há mais gate de is_pmoc.
+    const isPmoc = contract.is_pmoc === true;
 
     if (contract.status === "cancelled" || contract.status === "inactive") {
       return notFound();
     }
 
     // -------------------------------------------------------------------------
-    // 1.5) GATE DE MÓDULO (2026-06): o Portal PMOC é uma feature gateada pelo
-    //      módulo 'customer_portal'. Se a empresa dona do contrato não tem o
-    //      módulo (plano não inclui, sem addon, sem trial ativo), NÃO entregamos
-    //      o portal. Retornamos HTTP 200 com um sinal explícito pro frontend
-    //      DISTINGUIR de token inválido (404) ou erro de rede — exigência do
-    //      contrato: { error: 'module_unavailable', company_name: <string|null> }.
+    // 1.1) GATE DE MÓDULO (2026-06): o módulo 'customer_portal' é a FRONTEIRA
+    //      COMERCIAL da empresa — sem ele o portal não existe pra ninguém,
+    //      independente de público/privado. Por isso este gate roda PRIMEIRO,
+    //      logo após resolver o company_id do contrato, ANTES do gate de
+    //      privacidade. Se a empresa dona não tem o módulo (plano não inclui,
+    //      sem addon, sem trial ativo), NÃO entregamos o portal: retornamos
+    //      HTTP 200 com um sinal explícito pro frontend DISTINGUIR de token
+    //      inválido (404) ou erro de rede — contrato: { error:
+    //      'module_unavailable', company_name: <string|null> }.
     // -------------------------------------------------------------------------
     const { data: hasModule, error: moduleErr } = await supabase.rpc(
       "company_has_module",
@@ -276,6 +286,78 @@ Deno.serve(async (req) => {
       return jsonResponse(
         { error: "module_unavailable", company_name: gateCompanyName },
         200,
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // 1.2) VIEWER LOGADO da empresa dona (espelha get_portal_data).
+    //      O Authorization header é OPCIONAL. Quando vier (gestor/técnico abriu
+    //      o portal autenticado), criamos um client com o token do usuário,
+    //      resolvemos o auth.uid() e o company_id dele. Se for membro da empresa
+    //      dona do contrato, viewer_can_fill=true e ele atravessa portal privado.
+    //      Anônimo → isCompanyMember=false (read-only).
+    // -------------------------------------------------------------------------
+    let isCompanyMember = false;
+    const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
+    // Ignora o Bearer do próprio anon key (apikey) — só nos interessa um JWT de
+    // usuário real. Sem "bearer " ⇒ tratamos como anônimo.
+    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+      try {
+        // Mesmo padrão dos generate-pmoc-*-pdf: client com o JWT do usuário no
+        // header resolve o auth.uid() via getUser() (a key base é a service role,
+        // mas o getUser usa o token do header, não a key).
+        const userClient = createClient(supabaseUrl, serviceRoleKey, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: userData } = await userClient.auth.getUser();
+        const uid = userData?.user?.id ?? null;
+        if (uid) {
+          // company_id do usuário via profiles (mesma fonte do app).
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("company_id")
+            .eq("user_id", uid)
+            .maybeSingle();
+          const userCompanyId = (profile as { company_id?: string } | null)?.company_id ?? null;
+          isCompanyMember = !!userCompanyId && userCompanyId === contract.company_id;
+        }
+      } catch (authErr) {
+        // Token inválido/expirado: tratamos como anônimo (read-only). Não falha.
+        console.warn("[pmoc-portal-share] auth viewer resolve falhou", {
+          token: maskToken(token),
+          message: (authErr as Error)?.message ?? String(authErr),
+        });
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 1.3) GATE DE PRIVACIDADE (espelha get_portal_data): portal_is_public=false
+    //      só é acessível por membro da empresa dona. Anônimo / outra empresa →
+    //      HTTP 200 { access:'denied' } (sem dados). NÃO é 404 — a UI precisa
+    //      distinguir "portal privado" (oferece login) de "token inválido".
+    //      Default: portal_is_public ausente/true → público.
+    // -------------------------------------------------------------------------
+    const portalIsPublic = (contract as { portal_is_public?: boolean }).portal_is_public !== false;
+    if (!portalIsPublic && !isCompanyMember) {
+      let deniedCompanyName: string | null = null;
+      const { data: deniedSettings } = await supabase
+        .from("company_settings")
+        .select("name")
+        .eq("company_id", contract.company_id)
+        .maybeSingle();
+      deniedCompanyName = (deniedSettings?.name ?? "").trim() || null;
+      if (!deniedCompanyName) {
+        const { data: deniedCompany } = await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", contract.company_id)
+          .maybeSingle();
+        deniedCompanyName = (deniedCompany?.name ?? "").trim() || null;
+      }
+      return jsonResponse(
+        { access: "denied", company_name: deniedCompanyName },
+        200,
+        { "Cache-Control": "private, no-store", Vary: "Authorization" },
       );
     }
 
@@ -381,7 +463,11 @@ Deno.serve(async (req) => {
       "technician_id",
     ].join(",");
 
-    const [{ data: historyOrders }, { data: scheduleOrders }] = await Promise.all([
+    const [
+      { data: historyOrders },
+      { data: scheduleOrders },
+      { data: occurrenceOrders },
+    ] = await Promise.all([
       supabase
         .from("service_orders")
         .select(osSelectCols)
@@ -397,6 +483,19 @@ Deno.serve(async (req) => {
         .gte("scheduled_date", scheduleFloorDate)
         .order("scheduled_date", { ascending: true, nullsFirst: false })
         .limit(SCHEDULE_LIMIT),
+      // OCORRÊNCIAS: espelha a aba "Ocorrências" do ContractDetail
+      // (contract.service_orders ordenado por scheduled_date asc). É a linha do
+      // tempo completa do contrato — TODAS as visitas, sem floor de 7 dias e
+      // sem filtro de status (mas sem 'cancelada', que não vai pro público).
+      // Read-only. Inclui o `id` da OS pra montar o link "Preencher OS" quando
+      // viewer_can_fill=true.
+      supabase
+        .from("service_orders")
+        .select(osSelectCols)
+        .eq("contract_id", contract.id)
+        .neq("status", "cancelada")
+        .order("scheduled_date", { ascending: true, nullsFirst: false })
+        .limit(SCHEDULE_LIMIT + HISTORY_LIMIT),
     ]);
 
     type OsRow = {
@@ -412,10 +511,16 @@ Deno.serve(async (req) => {
 
     const historyList = (historyOrders ?? []) as OsRow[];
     const scheduleList = (scheduleOrders ?? []) as OsRow[];
+    const occurrenceList = (occurrenceOrders ?? []) as OsRow[];
 
     // Mantém um array combinado pros lookups subsequentes (service_types,
     // assignees, photos, ratings) — depois separamos de volta na projeção.
-    const osList: OsRow[] = [...historyList, ...scheduleList];
+    // Dedup por id (occurrences sobrepõe schedule/history) pra não inflar lookups.
+    const osById2 = new Map<string, OsRow>();
+    for (const o of [...historyList, ...scheduleList, ...occurrenceList]) {
+      if (!osById2.has(o.id)) osById2.set(o.id, o);
+    }
+    const osList: OsRow[] = Array.from(osById2.values());
 
     // ---- Lookup adicionais (service_types, technician name, photos, ratings) --
     const serviceTypeIds = Array.from(
@@ -558,6 +663,14 @@ Deno.serve(async (req) => {
     const history = historyList.map(projectOs);
     const schedule = scheduleList.map(projectOs);
 
+    // OCORRÊNCIAS: mesma projeção pública + o `id` da OS. O `id` só é usado pelo
+    // viewer logado da empresa pra montar o link "Preencher OS" (/os-tecnico/:id).
+    // Anônimo recebe o id, mas a UI só mostra o botão quando viewer_can_fill=true.
+    const occurrences = occurrenceList.map((os) => ({
+      id: os.id,
+      ...projectOs(os),
+    }));
+
     // -------------------------------------------------------------------------
     // 3.5) Documents reais (Onda C + Onda E) — última versão por doc_type,
     //      signed URL TTL 24h. Filtro defensivo por company_id (§6.4 RLS
@@ -571,7 +684,9 @@ Deno.serve(async (req) => {
     //      Enquanto false, retornamos `documents: []` e `documents_released:false`
     //      — o restante do portal (status, RT, agenda, histórico) NÃO é afetado.
     // -------------------------------------------------------------------------
-    const documentsReleased = contract.portal_documents_released === true;
+    // Documentos SÓ existem em contrato PMOC. Para contrato não-PMOC, nem
+    // tocamos no banco de documentos — o payload não traz `documents`/`released`.
+    const documentsReleased = isPmoc && contract.portal_documents_released === true;
 
     const DOC_TYPES = ["dossie_pmoc", "cronograma_anual", "termo_rt"] as const;
     const DOC_LABELS: Record<typeof DOC_TYPES[number], string> = {
@@ -688,9 +803,14 @@ Deno.serve(async (req) => {
         }
       : null;
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.5.0", // 1.5.0 — Gate de documentos: só aparecem quando portal_documents_released=true
+      payload_version: "1.6.0", // 1.6.0 — Portal do Contrato: PMOC e não-PMOC + access/viewer_can_fill/is_pmoc + ocorrências
+      // Espelha get_portal_data: acesso liberado (já passamos pelo gate de
+      // privacidade) + se o viewer logado pode preencher OS + se é PMOC.
+      access: "granted",
+      viewer_can_fill: isCompanyMember,
+      is_pmoc: isPmoc,
       unit: {
         name: customer?.name ?? null,
         address: customer?.address ?? null,
@@ -745,14 +865,28 @@ Deno.serve(async (req) => {
       },
       schedule,
       history,
+      // Ocorrências do contrato (espelha a aba "Ocorrências"): linha do tempo
+      // completa das visitas, read-only. Carrega o `id` da OS pra montar
+      // "Preencher OS" quando viewer_can_fill=true.
+      occurrences,
+    };
+
+    // Documentos SÓ pra contrato PMOC. Para não-PMOC, NÃO incluímos
+    // `documents` nem `documents_released` no payload (não há documentos).
+    if (isPmoc) {
       // Gate (2026-06): quando false, `documents` vem vazio e o front esconde a
       // seção. O flag explícito ajuda a UI a distinguir "ainda não liberado" de
       // "liberado mas sem PDFs gerados".
-      documents_released: documentsReleased,
-      documents,
-    };
+      payload.documents_released = documentsReleased;
+      payload.documents = documents;
+    }
 
-    return jsonResponse(payload, 200);
+    // Quando a request veio autenticada, a resposta VARIA por usuário
+    // (viewer_can_fill / portal privado). Nunca cachear publicamente nesse caso.
+    const successHeaders = authHeader
+      ? { "Cache-Control": "private, no-store", Vary: "Authorization" }
+      : { Vary: "Authorization" };
+    return jsonResponse(payload, 200, successHeaders);
   } catch (err) {
     console.error("[pmoc-portal-share] unexpected error", {
       message: (err as Error)?.message ?? String(err),

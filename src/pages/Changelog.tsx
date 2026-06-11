@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.15',
+    date: '11 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Portal do Contrato para todos os contratos, com link que você liga e desliga',
+        description: 'Agora todo contrato — não só os de PMOC — pode ter um portal próprio com link e QR Code para o seu cliente acompanhar. Você liga ou desliga esse portal quando quiser, direto na tela do contrato. O cliente vê o cronograma, as ocorrências e o status do contrato (em dia, atenção ou atrasado); os contratos de PMOC continuam mostrando também os documentos. E quem é da sua equipe, logado, pode abrir e preencher as OSs direto pelo portal.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.11.14',
     date: '10 de junho de 2026',
     type: 'patch',

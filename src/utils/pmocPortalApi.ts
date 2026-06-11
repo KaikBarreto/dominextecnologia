@@ -1,7 +1,8 @@
 import type { PortalPayload } from '@/types/pmocPortal';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Cliente do portal PMOC público.
+ * Cliente do Portal do Contrato (PMOC e não-PMOC).
  *
  * Em produção, faz fetch à edge function `pmoc-portal-share` (verify_jwt=false).
  *
@@ -47,11 +48,32 @@ export class PortalModuleUnavailableError extends Error {
 }
 
 /**
- * Busca o payload público de um portal PMOC.
+ * Erro específico: o Portal do Contrato está PRIVADO (portal_is_public=false) e
+ * quem abriu NÃO é membro logado da empresa dona. A edge devolve HTTP 200 com
+ * `{ access: 'denied', company_name }`. Distinto de `portal_not_found` (token
+ * inválido) e de `module_unavailable` (módulo fora da assinatura). A tela
+ * "Portal privado" oferece login pra quem é da empresa.
+ */
+export class PortalPrivateError extends Error {
+  readonly companyName: string | null;
+  constructor(companyName: string | null) {
+    super('portal_private');
+    this.name = 'PortalPrivateError';
+    this.companyName = companyName;
+  }
+}
+
+/**
+ * Busca o payload do Portal do Contrato (PMOC e não-PMOC).
+ *
+ * Quando há sessão logada, envia o header `Authorization` pra a edge detectar
+ * o membro da empresa dona (viewer_can_fill / acesso a portal privado). Anônimo
+ * → sem header (comportamento público padrão).
  *
  * Erros:
  *  - `PortalModuleUnavailableError` — módulo "Portal do Cliente" fora da assinatura.
- *  - `portal_not_found` — token inválido / contrato não-PMOC / contrato cancelado.
+ *  - `PortalPrivateError` — portal privado + visitante sem permissão.
+ *  - `portal_not_found` — token inválido / contrato cancelado.
  *  - `portal_network_error` — falha de rede / edge function indisponível.
  */
 export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
@@ -60,17 +82,29 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
   }
 
   try {
+    // Sessão atual (se houver): mandamos o access_token pra a edge resolver o
+    // viewer logado da empresa dona. Sem sessão, segue anônimo (read-only).
+    let accessToken: string | null = null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      accessToken = data.session?.access_token ?? null;
+    } catch {
+      accessToken = null;
+    }
+
+    const headers: Record<string, string> = {
+      apikey: SUPABASE_ANON_KEY ?? '',
+      'Content-Type': 'application/json',
+    };
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
     const res = await fetch(
       `${SUPABASE_URL}/functions/v1/pmoc-portal-share?token=${encodeURIComponent(
         token,
       )}`,
-      {
-        method: 'GET',
-        headers: {
-          apikey: SUPABASE_ANON_KEY ?? '',
-          'Content-Type': 'application/json',
-        },
-      },
+      { method: 'GET', headers },
     );
 
     if (res.status === 404 || res.status === 400) {
@@ -82,7 +116,8 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
 
     const data = (await res.json()) as
       | PortalPayload
-      | { error: 'module_unavailable'; company_name?: string | null };
+      | { error: 'module_unavailable'; company_name?: string | null }
+      | { access: 'denied'; company_name?: string | null };
 
     // Módulo fora da assinatura: HTTP 200, mas o corpo sinaliza indisponível.
     // Lança erro tipado próprio — NÃO é "token inválido" nem erro de rede.
@@ -92,9 +127,18 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
       );
     }
 
+    // Portal privado + visitante sem permissão: HTTP 200 { access:'denied' }.
+    // Estado próprio — a tela oferece login pra quem é da empresa dona.
+    if (data && typeof data === 'object' && (data as any).access === 'denied') {
+      throw new PortalPrivateError(
+        (data as { company_name?: string | null }).company_name ?? null,
+      );
+    }
+
     return data as PortalPayload;
   } catch (err) {
     if (err instanceof PortalModuleUnavailableError) throw err;
+    if (err instanceof PortalPrivateError) throw err;
     if (err instanceof Error && err.message === 'portal_not_found') throw err;
     throw new Error('portal_network_error');
   }
@@ -117,7 +161,11 @@ function buildMockPayload(_token: string): PortalPayload {
 
   return {
     generated_at: new Date().toISOString(),
-    payload_version: '1.4.0',
+    payload_version: '1.6.0',
+    // Mock = contrato PMOC público, viewer anônimo (read-only). Flip pra testar.
+    access: 'granted',
+    viewer_can_fill: false,
+    is_pmoc: true,
     unit: {
       name: 'Restaurante Bom Sabor Ltda',
       address: 'Av. Paulista, 1000 - Bela Vista',
@@ -246,6 +294,40 @@ function buildMockPayload(_token: string): PortalPayload {
         rating_comment: null,
       },
     ],
+    // Ocorrências (1.6.0) — linha do tempo completa das visitas (mirror de
+    // schedule + history com `id`). Em mock, ids fictícios.
+    occurrences: [
+      {
+        id: 'mock-os-1310',
+        number: 1310,
+        scheduled_date: offset(15),
+        completed_at: null,
+        status: 'agendada',
+        status_label: 'Agendada',
+        service_type_label: 'Manutenção Preventiva',
+        public_description:
+          'Limpeza de filtros, checagem de pressão de gás e medição de temperatura de insuflamento.',
+        technician_first_name: null,
+        public_photos: [],
+        rating: null,
+        rating_comment: null,
+      },
+      {
+        id: 'mock-os-1284',
+        number: 1284,
+        scheduled_date: offset(-9),
+        completed_at: offset(-9),
+        status: 'concluida',
+        status_label: 'Concluída',
+        service_type_label: 'Manutenção Preventiva',
+        public_description:
+          'Limpeza de filtros, checagem de pressão de gás e medição de temperatura de insuflamento.',
+        technician_first_name: 'Carlos',
+        public_photos: [],
+        rating: 5,
+        rating_comment: 'Atendimento muito bom, equipe pontual.',
+      },
+    ],
     // Onda C/E — documentos reais.
     // Em mock dev marcamos como `available: false` pra mostrar fallback.
     documents: [
@@ -280,7 +362,7 @@ function buildMockPayload(_token: string): PortalPayload {
   };
 }
 
-/** URL pública canônica do portal — usada em UI interna e geração de QR Code. */
+/** URL pública canônica do Portal do Contrato — usada em UI interna e QR Code. */
 export function buildPmocPortalUrl(token: string, origin?: string): string {
   const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://dominex.app');
   return `${base}/contrato/unidade/${token}`;

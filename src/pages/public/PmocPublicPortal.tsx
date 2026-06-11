@@ -15,7 +15,12 @@ import {
   House,
   Download,
   Building2,
+  Lock,
+  Repeat,
+  ExternalLink,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import DarkVeil from '@/components/ui/DarkVeil';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -35,6 +40,7 @@ import {
   fetchPmocPortal,
   buildPmocPortalUrl,
   PortalModuleUnavailableError,
+  PortalPrivateError,
 } from '@/utils/pmocPortalApi';
 import PortalUnavailable from '@/components/portal/PortalUnavailable';
 import type {
@@ -42,6 +48,7 @@ import type {
   PortalOsStatus,
   PortalPayload,
   PortalOsEntry,
+  PortalOccurrenceEntry,
   PortalRealDocument,
   PortalTenant,
 } from '@/types/pmocPortal';
@@ -49,16 +56,22 @@ import type { OsStatus, OsType } from '@/types/database';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 
 /**
- * Portal PMOC Público — redesign 2026-05-24.
+ * Portal do Contrato (público) — PMOC e não-PMOC.
  *
  * Rotas: `/contrato/unidade/:token` (+ alias legado `/pmoc/unidade/:token`) — fora do auth wall, ver App.tsx.
  *
  * Layout:
  *  - Header hero (identidade do tenant) sempre visível no topo.
- *  - 4 abas: Visão Geral, Cronograma, Documentos, Histórico.
+ *  - Abas: Visão Geral, Cronograma, Ocorrências, Histórico (+ Documentos só PMOC).
  *  - Mobile: pills horizontais (via SettingsSidebarLayout).
  *  - Desktop: sidebar fixa esquerda.
  *  - Rodapé com info do tenant + bloco Dominex (se NÃO white-label).
+ *
+ * Acesso (espelha o Portal do Cliente):
+ *  - anônimo → read-only.
+ *  - usuário logado da empresa dona → `viewer_can_fill` → botão "Preencher OS".
+ *  - portal privado + anônimo → tela "Portal privado" (oferece login).
+ *  - contrato NÃO-PMOC → esconde a seção/aba de Documentos.
  *
  * Plano: docs/planos/2026-05-24-pmoc-portal-publico-redesign.md
  */
@@ -83,12 +96,23 @@ const OS_STATUS_CONFIG: Record<PortalOsStatus, { label: string; className: strin
   cancelada: { label: 'Cancelada', className: 'bg-destructive/10 text-destructive' },
 };
 
-const TABS: SettingsTab[] = [
-  { value: 'visao-geral', label: 'Visão Geral', icon: House },
-  { value: 'cronograma', label: 'Cronograma', icon: CalendarClock },
-  { value: 'documentos', label: 'Documentos', icon: FileText },
-  { value: 'historico', label: 'Histórico', icon: Wrench },
-];
+/**
+ * Abas do portal. "Documentos" só entra pra contrato PMOC. "Ocorrências" é a
+ * linha do tempo completa das visitas do contrato (read-only; viewer logado da
+ * empresa ganha "Preencher OS").
+ */
+function buildTabs(isPmoc: boolean): SettingsTab[] {
+  const tabs: SettingsTab[] = [
+    { value: 'visao-geral', label: 'Visão Geral', icon: House },
+    { value: 'cronograma', label: 'Cronograma', icon: CalendarClock },
+    { value: 'ocorrencias', label: 'Ocorrências', icon: Repeat },
+  ];
+  if (isPmoc) {
+    tabs.push({ value: 'documentos', label: 'Documentos', icon: FileText });
+  }
+  tabs.push({ value: 'historico', label: 'Histórico', icon: Wrench });
+  return tabs;
+}
 
 /**
  * Converte hex (#RRGGBB ou #RGB) → "H S% L%" pra setar em `--primary` inline.
@@ -175,9 +199,14 @@ function usePortalSeo(
   useEffect(() => {
     if (!payload || !token) return;
 
+    const isPmoc = payload.is_pmoc !== false;
     const unitName = payload.unit.name ?? 'Unidade';
-    const title = `PMOC — ${unitName} | ${payload.tenant.name}`;
-    const description = `Plano de Manutenção, Operação e Controle conforme Lei Federal 13.589/2018. Histórico, documentos e status sanitário da unidade ${unitName}.`;
+    const title = isPmoc
+      ? `PMOC — ${unitName} | ${payload.tenant.name}`
+      : `Portal do Contrato — ${unitName} | ${payload.tenant.name}`;
+    const description = isPmoc
+      ? `Plano de Manutenção, Operação e Controle conforme Lei Federal 13.589/2018. Histórico, documentos e status sanitário da unidade ${unitName}.`
+      : `Portal do contrato de ${unitName}: cronograma, ocorrências e histórico de atendimentos.`;
     const url = buildPmocPortalUrl(token);
 
     document.title = title;
@@ -204,13 +233,18 @@ function usePortalSeo(
     setJsonLd('pmoc-portal', {
       '@context': 'https://schema.org',
       '@type': 'Service',
-      name: `PMOC — ${unitName}`,
+      name: isPmoc ? `PMOC — ${unitName}` : `Portal do Contrato — ${unitName}`,
       description,
       provider: { '@type': 'Organization', name: payload.tenant.name },
       areaServed: payload.unit.address ?? undefined,
       url,
-      additionalType: 'https://en.wikipedia.org/wiki/HVAC',
-      termsOfService: 'https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13589.htm',
+      ...(isPmoc
+        ? {
+            additionalType: 'https://en.wikipedia.org/wiki/HVAC',
+            termsOfService:
+              'https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13589.htm',
+          }
+        : {}),
     });
 
     return () => {
@@ -229,8 +263,10 @@ export default function PmocPublicPortal() {
     queryKey: ['pmoc-portal', token],
     enabled: !!token,
     retry: (failureCount, err) => {
-      // Não re-tenta estados terminais: token inválido e módulo fora da assinatura.
+      // Não re-tenta estados terminais: token inválido, módulo fora da
+      // assinatura e portal privado (todos são estados próprios, não rede).
       if (err instanceof PortalModuleUnavailableError) return false;
+      if (err instanceof PortalPrivateError) return false;
       if (err instanceof Error && err.message === 'portal_not_found') return false;
       return failureCount < 2;
     },
@@ -244,6 +280,11 @@ export default function PmocPublicPortal() {
     // pro cliente final. Tratado ANTES de "token inválido" — é um estado próprio.
     if (error instanceof PortalModuleUnavailableError) {
       return <PortalUnavailable companyName={error.companyName} />;
+    }
+    // Portal privado + visitante sem permissão: tela sóbria com opção de login
+    // (espelha o Portal do Cliente). Nenhum dado é exibido.
+    if (error instanceof PortalPrivateError) {
+      return <PortalPrivate token={token!} companyName={error.companyName} />;
     }
     const isNotFound = error instanceof Error && error.message === 'portal_not_found';
     return isNotFound ? <PortalNotFound /> : <PortalNetworkError onRetry={() => refetch()} retrying={isFetching} />;
@@ -264,14 +305,22 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     tenant,
     schedule = [],
     history = [],
+    occurrences = [],
     documents = [],
     documents_released,
+    is_pmoc,
+    viewer_can_fill,
   } = payload;
 
+  // Compat: payloads antigos (sem `is_pmoc`) eram sempre PMOC.
+  const isPmoc = is_pmoc !== false;
+  // Quem abre logado da empresa dona pode "Preencher OS" (read-write); anônimo não.
+  const canFill = viewer_can_fill === true;
   // Compat: payloads antigos (sem o flag) tratam como liberado.
   const documentsReleased = documents_released !== false;
 
   const isMobile = useIsMobile();
+  const tabs = useMemo(() => buildTabs(isPmoc), [isPmoc]);
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
 
@@ -546,12 +595,15 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         )}
       </header>
 
-      {/* Status bar fina (espelha ReportHeader). Texto: contexto PMOC legal. */}
+      {/* Status bar fina (espelha ReportHeader). PMOC → contexto legal;
+          contrato comum → rótulo neutro do portal. */}
       <div
         className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide sm:text-sm"
         style={{ backgroundColor: headerConfig.statusBarColor, color: '#ffffff' }}
       >
-        Plano de Manutenção, Operação e Controle — Lei 13.589/2018
+        {isPmoc
+          ? 'Plano de Manutenção, Operação e Controle — Lei 13.589/2018'
+          : 'Portal do Contrato'}
       </div>
 
       {/* Sentinel pra detectar quando o hero sai do viewport (sticky bar aparece). */}
@@ -560,7 +612,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
       {/* Abas + conteúdo */}
       <main className="mx-auto w-full max-w-5xl px-4 pb-8 pt-6 sm:px-6">
         <SettingsSidebarLayout
-          tabs={TABS}
+          tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         >
@@ -570,6 +622,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
               <TabOverview
                 contract={contract}
                 responsibleTechnician={responsible_technician}
+                isPmoc={isPmoc}
               />
             )}
             {activeTab === 'cronograma' && (
@@ -578,7 +631,15 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
                 onOsClick={handleCalendarClick}
               />
             )}
-            {activeTab === 'documentos' && (
+            {activeTab === 'ocorrencias' && (
+              <TabOccurrences
+                occurrences={occurrences}
+                canFill={canFill}
+                onOsClick={setSelectedOS}
+              />
+            )}
+            {/* Documentos: SÓ contrato PMOC. */}
+            {isPmoc && activeTab === 'documentos' && (
               <TabDocuments documents={documents} released={documentsReleased} />
             )}
             {activeTab === 'historico' && (
@@ -612,28 +673,33 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
 function TabOverview({
   contract,
   responsibleTechnician,
+  isPmoc,
 }: {
   contract: PortalPayload['contract'];
   responsibleTechnician: PortalPayload['responsible_technician'];
+  /** PMOC mostra "Conformidade" (texto legal) + RT; contrato comum não. */
+  isPmoc: boolean;
 }) {
   return (
     <div className="space-y-6">
       <Section title="Contrato" icon={CalendarClock}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <InfoCard label="Plano" value={contract.name ?? '—'} />
+          <InfoCard label={isPmoc ? 'Plano' : 'Contrato'} value={contract.name ?? '—'} />
           <InfoCard label="Frequência" value={contract.frequency_label} />
           <InfoCard
-            label="Próxima manutenção"
+            label={isPmoc ? 'Próxima manutenção' : 'Próximo atendimento'}
             value={contract.next_pmoc_generation_date
               ? formatLocal(contract.next_pmoc_generation_date)
               : 'A definir'}
           />
           <InfoCard label="Início do contrato" value={formatLocal(contract.start_date)} />
-          <InfoCard
-            label="Conformidade"
-            value={contract.compliance_text}
-            valueClassName="text-info"
-          />
+          {isPmoc && (
+            <InfoCard
+              label="Conformidade"
+              value={contract.compliance_text}
+              valueClassName="text-info"
+            />
+          )}
           <InfoCard label="Status" value={contract.status_label} />
         </div>
       </Section>
@@ -701,6 +767,100 @@ function TabSchedule({
         Toque em uma manutenção do calendário para ver detalhes.
       </p>
     </div>
+  );
+}
+
+/**
+ * Aba "Ocorrências" — linha do tempo completa das visitas do contrato
+ * (espelha a aba "Ocorrências" interna). Read-only: clicar abre o detalhe.
+ * Quando `canFill` (viewer logado da empresa dona), cada ocorrência ativa
+ * ganha o botão "Preencher OS" → abre /os-tecnico/:id em nova aba.
+ */
+function TabOccurrences({
+  occurrences,
+  canFill,
+  onOsClick,
+}: {
+  occurrences: PortalOccurrenceEntry[];
+  canFill: boolean;
+  onOsClick: (os: PortalOsEntry) => void;
+}) {
+  if (occurrences.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Ainda não há ocorrências registradas para este contrato.
+        </p>
+      </div>
+    );
+  }
+
+  // Status terminais (read-only): OS concluída/cancelada não recebe "Preencher OS".
+  const TERMINAL: PortalOsStatus[] = ['concluida', 'cancelada'];
+
+  return (
+    <ol className="space-y-3">
+      {occurrences.map((entry, i) => {
+        const statusCfg = OS_STATUS_CONFIG[entry.status] ?? OS_STATUS_CONFIG.agendada;
+        const displayDate = entry.completed_at || entry.scheduled_date;
+        const showFill = canFill && !TERMINAL.includes(entry.status);
+        return (
+          <li key={`${entry.id}-${i}`}>
+            <div
+              className={cn(
+                'block w-full rounded-2xl border border-border bg-card p-3.5',
+                'shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm sm:p-4',
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => onOsClick(entry)}
+                className="block w-full min-h-11 text-left transition-all duration-100 hover:opacity-90 active:scale-[0.99]"
+              >
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    OS #{entry.number}
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                      statusCfg.className,
+                    )}
+                  >
+                    {entry.status_label || statusCfg.label}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-medium leading-relaxed">{formatLocal(displayDate)}</p>
+                {entry.service_type_label && (
+                  <p className="text-xs leading-relaxed text-muted-foreground">{entry.service_type_label}</p>
+                )}
+                {entry.public_description && (
+                  <p className="mt-2 line-clamp-2 break-words text-sm leading-relaxed text-foreground/90">
+                    {entry.public_description}
+                  </p>
+                )}
+              </button>
+
+              {showFill && (
+                <a
+                  href={`${typeof window !== 'undefined' ? window.location.origin : ''}/os-tecnico/${entry.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    'mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl',
+                    'bg-primary px-4 text-sm font-semibold text-primary-foreground',
+                    'transition-all duration-100 hover:bg-primary/90 active:scale-[0.98]',
+                  )}
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  Preencher OS
+                </a>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -1125,6 +1285,53 @@ function PortalSkeleton() {
             <div className="h-24 animate-pulse rounded-2xl bg-muted" />
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Tela "Portal privado" — espelha a do Portal do Cliente (CustomerPortal).
+ * Portal com `portal_is_public=false` aberto por anônimo (ou usuário de outra
+ * empresa). Sóbria, com DarkVeil + opção de login preservando o retorno pro
+ * próprio portal (quem é da empresa dona entra e vê o conteúdo).
+ */
+function PortalPrivate({ token, companyName }: { token: string; companyName?: string | null }) {
+  const portalPath = `/contrato/unidade/${token}`;
+  return (
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden p-4">
+      <div className="absolute inset-0 z-0">
+        <DarkVeil hueShift={53} speed={0.5} />
+      </div>
+      <div
+        className="relative z-10 w-full max-w-md space-y-6 px-6 text-center"
+        style={{
+          paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+          paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+        }}
+      >
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+          <Lock className="h-8 w-8 text-white" aria-hidden="true" />
+        </div>
+        {companyName && (
+          <p className="text-sm font-medium uppercase tracking-widest text-white/50">
+            {companyName}
+          </p>
+        )}
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
+            Portal privado
+          </h1>
+          <p className="mx-auto max-w-sm text-sm leading-relaxed text-white/60">
+            Este portal é restrito e exige que você entre com a conta da empresa.
+          </p>
+          <p className="mx-auto max-w-sm text-xs leading-relaxed text-white/40">
+            Se você já está conectado e ainda vê esta mensagem, sua conta não tem acesso a este portal.
+          </p>
+        </div>
+        <a href={`/login?redirect=${encodeURIComponent(portalPath)}`}>
+          <Button size="lg" className="mt-2">Fazer login</Button>
+        </a>
       </div>
     </div>
   );

@@ -165,6 +165,16 @@ export type PortalHistoryEntry = PortalOsEntry;
 export type PortalScheduleEntry = PortalOsEntry;
 
 /**
+ * Ocorrência do contrato (espelha a aba "Ocorrências"). Mesmo shape público da
+ * OS + o `id` real da OS — usado SÓ pelo viewer logado da empresa pra montar o
+ * link "Preencher OS" (/os-tecnico/:id). Anônimo recebe o id mas a UI esconde
+ * o botão (read-only).
+ */
+export interface PortalOccurrenceEntry extends PortalOsEntry {
+  id: string;
+}
+
+/**
  * Onda C/E — documento real no payload público.
  *  - `available=true` → tem PDF e `pdf_url` (signed URL TTL 24h).
  *  - `available=false` → fallback "Disponível em breve" no UI.
@@ -182,6 +192,25 @@ export interface PortalRealDocument {
 export interface PortalPayload {
   generated_at: string;
   payload_version: string;
+  /**
+   * Portal do Contrato (1.6.0) — espelha get_portal_data.
+   *  - `'granted'` → acesso liberado (já passou pelo gate de privacidade).
+   *  - `'denied'`  → portal privado + viewer não-membro (tratado como erro
+   *    `PortalPrivateError` no client; o payload de sucesso é sempre 'granted').
+   * Ausente em payloads antigos → trata como 'granted' (compat).
+   */
+  access?: 'granted' | 'denied';
+  /**
+   * `true` quando quem abre é um usuário LOGADO da empresa dona → pode
+   * "Preencher OS". Anônimo / outra empresa → `false` (read-only).
+   */
+  viewer_can_fill?: boolean;
+  /**
+   * `true` → contrato PMOC (mostra documentos). `false` → contrato comum
+   * (esconde a seção de documentos). Ausente em payloads antigos → trata como
+   * PMOC por compat (o portal antigo só existia pra PMOC).
+   */
+  is_pmoc?: boolean;
   unit: PortalUnit;
   contract: PortalContract;
   health: PortalHealth;
@@ -192,12 +221,22 @@ export interface PortalPayload {
   /** OSs concluídas (limit 20, ordem completed_at DESC). */
   history: PortalHistoryEntry[];
   /**
+   * Ocorrências do contrato (1.6.0) — linha do tempo completa das visitas
+   * (espelha a aba "Ocorrências"). Read-only; carrega o `id` da OS pro link
+   * "Preencher OS" do viewer logado. Ausente em payloads antigos.
+   */
+  occurrences?: PortalOccurrenceEntry[];
+  /**
    * Gate de documentos (1.5.0). `false` → o gestor ainda não liberou os
    * documentos pro cliente final; nesse caso `documents` vem vazio e a seção
    * mostra um aviso neutro. Pode estar ausente em payloads antigos (trata como
    * `true` por compatibilidade — backfill já marcou contratos com documentos).
+   * Ausente também em contrato NÃO-PMOC (não há documentos).
    */
   documents_released?: boolean;
-  /** Documentos reais (dossiê + cronograma + TRT). Renomeado de `documents_real` em 1.3.0. */
-  documents: PortalRealDocument[];
+  /**
+   * Documentos reais (dossiê + cronograma + TRT). Só presente em contrato PMOC.
+   * Renomeado de `documents_real` em 1.3.0; opcional desde 1.6.0 (não-PMOC).
+   */
+  documents?: PortalRealDocument[];
 }

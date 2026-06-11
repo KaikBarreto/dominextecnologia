@@ -137,16 +137,48 @@ export default function ContractDetail() {
   // Guarda o id da OS até a confirmação no AlertDialog.
   const [cancelingOsId, setCancelingOsId] = useState<string | null>(null);
 
-  // Portal PMOC (Onda B v1.9.1) — só aparece quando is_pmoc=true.
+  // Portal do Contrato — aparece em TODO contrato (PMOC ou não). O token público
+  // é gerado pra todo contrato e nunca nulado. PMOC ganha extras (liberação de
+  // documentos via aba Documentos); contrato comum tem só QR + link + toggle.
   const { hasRole } = useAuth();
   const isPmoc = (contract as any)?.is_pmoc === true;
   const canRegenerateToken =
     hasRole('admin' as any) || hasRole('gestor' as any) || hasRole('super_admin' as any);
-  const { data: publicToken } = useContractPublicToken(isPmoc ? id : null);
+  const { data: publicToken } = useContractPublicToken(id);
   const regenerateToken = useRegeneratePmocToken();
   const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
   const [downloadingQr, setDownloadingQr] = useState(false);
   const portalUrl = publicToken ? buildPmocPortalUrl(publicToken) : null;
+
+  // Toggle "Portal Público" (público/privado) — espelha o CustomerDetail.
+  // Lê/grava contracts.portal_is_public (cast `as any`: types.ts não regenerado).
+  // Default ligado (true) quando ausente/null.
+  const [portalIsPublic, setPortalIsPublic] = useState(true);
+  const [updatingPortalVisibility, setUpdatingPortalVisibility] = useState(false);
+  useEffect(() => {
+    if (contract) {
+      setPortalIsPublic((contract as any).portal_is_public !== false);
+    }
+  }, [contract]);
+
+  const handleTogglePortalPublic = async (next: boolean) => {
+    if (!id) return;
+    const prev = portalIsPublic;
+    setPortalIsPublic(next); // otimista
+    setUpdatingPortalVisibility(true);
+    const { error } = await supabase
+      .from('contracts')
+      .update({ portal_is_public: next } as any)
+      .eq('id', id);
+    setUpdatingPortalVisibility(false);
+    if (error) {
+      setPortalIsPublic(prev); // rollback
+      toast({ variant: 'destructive', title: 'Erro ao atualizar portal', description: getErrorMessage(error) });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['contract-detail', id] });
+    toast({ title: next ? 'Portal público ativado' : 'Portal agora exige login' });
+  };
 
   const handleCopyPortalLink = async () => {
     if (!portalUrl) return;
@@ -681,20 +713,39 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          {/* Portal PMOC Público — logo após Informações pra ficar visível sem scrollar.
-              Só pra contratos PMOC (tem token público). */}
-          {isPmoc && (
+          {/* Portal do Contrato — logo após Informações pra ficar visível sem scrollar.
+              Aparece em TODO contrato (PMOC ou não), enquanto houver token público. */}
+          {publicToken && (
             <Card className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base break-words">
                   <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                  Portal Público
+                  Portal do Contrato
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 min-w-0">
                 <p className="text-xs text-muted-foreground break-words">
-                  Página pública desta unidade para o cliente final. Aparece no QR Code colado no quadro físico.
+                  Página pública deste contrato para o cliente final. Aparece no QR Code colado no quadro físico.
                 </p>
+
+                {/* Toggle público/privado (espelha o Portal do Cliente). */}
+                <div className="flex items-start justify-between gap-3 rounded-xl border bg-muted/30 p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Portal Público</p>
+                    <p className="text-xs text-muted-foreground break-words">
+                      {portalIsPublic
+                        ? 'Qualquer pessoa com o link vê o portal (somente leitura).'
+                        : 'O link exige login da sua empresa para abrir.'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={portalIsPublic}
+                    disabled={updatingPortalVisibility}
+                    onCheckedChange={handleTogglePortalPublic}
+                    aria-label="Portal Público"
+                    className="shrink-0"
+                  />
+                </div>
 
                 {portalUrl && (
                   <div className="flex justify-center">
@@ -721,7 +772,7 @@ export default function ContractDetail() {
                   </div>
                 ) : (
                   <div className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-                    Link público em geração. Ative o módulo PMOC ou aguarde o próximo deploy.
+                    Link público em geração. Aguarde alguns instantes.
                   </div>
                 )}
 
@@ -746,20 +797,23 @@ export default function ContractDetail() {
                     <ExternalLink className="h-3.5 w-3.5 mr-1" />
                     Abrir portal
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePrintQrCode}
-                    disabled={!portalUrl || downloadingQr}
-                    className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
-                  >
-                    {downloadingQr ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                    ) : (
-                      <Printer className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    Imprimir QR Code
-                  </Button>
+                  {/* Imprimir QR Code: PDF com layout PMOC (capa legal). Só PMOC. */}
+                  {isPmoc && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePrintQrCode}
+                      disabled={!portalUrl || downloadingQr}
+                      className="col-span-2 min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                    >
+                      {downloadingQr ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <Printer className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      Imprimir QR Code
+                    </Button>
+                  )}
                   {canRegenerateToken && (
                     <Button
                       variant="destructive-ghost"
