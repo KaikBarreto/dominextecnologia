@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { MapPin, RefreshCw, Map as MapIcon, Clock } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { TrackingHistoryTab } from '@/components/tracking/TrackingHistoryTab';
@@ -56,6 +55,10 @@ const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}
 const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
 const TILE_LABELS_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png';
 const TILE_LABELS_DARK = 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png';
+
+// O app não usa ThemeProvider do next-themes — o dark mode é controlado na mão
+// via classe `dark` no <html>. Lemos o tema direto do DOM (igual ao DashboardLiveMap).
+const isDarkMode = () => document.documentElement.classList.contains('dark');
 
 function buildTooltipHtml(tech: TechMarker, routeInfo?: RouteInfo) {
   const lastUpdate = new Date(tech.updated_at);
@@ -116,8 +119,6 @@ export default function LiveMap() {
   const [trails, setTrails] = useState<Map<string, TrackingPoint[]>>(new Map());
   const [routes, setRoutes] = useState<Map<string, RouteInfo>>(new Map());
   const [loading, setLoading] = useState(true);
-  const { resolvedTheme } = useTheme();
-  const darkMode = resolvedTheme === 'dark';
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('mapa');
   const { settings: companySettings } = useCompanySettings();
@@ -238,26 +239,39 @@ export default function LiveMap() {
     await fetchRoutesForTechs(markers);
   }, [fetchRoutesForTechs]);
 
-  // Toggle dark/light tiles
+  // Troca dark/light dos tiles: observa a classe `dark` no <html> (o app
+  // controla o tema na mão, sem next-themes) e refaz as duas camadas de tile.
   useEffect(() => {
-    const map = leafletMapRef.current;
-    if (!map) return;
+    const applyTheme = () => {
+      const map = leafletMapRef.current;
+      if (!map) return;
 
-    if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
-    if (labelsLayerRef.current) map.removeLayer(labelsLayerRef.current);
+      const L = (window as any).L;
+      if (!L) return;
 
-    const L = (window as any).L;
-    if (!L) return;
+      if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
+      if (labelsLayerRef.current) map.removeLayer(labelsLayerRef.current);
 
-    tileLayerRef.current = L.tileLayer(darkMode ? TILE_DARK : TILE_LIGHT, {
-      attribution: '© CartoDB © OSM',
-    }).addTo(map);
+      const dark = isDarkMode();
 
-    labelsLayerRef.current = L.tileLayer(darkMode ? TILE_LABELS_DARK : TILE_LABELS_LIGHT, {
-      attribution: '',
-      pane: 'overlayPane',
-    }).addTo(map);
-  }, [darkMode]);
+      tileLayerRef.current = L.tileLayer(dark ? TILE_DARK : TILE_LIGHT, {
+        attribution: '© CartoDB © OSM',
+      }).addTo(map);
+
+      labelsLayerRef.current = L.tileLayer(dark ? TILE_LABELS_DARK : TILE_LABELS_LIGHT, {
+        attribution: '',
+        pane: 'overlayPane',
+      }).addTo(map);
+    };
+
+    const observer = new MutationObserver(applyTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Geocode company address for base marker
   useEffect(() => {
@@ -274,18 +288,10 @@ export default function LiveMap() {
     });
   }, [companySettings]);
 
-  // Initialize map
-  // Importante: só inicializa DEPOIS que `resolvedTheme` chegou (next-themes
-  // resolve o tema em segundo passo). Sem isso, o primeiro mount criava o
-  // tile com TILE_LIGHT hardcoded e o useEffect de toggle ainda rodava com
-  // `leafletMapRef.current === null` — então o mapa "não respeitava o tema"
-  // até o usuário alternar manualmente.
-  const themeForInitRef = useRef<string | undefined>(undefined);
-  themeForInitRef.current = resolvedTheme;
-
+  // Inicializa o mapa uma vez no mount. O tema vem do DOM (isDarkMode), então
+  // não há mais dependência do next-themes pra destravar a criação do L.map.
   useEffect(() => {
-    if (!resolvedTheme) return;
-    if (leafletMapRef.current) return;
+    if (leafletMapRef.current || !mapRef.current) return;
 
     let cancelled = false;
 
@@ -295,7 +301,7 @@ export default function LiveMap() {
 
       if (cancelled || !mapRef.current || leafletMapRef.current) return;
 
-      const isDark = themeForInitRef.current === 'dark';
+      const isDark = isDarkMode();
       const map = L.map(mapRef.current).setView([-15.7801, -47.9292], 4);
 
       tileLayerRef.current = L.tileLayer(isDark ? TILE_DARK : TILE_LIGHT, {
@@ -314,13 +320,13 @@ export default function LiveMap() {
       await fetchLatestLocations();
     };
 
-    initMap();
+    initMap().catch(() => {});
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedTheme]);
+  }, []);
 
   // Re-invalida o tamanho ao voltar pra aba do mapa (cobre ir pra Histórico e voltar)
   useEffect(() => {

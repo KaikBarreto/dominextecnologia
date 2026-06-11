@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.14',
+    date: '10 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mapa de Rastreamento corrigido no computador',
+        description: 'A tela "Mapa e Rastreamento" abria com o mapa em branco no computador, mesmo havendo técnicos em campo. Corrigimos a falha: agora o mapa carrega normalmente e continua acompanhando o tema claro ou escuro que você usa no sistema.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.13',
     date: '10 de junho de 2026',
     type: 'patch',
