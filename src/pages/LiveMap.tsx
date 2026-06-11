@@ -308,6 +308,9 @@ export default function LiveMap() {
       }).addTo(map);
 
       leafletMapRef.current = map;
+      // força recálculo após a animação de entrada / layout assentar (fix mapa vazio no mobile)
+      requestAnimationFrame(() => requestAnimationFrame(() => map.invalidateSize()));
+      setTimeout(() => map.invalidateSize(), 300);
       await fetchLatestLocations();
     };
 
@@ -318,6 +321,23 @@ export default function LiveMap() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedTheme]);
+
+  // Re-invalida o tamanho ao voltar pra aba do mapa (cobre ir pra Histórico e voltar)
+  useEffect(() => {
+    if (activeTab !== 'mapa' || !leafletMapRef.current) return;
+    const t = setTimeout(() => leafletMapRef.current?.invalidateSize(), 150);
+    return () => clearTimeout(t);
+  }, [activeTab]);
+
+  // ResizeObserver no container: recalcula sempre que o tamanho muda tardiamente
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const observer = new ResizeObserver(() => {
+      leafletMapRef.current?.invalidateSize();
+    });
+    observer.observe(mapRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Cleanup do mapa no unmount (separado do init pra não recriar ao trocar tema)
   useEffect(() => {

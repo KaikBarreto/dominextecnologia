@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.13',
+    date: '10 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mapa de Rastreamento corrigido no celular',
+        description: 'Em alguns celulares, a tela "Mapa e Rastreamento" abria com o mapa em branco — um quadrado cinza vazio. Agora o mapa se ajusta sozinho assim que a tela termina de abrir, toda vez que você volta para a aba do mapa e também quando você gira o aparelho ou abre o teclado. A posição dos técnicos volta a aparecer normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.12',
     date: '10 de junho de 2026',
     type: 'patch',

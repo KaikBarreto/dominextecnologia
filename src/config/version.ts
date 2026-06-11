@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.12";
+export const APP_VERSION = "1.11.13";
 
-export const VERSION_NOTES = "Tela de Movimentações Financeiras mais enxuta: tiramos botões repetidos do topo, deixamos o cabeçalho da conta limpo (nome e saldo) e concentramos as ações no menu lateral. O bloco de cartões agora aparece sempre, com o botão de novo cartão à mão mesmo antes de você cadastrar o primeiro.";
+export const VERSION_NOTES = "Corrigimos o mapa da tela de Rastreamento no celular: em alguns aparelhos ele abria como um quadrado cinza vazio. Agora o mapa se ajusta sozinho ao abrir a tela, ao voltar para a aba do mapa e ao girar o aparelho.";
