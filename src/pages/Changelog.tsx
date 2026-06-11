@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.12',
+    date: '10 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de Movimentações Financeiras mais enxuta',
+        description: 'Demos uma faxina na tela: tiramos os botões repetidos do topo, deixando lá apenas o atalho de Categorias. Os botões para adicionar conta e cartão ficam agora no menu lateral, ao lado de cada seção — e a seção de Cartões aparece sempre, com o botão "Novo Cartão" à mão mesmo antes de você cadastrar o primeiro. Ao abrir uma conta, o cabeçalho fica limpo (só nome e saldo) e todas as ações — transferir, editar, ajustar saldo e excluir — ficam reunidas no menu de opções da conta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.11.11',
     date: '10 de junho de 2026',
     type: 'patch',

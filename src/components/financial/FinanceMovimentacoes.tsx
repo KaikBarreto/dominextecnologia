@@ -167,6 +167,16 @@ export function FinanceMovimentacoes({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="bottom" sideOffset={4} onClick={(e) => e.stopPropagation()}>
+          {!isCard && (
+            <DropdownMenuItem
+              className="gap-2 cursor-pointer"
+              disabled={cashBankAccounts.length < 2}
+              onClick={() => setTransferOpen(true)}
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Transferir
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             className="gap-2 cursor-pointer focus:bg-warning focus:text-white hover:bg-warning hover:text-white data-[highlighted]:bg-warning data-[highlighted]:text-white"
             onClick={() => openEditAccount(a)}
@@ -279,51 +289,13 @@ export function FinanceMovimentacoes({
           </div>
         </div>
 
-        {isMobile ? (
+        {/* Desktop: as ações vivem no menu de 3 pontinhos do sidebar — o header
+            fica limpo (ícone + nome + saldo). Mobile concentra tudo no "Ações". */}
+        {isMobile && (
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setMobileActionsAccount(a)}>
             <SlidersHorizontal className="h-4 w-4" />
             Ações
           </Button>
-        ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setTransferOpen(true)}
-              disabled={cashBankAccounts.length < 2}
-            >
-              <ArrowLeftRight className="h-4 w-4" />
-              Transferir
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 hover:bg-warning hover:text-white hover:border-warning"
-              onClick={() => openEditAccount(a)}
-            >
-              <Pencil className="h-4 w-4" />
-              Editar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 hover:bg-success hover:text-white hover:border-success"
-              onClick={() => handleAdjustBalance(a)}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Ajustar saldo
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-destructive hover:bg-destructive hover:text-white hover:border-destructive"
-              onClick={() => setDeletingAccount(a)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Excluir
-            </Button>
-          </div>
         )}
       </div>
     );
@@ -331,7 +303,8 @@ export function FinanceMovimentacoes({
 
   // Botões globais do topo da tela. No mobile vira um único "+" com menu
   // (Nova Conta / Novo Cartão / Categorias) pra não poluir o topo; no desktop
-  // mantém os 3 botões com rótulo.
+  // sobra só "Categorias" — criar conta/cartão vive no footer de cada grupo do
+  // sidebar (evita botão duplicado no topo).
   const globalActions = isMobile ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -357,14 +330,6 @@ export function FinanceMovimentacoes({
       <Button variant="outline" size="sm" className="gap-2" onClick={() => setCategoriesOpen(true)}>
         <Tags className="h-4 w-4" />
         Categorias
-      </Button>
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => openNewAccount('banco')}>
-        <Plus className="h-4 w-4" />
-        Nova Conta
-      </Button>
-      <Button size="sm" className="gap-2" onClick={() => openNewAccount('cartao')}>
-        <Plus className="h-4 w-4" />
-        Novo Cartão
       </Button>
     </div>
   );
@@ -410,6 +375,9 @@ export function FinanceMovimentacoes({
         activeTab={activeTab}
         onTabChange={setActiveTab}
         groupFooters={groupFooters}
+        // Garante que os grupos (e seus footers "+ Nova Conta"/"+ Novo Cartão")
+        // sempre apareçam no sidebar, inclusive pra tenant sem nenhuma conta/cartão.
+        placeholderGroups={!isMobile ? ['Contas Bancárias', 'Cartões'] : undefined}
       >
         {activeTab === ALL_TAB ? (
           <div className="space-y-4">
@@ -673,36 +641,13 @@ export function FinanceMovimentacoes({
           </div>
         </div>
 
-        {isMobile ? (
+        {/* Desktop: ações no menu de 3 pontinhos do sidebar — header limpo
+            (ícone + nome + fatura). Mobile concentra tudo no "Ações". */}
+        {isMobile && (
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setMobileActionsAccount(a)}>
             <SlidersHorizontal className="h-4 w-4" />
             Ações
           </Button>
-        ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setRecalcCard(a)}>
-              <Calculator className="h-4 w-4" />
-              Recalcular
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 hover:bg-warning hover:text-white hover:border-warning"
-              onClick={() => openEditAccount(a)}
-            >
-              <Pencil className="h-4 w-4" />
-              Editar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-destructive hover:bg-destructive hover:text-white hover:border-destructive"
-              onClick={() => setDeletingAccount(a)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Excluir
-            </Button>
-          </div>
         )}
       </div>
     );

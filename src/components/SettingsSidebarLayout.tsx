@@ -50,6 +50,14 @@ interface SettingsSidebarLayoutProps {
    * desktop. Opt-in — grupos sem entrada aqui não mudam.
    */
   groupFooters?: Record<string, React.ReactNode>;
+  /**
+   * Nomes de grupos que devem aparecer SEMPRE no sidebar, mesmo sem nenhuma aba
+   * (ex: o grupo "Cartões" precisa exibir seu rótulo + footer "+ Novo Cartão"
+   * ainda que o tenant não tenha cartão). Grupos ausentes são anexados ao fim,
+   * na ordem da prop, com `items` vazio (renderiza só o rótulo + groupFooters).
+   * Só no desktop. Opt-in — sem a prop, o layout se comporta como antes.
+   */
+  placeholderGroups?: string[];
 }
 
 export function SettingsSidebarLayout({
@@ -59,6 +67,7 @@ export function SettingsSidebarLayout({
   children,
   sidebarFooter,
   groupFooters,
+  placeholderGroups,
 }: SettingsSidebarLayoutProps) {
   const isMobile = useIsMobile();
 
@@ -72,6 +81,16 @@ export function SettingsSidebarLayout({
     }
     return acc;
   }, []);
+
+  // Grupos placeholder (opt-in): garante que rótulo + footer de um grupo apareçam
+  // mesmo sem nenhuma aba. Anexa ao fim, na ordem da prop, só os ausentes.
+  if (placeholderGroups) {
+    for (const name of placeholderGroups) {
+      if (!groupedTabs.some(g => g.group === name)) {
+        groupedTabs.push({ group: name, items: [] });
+      }
+    }
+  }
 
   if (isMobile) {
     // Mobile: segmented control via MobilePillTabs (grupos achatados).

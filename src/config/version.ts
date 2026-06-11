@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.11";
+export const APP_VERSION = "1.11.12";
 
-export const VERSION_NOTES = "Agenda mais privada: cada tarefa aparece só para o responsável e para quem tem acesso total à agenda — com a nova permissão \"Ver Toda a Agenda\" que você liga por usuário. E o perfil \"Acesso Total\" passa a incluir automaticamente as permissões novas que lançamos.";
+export const VERSION_NOTES = "Tela de Movimentações Financeiras mais enxuta: tiramos botões repetidos do topo, deixamos o cabeçalho da conta limpo (nome e saldo) e concentramos as ações no menu lateral. O bloco de cartões agora aparece sempre, com o botão de novo cartão à mão mesmo antes de você cadastrar o primeiro.";
