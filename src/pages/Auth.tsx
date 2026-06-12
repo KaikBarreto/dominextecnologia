@@ -95,10 +95,15 @@ export default function Auth() {
         if (profileData?.company_id) {
           const { data: companyData } = await supabase
             .from('companies')
-            .select('subscription_status')
+            .select('subscription_status, payment_lock_bypass')
             .eq('id', profileData.company_id)
             .maybeSingle();
-          if (companyData?.subscription_status === 'pending_payment') {
+          // pending_payment manda pro checkout, EXCETO se a empresa tem
+          // bypass liberado (payment_lock_bypass === true) — aí segue normal.
+          // Cast as any: coluna ainda não está no types.ts. Comparação
+          // estrita: null/undefined nunca abre exceção.
+          const hasBypass = (companyData as any)?.payment_lock_bypass === true;
+          if (companyData?.subscription_status === 'pending_payment' && !hasBypass) {
             navigate('/checkout', { replace: true });
             return;
           }
@@ -191,10 +196,15 @@ export default function Auth() {
     if (profileData?.company_id) {
       const { data: companyData } = await supabase
         .from('companies')
-        .select('subscription_status')
+        .select('subscription_status, payment_lock_bypass')
         .eq('id', profileData.company_id)
         .maybeSingle();
-      if (companyData?.subscription_status === 'pending_payment') {
+      // pending_payment manda pro checkout, EXCETO se a empresa tem
+      // bypass liberado (payment_lock_bypass === true) — aí segue normal.
+      // Cast as any: coluna ainda não está no types.ts. Comparação
+      // estrita: null/undefined nunca abre exceção.
+      const hasBypass = (companyData as any)?.payment_lock_bypass === true;
+      if (companyData?.subscription_status === 'pending_payment' && !hasBypass) {
         toast({
           title: 'Pagamento pendente',
           description: 'Finalize o pagamento para acessar a plataforma.',
