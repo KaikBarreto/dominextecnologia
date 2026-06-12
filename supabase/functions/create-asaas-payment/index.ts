@@ -338,6 +338,17 @@ Deno.serve(async (req) => {
     }
     const dueDateStr = dueDate.toISOString().split("T")[0];
 
+    // "Hoje" em America/Sao_Paulo (UTC-3 fixo Dominex). Usado SÓ no cartão: como o
+    // cartão é informado no ato do checkout, a 1ª cobrança deve ser debitada HOJE —
+    // se mandarmos nextDueDate no futuro, a Asaas AGENDA em vez de debitar na hora
+    // (incidente CLIMATIZE). PIX/boleto mantêm o dueDateStr (janela de pagamento).
+    const todayBRT = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()); // "YYYY-MM-DD"
+
     // --- Helper: cancela subscriptions ativas existentes (evita duplicidade) ---
     const cancelExistingSubscriptions = async (customerId: string) => {
       try {
@@ -535,12 +546,15 @@ Deno.serve(async (req) => {
         ? Math.round((amount / 12) * 100) / 100
         : amount;
 
+      // nextDueDate = HOJE (BRT): o cartão foi informado agora, então a 1ª cobrança
+      // deve ser debitada IMEDIATAMENTE. Com dueDateStr (+N dias) a Asaas agendava a
+      // cobrança pro futuro em vez de processar o cartão na hora (incidente CLIMATIZE).
       const subscriptionData = await asaas.post(`/subscriptions`, {
         customer: asaasCustomerId,
         billingType: "CREDIT_CARD",
         cycle: "MONTHLY",
         value: monthlyCardValue,
-        nextDueDate: dueDateStr,
+        nextDueDate: todayBRT,
         description: description || `Assinatura Dominex - ${company.name}`,
         externalReference: company_id,
         creditCard: {
@@ -565,8 +579,15 @@ Deno.serve(async (req) => {
         payment_method: "credit_card",
       }).eq("id", company_id);
 
-      // sub_* não é payment.id — webhook PAYMENT_CREATED/CONFIRMED preenche pay_* depois.
-      const firstPaymentStatus = subscriptionData.status === "ACTIVE" ? "CONFIRMED" : "PENDING";
+      // sub_* não é payment.id — webhook PAYMENT_CREATED preenche pay_* depois e
+      // PAYMENT_CONFIRMED/RECEIVED é quem confirma de fato (ativa a empresa + credita LTV
+      // via credit_ltv_once_for_payment). subscription.status === "ACTIVE" significa apenas
+      // que a assinatura recorrente foi criada no Asaas — NÃO que a 1ª cobrança foi paga.
+      // Gravar CONFIRMED aqui criava "Pago" falso (linha CONFIRMED com asaas_payment_id/
+      // paid_at/ltv_credited_at nulos, empresa seguia pending_payment, LTV=0 — incidente
+      // CLIMATIZE). Por isso o cartão SEMPRE entra PENDING; o webhook reconcilia esta linha
+      // (PAYMENT_CREATED linka o pay_* nela; PAYMENT_CONFIRMED dá UPDATE pra CONFIRMED).
+      const firstPaymentStatus = "PENDING";
 
       const { data: savedPayment } = await supabase
         .from("subscription_payments")
@@ -583,7 +604,8 @@ Deno.serve(async (req) => {
           billing_cycle: "monthly",
           type: paymentType,
           invoice_url: subscriptionData.invoiceUrl,
-          due_date: dueDateStr,
+          // Cartão debita HOJE (BRT), igual ao nextDueDate enviado à Asaas.
+          due_date: todayBRT,
         })
         .select()
         .single();
@@ -594,7 +616,7 @@ Deno.serve(async (req) => {
           payment_id: null,
           status: firstPaymentStatus,
           invoice_url: subscriptionData.invoiceUrl,
-          due_date: dueDateStr,
+          due_date: todayBRT,
           local_payment_id: savedPayment?.id,
           subscription_id: subscriptionData.id,
           is_recurring: true,

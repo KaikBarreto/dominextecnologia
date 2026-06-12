@@ -31,7 +31,9 @@ export default function AdminCompanyDetail() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'info';
+  // Aba 'pagamentos' foi absorvida pela 'info' (histórico inline) — link antigo cai em 'info'.
+  const rawTab = searchParams.get('tab') || 'info';
+  const activeTab = ['info', 'plano', 'atividade'].includes(rawTab) ? rawTab : 'info';
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -183,7 +185,6 @@ export default function AdminCompanyDetail() {
             tabs={[
               { value: 'info', label: 'Informações' },
               { value: 'plano', label: 'Plano e Histórico' },
-              { value: 'pagamentos', label: 'Pagamentos' },
               { value: 'atividade', label: 'Atividade' },
             ]}
             activeTab={activeTab}
@@ -193,7 +194,6 @@ export default function AdminCompanyDetail() {
           <TabsList>
             <TabsTrigger value="info">Informações</TabsTrigger>
             <TabsTrigger value="plano">Plano e Histórico</TabsTrigger>
-            <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
             <TabsTrigger value="atividade">Atividade</TabsTrigger>
           </TabsList>
         )}
@@ -326,6 +326,14 @@ export default function AdminCompanyDetail() {
                 <p className="font-medium">{company.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}</p>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">LTV (Lifetime Value)</span>
+                <p className="font-semibold text-lg">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(company.ltv || 0)}
+                </p>
+              </div>
+            </div>
             <div className="border-t pt-3 mt-3">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -344,14 +352,18 @@ export default function AdminCompanyDetail() {
         </Card>
       </div>
 
+      {/* Histórico de pagamentos (manuais + Asaas) inline */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle>Histórico de Pagamentos</CardTitle></CardHeader>
+        <CardContent>
+          <CompanyPaymentsTab companyId={id!} company={company} />
+        </CardContent>
+      </Card>
+
         </TabsContent>
 
         <TabsContent value="plano" className="mt-4">
           <SubscriptionHistoryTab companyId={id!} />
-        </TabsContent>
-
-        <TabsContent value="pagamentos" className="mt-4">
-          <CompanyPaymentsTab companyId={id!} company={company} />
         </TabsContent>
 
         <TabsContent value="atividade" className="mt-4">
