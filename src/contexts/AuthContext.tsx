@@ -230,7 +230,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('session_token', sessionToken);
       localStorage.removeItem('session_token');
     }
-    await supabase.auth.signOut();
+    // Logout é LOCAL (só este dispositivo). Sem `scope: 'local'` o default do
+    // supabase-js v2 é 'global', que revoga os refresh tokens de TODOS os
+    // dispositivos do usuário. Derrubar outras sessões é papel exclusivo do
+    // mecanismo active_sessions + checkbox "desconectar outras sessões" no login.
+    // Esse signOut também é chamado pelo useForcedLogout — com scope global
+    // criava a cadeia: B desconecta A → A revoga global → derruba a sessão nova de B.
+    await supabase.auth.signOut({ scope: 'local' });
     // Invalidar cache do PWA para não vazar PII após logout
     if ('caches' in window) {
       try {

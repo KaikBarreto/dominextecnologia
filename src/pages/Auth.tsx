@@ -315,7 +315,10 @@ export default function Auth() {
     setPendingUserId(null);
     setExistingSessionsInfo([]);
     loginInProgressRef.current = false;
-    supabase.auth.signOut();
+    // Cancelar o login só desfaz a sessão DESTE dispositivo. Sem `scope: 'local'`
+    // o default 'global' revogaria os tokens dos outros dispositivos que o
+    // usuário escolheu preservar.
+    supabase.auth.signOut({ scope: 'local' });
     toast({ title: 'Login cancelado' });
   };
 

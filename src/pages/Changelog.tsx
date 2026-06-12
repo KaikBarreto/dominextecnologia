@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.16',
+    date: '12 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Entrar em um novo aparelho não desconecta mais os outros',
+        description: 'Ao entrar ou sair da sua conta em um aparelho, as sessões abertas nos seus outros dispositivos eram encerradas sem você pedir. Corrigimos: agora suas outras sessões só são desconectadas se você marcar a opção "desconectar outras sessões" na hora do login.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.15',
     date: '11 de junho de 2026',
     type: 'patch',
