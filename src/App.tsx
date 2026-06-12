@@ -201,7 +201,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       if (!companyId) return null;
       const { data, error } = await supabase
         .from('companies')
-        .select('subscription_status')
+        // `payment_lock_bypass`: exceção por empresa que libera o uso mesmo
+        // estando `pending_payment` (ligada manualmente só pra empresa específica).
+        .select('subscription_status, payment_lock_bypass')
         .eq('id', companyId)
         .single();
       if (error) throw error;
@@ -235,8 +237,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (checkSubscription && companyLoading) return <LoadingSpinner />;
 
   // Pagamento pendente → trava no /checkout (única rota liberada pro pendente).
+  // Exceção: empresas com `payment_lock_bypass === true` usam o sistema normal
+  // mesmo pendentes (liberação manual pontual). `as any` porque a coluna pode
+  // ainda não estar nos types regenerados. Futuros pendentes seguem travados.
+  const hasPaymentLockBypass =
+    (companyStatus as any)?.payment_lock_bypass === true;
   if (
     companyStatus?.subscription_status === 'pending_payment' &&
+    !hasPaymentLockBypass &&
     location.pathname !== '/checkout'
   ) {
     return <Navigate to="/checkout" replace />;
