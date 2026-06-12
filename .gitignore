@@ -29,7 +29,7 @@ docs/team/
 docs/planos/
 docs/decisoes/
 docs/superpowers/
-.claude/agents/
+.claude/
 
 # Mídia pesada de landing — servida pelo Supabase Storage, nunca commitada
 public/videos/
