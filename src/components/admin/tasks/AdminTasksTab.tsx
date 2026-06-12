@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Plus, Search, ClipboardList, LayoutGrid, LayoutList,
+  Plus, Search, ClipboardList, LayoutGrid, LayoutList, CalendarDays,
   AlertCircle, Clock, CheckCircle2, ListTodo, CalendarClock,
   MessageCircle, Check, User,
 } from 'lucide-react';
@@ -36,6 +36,7 @@ import {
   type TaskFilters,
 } from '@/hooks/useAdminTasks';
 import { TaskKanbanBoard } from './TaskKanbanBoard';
+import { TaskAgendaView } from './TaskAgendaView';
 import { TaskCreateDialog, type TaskAdminOption } from './TaskCreateDialog';
 import { AdminTaskCardModal } from './AdminTaskCardModal';
 import { CompleteTaskModal } from './CompleteTaskModal';
@@ -47,7 +48,7 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 
-type ViewMode = 'kanban' | 'list';
+type ViewMode = 'kanban' | 'list' | 'agenda';
 
 function getInitials(name?: string | null) {
   return name?.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
@@ -73,14 +74,20 @@ export function AdminTasksTab() {
   });
 
   const [showFuture, setShowFuture] = useState(false);
-  const { tasks, isLoading, createTask, updateTask, deleteTask } = useAdminTasks({ showFuture });
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('admin-tasks-view-mode') : null;
+    return saved === 'list' || saved === 'agenda' ? saved : 'kanban';
+  });
+
+  // Na agenda, o hook SEMPRE busca completo (showFuture=true): o default
+  // esconde pendentes com due_date futura e o calendário ficaria vazio pra
+  // frente. O switch "Ver futuras" também some da UI nesse modo.
+  const { tasks, isLoading, createTask, updateTask, deleteTask } = useAdminTasks({
+    showFuture: viewMode === 'agenda' ? true : showFuture,
+  });
 
   const [filters, setFilters] = useState<TaskFilters>(EMPTY_TASK_FILTERS);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('admin-tasks-view-mode') : null;
-    return saved === 'list' ? 'list' : 'kanban';
-  });
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<AdminTask | null>(null);
@@ -245,9 +252,32 @@ export function AdminTasksTab() {
             </FilterSheet>
           </div>
           <div className="flex items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-2">
-              <Switch id="show-future-m" checked={showFuture} onCheckedChange={setShowFuture} />
-              <Label htmlFor="show-future-m" className="text-xs cursor-pointer">Ver futuras</Label>
+            {viewMode !== 'agenda' ? (
+              <div className="flex items-center gap-2">
+                <Switch id="show-future-m" checked={showFuture} onCheckedChange={setShowFuture} />
+                <Label htmlFor="show-future-m" className="text-xs cursor-pointer">Ver futuras</Label>
+              </div>
+            ) : <span />}
+            {/* No mobile só existem 2 modos: lista nativa (kanban/list caem aqui) e agenda */}
+            <div className="flex rounded-lg border overflow-hidden h-8">
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                aria-label="Ver como lista"
+                className={cn('flex items-center justify-center px-3 transition-colors',
+                  viewMode !== 'agenda' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted')}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('agenda')}
+                aria-label="Ver como agenda"
+                className={cn('flex items-center justify-center px-3 transition-colors',
+                  viewMode === 'agenda' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted')}
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -258,10 +288,12 @@ export function AdminTasksTab() {
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar tarefas..." className="pl-9" />
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-            <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-card h-9">
-              <Switch id="show-future-d" checked={showFuture} onCheckedChange={setShowFuture} />
-              <Label htmlFor="show-future-d" className="text-xs cursor-pointer whitespace-nowrap">Ver futuras</Label>
-            </div>
+            {viewMode !== 'agenda' && (
+              <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-card h-9">
+                <Switch id="show-future-d" checked={showFuture} onCheckedChange={setShowFuture} />
+                <Label htmlFor="show-future-d" className="text-xs cursor-pointer whitespace-nowrap">Ver futuras</Label>
+              </div>
+            )}
             <DesktopFilterSheet
               filters={filters}
               onChange={setFilters}
@@ -286,6 +318,14 @@ export function AdminTasksTab() {
               >
                 <LayoutList className="h-4 w-4" /> Lista
               </button>
+              <button
+                type="button"
+                onClick={() => setView('agenda')}
+                className={cn('flex items-center justify-center gap-1.5 px-3 text-sm transition-colors',
+                  viewMode === 'agenda' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted')}
+              >
+                <CalendarDays className="h-4 w-4" /> Agenda
+              </button>
             </div>
           </div>
         </div>
@@ -296,6 +336,9 @@ export function AdminTasksTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <div key={i} className="h-64 rounded-lg bg-muted animate-pulse" />)}
         </div>
+      ) : viewMode === 'agenda' ? (
+        // === AGENDA (desktop: grade mensal; mobile: lista por dia) ===========
+        <TaskAgendaView tasks={filteredTasks} adminByUserId={adminByUserId} onTaskClick={setSelectedTask} />
       ) : isMobile ? (
         // === MOBILE: lista nativa (default) ===================================
         filteredTasks.length === 0 ? (
