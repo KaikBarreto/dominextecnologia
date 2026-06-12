@@ -71,6 +71,8 @@ Deno.serve(async (req) => {
       custom_price,
       custom_price_permanent,
       custom_price_months,
+      modules,
+      custom_price_note,
     } = body
 
     if (!company_name || !admin_email || !admin_password) {
@@ -78,6 +80,14 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // Observação automática de valor personalizado: o frontend manda a nota
+    // pronta (valor, "até quando", quem deu) e a edge anexa às observações.
+    let finalNotes: string | null = notes || null
+    if (custom_price_note && typeof custom_price_note === 'string') {
+      const noteText = custom_price_note.slice(0, 500)
+      finalNotes = finalNotes ? `${finalNotes}\n\n${noteText}` : noteText
     }
 
     // 1. Create the company
@@ -90,7 +100,7 @@ Deno.serve(async (req) => {
         phone: company_phone || null,
         address: company_address || null,
         contact_name: contact_name || null,
-        notes: notes || null,
+        notes: finalNotes,
         subscription_status: subscription_status || 'testing',
         subscription_plan: subscription_plan || 'starter',
         subscription_value: subscription_value || 0,
@@ -111,6 +121,30 @@ Deno.serve(async (req) => {
     if (companyError) {
       console.error('Error creating company:', companyError)
       throw new Error(`Erro ao criar empresa: ${companyError.message}`)
+    }
+
+    // 1a. Módulos do plano Personalizado (à la carte) — sanitiza contra o
+    //     catálogo ativo antes de gravar em company_modules.
+    if (Array.isArray(modules) && modules.length > 0) {
+      try {
+        const requested = [...new Set(modules.filter((m: unknown) => typeof m === 'string'))]
+        const { data: catalog } = await supabaseAdmin
+          .from('subscription_modules')
+          .select('code')
+          .eq('is_active', true)
+          .in('code', requested)
+        const validCodes = (catalog || []).map((c: { code: string }) => c.code)
+        if (validCodes.length > 0) {
+          const { error: modulesError } = await supabaseAdmin
+            .from('company_modules')
+            .insert(validCodes.map((code: string) => ({ company_id: company.id, module_code: code })))
+          if (modulesError) {
+            console.error('Aviso: falha ao gravar company_modules (não-fatal):', modulesError)
+          }
+        }
+      } catch (modErr) {
+        console.error('Aviso: exceção ao gravar company_modules (não-fatal):', modErr)
+      }
     }
 
     // 1b. Provisiona o customer Asaas (find-or-create) e grava companies.asaas_customer_id.

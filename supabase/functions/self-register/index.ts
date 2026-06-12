@@ -51,8 +51,18 @@ Deno.serve(async (req) => {
     // Affiliate/sales link params
     const linkType = trim(raw.link_type, 20); // 'teste' | 'venda'
     const lockedPlanRaw = trim(raw.locked_plan, 30).toLowerCase();
-    const lockedPlan = lockedPlanRaw && PLAN_DEFAULTS[lockedPlanRaw] ? lockedPlanRaw : null;
+    const isPersonalizado = lockedPlanRaw === 'personalizado';
+    const lockedPlan = isPersonalizado
+      ? 'personalizado'
+      : (lockedPlanRaw && PLAN_DEFAULTS[lockedPlanRaw] ? lockedPlanRaw : null);
     const isLocked = !!raw.is_locked;
+    // Plano personalizado: módulos à la carte + máx. usuários vindos do link
+    const requestedModules: string[] = Array.isArray(raw.modules)
+      ? raw.modules.filter((m: unknown) => typeof m === 'string').map((m: string) => m.trim().slice(0, 50)).filter(Boolean)
+      : [];
+    const maxUsersOverride = typeof raw.max_users === 'number' && raw.max_users > 0 && raw.max_users <= 999
+      ? Math.floor(raw.max_users)
+      : null;
     const lockedPrice = typeof raw.locked_price === 'number' && raw.locked_price > 0 ? raw.locked_price : null;
     const billingCycle = (raw.billing_cycle === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
     const promoMonths = typeof raw.promo_months === 'number' && raw.promo_months > 0 ? raw.promo_months : null;
@@ -95,8 +105,26 @@ Deno.serve(async (req) => {
     const planDefaults = PLAN_DEFAULTS[planCode] || PLAN_DEFAULTS.start;
     const isSale = linkType === 'venda';
     const subscription_status = isSale ? 'pending_payment' : 'testing';
-    const planPrice = planDefaults.price;
+
+    // Plano personalizado: preço = soma dos módulos do catálogo (sempre inclui
+    // o módulo base). Sanitiza os códigos contra subscription_modules ativos.
+    // 'basic' é o módulo raiz de todos os planos (catálogo não tem flag base).
+    const BASE_MODULE_CODES = ['basic'];
+    let personalizadoModules: { code: string; price: number | null }[] = [];
+    if (isPersonalizado) {
+      const requested = Array.from(new Set([...BASE_MODULE_CODES, ...requestedModules]));
+      const { data: catalog } = await supabaseAdmin
+        .from('subscription_modules')
+        .select('code, price')
+        .eq('is_active', true)
+        .in('code', requested);
+      personalizadoModules = catalog || [];
+    }
+    const personalizadoSum = personalizadoModules.reduce((acc, m) => acc + (Number(m.price) || 0), 0);
+
+    const planPrice = isPersonalizado ? personalizadoSum : planDefaults.price;
     const finalPrice = lockedPrice ?? planPrice;
+    const finalMaxUsers = isPersonalizado ? (maxUsersOverride || 5) : planDefaults.max_users;
 
     // Trial expiration
     const expirationDate = new Date();
@@ -110,14 +138,37 @@ Deno.serve(async (req) => {
 
     // Lookup do CLOSER (salesperson_id) via referral_code
     let salespersonId: string | null = null;
+    let salespersonName = '';
     if (referralCode) {
       const { data: sp } = await supabaseAdmin
         .from('salespeople')
-        .select('id')
+        .select('id, name')
         .eq('referral_code', referralCode)
         .eq('is_active', true)
         .maybeSingle();
-      if (sp?.id) salespersonId = sp.id;
+      if (sp?.id) {
+        salespersonId = sp.id;
+        salespersonName = sp.name || '';
+      }
+    }
+
+    // Observação automática de valor personalizado: quando o link trouxe um
+    // preço diferente do preço do plano, registra quem deu a promoção.
+    // Quem deu = vendedor do link (referral) > 'Link de cadastro'.
+    let promoNote: string | null = null;
+    if (lockedPrice !== null && lockedPrice !== planPrice) {
+      const formattedPrice = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(lockedPrice);
+      let endDateText = '';
+      if (promoMonths) {
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + promoMonths);
+        const dateStr = new Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric',
+        }).format(endDate);
+        endDateText = ` até ${dateStr}`;
+      }
+      const promoterName = salespersonName || 'Link de cadastro';
+      promoNote = `Este cliente pagará ${formattedPrice}${endDateText} por conta de uma promoção dada por: ${promoterName}`;
     }
 
     // Lookup do SDR (sdr_id) via referral_code — opcional. Aceita qualquer vendedor
@@ -149,13 +200,14 @@ Deno.serve(async (req) => {
         subscription_value: finalPrice,
         subscription_expires_at: expirationDate.toISOString(),
         billing_cycle: billingCycle,
-        max_users: planDefaults.max_users,
+        max_users: finalMaxUsers,
         trial_days: isSale ? 0 : (trialDaysOverride || 14),
         salesperson_id: salespersonId,
         sdr_id: sdrId,
         custom_price: lockedPrice && lockedPrice !== planPrice ? lockedPrice : null,
         custom_price_permanent: lockedPrice ? !promoMonths : true,
         custom_price_months: promoMonths || null,
+        notes: promoNote,
       })
       .select()
       .single();
@@ -165,6 +217,18 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: `Erro ao criar empresa: ${companyError.message}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Plano personalizado: grava os módulos contratados (à la carte).
+    // NÃO-FATAL: status testing já libera tudo via trial; se falhar, o admin
+    // Auctus pode reativar pelo painel.
+    if (isPersonalizado && personalizadoModules.length > 0) {
+      const { error: modulesError } = await supabaseAdmin
+        .from('company_modules')
+        .insert(personalizadoModules.map(m => ({ company_id: company.id, module_code: m.code })));
+      if (modulesError) {
+        console.error('Aviso: falha ao gravar módulos do plano personalizado (não-fatal):', modulesError);
+      }
     }
 
     // Provisiona o customer Asaas (find-or-create) e grava companies.asaas_customer_id.

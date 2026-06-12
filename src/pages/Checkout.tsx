@@ -149,6 +149,34 @@ export default function Checkout() {
     },
   });
 
+  // Empresa de plano PERSONALIZADO: o plano não é comprável pelo catálogo
+  // (price R$ 0, card filtrado da lista). A cobrança usa o valor PRÓPRIO da
+  // empresa (subscription_value / custom_price) e os recursos exibidos são os
+  // módulos à la carte contratados (company_modules), não PLAN_FEATURES.
+  const isCustomPlanCompany = companyData?.subscription_plan === "personalizado";
+
+  // Nomes dos módulos contratados (só pra empresa personalizado — alimenta a
+  // lista de recursos do resumo de pagamento).
+  const { data: customModuleNames = [] } = useQuery({
+    queryKey: ["checkout-custom-modules", companyData?.id],
+    enabled: !!companyData?.id && isCustomPlanCompany,
+    queryFn: async () => {
+      const { data: cm, error: cmError } = await supabase
+        .from("company_modules")
+        .select("module_code")
+        .eq("company_id", companyData!.id);
+      if (cmError) throw cmError;
+      const codes = (cm ?? []).map((m) => m.module_code);
+      if (codes.length === 0) return [] as string[];
+      const { data: mods, error: modsError } = await supabase
+        .from("subscription_modules")
+        .select("code, name")
+        .in("code", codes);
+      if (modsError) throw modsError;
+      return (mods ?? []).map((m) => m.name as string);
+    },
+  });
+
   // Pré-preenche CPF/CNPJ a partir do cadastro da empresa
   useEffect(() => {
     if (companyData?.cnpj && !cpfCnpj) {
@@ -169,6 +197,20 @@ export default function Checkout() {
     }
   }, [isRenewal, companyData, plans, showCheckout]);
 
+  // Plano personalizado (1ª venda via link, pending_payment ou trial expirado):
+  // não há card no catálogo pra escolher — pula a etapa de seleção e vai direto
+  // pro pagamento com o plano/ciclo da própria empresa (mesma mecânica da renovação).
+  useEffect(() => {
+    if (!isRenewal && isCustomPlanCompany && plans.length > 0 && !showCheckout) {
+      const matched = plans.find((p) => p.code === "personalizado");
+      if (matched) {
+        setSelectedPlan("personalizado");
+        setBillingCycle((companyData?.billing_cycle as BillingCycle) || "monthly");
+        setShowCheckout(true);
+      }
+    }
+  }, [isRenewal, isCustomPlanCompany, companyData, plans, showCheckout]);
+
   useEffect(() => () => stopPolling(), [stopPolling]);
 
   const trialDaysLeft = companyData?.subscription_expires_at
@@ -176,7 +218,7 @@ export default function Checkout() {
     : null;
   const trialExpired = trialDaysLeft !== null && trialDaysLeft <= 0;
 
-  if (companyLoading || (isRenewal && (!showCheckout || !selectedPlan))) {
+  if (companyLoading || ((isRenewal || isCustomPlanCompany) && (!showCheckout || !selectedPlan))) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl space-y-8">
@@ -196,8 +238,10 @@ export default function Checkout() {
   const effectiveCompanyValue = companyData ? getEffectiveSubscriptionValue(companyData) : 0;
   const planPrice = currentPlan?.price || 0;
 
-  // Renovação cobra o valor EFETIVO atual (com custom_price se houver promoção).
-  const renewalPrice = isRenewal ? (effectiveCompanyValue || planPrice) : null;
+  // Renovação E plano personalizado cobram o valor EFETIVO da empresa
+  // (custom_price se houver promoção ativa, senão subscription_value) —
+  // NUNCA o preço de catálogo (personalizado tem price R$ 0 no catálogo).
+  const renewalPrice = (isRenewal || isCustomPlanCompany) ? (effectiveCompanyValue || planPrice) : null;
   const basePrice = renewalPrice ?? planPrice;
 
   const yearlyPrice = calculateYearlyPrice(basePrice);
@@ -213,8 +257,11 @@ export default function Checkout() {
   };
   const finalPrice = getEffectiveFinalPrice(paymentMethod);
 
-  const planFeatures = currentPlan ? (PLAN_FEATURES[currentPlan.code] ?? []) : [];
-  const maxUsers = isRenewal
+  // Personalizado: recursos = módulos contratados; demais planos = lista estática.
+  const planFeatures = isCustomPlanCompany
+    ? customModuleNames
+    : (currentPlan ? (PLAN_FEATURES[currentPlan.code] ?? []) : []);
+  const maxUsers = (isRenewal || isCustomPlanCompany)
     ? (companyData?.max_users || currentPlan?.max_users || 5)
     : (currentPlan?.max_users || 5);
 
@@ -469,11 +516,14 @@ export default function Checkout() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            {plans.map((plan, index) => {
+            {/* 'personalizado' (R$ 0) não é comprável aqui: ele só nasce de link
+                de afiliado ou do painel admin. A renovação continua achando o
+                plano pelo plans.find (array completo). */}
+            {plans.filter((p) => p.code !== 'personalizado').map((plan, index, visiblePlans) => {
               const isSelected = selectedPlan === plan.code;
               const yp = calculateYearlyPrice(plan.price);
               const me = calculateMonthlyEquivalent(yp);
-              const isPopular = plans.length >= 3 ? index === Math.floor(plans.length / 2) : index === plans.length - 1;
+              const isPopular = visiblePlans.length >= 3 ? index === Math.floor(visiblePlans.length / 2) : index === visiblePlans.length - 1;
               const displayPrice = billingCycle === "monthly" ? plan.price : me;
               const features = PLAN_FEATURES[plan.code] ?? [];
 

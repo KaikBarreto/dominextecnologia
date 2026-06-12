@@ -79,8 +79,26 @@ Deno.serve(async (req) => {
     }
 
     const isYearly = billingCycle === "yearly";
+
+    // Plano PERSONALIZADO: o catálogo tem price R$ 0, max_users genérico e
+    // included_modules vazio — a fonte do valor é companies.subscription_value,
+    // o max_users é o da empresa (definido manualmente na criação) e os módulos
+    // são o à la carte já gravado em company_modules. NUNCA sobrescrever com os
+    // dados de catálogo (zeraria o valor e apagaria os módulos contratados).
+    const isPersonalizado = plan_code === "personalizado";
+
     // subscription_value guarda o valor mensal do plano; cobrança anual aplica 20% off no momento da cobrança.
-    const subscriptionValue = Number(plan.price);
+    let subscriptionValue = Number(plan.price);
+    let maxUsers: number = plan.max_users;
+    if (isPersonalizado) {
+      const { data: companyRow } = await supabase
+        .from("companies")
+        .select("subscription_value, max_users")
+        .eq("id", company_id)
+        .maybeSingle();
+      subscriptionValue = Number(companyRow?.subscription_value) || 0;
+      maxUsers = companyRow?.max_users ?? plan.max_users;
+    }
 
     // Vencimento via RPC compute_next_expiration (BRT-aware), a partir de agora.
     const { data: expiration } = await supabase.rpc("compute_next_expiration", {
@@ -97,7 +115,7 @@ Deno.serve(async (req) => {
         subscription_status: "active",
         subscription_value: subscriptionValue,
         billing_cycle: billingCycle,
-        max_users: plan.max_users,
+        max_users: maxUsers,
         subscription_expires_at: expiresAt,
         pending_subscription_value: null,
       })
@@ -111,21 +129,34 @@ Deno.serve(async (req) => {
     // --- Sincroniza company_modules com os módulos do plano ---
     // Estratégia: substitui o conjunto pelo included_modules do plano (ativação manual
     // é fonte da verdade do que o admin quis liberar). Idempotente por reescrita.
-    const included: unknown = plan.included_modules;
-    const moduleCodes: string[] = Array.isArray(included)
-      ? included.filter((m): m is string => typeof m === "string")
-      : [];
+    // EXCEÇÃO: plano personalizado NÃO reescreve — company_modules (à la carte)
+    // é a fonte da verdade dos módulos e seria destruído pelo delete+insert
+    // (included_modules do personalizado é vazio).
+    let moduleCodes: string[] = [];
+    if (!isPersonalizado) {
+      const included: unknown = plan.included_modules;
+      moduleCodes = Array.isArray(included)
+        ? included.filter((m): m is string => typeof m === "string")
+        : [];
 
-    await supabase.from("company_modules").delete().eq("company_id", company_id);
-    if (moduleCodes.length > 0) {
-      const rows = moduleCodes.map((code) => ({
-        company_id,
-        module_code: code,
-        quantity: 1,
-        activated_at: new Date().toISOString(),
-      }));
-      const { error: modError } = await supabase.from("company_modules").insert(rows);
-      if (modError) console.error("activate-subscription: erro ao inserir módulos:", modError);
+      await supabase.from("company_modules").delete().eq("company_id", company_id);
+      if (moduleCodes.length > 0) {
+        const rows = moduleCodes.map((code) => ({
+          company_id,
+          module_code: code,
+          quantity: 1,
+          activated_at: new Date().toISOString(),
+        }));
+        const { error: modError } = await supabase.from("company_modules").insert(rows);
+        if (modError) console.error("activate-subscription: erro ao inserir módulos:", modError);
+      }
+    } else {
+      // Reporta os módulos preservados (informativo, sem tocar neles).
+      const { data: existingModules } = await supabase
+        .from("company_modules")
+        .select("module_code")
+        .eq("company_id", company_id);
+      moduleCodes = (existingModules ?? []).map((m: { module_code: string }) => m.module_code);
     }
 
     return json({

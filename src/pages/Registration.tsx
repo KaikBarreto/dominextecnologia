@@ -58,6 +58,13 @@ export default function Registration() {
   const referrer = searchParams.get('vendedor'); // referral_code do closer
   const sdrReferrer = searchParams.get('sdr'); // referral_code do SDR (opcional)
   const isSale = linkType === 'venda';
+  // Plano personalizado: módulos à la carte + máx. usuários vindos do link
+  const lockedModulesParam = searchParams.get('modulos');
+  const lockedUsersParam = searchParams.get('usuarios');
+  const lockedModuleCodes = lockedModulesParam
+    ? lockedModulesParam.split(',').map(m => m.trim()).filter(Boolean)
+    : null;
+  const isCustomPlan = isLocked && lockedPlan === 'personalizado';
 
   useEffect(() => {
     setSelectedOrigin(originFromUrl);
@@ -67,6 +74,24 @@ export default function Registration() {
   const emailValue = watch('company_email');
   const passwordValue = watch('password') || '';
   const confirmValue = watch('confirm_password') || '';
+
+  // Catálogo dos módulos do plano personalizado (leitura pública) — pro resumo
+  const { data: lockedModuleInfo = [] } = useQuery({
+    queryKey: ['registration-locked-modules', lockedModulesParam],
+    enabled: isCustomPlan && !!lockedModuleCodes?.length,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_modules')
+        .select('code, name, price')
+        .eq('is_active', true)
+        .in('code', lockedModuleCodes!);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const lockedModulesTotal = lockedModuleInfo.reduce((acc, m) => acc + (Number(m.price) || 0), 0);
+  const customPlanPrice = lockedPrice ? parseFloat(lockedPrice) : lockedModulesTotal;
 
   // Fetch origins
   const { data: origins = [] } = useQuery({
@@ -102,6 +127,9 @@ export default function Registration() {
           trial_days: trialDaysParam ? parseInt(trialDaysParam) : null,
           referral_code: referrer || null,
           sdr_referral_code: sdrReferrer || null,
+          // Plano personalizado (módulos à la carte do link)
+          modules: isCustomPlan && lockedModuleCodes?.length ? lockedModuleCodes : null,
+          max_users: lockedUsersParam ? parseInt(lockedUsersParam) : null,
         },
       });
 
@@ -248,6 +276,24 @@ export default function Registration() {
                   );
                 })}
               </div>
+
+              {/* Resumo do plano personalizado bloqueado pelo link */}
+              {isCustomPlan && lockedModuleInfo.length > 0 && step <= 3 && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 space-y-2">
+                  <p className="text-sm text-primary font-medium">Seu plano personalizado</p>
+                  <ul className="text-xs text-white/70 space-y-1">
+                    {lockedModuleInfo.map((m) => (
+                      <li key={m.code} className="flex items-center gap-1.5">
+                        <Check className="h-3 w-3 text-primary shrink-0" />{m.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-white/50 pt-2 border-t border-white/10">
+                    Valor mensal: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(customPlanPrice)}
+                    {lockedPrice && promoMonths ? ` pelos primeiros ${promoMonths} meses` : ''}
+                  </p>
+                </div>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

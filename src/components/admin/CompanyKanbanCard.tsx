@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Edit, Trash2, MessageCircle, User } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Edit, Trash2, MessageCircle, User, Gift, Tag } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -31,6 +33,9 @@ interface CompanyKanbanCardProps {
 
 export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTotals = true, onEdit, onDelete, isDragging = false }: CompanyKanbanCardProps) {
   const navigate = useNavigate();
+  // Tooltip do badge de valor personalizado: controlado pra abrir por toque
+  // no mobile (hover do Radix continua funcionando via onOpenChange).
+  const [priceTipOpen, setPriceTipOpen] = useState(false);
 
   const getExpirationInfo = (expirationDate: string | null) => {
     if (!expirationDate) return { text: 'Sem vencimento', color: 'text-muted-foreground', dotColor: 'bg-muted' };
@@ -54,11 +59,59 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
   const avatarColors = ['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-pink-500'];
   const avatarColor = avatarColors[company.name.charCodeAt(0) % avatarColors.length];
 
+  // ===== Badge de valor personalizado (clone do EcoSistema) =====
+  // Promo ativa: custom_price_months > 0 e ainda restam meses a pagar.
+  const promoInfo = (() => {
+    if (!company.custom_price_months || company.custom_price_months <= 0) return null;
+    const paymentsMade = company.custom_price_payments_made || 0;
+    const remaining = company.custom_price_months - paymentsMade;
+    if (remaining <= 0) return null;
+    return { remaining, total: company.custom_price_months, isExpiringSoon: remaining <= 1 };
+  })();
+  const hasCustomPrice = company.custom_price != null && Number(company.custom_price) > 0;
+  const specialPricing = promoInfo
+    ? {
+        icon: Gift,
+        tooltip: `Período promocional: ${promoInfo.remaining}/${promoInfo.total} meses restantes\nValor: ${formatCurrency(company.subscription_value)}`,
+        isExpiring: promoInfo.isExpiringSoon,
+      }
+    : hasCustomPrice
+      ? {
+          icon: Tag,
+          tooltip: `Valor personalizado: ${formatCurrency(company.subscription_value)}`,
+          isExpiring: false,
+        }
+      : null;
+
   return (
     <div
       className={cn('bg-card rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing group w-full relative', isDragging && 'shadow-xl ring-2 ring-primary rotate-2 scale-105')}
       onClick={() => navigate(`/admin/empresas/${company.id}`)}
     >
+      {/* Badge de valor personalizado — canto superior direito */}
+      {specialPricing && (
+        <TooltipProvider delayDuration={150}>
+          <Tooltip open={priceTipOpen} onOpenChange={setPriceTipOpen}>
+            <TooltipTrigger asChild>
+              <div
+                className={cn(
+                  'absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full flex items-center justify-center shadow-md z-20 cursor-pointer',
+                  specialPricing.isExpiring ? 'bg-amber-500' : 'bg-violet-600',
+                )}
+                onClick={(e) => { e.stopPropagation(); setPriceTipOpen(o => !o); }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+              >
+                <specialPricing.icon className="h-3 w-3 text-white" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-[220px]">
+              <p className="whitespace-pre-line text-xs">{specialPricing.tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
       <div className="p-2.5 sm:p-3 pb-1.5 sm:pb-2">
         <div className="flex items-start gap-2.5 sm:gap-3">
           <Avatar className={cn('h-9 w-9 sm:h-10 sm:w-10 shrink-0', avatarColor)}>
