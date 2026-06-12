@@ -467,26 +467,41 @@ export function TaskAgendaView({ tasks, adminByUserId, onTaskClick }: TaskAgenda
   );
 }
 
+// Resolvida espelha o EventCard do tenant (opacity-60 + line-through); atrasada
+// segue a convenção do TaskCard (tons destructive). Comparação por STRING pra
+// não deslocar o dia no fuso Brasil — padrão do arquivo inteiro.
+function isTaskOverdue(task: AdminTask): boolean {
+  return (
+    !!task.due_date &&
+    task.status !== 'resolvido' &&
+    task.due_date.slice(0, 10) < format(new Date(), 'yyyy-MM-dd')
+  );
+}
+
 // ============================================================================
 // Chip compacto (células das grades mensal/semanal + bandeja "Sem data"
-// desktop). Cor por prioridade; resolvida = atenuada + riscada.
+// desktop). Cor por prioridade; resolvida = atenuada + riscada; atrasada =
+// anel destructive + ponto.
 // ============================================================================
 function AgendaTaskChip({ task, onClick, className }: { task: AdminTask; onClick: () => void; className?: string }) {
   const priorityConfig = TASK_PRIORITY_CONFIG[task.priority];
   const resolved = task.status === 'resolvido';
+  const overdue = isTaskOverdue(task);
   return (
     <button
       type="button"
       onClick={onClick}
-      title={task.title}
+      title={overdue ? `${task.title} — atrasada` : task.title}
       className={cn(
-        'w-full text-left text-[11px] leading-tight font-medium px-1.5 py-0.5 rounded truncate transition-opacity hover:opacity-90',
+        'w-full flex items-center gap-1 text-left text-[11px] leading-tight font-medium px-1.5 py-0.5 rounded transition-opacity hover:opacity-90',
         priorityConfig.className,
-        resolved && 'opacity-50 line-through',
+        resolved && 'opacity-60 line-through',
+        overdue && 'ring-1 ring-destructive',
         className,
       )}
     >
-      {task.title}
+      {overdue && <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />}
+      <span className="min-w-0 truncate">{task.title}</span>
     </button>
   );
 }
@@ -505,6 +520,7 @@ function AgendaTaskCard({
   const typeConfig = TASK_TYPE_CONFIG[task.type];
   const statusConfig = TASK_STATUS_CONFIG[task.status];
   const resolved = task.status === 'resolvido';
+  const overdue = isTaskOverdue(task);
   const responsible = task.assigned_to ? adminByUserId.get(task.assigned_to) ?? null : null;
   const leadName = task.crm_lead?.company_name || task.crm_lead?.contact_name || task.crm_lead?.title;
 
@@ -515,6 +531,7 @@ function AgendaTaskCard({
       className={cn(
         'w-full flex items-center gap-3 px-3 py-2.5 text-left bg-card active:bg-muted/60 transition-colors',
         resolved && 'opacity-60',
+        overdue && 'border-l-2 border-destructive',
       )}
     >
       {responsible ? (
@@ -528,6 +545,11 @@ function AgendaTaskCard({
         <p className={cn('text-sm font-medium truncate', resolved && 'line-through')}>{task.title}</p>
         <span className="flex items-center gap-2 flex-wrap text-xs mt-0.5">
           <span className={cn('px-1.5 py-0.5 rounded-full text-[10px]', typeConfig.className)}>{typeConfig.label}</span>
+          {overdue && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium text-destructive bg-destructive/10">
+              Atrasada
+            </span>
+          )}
           {leadName && <span className="text-primary font-medium truncate max-w-[120px]">{leadName}</span>}
         </span>
       </div>
@@ -551,6 +573,7 @@ function AgendaTaskDayCard({
   const statusConfig = TASK_STATUS_CONFIG[task.status];
   const priorityConfig = TASK_PRIORITY_CONFIG[task.priority];
   const resolved = task.status === 'resolvido';
+  const overdue = isTaskOverdue(task);
   const responsible = task.assigned_to ? adminByUserId.get(task.assigned_to) ?? null : null;
   const leadName = task.crm_lead?.company_name || task.crm_lead?.contact_name || task.crm_lead?.title;
 
@@ -561,6 +584,7 @@ function AgendaTaskDayCard({
       className={cn(
         'w-full flex items-start gap-3 px-4 py-3 text-left bg-card hover:bg-muted/40 active:bg-muted/60 transition-colors',
         resolved && 'opacity-60',
+        overdue && 'border-l-2 border-destructive',
       )}
     >
       {responsible ? (
@@ -580,6 +604,11 @@ function AgendaTaskDayCard({
           <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium', priorityConfig.className)}>
             {priorityConfig.label}
           </span>
+          {overdue && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium text-destructive bg-destructive/10">
+              Atrasada
+            </span>
+          )}
           <Badge className={cn('text-[10px] px-2 py-0.5 border-0', statusConfig.className)}>{statusConfig.label}</Badge>
         </div>
         {responsible && <p className="text-xs text-muted-foreground truncate">{responsible.full_name}</p>}
