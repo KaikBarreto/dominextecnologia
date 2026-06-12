@@ -45,6 +45,39 @@ const settingsTabs: SettingsTab[] = [
   { value: 'aparencia', label: 'Aparência', icon: Palette },
 ];
 
+// Snapshot canônico de `settings` no MESMO shape/ordem do payload salvo
+// (buildPayload). Usado em 2 lugares: baseline do auto-save (lastSavedJsonRef)
+// e guard anti-eco da hidratação — por isso vive num helper único.
+function settingsToJson(settings: any): string {
+  return JSON.stringify({
+    name: settings.name || '',
+    document: settings.document || null,
+    phone: settings.phone || null,
+    email: settings.email || null,
+    address: settings.address || null,
+    address_number: settings.address_number || null,
+    neighborhood: settings.neighborhood || null,
+    complement: settings.complement || null,
+    city: settings.city || null,
+    state: settings.state || null,
+    zip_code: settings.zip_code || null,
+    white_label_enabled: !!settings.white_label_enabled,
+    white_label_primary_color: settings.white_label_primary_color || '#00C597',
+    show_name_in_documents: settings.show_name_in_documents ?? true,
+    show_cnpj_in_documents: settings.show_cnpj_in_documents ?? true,
+    show_address_in_documents: settings.show_address_in_documents ?? true,
+    show_phone_in_documents: settings.show_phone_in_documents ?? true,
+    show_email_in_documents: settings.show_email_in_documents ?? true,
+    report_header_bg_color: settings.report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
+    report_header_text_color: settings.report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
+    report_header_logo_size: settings.report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
+    report_header_show_logo_bg: settings.report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
+    report_header_logo_bg_color: settings.report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
+    report_status_bar_color: settings.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
+    report_header_logo_type: settings.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
+  });
+}
+
 export default function Settings() {
   const { hasScreenAccess, hasRole } = useAuth();
   const { hasModule } = useCompanyModules();
@@ -67,7 +100,10 @@ export default function Settings() {
     setActiveTabState(tab);
     setSearchParams({ tab }, { replace: true });
   };
-  const { settings, isLoading, updateSettings } = useCompanySettings();
+  // canSave: query terminou e o usuário é de tenant com empresa — mesmo sem
+  // linha em company_settings (o hook auto-cria via INSERT no primeiro save).
+  // super_admin fica canSave=false e o auto-save continua morto pra ele.
+  const { settings, isLoading, updateSettings, canSave } = useCompanySettings();
   const { toast } = useToast();
 
   const [companyName, setCompanyName] = useState('');
@@ -118,6 +154,14 @@ export default function Settings() {
 
   useEffect(() => {
     if (settings) {
+      // Guard anti-eco: se o `settings` que chegou é exatamente o payload que
+      // acabamos de salvar (cache atualizado pelo onSuccess da mutation), não
+      // re-hidrata — re-hidratar aqui engoliria caracteres digitados enquanto
+      // a requisição do save estava em voo. Rollback de erro passa pelo guard
+      // (o `previous` restaurado difere do payload que falhou) e reverte normal.
+      if (settingsLoadedRef.current && settingsToJson(settings) === lastSavedJsonRef.current) {
+        return;
+      }
       isHydratingRef.current = true;
       setCompanyName(settings.name || '');
       setCompanyDoc(settings.document || '');
@@ -159,39 +203,6 @@ export default function Settings() {
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
-    if (settings) {
-      settingsLoadedRef.current = true;
-      lastSavedJsonRef.current = JSON.stringify({
-        name: settings.name || '',
-        document: settings.document || null,
-        phone: settings.phone || null,
-        email: settings.email || null,
-        address: settings.address || null,
-        address_number: settings.address_number || null,
-        neighborhood: settings.neighborhood || null,
-        complement: settings.complement || null,
-        city: settings.city || null,
-        state: settings.state || null,
-        zip_code: settings.zip_code || null,
-        white_label_enabled: !!settings.white_label_enabled,
-        white_label_primary_color: settings.white_label_primary_color || '#00C597',
-        show_name_in_documents: settings.show_name_in_documents ?? true,
-        show_cnpj_in_documents: settings.show_cnpj_in_documents ?? true,
-        show_address_in_documents: settings.show_address_in_documents ?? true,
-        show_phone_in_documents: settings.show_phone_in_documents ?? true,
-        show_email_in_documents: settings.show_email_in_documents ?? true,
-        report_header_bg_color: (settings as any).report_header_bg_color || DEFAULT_HEADER_CONFIG.bgColor,
-        report_header_text_color: (settings as any).report_header_text_color || DEFAULT_HEADER_CONFIG.textColor,
-        report_header_logo_size: (settings as any).report_header_logo_size || DEFAULT_HEADER_CONFIG.logoSize,
-        report_header_show_logo_bg: (settings as any).report_header_show_logo_bg ?? DEFAULT_HEADER_CONFIG.showLogoBg,
-        report_header_logo_bg_color: (settings as any).report_header_logo_bg_color || DEFAULT_HEADER_CONFIG.logoBgColor,
-        report_status_bar_color: (settings as any).report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
-        report_header_logo_type: (settings as any).report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
-      });
-    }
-  }, [settings]);
-
-  useEffect(() => {
     applyWhiteLabelTheme(wlEnabled, wlColor);
   }, [wlEnabled, wlColor]);
 
@@ -222,6 +233,29 @@ export default function Settings() {
     report_status_bar_color: reportStatusBarColor,
     report_header_logo_type: reportLogoType,
   }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType]);
+
+  useEffect(() => {
+    // O gate do auto-save abre quando dá pra salvar (canSave), não quando
+    // `settings` é truthy — empresa sem linha em company_settings também
+    // precisa conseguir salvar (o hook cria a linha via INSERT).
+    // canSave é false pra super_admin: o auto-save continua morto pra ele.
+    if (!canSave) return;
+    settingsLoadedRef.current = true;
+    if (!settings) {
+      // Sem linha ainda: baseline = estado atual do form (defaults vazios).
+      // Assim só uma edição REAL do usuário dispara o INSERT de auto-criação;
+      // sem isso, o mount salvaria um payload vazio e atropelaria o backfill
+      // server-side que preenche a linha a partir de `companies`.
+      if (!lastSavedJsonRef.current) {
+        lastSavedJsonRef.current = JSON.stringify(buildPayload());
+      }
+      return;
+    }
+    lastSavedJsonRef.current = settingsToJson(settings);
+    // buildPayload muda a cada keystroke, mas o único ramo que o usa (sem
+    // linha) é protegido por `!lastSavedJsonRef.current` — roda uma vez só;
+    // o ramo com settings apenas re-escreve o mesmo baseline (idempotente).
+  }, [settings, canSave, buildPayload]);
 
   const debouncedSave = useCallback(() => {
     if (!settingsLoadedRef.current || isHydratingRef.current) return;

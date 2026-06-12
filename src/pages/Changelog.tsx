@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.17',
+    date: '12 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Dados da Empresa agora salvam de verdade, automaticamente',
+        description: 'Em algumas empresas, as alterações feitas em Configurações → Dados da Empresa não eram gravadas — você editava, saía da tela e ao voltar estava tudo como antes, sem nenhum aviso. Corrigimos a causa: agora tudo que você digita é salvo automaticamente enquanto edita, e se algo impedir a gravação aparece um aviso claro em vez de silêncio.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.16',
     date: '12 de junho de 2026',
     type: 'patch',
