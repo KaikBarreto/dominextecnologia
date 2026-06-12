@@ -57,6 +57,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -106,7 +107,8 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
 
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
+// Número sorteado no CLIQUE (rodízio de números do suporte).
+const getWhatsAppSupportUrl = () => `https://wa.me/${getRandomWhatsAppNumber()}`;
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -432,7 +434,7 @@ export const TopNavbar = memo(() => {
 
                     {/* Falar com o Suporte — hover verde WhatsApp HARDCODED. */}
                     <DropdownMenuItem
-                      onClick={() => window.open(WHATSAPP_SUPPORT_URL, '_blank')}
+                      onClick={() => window.open(getWhatsAppSupportUrl(), '_blank')}
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#25D366] focus:text-white hover:!bg-[#25D366] hover:!text-white"
                     >
                       <WhatsAppIcon className="h-5 w-5 mr-3 shrink-0 fill-current" />

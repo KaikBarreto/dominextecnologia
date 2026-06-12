@@ -56,6 +56,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
+import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -123,7 +124,8 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
 
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
+// Número sorteado no CLIQUE (rodízio de números do suporte).
+const getWhatsAppSupportUrl = () => `https://wa.me/${getRandomWhatsAppNumber()}`;
 const ICON_SIZE = 'h-[20px] w-[20px] shrink-0';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -551,7 +553,7 @@ export function SidebarMenuContent() {
                     {/* Falar com o Suporte — hover verde WhatsApp HARDCODED.
                         Independe de white-label (cor da marca WhatsApp). */}
                     <DropdownMenuItem
-                      onClick={() => window.open(WHATSAPP_SUPPORT_URL, '_blank')}
+                      onClick={() => window.open(getWhatsAppSupportUrl(), '_blank')}
                       className="cursor-pointer text-[13px] font-semibold tracking-[0.01em] text-sidebar-foreground rounded-lg py-2.5 px-3 focus:bg-[#25D366] focus:text-white hover:!bg-[#25D366] hover:!text-white"
                     >
                       <WhatsAppIcon className="h-5 w-5 mr-3 shrink-0 fill-current" />

@@ -44,6 +44,7 @@ import { ROLE_LABELS } from '@/hooks/useUsers';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { SystemFooter } from '@/components/layout/SystemFooter';
+import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -96,7 +97,8 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   // Configurações intencionalmente fora da lista — botão dedicado no footer.
 ];
 
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
+// Número sorteado no CLIQUE (rodízio de números do suporte).
+const getWhatsAppSupportUrl = () => `https://wa.me/${getRandomWhatsAppNumber()}`;
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={cn('h-5 w-5 fill-current shrink-0', className)}>
@@ -287,7 +289,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
           label: 'Falar com o Suporte',
           onClick: () => {
             onClose();
-            window.open(WHATSAPP_SUPPORT_URL, '_blank');
+            window.open(getWhatsAppSupportUrl(), '_blank');
           },
           hoverVariant: 'whatsapp',
         },

@@ -1,4 +1,6 @@
-const WHATSAPP_NUMBER = "5521966885044";
+import { getRandomWhatsAppNumber } from "@/components/landing/whatsappNumbers";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
+
 const WHATSAPP_MESSAGE = "Olá! Vim pelo site do Dominex e gostaria de saber mais sobre a plataforma.";
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -8,13 +10,17 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 export default function WhatsAppFloatingButton() {
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+  // URL montada no CLIQUE (não no render): garante que a UTM capturada após o
+  // load entre na mensagem e que o rodízio sorteie um número por clique.
+  const handleClick = () => {
+    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), WHATSAPP_MESSAGE, "Site");
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      type="button"
+      onClick={handleClick}
       className="fixed bottom-6 right-6 z-50 group"
       aria-label="Fale conosco no WhatsApp"
     >
@@ -28,6 +34,6 @@ export default function WhatsAppFloatingButton() {
           1
         </span>
       </span>
-    </a>
+    </button>
   );
 }

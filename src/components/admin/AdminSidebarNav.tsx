@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import logoWhiteHorizontal from '@/assets/logo-white-horizontal.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
 
@@ -38,7 +39,8 @@ const ADMIN_MENU_ITEMS: {
   { label: 'Configurações', path: '/admin/configuracoes', icon: Settings, screenKey: 'admin_configuracoes' },
 ];
 
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/5521966885044';
+// Número sorteado no CLIQUE (rodízio de números do suporte).
+const getWhatsAppSupportUrl = () => `https://wa.me/${getRandomWhatsAppNumber()}`;
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={cn("h-4 w-4 fill-current shrink-0", className)}>
@@ -141,10 +143,10 @@ export function AdminSidebarNav() {
                 <Settings className="h-4 w-4 shrink-0" />
                 <span>Configurações</span>
               </button>
-              <a href={WHATSAPP_SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-[#25D366] hover:text-white transition-colors">
+              <button onClick={() => window.open(getWhatsAppSupportUrl(), '_blank', 'noopener,noreferrer')} className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-[#25D366] hover:text-white transition-colors">
                 <WhatsAppIcon />
                 <span>Suporte</span>
-              </a>
+              </button>
             </div>
 
             <div className="border-t py-1">

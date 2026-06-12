@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
+import { captureUtmParams, getLeadOriginLabel } from '@/lib/whatsapp';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
 import { SystemFooter } from '@/components/layout/SystemFooter';
@@ -46,7 +47,24 @@ export default function Registration() {
   const [step, setStep] = useState(1);
   const [selectedOrigin, setSelectedOrigin] = useState('');
 
-  const originFromUrl = searchParams.get('origem') || 'Site/Google';
+  // Captura utm_* cedo — cobre anúncio que aponta direto pro /cadastro e
+  // persiste em sessionStorage antes de qualquer navegação interna.
+  useEffect(() => {
+    captureUtmParams(window.location.search);
+  }, []);
+
+  // Origem do lead — prioridade:
+  // 1. `origem` explícita da URL que NÃO seja o genérico 'Site' (links de venda/indicação);
+  // 2. UTM capturada (utm_source) → label amigável ("Instagram", "ChatGPT", ...);
+  // 3. `origem=Site` genérico das CTAs da LP;
+  // 4. default atual 'Site/Google'.
+  // Nota: continua SEMPRE truthy — o pulo do step "Origem" depende disso.
+  const explicitOrigin = searchParams.get('origem');
+  const originFromUrl =
+    (explicitOrigin && explicitOrigin !== 'Site' ? explicitOrigin : null) ??
+    getLeadOriginLabel() ??
+    explicitOrigin ??
+    'Site/Google';
   // Sales-link params
   const linkType = searchParams.get('tipo'); // 'teste' | 'venda'
   const lockedPlan = searchParams.get('plano') || null;

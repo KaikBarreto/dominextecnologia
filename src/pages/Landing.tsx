@@ -13,9 +13,12 @@ import FaqSection from '@/components/landing/FaqSection';
 import CtaFinalSection from '@/components/landing/CtaFinalSection';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
+import { captureUtmParams } from '@/lib/whatsapp';
 
 export default function Landing() {
   useEffect(() => {
+    // Persiste os utm_* em sessionStorage pro CTA de WhatsApp incluir a origem.
+    captureUtmParams(window.location.search);
     document.documentElement.classList.add('landing-scrollbar');
     return () => document.documentElement.classList.remove('landing-scrollbar');
   }, []);

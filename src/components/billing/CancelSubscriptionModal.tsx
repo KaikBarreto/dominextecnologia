@@ -7,10 +7,9 @@ import { AlertTriangle, Gift, Heart, MessageCircle, CheckCircle2 } from 'lucide-
 import { toast } from 'sonner';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
+import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-const SUPPORT_WHATSAPP = '5521966885044';
 
 const CANCELLATION_REASONS = [
   { value: 'preco_alto', label: 'Preço muito alto' },
@@ -237,15 +236,21 @@ export function CancelSubscriptionModal({
                   <p className="text-xs text-white/80 mt-1">{retention.message}</p>
                 </div>
               </div>
-              <a
-                href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(retention.waText)}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* Número sorteado no CLIQUE (rodízio de números do suporte). */}
+              <button
+                type="button"
+                onClick={() =>
+                  window.open(
+                    `https://wa.me/${getRandomWhatsAppNumber()}?text=${encodeURIComponent(retention.waText)}`,
+                    '_blank',
+                    'noopener,noreferrer',
+                  )
+                }
                 className="mt-3 flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] transition-colors text-white text-sm font-medium"
               >
                 <WhatsAppIcon className="h-4 w-4" />
                 Falar com o suporte
-              </a>
+              </button>
             </div>
           )}
         </div>
