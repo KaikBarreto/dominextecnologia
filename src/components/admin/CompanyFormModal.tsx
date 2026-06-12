@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,8 @@ import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/Passwo
 import { addDays, format } from 'date-fns';
 import { CepLookup } from '@/components/CepLookup';
 import { GenerateLinkModal } from './GenerateLinkModal';
+import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, BASE_MODULE_CODES } from './ModuleGrid';
+import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
 
 interface Props {
   open: boolean;
@@ -67,6 +70,7 @@ function buildAddress(addr: { logradouro: string; numero: string; complemento: s
 
 export default function CompanyFormModal({ open, onOpenChange, company, onSuccess }: Props) {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const isEditing = !!company;
@@ -115,6 +119,32 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   // SDRs = vendedores ativos com role 'sdr'. Closer mostra TODOS (inclusive sdr).
   const sdrs = salespeople.filter((s: any) => s.role === 'sdr');
 
+  // Catálogo de módulos (plano Personalizado).
+  const { data: allModules = [] } = useSubscriptionModules();
+
+  // Garante a opção "Personalizado" no select de planos, sempre por último
+  // (existe linha no banco com price 0; se sumir, faz append client-side).
+  const plansWithCustom = useMemo(() => {
+    const standard = plans.filter((p: any) => p.code !== 'personalizado');
+    const custom = plans.find((p: any) => p.code === 'personalizado')
+      ?? { code: 'personalizado', name: 'Personalizado', price: 0, max_users: null };
+    return [...standard, custom];
+  }, [plans]);
+
+  // Módulos já contratados (edição) — fonte da verdade pra diff no submit.
+  const { data: existingModules } = useQuery({
+    queryKey: ['company-modules', company?.id],
+    enabled: open && !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_modules')
+        .select('module_code')
+        .eq('company_id', company.id);
+      if (error) throw error;
+      return (data || []).map(d => d.module_code);
+    },
+  });
+
   // ========== Form state ==========
   const [formData, setFormData] = useState({
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
@@ -128,6 +158,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   });
 
   const [showGenerateLink, setShowGenerateLink] = useState(false);
+
+  // Módulos do plano Personalizado (sempre inclui os base).
+  const [selectedModules, setSelectedModules] = useState<string[]>([...BASE_MODULE_CODES]);
 
   const [addr, setAddr] = useState({
     logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '',
@@ -183,8 +216,16 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       });
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
     }
+    setSelectedModules([...BASE_MODULE_CODES]);
     setActiveTab('basic');
   }, [company, open]);
+
+  // Edição: carrega os módulos já contratados na grade.
+  useEffect(() => {
+    if (open && company && existingModules) {
+      setSelectedModules(withBaseModules(existingModules));
+    }
+  }, [open, company, existingModules]);
 
   // Auto-fill admin email from company email
   useEffect(() => {
@@ -204,13 +245,44 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   // ========== Plan -> auto value & users ==========
   const handlePlanChange = useCallback((v: string) => {
     updateField('subscription_plan', v);
+    if (v === 'personalizado') {
+      // Preço sugerido = soma dos módulos marcados. max_users continua manual.
+      if (!formData.use_custom_price) {
+        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules)));
+      }
+      return;
+    }
     const p = plans.find((pl: any) => pl.code === v);
     if (p) {
       // Só sobrescreve o valor se NÃO estiver usando preço customizado
       if (p.price != null && !formData.use_custom_price) updateField('subscription_value', String(p.price));
       if (p.max_users != null) updateField('max_users', String(p.max_users));
     }
-  }, [plans, updateField, formData.use_custom_price]);
+  }, [plans, allModules, selectedModules, updateField, formData.use_custom_price]);
+
+  // ========== Toggle de módulo (plano Personalizado) ==========
+  const handleToggleModule = useCallback((code: string) => {
+    setSelectedModules(prev => {
+      const next = withBaseModules(
+        prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
+      );
+      if (!formData.use_custom_price) {
+        updateField('subscription_value', String(sumModulesPrice(allModules, next)));
+      }
+      return next;
+    });
+  }, [allModules, formData.use_custom_price, updateField]);
+
+  const isPersonalizado = formData.subscription_plan === 'personalizado';
+  const suggestedModulesPrice = sumModulesPrice(allModules, selectedModules);
+  // Preço de referência exibido nos hints: plano padrão usa o preço do plano;
+  // personalizado usa a soma dos módulos marcados.
+  const referencePlanPrice = (() => {
+    if (isPersonalizado) return suggestedModulesPrice;
+    const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+    return p?.price != null ? Number(p.price) : null;
+  })();
+  const referencePriceLabel = isPersonalizado ? 'Valor sugerido dos módulos' : 'Valor original do plano';
 
   // ========== Mutation ==========
   const mutation = useMutation({
@@ -220,10 +292,42 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const cleanCnpj = formData.cnpj.replace(/\D/g, '');
 
       const customPriceVal = formData.use_custom_price ? parseFloat(formData.subscription_value) || 0 : null;
+      const customPriceMonthsVal = formData.use_custom_price && !formData.custom_price_permanent
+        ? parseInt(formData.custom_price_months) || null
+        : null;
       const planObj = plans.find((p: any) => p.code === formData.subscription_plan);
-      const originalPlanPrice = planObj?.price ?? null;
+      const originalPlanPrice = formData.subscription_plan === 'personalizado'
+        ? sumModulesPrice(allModules, selectedModules)
+        : (planObj?.price ?? null);
+      const modulesPayload = formData.subscription_plan === 'personalizado'
+        ? withBaseModules(selectedModules)
+        : null;
+
+      // Observação automática de valor personalizado: quem deu = closer
+      // selecionado > admin logado > 'Admin'.
+      let customPriceNote: string | null = null;
+      if (formData.use_custom_price && customPriceVal != null) {
+        const closer = salespeople.find((s: any) => s.id === formData.salesperson_id);
+        customPriceNote = buildCustomPriceNote({
+          price: customPriceVal,
+          permanent: formData.custom_price_permanent,
+          months: customPriceMonthsVal,
+          grantedBy: closer?.name || profile?.full_name || 'Admin',
+        });
+      }
 
       if (isEditing) {
+        // Edição: só anexa a nota quando o valor personalizado foi ATIVADO ou
+        // mudou (valor/permanência/prazo). Sem mudança = sem nota duplicada.
+        const customPriceChanged = formData.use_custom_price && (
+          Number(company.custom_price || 0) !== (customPriceVal || 0)
+          || (company.custom_price_permanent ?? true) !== formData.custom_price_permanent
+          || (company.custom_price_months ?? null) !== customPriceMonthsVal
+        );
+        const notesToSave = customPriceChanged && customPriceNote
+          ? appendNote(formData.notes, customPriceNote)
+          : (formData.notes || null);
+
         const { error } = await supabase.from('companies').update({
           name: formData.name,
           cnpj: cleanCnpj || null,
@@ -237,18 +341,46 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           subscription_expires_at: formData.subscription_expires_at || null,
           billing_cycle: formData.billing_cycle,
           max_users: parseInt(formData.max_users) || 5,
-          notes: formData.notes || null,
+          notes: notesToSave,
           origin: formData.origin || null,
           salesperson_id: formData.salesperson_id || null,
           sdr_id: formData.sdr_id || null,
           segment: formData.segment || null,
           custom_price: customPriceVal,
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
-          custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
-            ? parseInt(formData.custom_price_months) || null
-            : null,
+          custom_price_months: customPriceMonthsVal,
         }).eq('id', company.id);
         if (error) throw error;
+
+        // Sincroniza company_modules (RLS: super_admin tem ALL na tabela).
+        if (formData.subscription_plan === 'personalizado') {
+          const desired = withBaseModules(selectedModules);
+          const current = existingModules || [];
+          const toAdd = desired.filter(c => !current.includes(c));
+          const toRemove = current.filter(c => !desired.includes(c));
+          if (toRemove.length > 0) {
+            const { error: delError } = await supabase
+              .from('company_modules')
+              .delete()
+              .eq('company_id', company.id)
+              .in('module_code', toRemove);
+            if (delError) throw delError;
+          }
+          if (toAdd.length > 0) {
+            const { error: insError } = await supabase
+              .from('company_modules')
+              .insert(toAdd.map(code => ({ company_id: company.id, module_code: code })));
+            if (insError) throw insError;
+          }
+        } else if (company.subscription_plan === 'personalizado' && (existingModules?.length || 0) > 0) {
+          // Saiu do Personalizado pra plano padrão: módulos passam a vir do
+          // plano (included_modules) — limpa os avulsos pra não vazar módulo.
+          const { error: delAllError } = await supabase
+            .from('company_modules')
+            .delete()
+            .eq('company_id', company.id);
+          if (delAllError) throw delAllError;
+        }
       } else {
         const { data: session } = await supabase.auth.getSession();
         if (!session.session) throw new Error('Não autenticado');
@@ -277,10 +409,10 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             segment: formData.segment || null,
             custom_price: customPriceVal,
             custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
-            custom_price_months: formData.use_custom_price && !formData.custom_price_permanent
-              ? parseInt(formData.custom_price_months) || null
-              : null,
+            custom_price_months: customPriceMonthsVal,
             original_plan_price: originalPlanPrice,
+            modules: modulesPayload,
+            custom_price_note: customPriceNote,
           },
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
@@ -300,6 +432,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     onSuccess: () => {
       toast({ title: isEditing ? 'Empresa atualizada!' : 'Empresa criada com sucesso!' });
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+      if (company?.id) queryClient.invalidateQueries({ queryKey: ['company-modules', company.id] });
       onSuccess();
     },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -501,7 +634,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     {plans.length === 0 ? (
                       <SelectItem value="start" disabled>Carregando...</SelectItem>
                     ) : (
-                      plans.map((p: any) => (
+                      plansWithCustom.map((p: any) => (
                         <SelectItem key={p.code} value={p.code}>
                           <span className="flex items-center gap-2">
                             {p.name}
@@ -519,6 +652,23 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               </div>
             </div>
 
+            {/* Plano Personalizado: grade de módulos à la carte */}
+            {isPersonalizado && (
+              <div className="space-y-3 p-3 border border-primary/40 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Módulos do plano</Label>
+                  <span className="text-xs text-muted-foreground">
+                    Sugerido: R$ {suggestedModulesPrice.toFixed(2)}/mês
+                  </span>
+                </div>
+                <ModuleGrid
+                  modules={allModules}
+                  selected={selectedModules}
+                  onToggle={handleToggleModule}
+                />
+              </div>
+            )}
+
             {/* Switch + valor personalizado */}
             <div className="space-y-3 p-3 border rounded-lg">
               <div className="flex items-center gap-2">
@@ -528,9 +678,13 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   onCheckedChange={(v) => {
                     setFormData(prev => ({ ...prev, use_custom_price: v }));
                     if (!v) {
-                      // restaurar preço do plano
-                      const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
-                      if (p?.price != null) updateField('subscription_value', String(p.price));
+                      // restaurar preço do plano (personalizado = soma dos módulos)
+                      if (isPersonalizado) {
+                        updateField('subscription_value', String(suggestedModulesPrice));
+                      } else {
+                        const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
+                        if (p?.price != null) updateField('subscription_value', String(p.price));
+                      }
                     }
                   }}
                 />
@@ -550,14 +704,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                         value={formData.subscription_value}
                         onChange={e => updateField('subscription_value', e.target.value)}
                       />
-                      {(() => {
-                        const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
-                        return p?.price != null ? (
-                          <p className="text-xs text-muted-foreground">
-                            Valor original do plano: R$ {Number(p.price).toFixed(2)}/mês
-                          </p>
-                        ) : null;
-                      })()}
+                      {referencePlanPrice != null && (
+                        <p className="text-xs text-muted-foreground">
+                          {referencePriceLabel}: R$ {referencePlanPrice.toFixed(2)}/mês
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Máx. Usuários</Label>
@@ -588,14 +739,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                           onChange={(e) => setFormData(prev => ({ ...prev, custom_price_months: e.target.value }))}
                           className="w-24"
                         />
-                        {(() => {
-                          const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
-                          return p?.price != null && formData.subscription_value ? (
-                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                              Os primeiros {formData.custom_price_months || 'X'} pagamentos serão de R$ {Number(formData.subscription_value).toFixed(2)}, depois volta para R$ {Number(p.price).toFixed(2)}/mês
-                            </p>
-                          ) : null;
-                        })()}
+                        {referencePlanPrice != null && formData.subscription_value && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            Os primeiros {formData.custom_price_months || 'X'} pagamentos serão de R$ {Number(formData.subscription_value).toFixed(2)}, depois volta para R$ {referencePlanPrice.toFixed(2)}/mês
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -606,7 +754,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Valor (R$)</Label>
-                    <Input type="number" step="0.01" value={formData.subscription_value} disabled />
+                    {/* Personalizado: valor sugerido (soma dos módulos) fica editável */}
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.subscription_value}
+                      disabled={!isPersonalizado}
+                      onChange={e => updateField('subscription_value', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Máx. Usuários</Label>

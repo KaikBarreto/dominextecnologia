@@ -17,15 +17,16 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
   Copy, Link as LinkIcon, Check, TestTube, ShoppingCart, Briefcase,
-  Unlock, Lock,
+  Unlock, Lock, Sparkles,
 } from 'lucide-react';
+import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, BASE_MODULE_CODES } from './ModuleGrid';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type PlanMode = 'livre' | 'plano';
+type PlanMode = 'livre' | 'plano' | 'personalizado';
 
 export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const { toast } = useToast();
@@ -46,6 +47,10 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const [customPriceValue, setCustomPriceValue] = useState('');
   const [isPermanent, setIsPermanent] = useState(false);
   const [customPriceMonths, setCustomPriceMonths] = useState('3');
+
+  // Plano Personalizado: módulos à la carte + máx. usuários do link.
+  const [customModules, setCustomModules] = useState<string[]>([...BASE_MODULE_CODES]);
+  const [customMaxUsers, setCustomMaxUsers] = useState('5');
 
   const { data: origins = [] } = useQuery({
     queryKey: ['company-origins-link'],
@@ -88,9 +93,25 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     },
   });
 
-  const selectedPlan = plans.find((p: any) => p.code === selectedPlanCode);
+  // Plano "personalizado" do banco não entra na lista de planos pré-definidos
+  // (ele tem o modo próprio com grade de módulos).
+  const standardPlans = plans.filter((p: any) => p.code !== 'personalizado');
+  const selectedPlan = standardPlans.find((p: any) => p.code === selectedPlanCode);
 
-  const handleGenerateLink = () => {
+  // Catálogo de módulos (modo Personalizado).
+  const { data: allModules = [] } = useSubscriptionModules();
+  const suggestedModulesPrice = sumModulesPrice(allModules, customModules);
+  const finalCustomPlanPrice = useCustomPrice && customPriceValue
+    ? parseFloat(customPriceValue) || 0
+    : suggestedModulesPrice;
+
+  const handleToggleModule = (code: string) => {
+    setCustomModules(prev => withBaseModules(
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
+    ));
+  };
+
+  const handleGenerateLink = async () => {
     const baseUrl = window.location.origin;
     const params = new URLSearchParams();
 
@@ -116,10 +137,33 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
           params.append('meses_promo', customPriceMonths);
         }
       }
+    } else if (planMode === 'personalizado') {
+      params.append('plano', 'personalizado');
+      params.append('modulos', withBaseModules(customModules).join(','));
+      if (parseInt(customMaxUsers) > 0) params.append('usuarios', String(parseInt(customMaxUsers)));
+      params.append('ciclo', billingCycle);
+      params.append('bloqueado', '1');
+      if (useCustomPrice && customPriceValue) {
+        params.append('preco', customPriceValue);
+        if (!isPermanent && customPriceMonths) {
+          params.append('meses_promo', customPriceMonths);
+        }
+      }
     }
 
     const link = params.toString() ? `${baseUrl}/cadastro?${params.toString()}` : `${baseUrl}/cadastro`;
     setGeneratedLink(link);
+
+    // Auto-copy: gerou → já está na área de transferência. Se o clipboard
+    // falhar (ex.: contexto não-seguro), o botão de copiar manual continua lá.
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast({ title: 'Link gerado e copiado!' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: 'Link gerado', description: 'Use o botão ao lado do link para copiar.' });
+    }
   };
 
   const handleCopyLink = async () => {
@@ -148,6 +192,8 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     setCustomPriceValue('');
     setIsPermanent(false);
     setCustomPriceMonths('3');
+    setCustomModules([...BASE_MODULE_CODES]);
+    setCustomMaxUsers('5');
     onOpenChange(false);
   };
 
@@ -308,6 +354,23 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                   </div>
                 </div>
               </div>
+
+              <div
+                className={cn(
+                  'flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors',
+                  planMode === 'personalizado' ? 'border-primary bg-primary/5' : 'border-muted'
+                )}
+                onClick={() => setPlanMode('personalizado')}
+              >
+                <RadioGroupItem value="personalizado" id="personalizado" />
+                <div className="flex items-center gap-2 flex-1">
+                  <Sparkles className="h-4 w-4" />
+                  <div>
+                    <Label htmlFor="personalizado" className="cursor-pointer font-medium">Personalizado</Label>
+                    <p className="text-xs text-muted-foreground">Monte os módulos do plano (bloqueado para o cliente)</p>
+                  </div>
+                </div>
+              </div>
             </RadioGroup>
           </div>
 
@@ -315,7 +378,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
             <div className="space-y-3 animate-in fade-in duration-200">
               <Label>Selecione o Plano</Label>
               <div className="grid gap-2">
-                {plans.map((plan: any) => (
+                {standardPlans.map((plan: any) => (
                   <Card
                     key={plan.code}
                     className={cn(
@@ -431,7 +494,119 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
             </div>
           )}
 
-          {planMode === 'plano' && (
+          {planMode === 'personalizado' && (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="space-y-2 p-3 border border-primary/40 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4 text-primary" />Módulos do plano
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    Sugerido: R$ {suggestedModulesPrice.toFixed(2)}/mês
+                  </span>
+                </div>
+                <ModuleGrid
+                  modules={allModules}
+                  selected={customModules}
+                  onToggle={handleToggleModule}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Máx. Usuários</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={customMaxUsers}
+                  onChange={(e) => setCustomMaxUsers(e.target.value)}
+                  className="w-24"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                <span className="text-sm">Ciclo de Cobrança</span>
+                <div className="flex items-center gap-2">
+                  <span className={cn('text-xs', billingCycle === 'monthly' && 'font-medium')}>Mensal</span>
+                  <Switch
+                    checked={billingCycle === 'yearly'}
+                    onCheckedChange={(c) => setBillingCycle(c ? 'yearly' : 'monthly')}
+                  />
+                  <span className={cn('text-xs', billingCycle === 'yearly' && 'font-medium')}>Anual</span>
+                </div>
+              </div>
+
+              {/* Custom price (valor diferente da soma dos módulos) */}
+              <div className="space-y-3 p-3 border rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="use-custom-price-link-personalizado"
+                    checked={useCustomPrice}
+                    onCheckedChange={setUseCustomPrice}
+                  />
+                  <Label htmlFor="use-custom-price-link-personalizado" className="text-xs cursor-pointer">
+                    Usar valor personalizado
+                  </Label>
+                </div>
+
+                {useCustomPrice && (
+                  <div className="space-y-3">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 150.00"
+                      value={customPriceValue}
+                      onChange={(e) => setCustomPriceValue(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Valor sugerido dos módulos: R$ {suggestedModulesPrice.toFixed(2)}/mês
+                    </p>
+
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="is-permanent-link-personalizado"
+                          checked={isPermanent}
+                          onCheckedChange={setIsPermanent}
+                        />
+                        <Label htmlFor="is-permanent-link-personalizado" className="text-xs cursor-pointer">
+                          Permanentemente
+                        </Label>
+                      </div>
+
+                      {!isPermanent && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Por quantos meses?</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="3"
+                            value={customPriceMonths}
+                            onChange={(e) => setCustomPriceMonths(e.target.value)}
+                            className="h-8 text-sm w-24"
+                          />
+                          {customPriceValue && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Os primeiros {customPriceMonths || 'X'} pagamentos serão de R$ {customPriceValue}, depois volta para R$ {suggestedModulesPrice.toFixed(2)}/mês
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-muted-foreground">Valor final mensal:</span>
+                  <span className="text-lg font-bold">R$ {finalCustomPlanPrice.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {planMode !== 'livre' && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
               <div className="flex items-start gap-2">
                 <Lock className="h-4 w-4 text-amber-600 mt-0.5" />
@@ -459,7 +634,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                 {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Clique no botão para copiar o link</p>
+            <p className="text-xs text-muted-foreground">O link já foi copiado — use o botão ao lado se precisar copiar de novo</p>
 
             <div className="bg-muted/50 rounded-lg p-3 space-y-1">
               <p className="text-xs font-medium">Resumo do Link:</p>
@@ -477,6 +652,21 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                         {isPermanent ? '(permanente)' : `por ${customPriceMonths} meses, depois R$ ${Number(selectedPlan.price).toFixed(2)}`}
                       </p>
                     )}
+                  </>
+                )}
+                {planMode === 'personalizado' && (
+                  <>
+                    <p>
+                      • Plano: Personalizado ({billingCycle === 'yearly' ? 'Anual' : 'Mensal'}) — {' '}
+                      {allModules.filter(m => withBaseModules(customModules).includes(m.code)).map(m => m.name).join(', ')}
+                    </p>
+                    <p>• Máx. usuários: {customMaxUsers}</p>
+                    <p>
+                      • Preço: R$ {finalCustomPlanPrice.toFixed(2)}
+                      {useCustomPrice && customPriceValue
+                        ? (isPermanent ? ' (personalizado, permanente)' : ` por ${customPriceMonths} meses, depois R$ ${suggestedModulesPrice.toFixed(2)}`)
+                        : ''}
+                    </p>
                   </>
                 )}
               </div>
