@@ -5,14 +5,23 @@ import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-// Plan pricing fallback (synced with subscription_plans table)
+// ÚLTIMO fallback de specs de plano — a fonte da verdade é subscription_plans
+// (lida via service role logo abaixo). Só usado se a query ao catálogo falhar.
+// Canônico (decisão CEO 2026-06-12): Start 5 / Avançado 10 / Master 15 usuários.
 const PLAN_DEFAULTS: Record<string, { price: number; max_users: number; name: string }> = {
   start: { price: 200, max_users: 5, name: 'Start' },
   starter: { price: 200, max_users: 5, name: 'Start' },
-  avancado: { price: 350, max_users: 5, name: 'Avançado' },
-  pro: { price: 350, max_users: 5, name: 'Avançado' },
+  avancado: { price: 350, max_users: 10, name: 'Avançado' },
+  pro: { price: 350, max_users: 10, name: 'Avançado' },
   master: { price: 650, max_users: 15, name: 'Master' },
   enterprise: { price: 650, max_users: 15, name: 'Master' },
+};
+
+// Aliases legados aceitos em links antigos → código real em subscription_plans.
+const PLAN_CODE_ALIASES: Record<string, string> = {
+  starter: 'start',
+  pro: 'avancado',
+  enterprise: 'master',
 };
 
 Deno.serve(async (req) => {
@@ -102,7 +111,34 @@ Deno.serve(async (req) => {
 
     // Resolve plan/price/status from link params
     const planCode = lockedPlan || 'start';
-    const planDefaults = PLAN_DEFAULTS[planCode] || PLAN_DEFAULTS.start;
+
+    // Specs do plano (price/max_users/name): fonte da verdade é subscription_plans.
+    // PLAN_DEFAULTS hardcoded só entra se a query ao catálogo falhar/retornar vazio.
+    let planDefaults = PLAN_DEFAULTS[planCode] || PLAN_DEFAULTS.start;
+    if (!isPersonalizado) {
+      try {
+        const canonicalCode = PLAN_CODE_ALIASES[planCode] || planCode;
+        const { data: planRow, error: planRowError } = await supabaseAdmin
+          .from('subscription_plans')
+          .select('price, max_users, name')
+          .eq('code', canonicalCode)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (planRowError) {
+          console.error('[self-register] Falha ao ler subscription_plans (usando fallback hardcoded):', planRowError);
+        } else if (planRow && Number(planRow.price) > 0 && Number(planRow.max_users) > 0) {
+          planDefaults = {
+            price: Number(planRow.price),
+            max_users: Number(planRow.max_users),
+            name: planRow.name || planDefaults.name,
+          };
+        } else {
+          console.error(`[self-register] Plano '${canonicalCode}' não encontrado/inválido em subscription_plans (usando fallback hardcoded)`);
+        }
+      } catch (planLookupErr) {
+        console.error('[self-register] Exceção ao ler subscription_plans (usando fallback hardcoded):', planLookupErr);
+      }
+    }
     const isSale = linkType === 'venda';
     const subscription_status = isSale ? 'pending_payment' : 'testing';
 

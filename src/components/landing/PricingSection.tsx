@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 
 const plans = [
   {
-    code: 'essencial',
-    name: 'Essencial',
+    code: 'start',
+    name: 'Start',
     desc: 'Gestão básica para pequenas equipes',
     monthly: 200,
     annual: 160,
@@ -23,7 +23,7 @@ const plans = [
       'Suporte por email',
     ],
     cta: 'Testar 14 Dias Grátis',
-    ctaLink: '/cadastro?plano=essencial&origem=Site',
+    ctaLink: '/cadastro?plano=start&origem=Site',
   },
   {
     code: 'avancado',
@@ -33,7 +33,7 @@ const plans = [
     annual: 280,
     popular: true,
     features: [
-      'Tudo do Essencial +',
+      'Tudo do Start +',
       '10 usuários inclusos',
       'Módulo Funcionários / RH',
       'Financeiro avançado',
@@ -52,10 +52,12 @@ const plans = [
     popular: false,
     features: [
       'Tudo do Avançado +',
-      '20 usuários inclusos',
+      '15 usuários inclusos',
       'CRM / Funil de vendas',
-      'Precificação avançada',
+      'NFS-e integrada',
+      'Precificação avançada (BDI)',
       'Portal do cliente',
+      'White Label (sua marca)',
       'Suporte prioritário',
     ],
     cta: 'Testar 14 Dias Grátis',
@@ -69,11 +71,11 @@ const customPlan = {
   desc: 'Para grandes operações e múltiplas filiais',
   features: [
     'Tudo do Master +',
-    'Usuários ilimitados',
+    'Usuários sob medida',
+    'Módulos sob medida',
     'Múltiplas filiais',
-    'NF-e integrada',
-    'White Label',
     'Gestor de conta dedicado',
+    'Suporte prioritário',
   ],
   cta: 'Falar com Consultor',
   ctaLink: `https://wa.me/5521966885044?text=${encodeURIComponent('Olá! Vim pelo site do Dominex e tenho interesse no plano Enterprise (Personalizado). Gostaria de conversar sobre uma solução sob medida.')}`,

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { formatBRL } from '@/utils/currency';
+import { useModuleCatalog } from '@/hooks/useModuleCatalog';
 
 interface ModuleGateModalProps {
   open: boolean;
@@ -28,6 +29,16 @@ export function ModuleGateModal({
 }: ModuleGateModalProps) {
   const navigate = useNavigate();
 
+  // Nome e preço vêm do banco (subscription_modules) quando há moduleCode —
+  // mudança de preço no catálogo reflete aqui sem editar código. As props
+  // (geralmente vindas do MODULE_INFO hardcoded) são fallback enquanto carrega
+  // ou quando o módulo não existe no catálogo.
+  const { getModule } = useModuleCatalog();
+  const dbModule = getModule(moduleCode);
+  const displayName = dbModule?.name || moduleName;
+  const displayPrice = dbModule?.price != null ? Number(dbModule.price) : modulePrice;
+  const displayDescription = moduleDescription || dbModule?.description || undefined;
+
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Módulo não disponível">
       <div className="flex flex-col items-center text-center gap-4 py-4">
@@ -38,18 +49,18 @@ export function ModuleGateModal({
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-foreground flex items-center justify-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-500" />
-            {moduleName}
+            {displayName}
           </h3>
-          {moduleDescription && (
-            <p className="text-sm text-muted-foreground max-w-sm">{moduleDescription}</p>
+          {displayDescription && (
+            <p className="text-sm text-muted-foreground max-w-sm">{displayDescription}</p>
           )}
         </div>
 
-        {modulePrice != null && modulePrice > 0 && (
+        {displayPrice != null && displayPrice > 0 && (
           <div className="bg-muted rounded-lg px-4 py-2">
             <span className="text-sm text-muted-foreground">A partir de </span>
             <span className="text-lg font-bold text-foreground">
-              R$ {formatBRL(modulePrice)}
+              R$ {formatBRL(displayPrice)}
             </span>
             <span className="text-sm text-muted-foreground">/mês</span>
           </div>
@@ -107,7 +118,10 @@ export function ModuleGateModal({
   );
 }
 
-// Module metadata for easy lookup
+// Metadados locais dos módulos — FALLBACK apenas. Nome e preço canônicos vivem
+// em subscription_modules (ver useModuleCatalog); este mapa cobre o loading e
+// fornece as descrições ricas em PT-BR que o banco não tem. Não confiar nos
+// preços daqui pra exibição: o ModuleGateModal sobrescreve com o valor do banco.
 export const MODULE_INFO: Record<string, { name: string; description: string; price: number }> = {
   basic: {
     name: 'Módulo Básico',
@@ -126,7 +140,7 @@ export const MODULE_INFO: Record<string, { name: string; description: string; pr
   },
   nfe: {
     name: 'Emissão de Notas Fiscais',
-    description: 'Emissão de NF-e e NFS-e integrada ao sistema',
+    description: 'Emissão de NFS-e (nota fiscal de serviço) integrada ao sistema',
     price: 100,
   },
   finance_advanced: {

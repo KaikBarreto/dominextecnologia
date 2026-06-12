@@ -2500,7 +2500,7 @@ const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Sistema modular de assinatura',
-        description: 'Novo sistema de módulos contratáveis (Básico, RH, CRM, NF-e, Financeiro Avançado, Precificação, Portal do Cliente, White Label) com planos pré-montados e personalizado.',
+        description: 'Novo sistema de módulos contratáveis (Básico, RH, CRM, NFS-e, Financeiro Avançado, Precificação, Portal do Cliente, White Label) com planos pré-montados e personalizado.',
         category: 'recurso',
       },
       {
