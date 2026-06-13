@@ -58,6 +58,132 @@ export async function registerServiceWorker() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Rede de segurança contra erro de carregamento de chunk após deploy.
+//
+// O app é um SPA com rotas em React.lazy(() => import(...)). Quando um deploy
+// novo sobe, os chunks ganham hash novo e os antigos somem do servidor. Uma
+// aba/PWA aberta ANTES do deploy ainda roda o index.html antigo em memória; ao
+// navegar para uma rota lazy ela pede o chunk antigo. No instante em que o SW
+// novo ativa e limpa os caches antigos (cleanupOutdatedCaches), o chunk antigo
+// não existe mais → o host devolve index.html (text/html) no lugar do .js →
+// erro "text/html is not a valid JavaScript MIME type" e a tela quebra no meio
+// do atendimento.
+//
+// Defesa: ao detectar esse erro, recarregamos a aba UMA vez para puxar o
+// index.html novo + chunks novos. O SW novo já serve o index.html novo via
+// navigateFallback, então um window.location.reload() simples basta — não
+// precisamos do clearCachesAndReload (pesado demais e desregistra SW à toa).
+//
+// Trava anti-loop (sessionStorage): só recarrega se o último auto-reload foi há
+// mais de 10s, e no máximo 2 vezes por sessão. Se estourar, desiste e deixa o
+// erro seguir — pra não esconder um deploy genuinamente quebrado nem cair em
+// loop infinito de reload.
+
+const CHUNK_RELOAD_TS = "chunk-reload-ts";
+const CHUNK_RELOAD_COUNT = "chunk-reload-count";
+const CHUNK_RELOAD_MIN_INTERVAL_MS = 10_000;
+const CHUNK_RELOAD_MAX_ATTEMPTS = 2;
+
+// Janela em que consideramos a montagem "comprovadamente saudável". Só limpamos
+// a trava anti-loop se o último auto-reload por chunk-error foi há MAIS que isso
+// (ou nunca houve). Tem que ser CONFORTAVELMENTE maior que o tempo típico entre
+// um auto-reload e a próxima falha de startup num deploy quebrado — senão o
+// reset zeraria o contador a cada novo load e o app entraria em loop infinito de
+// reload em vez de desistir após 2 tentativas. 60s dá folga sobre o
+// CHUNK_RELOAD_MIN_INTERVAL_MS (10s) e o reset agendado no main.tsx (~4s).
+const CHUNK_RESET_SAFE_AFTER_MS = 60_000;
+
+// Mensagens dos erros de import dinâmico falho, por browser. Cobrimos Chrome,
+// Firefox, Safari e o caso específico do MIME text/html servido no lugar do JS.
+const CHUNK_ERROR_RE =
+  /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|valid JavaScript MIME type|Failed to load module script|text\/html.*MIME/i;
+
+// Lógica pura da trava anti-loop, separada pra ser testável sem disparar reload
+// de verdade. Recebe o "agora" e o storage por injeção. Retorna se deve
+// recarregar; quando true, JÁ persistiu o novo timestamp/contador no storage.
+export function shouldReloadForChunkError(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  now: number,
+): boolean {
+  const last = Number(storage.getItem(CHUNK_RELOAD_TS) || 0);
+  const count = Number(storage.getItem(CHUNK_RELOAD_COUNT) || 0);
+
+  // Acabou de recarregar: provavelmente o reload anterior ainda não terminou de
+  // montar — evita disparar um segundo reload em cima.
+  if (now - last < CHUNK_RELOAD_MIN_INTERVAL_MS) return false;
+
+  // Já tentou o máximo nesta sessão e o erro persiste → desiste.
+  if (count >= CHUNK_RELOAD_MAX_ATTEMPTS) return false;
+
+  storage.setItem(CHUNK_RELOAD_TS, String(now));
+  storage.setItem(CHUNK_RELOAD_COUNT, String(count + 1));
+  return true;
+}
+
+function recoverFromChunkError(reason: string) {
+  // Se um reload por update de SW já está em curso, não brigamos com ele.
+  if (reloadingForUpdate) return;
+
+  if (!shouldReloadForChunkError(sessionStorage, Date.now())) {
+    const count = Number(sessionStorage.getItem(CHUNK_RELOAD_COUNT) || 0);
+    if (count >= CHUNK_RELOAD_MAX_ATTEMPTS) {
+      console.error(
+        "Erro de chunk persiste após auto-reloads; abortando para não entrar em loop.",
+        reason,
+      );
+    }
+    return;
+  }
+
+  // Reaproveita a guarda do controllerchange pra não colidir com o reload de SW.
+  reloadingForUpdate = true;
+  console.warn("Chunk ausente (provável deploy novo) — recarregando.", reason);
+  window.location.reload();
+}
+
+// Limpa a trava anti-loop, mas SÓ se a sessão estiver comprovadamente saudável.
+// Deve ser chamado depois que a app montou (sem erro de chunk). Em sessões
+// longas isso permite que um 2º deploy do dia volte a ter as 2 tentativas.
+//
+// CONDICIONAL ao tempo desde o último auto-reload: se o último reload por
+// chunk-error foi RECENTE (dentro de CHUNK_RESET_SAFE_AFTER_MS), NÃO limpamos —
+// ainda estamos no ciclo rápido de um deploy possivelmente quebrado, e o
+// contador `count` precisa sobreviver entre reloads pra que a desistência após
+// 2 tentativas funcione de verdade (do contrário: erro→reload→reset zera→loop).
+// Só limpamos quando o último reload foi há bastante tempo (ou nunca houve).
+export function resetChunkErrorGuard(now: number = Date.now()) {
+  try {
+    const last = Number(sessionStorage.getItem(CHUNK_RELOAD_TS) || 0);
+    // Reload recente → ainda no ciclo rápido; preserva a trava (não limpa nada).
+    if (last > 0 && now - last < CHUNK_RESET_SAFE_AFTER_MS) return;
+    sessionStorage.removeItem(CHUNK_RELOAD_TS);
+    sessionStorage.removeItem(CHUNK_RELOAD_COUNT);
+  } catch {
+    /* sessionStorage indisponível (modo privado antigo) — ignora */
+  }
+}
+
+export function setupChunkErrorRecovery() {
+  // Gatilho principal: o Vite dispara 'vite:preloadError' quando o helper
+  // __vitePreload (usado por React.lazy(() => import())) falha em buscar o
+  // chunk. preventDefault suprime o throw padrão do Vite antes do reload.
+  window.addEventListener("vite:preloadError", (e) => {
+    e.preventDefault();
+    recoverFromChunkError("vite:preloadError");
+  });
+
+  // Defesa adicional: alguns browsers/casos não passam pelo preloadError.
+  // Pegamos a rejection não-tratada com a mensagem característica.
+  window.addEventListener("unhandledrejection", (e) => {
+    const reason = (e as PromiseRejectionEvent).reason;
+    const msg = String(reason?.message || reason || "");
+    if (CHUNK_ERROR_RE.test(msg)) {
+      recoverFromChunkError("unhandledrejection: " + msg);
+    }
+  });
+}
+
 export async function clearCachesAndReload() {
   try {
     // Clear all caches

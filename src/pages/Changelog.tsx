@@ -40,6 +40,18 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.24',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'App se recupera sozinho após atualizações',
+        description: 'Corrigimos um erro que, logo depois de uma atualização do sistema, podia travar a tela com uma mensagem técnica ao abrir uma ordem de serviço. Agora o aplicativo detecta isso e se recarrega sozinho, sem atrapalhar o atendimento.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.23',
     date: '13 de junho de 2026',
     type: 'patch',
