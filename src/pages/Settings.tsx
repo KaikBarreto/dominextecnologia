@@ -440,7 +440,7 @@ export default function Settings() {
         { key: 'autoSaveOS', title: 'Salvamento Automático', description: 'Salvar automaticamente rascunhos de ordens de serviço ao editar' },
         { key: 'showOSValues', title: 'Exibir Valores', description: 'Mostrar valores financeiros (mão de obra, peças) nas ordens de serviço' },
         { key: 'requireSignature', title: 'Exigir Assinatura', description: 'Tornar obrigatória a assinatura do cliente ao finalizar OS' },
-        { key: 'saveOSPhotosToDevice', title: 'Salvar fotos no dispositivo', description: 'Ao tirar foto na ordem de serviço, salvar uma cópia também no seu aparelho.' },
+        { key: 'saveOSPhotosToDevice', title: 'Salvar fotos no dispositivo', description: 'Mostra um botão para salvar a foto no seu aparelho. No iPhone abre a opção "Salvar Imagem"; no Android baixa direto.' },
       ],
     },
     {

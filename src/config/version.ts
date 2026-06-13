@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.11.26";
+export const APP_VERSION = "1.11.27";
 
-export const VERSION_NOTES = "No iPhone, ao tirar foto na ordem de serviço com a opção de salvar no aparelho, agora abre direto a tela de salvar imagem nas Fotos, em vez da pré-visualização do arquivo.";
+export const VERSION_NOTES = "Cada foto da ordem de serviço agora tem um botão para salvar no aparelho — no iPhone abre a opção \"Salvar Imagem\"; no Android baixa direto. Também ajustamos o selo \"Concluído\" que aparecia cortado.";

@@ -40,6 +40,23 @@ const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.11.27',
+    date: '13 de junho de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Salvar foto da OS no aparelho ficou confiável',
+        description: 'Agora cada foto tem um botão de salvar. Ao tocar, no iPhone abre a opção "Salvar Imagem" para guardar nas Fotos; no Android e no computador a imagem é baixada na hora.',
+        category: 'correcao',
+      },
+      {
+        title: 'Ajuste visual no checklist da OS',
+        description: 'Corrigimos o selo "Concluído" que aparecia cortado no cabeçalho do checklist em telas estreitas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.11.26',
     date: '13 de junho de 2026',
     type: 'patch',

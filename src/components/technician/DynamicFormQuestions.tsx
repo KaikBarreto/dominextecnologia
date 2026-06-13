@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Camera, Upload, Check, X, Pencil, Trash2, ImageIcon, AlertTriangle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,39 +35,38 @@ const isIOS = () => {
   return /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
-// Salva cópia(s) da foto no aparelho. Best-effort: nunca bloqueia/quebra o upload.
-// iOS: usa a folha nativa de compartilhamento (tem "Salvar Imagem"), pois o
-// download de blob no WebKit abre o Quick Look em vez de salvar em Fotos.
-// Android/desktop: download direto via <a download> (vai pros Downloads, silencioso).
-// IMPORTANTE: precisa ser chamada ANTES de qualquer await pra preservar o gesto
-// do usuário (transient activation), exigência do navigator.share.
-function savePhotosToDevice(files: File[]) {
-  if (!files.length) return;
-
-  if (isIOS() && typeof navigator.canShare === 'function' && navigator.canShare({ files })) {
-    // Folha nativa do iOS com "Salvar Imagem". Sem await: o upload roda em
-    // paralelo enquanto a folha está aberta. .catch engole o AbortError (cancelar).
-    navigator.share({ files, title: 'Foto da OS' }).catch(() => {
+// Salva uma cópia da foto no aparelho. Best-effort: nunca quebra a tela.
+// Disparada por TOQUE do usuário no botão "Salvar imagem" (gesto fresco) —
+// no iOS é o único caminho confiável: ao VOLTAR da câmera o iOS perde o gesto
+// ativo (transient activation) e bloqueia o navigator.share em silêncio.
+// iOS: folha nativa de compartilhamento (tem "Salvar Imagem"). SEM await antes
+// do share pra preservar o gesto.
+// Android/desktop: download direto via <a download> (vai pros Downloads).
+// Retorna 'share' (iOS, folha nativa abriu) ou 'download' (baixou) pra UI
+// decidir se mostra toast (só no download, que é silencioso).
+function savePhotoToDevice(file: File): 'share' | 'download' {
+  if (isIOS() && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    // Sem await: preserva o gesto do toque. .catch engole o AbortError (cancelar).
+    navigator.share({ files: [file], title: 'Foto da OS' }).catch(() => {
       /* cancelado pelo usuário ou sem suporte */
     });
-    return;
+    return 'share';
   }
 
   // Android/desktop (ou iOS antigo sem canShare): download direto.
-  for (const file of files) {
-    try {
-      const url = URL.createObjectURL(file);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name || `os-foto-${Date.now()}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
-      // download é best-effort; ignora silenciosamente
-    }
+  try {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name || `os-foto-${Date.now()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    // download é best-effort; ignora silenciosamente
   }
+  return 'download';
 }
 
 export interface FormValidationResult {
@@ -90,6 +89,46 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const [saving, setSaving] = useState<string | null>(null);
   const [uploadingPhotos, setUploadingPhotos] = useState<Set<string>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
+
+  // Guarda o File processado de cada foto enviada NESTA sessão, indexado pela
+  // mesma publicUrl que aparece em photoUrls. Permite salvar no aparelho sem
+  // await antes do navigator.share (exigência do iOS pra preservar o gesto).
+  const capturedFilesRef = useRef<Map<string, File>>(new Map());
+
+  // Toggle "Salvar fotos no dispositivo" (Configurações › Usabilidade).
+  // Chave ausente => default ligado (!== false). Lido uma vez por render.
+  const saveToDeviceEnabled = useMemo(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('usability-settings') || '{}');
+      return s.saveOSPhotosToDevice !== false;
+    } catch {
+      return true;
+    }
+  }, []);
+
+  // Salva a foto no aparelho ao TOQUE do botão (gesto fresco → iOS aceita).
+  // Caminho confiável: File em memória (sessão atual), sem await antes do share.
+  // Fallback (foto de sessão anterior): busca o blob do bucket público e salva
+  // best-effort — no iOS o share pode não abrir nesse caso (sem gesto preservado).
+  const handleSavePhotoToDevice = (url: string) => {
+    const cached = capturedFilesRef.current.get(url);
+    if (cached) {
+      const how = savePhotoToDevice(cached);
+      if (how === 'download') toast({ title: 'Imagem salva no aparelho' });
+      return;
+    }
+    fetch(url)
+      .then((r) => r.blob())
+      .then((b) => {
+        const how = savePhotoToDevice(
+          new File([b], `os-foto-${Date.now()}.jpg`, { type: b.type || 'image/jpeg' }),
+        );
+        if (how === 'download') toast({ title: 'Imagem salva no aparelho' });
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+  };
 
   // Validation effect
   useEffect(() => {
@@ -238,24 +277,6 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    // Toggle "Salvar fotos no dispositivo" (Configurações › Usabilidade).
-    // Chave ausente => default ligado (!== false). Só vale pra foto de câmera.
-    const saveToDevice = (() => {
-      try {
-        const s = JSON.parse(localStorage.getItem('usability-settings') || '{}');
-        return s.saveOSPhotosToDevice !== false;
-      } catch {
-        return true;
-      }
-    })();
-
-    // Salva cópia(s) no aparelho ANTES de qualquer await, com os arquivos CRUS
-    // do input. Preserva o gesto do usuário (transient activation) exigido pelo
-    // navigator.share no iOS. Foto da câmera já vem JPEG, serve como cópia.
-    if (fromCamera && saveToDevice) {
-      savePhotosToDevice(Array.from(files));
-    }
-
     setUploadingPhotos(prev => new Set(prev).add(questionId));
     try {
       const uploadedUrls: string[] = [];
@@ -280,6 +301,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           .getPublicUrl(fileName);
 
         uploadedUrls.push(publicUrl);
+        // Guarda o File processado pra salvar no aparelho sem await (mesma sessão).
+        capturedFilesRef.current.set(publicUrl, file);
       }
 
       const combinedUrl = uploadedUrls.join(',');
@@ -503,6 +526,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                     >
                       <X className="h-3 w-3" />
                     </button>
+                    {saveToDeviceEnabled && (
+                      <button
+                        type="button"
+                        className="absolute bottom-1 right-1 p-1.5 rounded-full bg-black/60 text-white shadow-sm"
+                        onClick={() => handleSavePhotoToDevice(url)}
+                        title="Salvar imagem no aparelho"
+                      >
+                        <Download className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
