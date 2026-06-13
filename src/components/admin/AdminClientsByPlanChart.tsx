@@ -5,8 +5,9 @@ import { LayoutGrid, DollarSign } from 'lucide-react';
 const PLAN_COLORS = ['#6366F1', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// Display dos planos (renomeados 2026-06; os CODES start/avancado/master ficam).
 const PLAN_LABELS: Record<string, string> = {
-  start: 'Start', basico: 'Básico', avancado: 'Avançado', master: 'Master', personalizado: 'Personalizado',
+  start: 'Essencial', basico: 'Básico', avancado: 'Pro', master: 'Business', personalizado: 'Personalizado',
 };
 
 interface Props {

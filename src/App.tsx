@@ -406,10 +406,10 @@ const AppRoutes = () => (
       <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/movimentacoes" replace />} />
       <Route path="/pmoc" element={<PMOC />} />
-      <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><Contracts /></PermissionRoute>} />
-      <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ContractDetail /></PermissionRoute>} />
+      <Route path="/contratos" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><Contracts /></ModuleRoute></PermissionRoute>} />
+      <Route path="/contratos/:id" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractDetail /></ModuleRoute></PermissionRoute>} />
       {/* Path estático (não /contratos/configuracoes) pra não colidir com /contratos/:id do ContractDetail. */}
-      <Route path="/configuracoes-contrato" element={<PermissionRoute screenKey="screen:contracts"><ContractSettings /></PermissionRoute>} />
+      <Route path="/configuracoes-contrato" element={<PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractSettings /></ModuleRoute></PermissionRoute>} />
       {/* Rota antiga: redireciona direto pra aba RT da nova tela (mantém bookmarks/links). */}
       <Route path="/responsaveis-tecnicos" element={<Navigate to="/configuracoes-contrato?tab=rt" replace />} />
       <Route path="/usuarios" element={<Navigate to="/configuracoes?tab=usuarios" replace />} />

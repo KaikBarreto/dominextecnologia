@@ -125,8 +125,13 @@ export function ModuleGateModal({
 export const MODULE_INFO: Record<string, { name: string; description: string; price: number }> = {
   basic: {
     name: 'Módulo Básico',
-    description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque, Contratos, Financeiro Básico',
+    description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque, Financeiro Básico',
     price: 200,
+  },
+  contracts: {
+    name: 'Gestão de Contratos e PMOC',
+    description: 'Gestão de contratos, Portal do Contrato e Portal do PMOC públicos, documentos (TRT, Certificado, Cronograma, Dossiê)',
+    price: 100,
   },
   rh: {
     name: 'Funcionários / RH',
@@ -156,7 +161,7 @@ export const MODULE_INFO: Record<string, { name: string; description: string; pr
   customer_portal: {
     name: 'Portal do Cliente',
     description: 'Área exclusiva para o cliente acompanhar OS e equipamentos',
-    price: 50,
+    price: 0,
   },
   white_label: {
     name: 'White Label',

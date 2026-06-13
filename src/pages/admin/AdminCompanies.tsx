@@ -68,13 +68,14 @@ type CompanyLite = {
   subscription_expires_at?: string | null;
 };
 
+// Display dos planos (renomeados 2026-06; os CODES start/avancado/master ficam).
 const PLAN_LABELS: Record<string, string> = {
-  start: 'Start',
-  starter: 'Start',
-  avancado: 'Avançado',
-  pro: 'Avançado',
-  master: 'Master',
-  enterprise: 'Master',
+  start: 'Essencial',
+  starter: 'Essencial',
+  avancado: 'Pro',
+  pro: 'Pro',
+  master: 'Business',
+  enterprise: 'Business',
 };
 
 // Gera iniciais (máx 2 caracteres) para avatar fallback.
@@ -392,9 +393,9 @@ export default function AdminCompanies() {
   ];
 
   const planOptions: FilterCheckboxOption[] = [
-    { value: 'starter', label: 'Start' },
-    { value: 'pro', label: 'Avançado' },
-    { value: 'enterprise', label: 'Master' },
+    { value: 'starter', label: 'Essencial' },
+    { value: 'pro', label: 'Pro' },
+    { value: 'enterprise', label: 'Business' },
   ];
 
   const FilterContent = ({ withViewToggle = false }: { withViewToggle?: boolean }) => (

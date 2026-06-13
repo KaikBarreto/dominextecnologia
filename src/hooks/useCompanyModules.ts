@@ -12,6 +12,7 @@ export type ModuleCode =
   | 'basic'
   | 'rh'
   | 'crm'
+  | 'contracts'
   | 'nfe'
   | 'finance_advanced'
   | 'pricing_advanced'
@@ -45,7 +46,9 @@ const SCREEN_TO_MODULE_MAP: Record<string, ModuleCode> = {
   'screen:services': 'basic',
   'screen:equipment': 'basic',
   'screen:inventory': 'basic',
-  'screen:contracts': 'basic',
+  // Contratos virou módulo PAGO (2026-06): 'Gestão de Contratos e PMOC'. Saiu do
+  // basic — sem o módulo `contracts`, a tela de contratos é gateada (upgrade).
+  'screen:contracts': 'contracts',
   // Financeiro: a TELA é base; só as abas avançadas (DRE, contas a pagar/receber)
   // exigem finance_advanced e são gateadas inline dentro de Finance.tsx.
   'screen:finance': 'basic',

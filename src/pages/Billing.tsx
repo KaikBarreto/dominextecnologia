@@ -20,7 +20,7 @@ export default function Billing() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const { modules, hasModule } = useCompanyModules();
+  const { modules, hasModule, allPlans } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [showCancel, setShowCancel] = useState(false);
 
@@ -140,8 +140,12 @@ export default function Billing() {
   const statusConfig = getStatusConfig(daysRemaining);
   const StatusIcon = statusConfig.icon;
 
+  // Nome de exibição do plano vem do BANCO (subscription_plans.name) — assim os
+  // nomes renomeados (Essencial/Pro/Business) aparecem sozinhos quando o banco
+  // mudar, sem código. Fallback: capitaliza o code enquanto a lista carrega.
   const planDisplayName = company.subscription_plan
-    ? company.subscription_plan.charAt(0).toUpperCase() + company.subscription_plan.slice(1)
+    ? (allPlans.find((p) => p.code === company.subscription_plan)?.name
+        ?? company.subscription_plan.charAt(0).toUpperCase() + company.subscription_plan.slice(1))
     : 'Starter';
 
   const activeModuleCodes = modules.map(m => m.module_code);

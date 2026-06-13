@@ -91,7 +91,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
       { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
-      { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
+      { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts', moduleKey: 'contracts' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
       // 'Responsáveis Técnicos' removido do menu (Onda UI-1). A tela e a rota

@@ -54,11 +54,12 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "Clientes",
     "Equipamentos",
     "Estoque",
-    "Contratos / PMOC",
+    "Portal do Cliente",
     "Financeiro Básico",
   ],
   avancado: [
     "Tudo do Start",
+    "Gestão de Contratos e PMOC",
     "Funcionários / RH",
     "Ponto Eletrônico",
     "Financeiro Avançado (DRE)",
@@ -66,6 +67,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
   ],
   master: [
     "Tudo do Avançado",
+    "Gestão de Contratos e PMOC",
     "CRM Completo",
     "Emissão de Notas Fiscais",
     "Precificação Avançada (BDI)",

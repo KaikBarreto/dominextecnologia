@@ -241,19 +241,22 @@ Deno.serve(async (req) => {
     }
 
     // -------------------------------------------------------------------------
-    // 1.1) GATE DE MÓDULO (2026-06): o módulo 'customer_portal' é a FRONTEIRA
-    //      COMERCIAL da empresa — sem ele o portal não existe pra ninguém,
-    //      independente de público/privado. Por isso este gate roda PRIMEIRO,
-    //      logo após resolver o company_id do contrato, ANTES do gate de
-    //      privacidade. Se a empresa dona não tem o módulo (plano não inclui,
+    // 1.1) GATE DE MÓDULO (2026-06): o módulo 'contracts' ('Gestão de Contratos
+    //      e PMOC') é a FRONTEIRA COMERCIAL deste portal — é ele que ativa o
+    //      Portal do Contrato/PMOC público. Sem ele o portal não existe pra
+    //      ninguém, independente de público/privado. Por isso este gate roda
+    //      PRIMEIRO, logo após resolver o company_id do contrato, ANTES do gate
+    //      de privacidade. Se a empresa dona não tem o módulo (plano não inclui,
     //      sem addon, sem trial ativo), NÃO entregamos o portal: retornamos
     //      HTTP 200 com um sinal explícito pro frontend DISTINGUIR de token
     //      inválido (404) ou erro de rede — contrato: { error:
     //      'module_unavailable', company_name: <string|null> }.
+    //      (O Portal do Cliente — módulo 'customer_portal' — virou grátis e
+    //      tem seu próprio gate; este portal é gateado por 'contracts'.)
     // -------------------------------------------------------------------------
     const { data: hasModule, error: moduleErr } = await supabase.rpc(
       "company_has_module",
-      { p_company_id: contract.company_id, p_module_code: "customer_portal" },
+      { p_company_id: contract.company_id, p_module_code: "contracts" },
     );
 
     if (moduleErr) {
