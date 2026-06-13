@@ -2,15 +2,19 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, Calendar, DollarSign } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { CheckCircle, Calendar, CalendarIcon, DollarSign, History, Pencil, Trash2 } from 'lucide-react';
 import {
   type Salesperson, type SalespersonSale, type SalespersonAdvance, type SalespersonPayment,
-  useCreatePayment, useSaveSalesperson, commissionForPerson, salesForPerson,
+  useCreatePayment, useSaveSalesperson, useUpdatePaymentDate, useDeletePayment,
+  commissionForPerson, salesForPerson,
 } from '@/hooks/useSalespersonData';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface Props {
   salesperson: Salesperson;
@@ -28,9 +32,15 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
   const [newSalary, setNewSalary] = useState(Number(salesperson.salary) || 0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selected, setSelected] = useState<ReturnType<typeof getMonthData> | null>(null);
+  const [payDate, setPayDate] = useState<Date>(new Date());
+  const [editPayment, setEditPayment] = useState<SalespersonPayment | null>(null);
+  const [editDate, setEditDate] = useState<Date>(new Date());
+  const [deletePayment, setDeletePayment] = useState<SalespersonPayment | null>(null);
 
   const createPayment = useCreatePayment();
   const saveSalesperson = useSaveSalesperson();
+  const updatePaymentDate = useUpdatePaymentDate();
+  const removePayment = useDeletePayment();
 
   const now = new Date();
   const previousMonth = subMonths(now, 1);
@@ -72,6 +82,7 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
     if (data.isPaid) { toast.info('Mês já pago'); return; }
     if (data.totalToReceive <= 0) { toast.error('Sem valor a pagar'); return; }
     setSelected(data);
+    setPayDate(new Date());
     setConfirmOpen(true);
   };
 
@@ -79,13 +90,32 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
     if (!selected) return;
     await createPayment.mutateAsync({
       salesperson_id: salesperson.id,
+      salesperson_name: salesperson.name,
       reference_month: selected.monthStr,
       salary_amount: selected.salary,
       commission_amount: selected.totalCommission,
       advances_deducted: selected.totalAdvances,
       total_amount: selected.totalToReceive,
+      paid_at: payDate.toISOString(),
     });
     setConfirmOpen(false);
+  };
+
+  const openEditDate = (p: SalespersonPayment) => {
+    setEditPayment(p);
+    setEditDate(p.paid_at ? new Date(p.paid_at) : new Date());
+  };
+
+  const confirmEditDate = async () => {
+    if (!editPayment) return;
+    await updatePaymentDate.mutateAsync({ id: editPayment.id, paidAt: editDate.toISOString() });
+    setEditPayment(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePayment) return;
+    await removePayment.mutateAsync(deletePayment.id);
+    setDeletePayment(null);
   };
 
   const renderMonthCard = (data: ReturnType<typeof getMonthData>, isCurrent = false) => (
@@ -165,6 +195,44 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
         {renderMonthCard(currData, true)}
       </div>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-4 w-4" /> Pagamentos Realizados
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {payments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">Nenhum pagamento registrado</div>
+          ) : (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 p-3 border rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{fmt(Number(p.total_amount) || 0)}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Ref. <span className="capitalize">{format(new Date(`${p.reference_month}T00:00:00`), 'MMMM yyyy', { locale: ptBR })}</span>
+                      {' • Pago em '}
+                      {p.paid_at ? format(new Date(p.paid_at), 'dd/MM/yyyy', { locale: ptBR }) : '—'}
+                    </div>
+                  </div>
+                  {!readOnly && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => openEditDate(p)} className="text-amber-600 hover:bg-amber-500 hover:text-white" title="Editar data">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setDeletePayment(p)} className="hover:bg-destructive hover:text-white" title="Excluir pagamento">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <ResponsiveModal open={confirmOpen} onOpenChange={setConfirmOpen} title="Confirmar Pagamento">
         {selected && (
           <div className="space-y-4">
@@ -180,9 +248,69 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
                 <span>Total</span><span>{fmt(selected.totalToReceive)}</span>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Data do pagamento</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal">
+                    {format(payDate, 'dd/MM/yyyy', { locale: ptBR })}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarPicker mode="single" selected={payDate} onSelect={(d) => d && setPayDate(d)} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setConfirmOpen(false)} className="flex-1">Cancelar</Button>
               <Button onClick={confirmPayment} disabled={createPayment.isPending} className="flex-1">Confirmar</Button>
+            </div>
+          </div>
+        )}
+      </ResponsiveModal>
+
+      <ResponsiveModal open={!!editPayment} onOpenChange={(o) => !o && setEditPayment(null)} title="Editar Data do Pagamento">
+        {editPayment && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Ajuste a data em que o pagamento de{' '}
+              <strong>{fmt(Number(editPayment.total_amount) || 0)}</strong> foi feito. O financeiro é
+              atualizado pra essa data.
+            </p>
+            <div className="space-y-2">
+              <Label>Data do pagamento</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal">
+                    {format(editDate, 'dd/MM/yyyy', { locale: ptBR })}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarPicker mode="single" selected={editDate} onSelect={(d) => d && setEditDate(d)} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditPayment(null)} className="flex-1">Cancelar</Button>
+              <Button onClick={confirmEditDate} disabled={updatePaymentDate.isPending} className="flex-1">Salvar</Button>
+            </div>
+          </div>
+        )}
+      </ResponsiveModal>
+
+      <ResponsiveModal open={!!deletePayment} onOpenChange={(o) => !o && setDeletePayment(null)} title="Excluir Pagamento">
+        {deletePayment && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tem certeza que deseja excluir o pagamento de{' '}
+              <strong>{fmt(Number(deletePayment.total_amount) || 0)}</strong>? As despesas de salário e
+              comissão lançadas no financeiro também serão removidas.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDeletePayment(null)} className="flex-1">Cancelar</Button>
+              <Button variant="destructive" onClick={confirmDelete} disabled={removePayment.isPending} className="flex-1">Excluir</Button>
             </div>
           </div>
         )}

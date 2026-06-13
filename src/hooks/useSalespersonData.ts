@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 export type SalespersonRole = 'sdr' | 'closer';
 
@@ -374,22 +375,57 @@ export function useDeleteSale() {
   });
 }
 
+/** Invalida as queries do financeiro admin (mesmas keys da tela de Financeiro). */
+function invalidateAdminFinancials(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['admin-financial-transactions'] });
+  qc.invalidateQueries({ queryKey: ['admin-financial-transactions-all'] });
+}
+
 export function useCreateAdvance() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: Omit<Partial<SalespersonAdvance>, 'id' | 'created_at'> & { salesperson_id: string; amount: number }) => {
+    mutationFn: async (
+      payload: Omit<Partial<SalespersonAdvance>, 'id' | 'created_at'> & {
+        salesperson_id: string;
+        amount: number;
+        /** Nome do vendedor — só pra montar a descrição da despesa (não vai pro insert do vale). */
+        salesperson_name: string;
+      },
+    ) => {
       const user = (await supabase.auth.getUser()).data.user;
-      const { data, error } = await supabase
+      const { salesperson_name, ...insertData } = payload;
+
+      // 1) Cria o vale
+      const { data: advance, error } = await supabase
         .from('salesperson_advances')
-        .insert({ ...payload, created_by: user?.id || null } as any)
+        .insert({ ...insertData, created_by: user?.id || null } as any)
         .select()
         .single();
       if (error) throw error;
-      return data;
+
+      // 2) Lança a despesa correspondente no financeiro admin.
+      //    transaction_date = data do lançamento do vale (reference_month/created_at).
+      const txnDate = advance.reference_month || advance.created_at;
+      const { error: finError } = await supabase.from('admin_financial_transactions').insert([
+        {
+          type: 'expense',
+          category: 'advance',
+          amount: payload.amount,
+          description: `Vale - ${salesperson_name}: ${payload.description || 'Vale/Adiantamento'}`,
+          reference_id: advance.id,
+          reference_type: 'salesperson_advance',
+          transaction_date: txnDate ? format(new Date(txnDate), 'yyyy-MM-dd') : undefined,
+          created_by: user?.id || null,
+        },
+      ]);
+      if (finError) throw finError;
+
+      return advance;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_advances'] });
       qc.invalidateQueries({ queryKey: ['all_salesperson_advances'] });
+      invalidateAdminFinancials(qc);
       toast.success('Vale registrado');
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao registrar vale'),
@@ -400,12 +436,20 @@ export function useDeleteAdvance() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Remove a despesa espelhada primeiro pra não deixar lançamento órfão.
+      await supabase
+        .from('admin_financial_transactions')
+        .delete()
+        .eq('reference_id', id)
+        .eq('reference_type', 'salesperson_advance');
+
       const { error } = await supabase.from('salesperson_advances').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_advances'] });
       qc.invalidateQueries({ queryKey: ['all_salesperson_advances'] });
+      invalidateAdminFinancials(qc);
       toast.success('Vale removido');
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao remover vale'),
@@ -415,28 +459,136 @@ export function useDeleteAdvance() {
 export function useCreatePayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: Omit<Partial<SalespersonPayment>, 'id' | 'paid_at'> & {
-      salesperson_id: string;
-      reference_month: string;
-      salary_amount: number;
-      commission_amount: number;
-      advances_deducted: number;
-      total_amount: number;
-    }) => {
+    mutationFn: async (
+      payload: Omit<Partial<SalespersonPayment>, 'id'> & {
+        salesperson_id: string;
+        reference_month: string;
+        salary_amount: number;
+        commission_amount: number;
+        advances_deducted: number;
+        total_amount: number;
+        /** Nome do vendedor — só pra montar a descrição das despesas. */
+        salesperson_name: string;
+        /** Data em que o pagamento foi feito (vira paid_at e transaction_date das despesas). */
+        paid_at?: string;
+      },
+    ) => {
       const user = (await supabase.auth.getUser()).data.user;
-      const { data, error } = await supabase
+      const { salesperson_name, ...insertData } = payload;
+
+      // 1) Cria o pagamento (paid_at escolhido pelo admin; default DB = now()).
+      const { data: payment, error } = await supabase
         .from('salesperson_payments')
-        .insert({ ...payload, created_by: user?.id || null } as any)
+        .insert({ ...insertData, created_by: user?.id || null } as any)
         .select()
         .single();
       if (error) throw error;
-      return data;
+
+      // Data do financeiro = paid_at do pagamento.
+      const txnDate = payment.paid_at
+        ? format(new Date(payment.paid_at), 'yyyy-MM-dd')
+        : undefined;
+      const monthLabel = format(new Date(`${payment.reference_month}T00:00:00`), 'MM/yyyy');
+
+      // 2) Despesa de SALÁRIO LÍQUIDO (desconta vales já lançados como despesa
+      //    quando criados, pra não duplicar no financeiro).
+      const netSalary = Math.max(0, payload.salary_amount - payload.advances_deducted);
+      if (netSalary > 0) {
+        const { error: salErr } = await supabase.from('admin_financial_transactions').insert([
+          {
+            type: 'expense',
+            category: 'salary',
+            amount: netSalary,
+            description: `Salário - ${salesperson_name} (${monthLabel})`,
+            reference_id: payment.id,
+            reference_type: 'salesperson_payment_salary',
+            transaction_date: txnDate,
+            created_by: user?.id || null,
+          },
+        ]);
+        if (salErr) throw salErr;
+      }
+
+      // 3) Despesa de COMISSÃO.
+      if (payload.commission_amount > 0) {
+        const { error: commErr } = await supabase.from('admin_financial_transactions').insert([
+          {
+            type: 'expense',
+            category: 'commission',
+            amount: payload.commission_amount,
+            description: `Comissões - ${salesperson_name} (${monthLabel})`,
+            reference_id: payment.id,
+            reference_type: 'salesperson_payment_commission',
+            transaction_date: txnDate,
+            created_by: user?.id || null,
+          },
+        ]);
+        if (commErr) throw commErr;
+      }
+
+      return payment;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_payments'] });
       qc.invalidateQueries({ queryKey: ['all_salesperson_payments'] });
+      invalidateAdminFinancials(qc);
       toast.success('Pagamento registrado');
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao registrar pagamento'),
+  });
+}
+
+/** Atualiza a data (paid_at) de um pagamento já feito e propaga pro transaction_date das despesas vinculadas. */
+export function useUpdatePaymentDate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, paidAt }: { id: string; paidAt: string }) => {
+      const dateOnly = format(new Date(paidAt), 'yyyy-MM-dd');
+
+      const { error } = await supabase
+        .from('salesperson_payments')
+        .update({ paid_at: paidAt })
+        .eq('id', id);
+      if (error) throw error;
+
+      // Propaga pro financeiro: salário + comissão deste pagamento.
+      const { error: salErr } = await supabase
+        .from('admin_financial_transactions')
+        .update({ transaction_date: dateOnly })
+        .eq('reference_id', id)
+        .in('reference_type', ['salesperson_payment_salary', 'salesperson_payment_commission']);
+      if (salErr) throw salErr;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['salesperson_payments'] });
+      qc.invalidateQueries({ queryKey: ['all_salesperson_payments'] });
+      invalidateAdminFinancials(qc);
+      toast.success('Data do pagamento atualizada');
+    },
+    onError: (e: any) => toast.error(e?.message || 'Erro ao atualizar data'),
+  });
+}
+
+/** Remove um pagamento e as despesas espelhadas (salário + comissão) no financeiro admin. */
+export function useDeletePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await supabase
+        .from('admin_financial_transactions')
+        .delete()
+        .eq('reference_id', id)
+        .in('reference_type', ['salesperson_payment_salary', 'salesperson_payment_commission']);
+
+      const { error } = await supabase.from('salesperson_payments').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['salesperson_payments'] });
+      qc.invalidateQueries({ queryKey: ['all_salesperson_payments'] });
+      invalidateAdminFinancials(qc);
+      toast.success('Pagamento removido');
+    },
+    onError: (e: any) => toast.error(e?.message || 'Erro ao remover pagamento'),
   });
 }

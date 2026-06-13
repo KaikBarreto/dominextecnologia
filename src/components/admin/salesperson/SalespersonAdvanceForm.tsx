@@ -7,16 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCreateAdvance } from '@/hooks/useSalespersonData';
 import { Wallet } from 'lucide-react';
 
-interface Props { salespersonId: string; }
+interface Props { salespersonId: string; salespersonName: string; }
 
-export function SalespersonAdvanceForm({ salespersonId }: Props) {
+export function SalespersonAdvanceForm({ salespersonId, salespersonName }: Props) {
   const [data, setData] = useState({ amount: 0, description: '' });
   const createAdvance = useCreateAdvance();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (data.amount <= 0) return;
-    await createAdvance.mutateAsync({ salesperson_id: salespersonId, amount: data.amount, description: data.description || null });
+    await createAdvance.mutateAsync({
+      salesperson_id: salespersonId,
+      salesperson_name: salespersonName,
+      amount: data.amount,
+      description: data.description || null,
+    });
     setData({ amount: 0, description: '' });
   };
 

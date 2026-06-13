@@ -161,7 +161,7 @@ export default function AdminSalespersonDetail() {
         <TabsContent value="advances" className="space-y-4">
           <div className={isRestrictedSelfView ? '' : 'grid gap-4 lg:grid-cols-2'}>
             {/* Registrar vale é ação administrativa: vendedor admin restrito só visualiza. */}
-            {!isRestrictedSelfView && <SalespersonAdvanceForm salespersonId={salesperson.id} />}
+            {!isRestrictedSelfView && <SalespersonAdvanceForm salespersonId={salesperson.id} salespersonName={salesperson.name} />}
             <SalespersonAdvancesList advances={filteredAdvances} />
           </div>
         </TabsContent>
