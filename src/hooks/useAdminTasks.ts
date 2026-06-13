@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,15 +37,16 @@ export interface AdminTask extends AdminTaskRow {
 }
 
 /**
- * Filtros aplicados client-side na aba (multi-select).
+ * Filtros aplicados server-side na aba (multi-select).
  * Array vazio / undefined = sem filtro (mostra tudo). Só seleção não-vazia restringe.
+ * `search` undefined/'' = sem busca.
  */
 export interface TaskFilters {
-  type: AdminTaskType[];
-  status: AdminTaskStatus[];
-  priority: AdminTaskPriority[];
-  assigned_to: string[];
-  search: string;
+  type?: AdminTaskType[];
+  status?: AdminTaskStatus[];
+  priority?: AdminTaskPriority[];
+  assigned_to?: string[];
+  search?: string;
 }
 
 // ── Configs de apresentação (cores/labels) reaproveitadas pelos componentes ─
@@ -93,34 +94,143 @@ interface UseAdminTasksOptions {
   showFuture?: boolean;
 }
 
-export function useAdminTasks({ showFuture = false }: UseAdminTasksOptions = {}) {
+/**
+ * Busca texto livre HÍBRIDA, 100% server-side (não pode depender de filtro
+ * client-side: admin_tasks pode passar de 1000 rows e o PostgREST trunca em
+ * ~1000, escondendo follow-ups além da 1ª página). Casa em:
+ *  - title + description da própria tarefa, E
+ *  - crm_lead_id ∈ leads (admin_leads) cujo nome ATUAL (company_name /
+ *    contact_name / title) casa o termo.
+ * Reusada pela query principal E pela contagem de resolvidas (mesmo `.or()`).
+ * Retorna `null` quando a busca está vazia.
+ */
+async function buildSearchOrFilter(search: string | undefined): Promise<string | null> {
+  const rawTerm = search?.trim();
+  if (!rawTerm) return null;
+  // Sanitiza: remove `%` e `,` que quebrariam a sintaxe do `.or()`.
+  const term = rawTerm.replace(/[%,]/g, '');
+  if (!term) return null;
+
+  // 1) Leads (admin_leads) cujo nome atual casa o termo → coleta IDs pro `.in()`.
+  const { data: matchingLeads } = await supabase
+    .from('admin_leads')
+    .select('id')
+    .or(`company_name.ilike.%${term}%,contact_name.ilike.%${term}%,title.ilike.%${term}%`);
+
+  let leadIds = (matchingLeads || []).map(l => l.id);
+  // Guarda de segurança: limita a 200 IDs pra não estourar o tamanho da URL do
+  // PostgREST. Na prática a busca por nome dificilmente retorna tantos leads.
+  const MAX_LEAD_IDS = 200;
+  if (leadIds.length > MAX_LEAD_IDS) {
+    console.warn(
+      `[useAdminTasks] busca "${term}" casou ${leadIds.length} leads; truncando para ${MAX_LEAD_IDS} no filtro de tarefas.`,
+    );
+    leadIds = leadIds.slice(0, MAX_LEAD_IDS);
+  }
+
+  // 2) `.or()` server-side: title/description OU crm_lead_id ∈ leadIds.
+  return (
+    `title.ilike.%${term}%,description.ilike.%${term}%` +
+    (leadIds.length ? `,crm_lead_id.in.(${leadIds.join(',')})` : '')
+  );
+}
+
+/**
+ * Aplica os filtros da tela num builder do PostgREST (usado pela query principal
+ * — pendentes + resolvidas — E pela contagem de resolvidas).
+ * Multi-select (semântica da tela de Tarefas): só filtra quando a seleção é
+ * PARCIAL e não-vazia. `undefined` OU `[]` = sem filtro, mostra tudo.
+ * Genérico estrutural porque a query principal usa `select('*')` e a contagem
+ * usa `select` com `head: true` — builders de tipos diferentes, mesma API.
+ */
+function applyTaskFilters<
+  Q extends { in(column: string, values: readonly string[]): Q; or(f: string): Q },
+>(query: Q, filters: TaskFilters | undefined, searchOrFilter: string | null): Q {
+  let q = query;
+  if (filters?.type?.length) q = q.in('type', filters.type);
+  if (filters?.status?.length) q = q.in('status', filters.status);
+  if (filters?.priority?.length) q = q.in('priority', filters.priority);
+  if (filters?.assigned_to?.length) q = q.in('assigned_to', filters.assigned_to);
+  if (searchOrFilter) q = q.or(searchOrFilter);
+  return q;
+}
+
+export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOptions) {
   const { toast } = useToast();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const showFuture = options?.showFuture ?? false;
+
+  // Janela server-side de resolvidas: começa em 200 (cap INTENCIONAL — proteção
+  // contra o corte silencioso de 1000 rows do PostgREST e contra montar milhares
+  // de cards de histórico). loadMoreResolved() soma +200. Entra na queryKey:
+  // mudar o limite refaz a query principal inteira.
+  const [resolvedLimit, setResolvedLimit] = useState(200);
+  const loadMoreResolved = useCallback(() => setResolvedLimit(l => l + 200), []);
 
   const query = useQuery({
-    queryKey: ['admin-tasks', showFuture],
+    queryKey: ['admin-tasks', filters, showFuture, resolvedLimit],
+    // Mantém os dados anteriores durante o refetch (ex.: "Carregar mais") — sem piscar.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      let q = supabase
-        .from('admin_tasks')
-        .select('*')
-        .order('due_date', { ascending: true, nullsFirst: false })
-        .order('followup_step', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: true });
+      // Sub-busca de leads + `.or()` da busca híbrida. Roda UMA vez por fetch.
+      const searchOrFilter = await buildSearchOrFilter(filters?.search);
 
-      // Default: esconde tarefas com due_date futura ainda pendentes; preserva
-      // as sem due_date (NULL) e as já resolvidas (resolved_at != null).
-      if (!showFuture) {
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD (Brasil = UTC-3, corte por dia)
-        q = q.or(`due_date.is.null,due_date.lte.${today},resolved_at.not.is.null`);
+      // Skips por construção: filtro de status parcial que exclui "resolvido"
+      // pula a query de resolvidas; que inclui só "resolvido" pula o loop de
+      // pendentes.
+      const statusFilter = filters?.status?.length ? filters.status : null;
+      const wantsPendentes = !statusFilter || statusFilter.some(s => s !== 'resolvido');
+      const wantsResolvidas = !statusFilter || statusFilter.includes('resolvido');
+
+      const PAGE_SIZE = 1000;
+      const MAX_PAGES = 30; // guarda contra loop infinito (30k rows)
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD (Brasil = UTC-3)
+
+      // PENDENTES (status != resolvido), paginadas via .range() — o PostgREST
+      // corta qualquer SELECT em 1000 rows SILENCIOSAMENTE.
+      const pendentes: AdminTaskRow[] = [];
+      for (let page = 0; wantsPendentes && page < MAX_PAGES; page++) {
+        // Builders do supabase-js são mutáveis — reconstruir do zero a cada página.
+        let pendingQuery = applyTaskFilters(
+          supabase.from('admin_tasks').select('*').neq('status', 'resolvido'),
+          filters,
+          searchOrFilter,
+        );
+        if (!showFuture) {
+          pendingQuery = pendingQuery.or(`due_date.is.null,due_date.lte.${today}`);
+        }
+
+        const from = page * PAGE_SIZE;
+        const { data: pageData, error: pageError } = await pendingQuery
+          .order('due_date', { ascending: true, nullsFirst: false })
+          .order('followup_step', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (pageError) throw pageError;
+        if (!pageData?.length) break;
+        pendentes.push(...pageData);
+        if (pageData.length < PAGE_SIZE) break; // página incompleta = acabou
       }
 
-      const { data, error } = await q;
-      if (error) throw error;
+      // RESOLVIDAS: só as `resolvedLimit` mais recentes (resolved_at desc). O
+      // total REAL vem da query de contagem separada (admin-tasks-resolved-count).
+      let resolvidas: AdminTaskRow[] = [];
+      if (wantsResolvidas) {
+        const { data: resolvedData, error: resolvedError } = await applyTaskFilters(
+          supabase.from('admin_tasks').select('*').eq('status', 'resolvido'),
+          filters,
+          searchOrFilter,
+        )
+          .order('resolved_at', { ascending: false })
+          .limit(resolvedLimit);
+        if (resolvedError) throw resolvedError;
+        resolvidas = resolvedData || [];
+      }
 
-      const rows: AdminTaskRow[] = data || [];
+      const rows: AdminTaskRow[] = [...pendentes, ...resolvidas];
 
-      // Resolve relações em lote (perfis por user_id; leads por id).
+      // Resolve relações em lote (perfis por user_id; leads por admin_leads).
       const userIds = [
         ...new Set(
           rows.flatMap(t => [t.assigned_to, t.created_by]).filter((v): v is string => !!v),
@@ -168,13 +278,45 @@ export function useAdminTasks({ showFuture = false }: UseAdminTasksOptions = {})
     },
   });
 
-  // Realtime: qualquer mudança em admin_tasks revalida a lista + a contagem.
+  // TOTAL REAL de resolvidas: a query principal traz só as `resolvedLimit` mais
+  // recentes, então o length local NÃO é o total. `head: true` não transfere
+  // linhas — só o header com o COUNT. Respeita os MESMOS filtros server-side,
+  // inclusive a busca híbrida. Skip quando o filtro de status exclui "resolvido".
+  const wantsResolvedCount = !filters?.status?.length || filters.status.includes('resolvido');
+  const { data: resolvedTotal } = useQuery({
+    queryKey: ['admin-tasks-resolved-count', filters],
+    queryFn: async () => {
+      const searchOrFilter = await buildSearchOrFilter(filters?.search);
+      const { count, error } = await applyTaskFilters(
+        supabase
+          .from('admin_tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'resolvido'),
+        filters,
+        searchOrFilter,
+      );
+      if (error) throw error;
+      return count ?? 0;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: wantsResolvedCount,
+  });
+
+  // Há mais resolvidas no servidor além das já carregadas na query principal?
+  const resolvedLoadedCount = useMemo(
+    () => (query.data || []).filter(t => t.status === 'resolvido').length,
+    [query.data],
+  );
+  const hasMoreResolved = resolvedTotal !== undefined && resolvedTotal > resolvedLoadedCount;
+
+  // Realtime: qualquer mudança em admin_tasks revalida a lista + as contagens.
   useEffect(() => {
     const channel = supabase
       .channel('admin-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_tasks' }, () => {
         qc.invalidateQueries({ queryKey: ['admin-tasks'] });
         qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
+        qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -200,6 +342,7 @@ export function useAdminTasks({ showFuture = false }: UseAdminTasksOptions = {})
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-tasks'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
+      qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       toast({ title: 'Tarefa criada!' });
     },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -227,6 +370,7 @@ export function useAdminTasks({ showFuture = false }: UseAdminTasksOptions = {})
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-tasks'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
+      qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
     },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
@@ -239,6 +383,7 @@ export function useAdminTasks({ showFuture = false }: UseAdminTasksOptions = {})
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-tasks'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
+      qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       toast({ title: 'Tarefa removida!' });
     },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -247,9 +392,17 @@ export function useAdminTasks({ showFuture = false }: UseAdminTasksOptions = {})
   return {
     tasks: query.data || [],
     isLoading: query.isLoading,
+    /** true durante qualquer refetch da query principal (ex.: loadMoreResolved). */
+    isFetching: query.isFetching,
     createTask,
     updateTask,
     deleteTask,
+    /** Total REAL de resolvidas no servidor (undefined enquanto carrega/skipado). */
+    resolvedTotal,
+    /** Existem resolvidas no servidor além das carregadas na lista. */
+    hasMoreResolved,
+    /** Carrega +200 resolvidas do servidor (refaz a query principal). */
+    loadMoreResolved,
   };
 }
 
@@ -269,36 +422,15 @@ export function useAdminTasksCount() {
   });
 }
 
-/** Aplica os filtros de tela (multi-select + busca) sobre a lista já carregada. */
-export function filterAdminTasks(tasks: AdminTask[], filters: TaskFilters): AdminTask[] {
-  const q = filters.search.trim().toLowerCase();
-  return tasks.filter(t => {
-    if (filters.type.length > 0 && !filters.type.includes(t.type)) return false;
-    if (filters.status.length > 0 && !filters.status.includes(t.status)) return false;
-    if (filters.priority.length > 0 && !filters.priority.includes(t.priority)) return false;
-    if (filters.assigned_to.length > 0 && (!t.assigned_to || !filters.assigned_to.includes(t.assigned_to))) return false;
-    if (q) {
-      const hay = [
-        t.title,
-        t.description ?? '',
-        t.crm_lead?.company_name ?? '',
-        t.crm_lead?.contact_name ?? '',
-      ].join(' ').toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-}
-
 export const EMPTY_TASK_FILTERS: TaskFilters = {
   type: [], status: [], priority: [], assigned_to: [], search: '',
 };
 
 export function countActiveTaskFilters(filters: TaskFilters): number {
   return (
-    (filters.type.length > 0 ? 1 : 0) +
-    (filters.status.length > 0 ? 1 : 0) +
-    (filters.priority.length > 0 ? 1 : 0) +
-    (filters.assigned_to.length > 0 ? 1 : 0)
+    (filters.type?.length ? 1 : 0) +
+    (filters.status?.length ? 1 : 0) +
+    (filters.priority?.length ? 1 : 0) +
+    (filters.assigned_to?.length ? 1 : 0)
   );
 }

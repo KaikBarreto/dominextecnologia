@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   Plus, Search, ClipboardList, LayoutGrid, LayoutList, CalendarDays,
   AlertCircle, Clock, CheckCircle2, ListTodo, CalendarClock,
-  MessageCircle, Check, User,
+  MessageCircle, Check, User, Loader2,
 } from 'lucide-react';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { getFollowupMessage } from '@/utils/followupMessages';
@@ -25,7 +25,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import {
   useAdminTasks,
-  filterAdminTasks,
   countActiveTaskFilters,
   EMPTY_TASK_FILTERS,
   TASK_TYPE_CONFIG,
@@ -79,19 +78,36 @@ export function AdminTasksTab() {
     return saved === 'list' || saved === 'agenda' ? saved : 'kanban';
   });
 
+  const [filters, setFilters] = useState<TaskFilters>(EMPTY_TASK_FILTERS);
+  // Input de busca: estado local com debounce de 300ms antes de jogar pra
+  // `filters.search` (server-side), pra não bombardear o banco a cada keystroke.
+  const [searchInput, setSearchInput] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setFilters(prev => ({ ...prev, search: searchInput.trim() || undefined }));
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
   // Na agenda, o hook SEMPRE busca completo (showFuture=true): o default
   // esconde pendentes com due_date futura e o calendário ficaria vazio pra
   // frente. O switch "Ver futuras" também some da UI nesse modo.
-  const { tasks, isLoading, createTask, updateTask, deleteTask } = useAdminTasks({
+  const {
+    tasks, isLoading, isFetching, createTask, updateTask, deleteTask,
+    resolvedTotal, hasMoreResolved, loadMoreResolved,
+  } = useAdminTasks(filters, {
     showFuture: viewMode === 'agenda' ? true : showFuture,
   });
-
-  const [filters, setFilters] = useState<TaskFilters>(EMPTY_TASK_FILTERS);
-  const [search, setSearch] = useState('');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<AdminTask | null>(null);
   const [completingTask, setCompletingTask] = useState<AdminTask | null>(null);
+
+  // Janela de renderização das listas planas (mobile + desktop): monta só as
+  // primeiras 50 e cresce de 50 em 50. Reset por windowFilterKey (abaixo).
+  const LIST_WINDOW_STEP = 50;
+  const [mobileWindow, setMobileWindow] = useState(LIST_WINDOW_STEP);
+  const [listWindow, setListWindow] = useState(LIST_WINDOW_STEP);
 
   const setView = (v: ViewMode) => {
     setViewMode(v);
@@ -128,33 +144,54 @@ export function AdminTasksTab() {
     }
   }, [admins, adminByUserId, user?.id]);
 
-  const effectiveFilters: TaskFilters = useMemo(
-    () => ({ ...filters, search }),
-    [filters, search],
-  );
-
-  const filteredTasks = useMemo(
-    () => filterAdminTasks(tasks, effectiveFilters),
-    [tasks, effectiveFilters],
-  );
-
   const activeFilterCount = countActiveTaskFilters(filters);
 
   const clearFilters = () => setFilters(EMPTY_TASK_FILTERS);
 
-  // Stats (refletem o conjunto exibido após filtros).
+  // Chave que muda quando QUALQUER filtro muda → kanban/listas resetam a janela
+  // de 50. "Carregar mais" não mexe nela, então a janela cresce.
+  const windowFilterKey = useMemo(
+    () => JSON.stringify({ filters, showFuture, viewMode }),
+    [filters, showFuture, viewMode],
+  );
+
+  // Reseta as janelas das listas planas SÓ quando os filtros mudam — resetar
+  // por mudança de `tasks` quebraria o "Carregar mais" das resolvidas.
+  useEffect(() => {
+    setMobileWindow(LIST_WINDOW_STEP);
+    setListWindow(LIST_WINDOW_STEP);
+  }, [windowFilterKey]);
+
+  // "Carregar mais" das listas planas: cresce a janela local +50; ao esgotar
+  // as carregadas, busca +200 resolvidas do servidor e amplia a janela junto.
+  const handleListLoadMore = (
+    localRemaining: number,
+    grow: React.Dispatch<React.SetStateAction<number>>,
+  ) => {
+    if (localRemaining > 0) {
+      grow(w => w + LIST_WINDOW_STEP);
+    } else if (hasMoreResolved) {
+      loadMoreResolved();
+      grow(w => w + LIST_WINDOW_STEP);
+    }
+  };
+
+  // Stats (refletem o conjunto exibido após filtros server-side). A stat
+  // "Resolvidas" usa o total REAL do servidor quando disponível (a lista carrega
+  // só as N mais recentes).
   const stats = useMemo(() => {
     const today = startOfDay(new Date());
+    const localResolved = tasks.filter(t => t.status === 'resolvido').length;
     return {
-      total: filteredTasks.length,
-      novo: filteredTasks.filter(t => t.status === 'novo').length,
-      andamento: filteredTasks.filter(t => t.status === 'em_andamento').length,
-      resolvido: filteredTasks.filter(t => t.status === 'resolvido').length,
-      atrasadas: filteredTasks.filter(t =>
+      total: tasks.length,
+      novo: tasks.filter(t => t.status === 'novo').length,
+      andamento: tasks.filter(t => t.status === 'em_andamento').length,
+      resolvido: resolvedTotal ?? localResolved,
+      atrasadas: tasks.filter(t =>
         t.due_date && t.status !== 'resolvido' && isBefore(parseISO(t.due_date), today),
       ).length,
     };
-  }, [filteredTasks]);
+  }, [tasks, resolvedTotal]);
 
   const statItems: StatCarouselItem[] = [
     { key: 'total', label: 'Total', count: stats.total, icon: <ListTodo className="h-4 w-4" />, accentColor: 'hsl(var(--primary))' },
@@ -241,8 +278,8 @@ export function AdminTasksTab() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
                 placeholder="Buscar tarefas..."
                 className="pl-9 h-10"
               />
@@ -285,7 +322,7 @@ export function AdminTasksTab() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div className="relative flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar tarefas..." className="pl-9" />
+            <Input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Buscar tarefas..." className="pl-9" />
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
             {viewMode !== 'agenda' && (
@@ -340,22 +377,22 @@ export function AdminTasksTab() {
         // === AGENDA (desktop: grade mensal; mobile: lista por dia) ===========
         // onResolve passa pelo interceptor de follow-up (CompleteTaskModal).
         <TaskAgendaView
-          tasks={filteredTasks}
+          tasks={tasks}
           adminByUserId={adminByUserId}
           onTaskClick={setSelectedTask}
           onResolve={(id) => handleStatusChange(id, 'resolvido')}
         />
       ) : isMobile ? (
         // === MOBILE: lista nativa (default) ===================================
-        filteredTasks.length === 0 ? (
+        tasks.length === 0 ? (
           <EmptyState
             icon={<ClipboardList className="h-12 w-12" />}
-            title={search || activeFilterCount > 0 ? 'Nenhuma tarefa encontrada' : 'Nenhuma tarefa'}
-            description={search || activeFilterCount > 0 ? 'Tente filtros diferentes.' : 'Toque em "Tarefa" para criar.'}
+            title={searchInput || activeFilterCount > 0 ? 'Nenhuma tarefa encontrada' : 'Nenhuma tarefa'}
+            description={searchInput || activeFilterCount > 0 ? 'Tente filtros diferentes.' : 'Toque em "Tarefa" para criar.'}
           />
         ) : (
           <div className="rounded-xl border bg-card overflow-hidden">
-            {filteredTasks.map((task) => {
+            {tasks.slice(0, mobileWindow).map((task) => {
               const typeConfig = TASK_TYPE_CONFIG[task.type];
               const statusConfig = TASK_STATUS_CONFIG[task.status];
               const overdue = !!task.due_date && task.status !== 'resolvido'
@@ -432,18 +469,54 @@ export function AdminTasksTab() {
                 />
               );
             })}
+            {(() => {
+              const localRemaining = tasks.length - Math.min(mobileWindow, tasks.length);
+              const showLoadMore = localRemaining > 0 || hasMoreResolved;
+              if (!showLoadMore) return null;
+              const isFetchingMore = isFetching && localRemaining === 0;
+              return (
+                <div className="border-t p-2 flex justify-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleListLoadMore(localRemaining, setMobileWindow)}
+                    disabled={isFetchingMore}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {isFetchingMore ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Carregando...</>
+                    ) : localRemaining > 0 ? (
+                      `Carregar mais (${localRemaining.toLocaleString('pt-BR')} restantes)`
+                    ) : (
+                      'Carregar mais'
+                    )}
+                  </Button>
+                </div>
+              );
+            })()}
           </div>
         )
       ) : viewMode === 'kanban' ? (
         // === DESKTOP: Kanban ==================================================
-        <TaskKanbanBoard tasks={filteredTasks} onStatusChange={handleStatusChange} onTaskClick={setSelectedTask} adminByUserId={adminByUserId} />
+        <TaskKanbanBoard
+          tasks={tasks}
+          onStatusChange={handleStatusChange}
+          onTaskClick={setSelectedTask}
+          adminByUserId={adminByUserId}
+          resolvedTotal={resolvedTotal}
+          hasMoreResolved={hasMoreResolved}
+          onLoadMoreResolved={loadMoreResolved}
+          isLoadingMore={isFetching}
+          filterKey={windowFilterKey}
+        />
       ) : (
         // === DESKTOP: Lista ===================================================
-        filteredTasks.length === 0 ? (
+        tasks.length === 0 ? (
           <EmptyState
             icon={<ClipboardList className="h-12 w-12" />}
-            title={search || activeFilterCount > 0 ? 'Nenhuma tarefa encontrada' : 'Nenhuma tarefa'}
-            description={search || activeFilterCount > 0 ? 'Tente filtros diferentes.' : 'Crie a primeira tarefa.'}
+            title={searchInput || activeFilterCount > 0 ? 'Nenhuma tarefa encontrada' : 'Nenhuma tarefa'}
+            description={searchInput || activeFilterCount > 0 ? 'Tente filtros diferentes.' : 'Crie a primeira tarefa.'}
           />
         ) : (
           <div className="border rounded-lg overflow-hidden">
@@ -460,7 +533,7 @@ export function AdminTasksTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTasks.map((task) => {
+                  {tasks.slice(0, listWindow).map((task) => {
                     const typeConfig = TASK_TYPE_CONFIG[task.type];
                     const statusConfig = TASK_STATUS_CONFIG[task.status];
                     const priorityConfig = TASK_PRIORITY_CONFIG[task.priority];
@@ -495,6 +568,32 @@ export function AdminTasksTab() {
                 </tbody>
               </table>
             </div>
+            {(() => {
+              const localRemaining = tasks.length - Math.min(listWindow, tasks.length);
+              const showLoadMore = localRemaining > 0 || hasMoreResolved;
+              if (!showLoadMore) return null;
+              const isFetchingMore = isFetching && localRemaining === 0;
+              return (
+                <div className="border-t p-2 flex justify-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleListLoadMore(localRemaining, setListWindow)}
+                    disabled={isFetchingMore}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {isFetchingMore ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Carregando...</>
+                    ) : localRemaining > 0 ? (
+                      `Carregar mais (${localRemaining.toLocaleString('pt-BR')} restantes)`
+                    ) : (
+                      'Carregar mais'
+                    )}
+                  </Button>
+                </div>
+              );
+            })()}
           </div>
         )
       )}

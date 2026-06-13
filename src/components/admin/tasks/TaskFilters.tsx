@@ -32,7 +32,7 @@ export function TaskFiltersForm({ filters, onChange, admins }: TaskFiltersFormPr
           value: t,
           label: TASK_TYPE_CONFIG[t].label,
         }))}
-        selected={filters.type}
+        selected={filters.type ?? []}
         onChange={(v) => onChange({ ...filters, type: v as AdminTaskType[] })}
         emptyLabel="Todos"
       />
@@ -43,7 +43,7 @@ export function TaskFiltersForm({ filters, onChange, admins }: TaskFiltersFormPr
           value: s,
           label: TASK_STATUS_CONFIG[s].label,
         }))}
-        selected={filters.status}
+        selected={filters.status ?? []}
         onChange={(v) => onChange({ ...filters, status: v as AdminTaskStatus[] })}
         emptyLabel="Todos"
       />
@@ -54,7 +54,7 @@ export function TaskFiltersForm({ filters, onChange, admins }: TaskFiltersFormPr
           value: p,
           label: TASK_PRIORITY_CONFIG[p].label,
         }))}
-        selected={filters.priority}
+        selected={filters.priority ?? []}
         onChange={(v) => onChange({ ...filters, priority: v as AdminTaskPriority[] })}
         emptyLabel="Todas"
       />
@@ -65,7 +65,7 @@ export function TaskFiltersForm({ filters, onChange, admins }: TaskFiltersFormPr
           value: a.user_id,
           label: a.full_name,
         }))}
-        selected={filters.assigned_to}
+        selected={filters.assigned_to ?? []}
         onChange={(v) => onChange({ ...filters, assigned_to: v })}
         emptyLabel="Todos"
       />
