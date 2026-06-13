@@ -291,6 +291,7 @@ export default function Finance() {
         {screen === 'movimentacoes' && (
           <FinanceMovimentacoes
             transactions={movimentacoesTransactions}
+            allTransactions={transactions}
             isLoading={isLoading}
             onNew={() => handleNew('entrada')}
             onEdit={handleEdit}

@@ -38,6 +38,13 @@ function getTypeIcon(type: string) {
 
 interface FinanceMovimentacoesProps {
   transactions: (FinancialTransaction & { customer?: any })[];
+  /**
+   * Conjunto COMPLETO de transações (todos os períodos), independente do filtro
+   * de período da tela. Usado para calcular o "Saldo Após" de cada movimentação
+   * na conta bancária — o cálculo é retroativo a partir do saldo atual da conta,
+   * então precisa enxergar tudo, não só o período exibido.
+   */
+  allTransactions?: (FinancialTransaction & { customer?: any })[];
   isLoading: boolean;
   onNew: () => void;
   onEdit: (t: FinancialTransaction) => void;
@@ -61,7 +68,7 @@ interface FinanceMovimentacoesProps {
  * extrato filtrado; cada cartão mostra suas faturas.
  */
 export function FinanceMovimentacoes({
-  transactions, isLoading, onNew, onEdit, onDelete,
+  transactions, allTransactions, isLoading, onNew, onEdit, onDelete,
   initialAccountId, onConsumeInitialAccount,
 }: FinanceMovimentacoesProps) {
   const isMobile = useIsMobile();
@@ -263,6 +270,34 @@ export function FinanceMovimentacoes({
   const selectedAccount = activeTab === ALL_TAB
     ? null
     : accounts.find(a => a.id === activeTab) ?? null;
+
+  // "Saldo Após" por movimentação — só faz sentido na conta bancária/caixa
+  // específica (não na Visão Geral, não em cartão). Calculado de trás pra frente
+  // a partir do saldo ATUAL da conta (balances[id]), usando o conjunto COMPLETO
+  // de transações pagas daquela conta (todos os períodos), não o filtrado.
+  // A movimentação mais recente exibe o saldo atual; as anteriores, o retroativo.
+  const balanceAfterById = useMemo(() => {
+    if (!selectedAccount || selectedAccount.type === 'cartao') return undefined;
+    const source = allTransactions ?? transactions;
+    const accountTxns = source
+      .filter((t) => (t as any).account_id === selectedAccount.id && t.is_paid)
+      // Mais recente primeiro: data desc, desempate por created_at desc.
+      .sort((a, b) => {
+        const dateCmp = String((b as any).transaction_date).localeCompare(String((a as any).transaction_date));
+        if (dateCmp !== 0) return dateCmp;
+        return String((b as any).created_at ?? '').localeCompare(String((a as any).created_at ?? ''));
+      });
+
+    const map = new Map<string, number>();
+    let running = balances[selectedAccount.id] ?? Number(selectedAccount.initial_balance ?? 0);
+    for (const t of accountTxns) {
+      // Saldo APÓS esta movimentação = saldo corrente acumulado.
+      map.set(t.id, running);
+      // Recua: o saldo ANTES dela (= saldo após a próxima mais antiga) desfaz o efeito.
+      running -= t.transaction_type === 'entrada' ? Number(t.amount) : -Number(t.amount);
+    }
+    return map;
+  }, [selectedAccount, allTransactions, transactions, balances]);
 
   // Header da conta selecionada — card-herói colorido (estilo EcoSistema).
   // Regra de fundo dirigida pelo saldo: positivo = cor da conta; zero = degradê
@@ -485,6 +520,7 @@ export function FinanceMovimentacoes({
                 onDelete={onDelete}
                 initialAccountFilter={selectedAccount.id}
                 hideAccountColumn
+                balanceAfterById={balanceAfterById}
               />
             </div>
           )

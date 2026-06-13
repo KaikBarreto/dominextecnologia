@@ -76,12 +76,19 @@ interface TransactionListPanelProps {
    * uma única conta está selecionada — redundante, toda linha é da mesma conta.
    */
   hideAccountColumn?: boolean;
+  /**
+   * Mapa id-da-transação → saldo da conta DEPOIS daquela movimentação.
+   * Quando fornecido (só na conta bancária/caixa específica), exibe a coluna
+   * "Saldo Após" logo após "Valor". Ausente no ALL_TAB e no cartão.
+   */
+  balanceAfterById?: Map<string, number>;
 }
 
 export function TransactionListPanel({
   title, type = 'all', transactions, isLoading,
   onNew, onEdit, onDelete, buttonColor,
   initialAccountFilter, onClearAccountFilter, hideAccountColumn,
+  balanceAfterById,
 }: TransactionListPanelProps) {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -527,6 +534,14 @@ export function TransactionListPanel({
                       <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', isEntrada ? 'text-success' : 'text-destructive')}>
                         {isEntrada ? '+' : '-'} {formatCurrency(t.amount)}
                       </span>
+                      {balanceAfterById?.has(t.id) && (
+                        <span className={cn(
+                          'text-[11px] whitespace-nowrap tabular-nums text-muted-foreground',
+                          (balanceAfterById.get(t.id) ?? 0) < 0 && 'text-destructive',
+                        )}>
+                          Saldo: {formatCurrency(balanceAfterById.get(t.id) ?? 0)}
+                        </span>
+                      )}
                     </div>
                   }
                 />
@@ -552,7 +567,7 @@ export function TransactionListPanel({
                       </SortableTableHead>
                     )}
                     <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>Data</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px]">Usuário</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px] text-center">Usuário</SortableTableHead>
                     {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>Tipo</SortableTableHead>}
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>Descrição</SortableTableHead>
                     <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">Categoria</SortableTableHead>
@@ -560,6 +575,9 @@ export function TransactionListPanel({
                       <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">Conta</SortableTableHead>
                     )}
                     <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>Valor</SortableTableHead>
+                    {balanceAfterById && (
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="text-right">Saldo Após</SortableTableHead>
+                    )}
                     <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">Ações</SortableTableHead>
                   </TableRow>
                 </TableHeader>
@@ -568,7 +586,7 @@ export function TransactionListPanel({
                     <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
                       {type !== 'all' && <TableCell><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
                       <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
-                      <TableCell>{renderCreatorAvatar(t)}</TableCell>
+                      <TableCell className="text-center"><div className="flex justify-center">{renderCreatorAvatar(t)}</div></TableCell>
                       {showTypeColumn && (
                         <TableCell>
                           <Badge className={t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}>
@@ -609,6 +627,20 @@ export function TransactionListPanel({
                           {t.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(t.amount)}
                         </span>
                       </TableCell>
+                      {balanceAfterById && (
+                        <TableCell className="text-right">
+                          {balanceAfterById.has(t.id) ? (
+                            <span className={cn(
+                              'font-medium tabular-nums whitespace-nowrap',
+                              (balanceAfterById.get(t.id) ?? 0) < 0 && 'text-destructive',
+                            )}>
+                              {formatCurrency(balanceAfterById.get(t.id) ?? 0)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <RowActionsMenu
                           actions={[
